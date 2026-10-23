@@ -1,4 +1,8 @@
 // Small shared helpers (no game state here)
+// Error log for playtesting on phones: console errors/warnings (shader compile failures etc.) shown in Options.
+export const LOG = [];
+for (const k of ['error', 'warn']) { const o = console[k].bind(console); console[k] = (...a) => { LOG.push(k[0].toUpperCase() + ': ' + a.map(x => x && x.message || String(x)).join(' ').slice(0, 400)); if (LOG.length > 30) LOG.shift(); o(...a); }; }
+addEventListener('error', e => LOG.push('E: ' + e.message));
 export const $ = id => document.getElementById(id), PI = Math.PI;
 export const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 export const sstep = (a, b, x) => { const t = clamp((x - a) / (b - a), 0, 1); return t * t * (3 - 2 * t); };

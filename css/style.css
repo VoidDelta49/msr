@@ -65,3 +65,4 @@ body.cvt #brk{bottom:calc(150px + env(safe-area-inset-bottom))}
 .orow{display:flex;gap:10px;align-items:center}
 #lb #bBack{width:auto;padding:0 10px}
 #oQ{align-items:center;margin-bottom:6px}#oQ span{font:600 13px system-ui;opacity:.8;margin-right:4px}
+#oLog{white-space:pre-wrap;word-break:break-all;font:11px ui-monospace,monospace;max-height:30vh;overflow:auto;opacity:.85;user-select:text}

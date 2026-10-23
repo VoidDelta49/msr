@@ -1,5 +1,5 @@
 // Options panel (global settings, not per bike)
-import { $ } from './util.js';
+import { $, LOG } from './util.js';
 import { ctx } from './state.js';
 import { cfg, save, BUILD } from './config.js';
 
@@ -11,6 +11,7 @@ function build() {
   $('oQ').innerHTML = '<span>Quality (reloads)</span>' + Object.entries(QL).map(([q, l]) => `<button class="chip${(cfg.gfx || 'med') === q ? ' on' : ''}" data-q=${q}>${l}</button>`).join('');
   $('oCtl').innerHTML = `<div class=row><span>Touch steer sens. <b id=v_sens>${cfg.sens}</b></span><input type=range min=5 max=20 value=${cfg.sens} id=oSens></div>`;
   $('oNote').textContent = $('apiNote').textContent + ' · Build ' + BUILD;
+  $('oLog').textContent = LOG.length ? LOG.slice(-12).join('\n') : 'No errors logged';
 }
 export function openOpts() { if (ctx.OPT || ctx.GAR) return; build(); $('opts').hidden = false; ctx.OPT = true; document.body.classList.add('opt'); }
 export function closeOpts() { if (!ctx.OPT) return; $('opts').hidden = true; ctx.OPT = false; document.body.classList.remove('opt'); }
