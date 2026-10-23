@@ -18,6 +18,8 @@ export function computeSpec(bike, b) {
     for (const [kk, v] of Object.entries(o)) { if (kk === 'n') continue; if (MUL.has(kk)) s[kk] *= v; else s[kk] = v; }
   }
   s.kf = b.kf * 1000; s.kr = b.kr * 1000; s.damp = b.damp / 100;
+  // preload: spring pre-compressed by pf/pr metres, so the bike sits that much higher (CG too) with more bump travel left
+  s.pf = (b.pf || 0) / 1000; s.pr = (b.pr || 0) / 1000; s.h += (s.pf + s.pr) / 2;
   s.sag = (s.m * s.lr / s.wb * 9.81 / s.kf + s.m * s.lf / s.wb * 9.81 / s.kr) / 2;
   s.tqMax = Math.max(...s.TQ.map(p => p[1]));
   DRIVES[bike.drivetrain].spec(s, bike, b);

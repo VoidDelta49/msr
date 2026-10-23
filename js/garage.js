@@ -6,7 +6,7 @@ import { cfg, save } from './config.js';
 export const G = { onBike: null, onChange: null };   // set by main.js
 function stats() {
   const s = ctx.spec, b = ctx.bcfg;
-  $('gstats').innerHTML = ctx.drive.stats(s, b) + `<br>Peak ≈ ${(s.peakPS * s.pow).toFixed(1)} PS · max lean ${(Math.atan(s.mu * .9) * 57.3).toFixed(0)}° · braking ${(s.mu * s.brake).toFixed(2)} g<br>Sag ${(s.sag * 100).toFixed(1)} cm · damping ${b.damp < 35 ? 'bouncy' : b.damp > 65 ? 'stiff' : 'balanced'} · tank ${s.fuel.cap} L`;
+  $('gstats').innerHTML = ctx.drive.stats(s, b) + `<br>Peak ≈ ${(s.peakPS * s.pow).toFixed(1)} PS · max lean ${(Math.atan(s.mu * .9) * 57.3).toFixed(0)}° · braking ${(s.mu * s.brake).toFixed(2)} g<br>Sag ${(s.sag * 100).toFixed(1)} cm · ride height ${(s.pf + s.pr) * 500 >= 0 ? '+' : ''}${((s.pf + s.pr) * 500).toFixed(0)} mm · damping ${b.damp < 35 ? 'bouncy' : b.damp > 65 ? 'stiff' : 'balanced'} · tank ${s.fuel.cap} L`;
 }
 export function buildGarage() {
   const bike = ctx.bike, b = ctx.bcfg; let h = `<div class=bikes>${Object.values(ctx.bikes).map(k => `<button class="chip${k.id === bike.id ? ' on' : ''}" data-bike=${k.id}>${k.short}<small>${k.tag}</small></button>`).join('')}</div><p>${bike.blurb}</p>`;

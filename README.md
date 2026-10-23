@@ -79,13 +79,14 @@ WebGPU has not been verified on real hardware yet. Check the renderer readout on
   - Walls take away the speed going into them; a glancing hit deflects the bike along the wall, with scraping friction.
   - Static boxes are streamed: only those within ~80 m of the bike exist in the Rapier world, because step cost grows with every collider.
   - With Show FPS on, the readout shows the physics cost per frame.
+- Crashes (Rapier only): with **Tough Biker mode** off (Options → PHYSICS, off by default), a hard wall hit (> ~25 km/h), steering harder than the tyres can grip, or a hard or nose/tail-first landing throws the rider off and the bike tumbles and slides. Once it stops it's stood back up where it ended, engine off. Tough Biker mode on: no falls, walls only stop you.
+- Garage: fork and shock preload (±20 mm) raise or lower the ride height and the CG, and change how much bump travel is left.
 - Classic collision uses oriented bounding boxes in a 20 m grid.
 - Debug hook: `window.__cpm` (`S`, `cfg`, `ctx`, `spec()`, `step`, `shift`, `reset`, `setBike(id)`, `startEngine`, ...).
 
 ## Known limitations
 
 - The soft-shadow mode was lost in the WebGPU renderer, so shadow edges are slightly harder (PCF).
-- Suspension ride height (preload) is not adjustable yet.
 
 ## Ideas
 

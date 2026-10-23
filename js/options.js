@@ -3,7 +3,7 @@ import { $ } from './util.js';
 import { ctx } from './state.js';
 import { cfg, save } from './config.js';
 
-const OPTS = { oHud: [{ k: 'showFps', l: 'Show FPS' }, { k: 'showApi', l: 'Show renderer' }], oAud: [{ k: 'sound', l: 'Sound' }], oPhy: [{ k: 'rapier', l: 'Rapier physics (beta)' }], oGfx: [{ k: 'forceGL', l: 'Force WebGL (reloads)' }] };
+const OPTS = { oHud: [{ k: 'showFps', l: 'Show FPS' }, { k: 'showApi', l: 'Show renderer' }], oAud: [{ k: 'sound', l: 'Sound' }], oPhy: [{ k: 'rapier', l: 'Rapier physics (beta)' }, { k: 'tough', l: 'Tough Biker mode' }], oGfx: [{ k: 'forceGL', l: 'Force WebGL (reloads)' }] };
 export const O = { onPerf: null, onPhys: null };
 function build() {
   for (const [id, l] of Object.entries(OPTS)) $(id).innerHTML = l.map(t => `<button class="chip${cfg[t.k] ? ' on' : ''}" data-o=${t.k}>${t.l}</button>`).join('');

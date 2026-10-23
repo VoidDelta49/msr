@@ -22,7 +22,7 @@
     "tires": { "l": "Tires", "o": [{ "n": "Stock", "mu": 0.85 }, { "n": "Sport", "mu": 1 }, { "n": "Racing", "mu": 1.2 }] },
     "paint": { "l": "Paint", "o": [{ "n": "Titan Blue", "c": "#1f4fbf" }, { "n": "Glass Black", "c": "#17191c" }, { "n": "Racing Red", "c": "#c21d1d" }, { "n": "Pearl White", "c": "#e6e6e1" }, { "n": "Neon Yellow", "c": "#d6cf18" }] }
   },
-  "sliders": [
+  "sliders": [{"k": "pf", "l": "Fork preload", "min": -20, "max": 20, "u": " mm"}, {"k": "pr", "l": "Shock preload", "min": -20, "max": 20, "u": " mm"}, 
     { "k": "fs", "l": "Front sprocket", "min": 13, "max": 16, "u": "T" },
     { "k": "rs", "l": "Rear sprocket", "min": 34, "max": 46, "u": "T" },
     { "k": "kf", "l": "Fork spring", "min": 7, "max": 20, "u": " kN/m" },
@@ -30,6 +30,6 @@
     { "k": "damp", "l": "Damping", "min": 20, "max": 90, "u": "%" }
   ],
   "toggles": [{ "k": "autoClutch", "l": "Anti-stall clutch" }],
-  "defaults": { "exhaust": 0, "ecu": 0, "tires": 0, "paint": 0, "fs": 14, "rs": 38, "kf": 11, "kr": 13, "damp": 45, "autoClutch": true },
+  "defaults": {"pf": 0, "pr": 0,  "exhaust": 0, "ecu": 0, "tires": 0, "paint": 0, "fs": 14, "rs": 38, "kf": 11, "kr": 13, "damp": 45, "autoClutch": true },
   "hint": "Pull CLUTCH, shift ▼ into 1st, ease it out"
 }

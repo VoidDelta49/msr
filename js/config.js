@@ -1,5 +1,5 @@
 // Settings: global options + one settings block per bike, stored in localStorage 'cpmme'
-export const GLOBAL_DEF = { bike: 'raider150', sound: true, forceGL: false, showFps: true, showApi: true, sens: 10, rapier: true };
+export const GLOBAL_DEF = { bike: 'raider150', sound: true, forceGL: false, showFps: true, showApi: true, sens: 10, rapier: true, tough: false };
 export const cfg = { ...GLOBAL_DEF, bikes: {} };
 try {
   const old = JSON.parse(localStorage.getItem('cpmme') || '{}');

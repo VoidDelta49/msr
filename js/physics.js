@@ -47,7 +47,7 @@ export function step(dt, ext) {
   if (S.running) { S.fuel -= dt * (sp.fuel.idle + sp.fuel.k * S.thrEff * S.rpm / sp.red0); if (S.fuel <= 0) { S.fuel = 0; S.running = false; S.issOff = false; say('Out of fuel!'); } }
   // steering, lean, yaw
   const vv = S.v, sv = Math.abs(vv), si = Math.sign(S.steer) * Math.pow(Math.abs(S.steer), 1.4), md = .6 / (1 + Math.pow(sv * .3, 1.5));
-  let kk = Math.tan(si * md) / sp.wb; const kl = sp.mu * 9.81 * .95 / Math.max(vv * vv, .01); kk = clamp(kk, -kl, kl);
+  let kk = Math.tan(si * md) / sp.wb; const kl = sp.mu * 9.81 * .95 / Math.max(vv * vv, .01); S.over = Math.abs(kk) / kl; kk = clamp(kk, -kl, kl); // over > 1: asking more grip than the tyres have
   const hb = sstep(3, 8, sv), tl = Math.atan(vv * vv * kk / 9.81) * (1 - hb) + si * Math.atan(sp.mu * .9) * hb; S.lean += (tl - S.lean) * Math.min(1, dt * 4);
   const kd = 9.81 * Math.tan(S.lean) / Math.max(vv * vv, .01), bl = sstep(2, 6, sv), k = kk * (1 - bl) + kd * bl; S.delta = Math.atan(k * sp.wb);
   S.yaw = -vv * k; S.psi += S.yaw * dt;
@@ -58,7 +58,7 @@ export function step(dt, ext) {
   const dhF = clamp((hF - S.hF) / dt, -3, 3), dhR = clamp((hR - S.hR) / dt, -3, 3); S.hF = hF; S.hR = hR;
   const cF = hF - (S.zH + sp.lf * S.th), cR = hR - (S.zH - sp.lr * S.th), vF = dhF - (S.zV + sp.lf * S.thV), vR = dhR - (S.zV - sp.lr * S.thV);
   const mF = m * sp.lr / sp.wb, mR = m * sp.lf / sp.wb;
-  let Ff = sp.kf * cF + sp.damp * 2 * Math.sqrt(sp.kf * mF) * vF, Fr = sp.kr * cR + sp.damp * 2 * Math.sqrt(sp.kr * mR) * vR;
+  let Ff = sp.kf * (cF + sp.pf) + sp.damp * 2 * Math.sqrt(sp.kf * mF) * vF, Fr = sp.kr * (cR + sp.pr) + sp.damp * 2 * Math.sqrt(sp.kr * mR) * vR;
   Ff = Math.max(Ff, -mF * 9.81); Fr = Math.max(Fr, -mR * 9.81);
   S.zV += (Ff + Fr) / m * dt; S.zH += S.zV * dt; S.thV += (Ff * sp.lf - Fr * sp.lr + m * S.a * sp.h) / sp.I * dt; S.th = clamp(S.th + S.thV * dt, -.3, .3);
   // bump stops: inelastic, so bottoming out can't store energy and launch the bike

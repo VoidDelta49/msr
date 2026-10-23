@@ -30,12 +30,12 @@
     "tires": { "l": "Tires", "o": [{ "n": "Stock", "mu": 0.85 }, { "n": "Sport", "mu": 1 }, { "n": "Racing", "mu": 1.2 }] },
     "paint": { "l": "Paint", "o": [{ "n": "Pearl White", "c": "#e8e8e3" }, { "n": "Matte Black", "c": "#1c1d20" }, { "n": "Candy Red", "c": "#a8161c" }, { "n": "Matte Gray", "c": "#5d6166" }, { "n": "Sky Blue", "c": "#3a7bd5" }] }
   },
-  "sliders": [
+  "sliders": [{"k": "pf", "l": "Fork preload", "min": -20, "max": 20, "u": " mm"}, {"k": "pr", "l": "Shock preload", "min": -20, "max": 20, "u": " mm"}, 
     { "k": "kf", "l": "Fork spring", "min": 5, "max": 14, "u": " kN/m" },
     { "k": "kr", "l": "Shock spring", "min": 8, "max": 24, "u": " kN/m" },
     { "k": "damp", "l": "Damping", "min": 20, "max": 90, "u": "%" }
   ],
   "toggles": [{ "k": "iss", "l": "Idling Stop" }],
-  "defaults": { "rollers": 2, "cspring": 0, "clspring": 0, "pulley": 0, "exhaust": 0, "ecu": 0, "tires": 0, "paint": 0, "kf": 8, "kr": 15, "damp": 50, "iss": true },
+  "defaults": {"pf": 0, "pr": 0,  "rollers": 2, "cspring": 0, "clspring": 0, "pulley": 0, "exhaust": 0, "ecu": 0, "tires": 0, "paint": 0, "kf": 8, "kr": 15, "damp": 50, "iss": true },
   "hint": "Hold BRAKE and press START, then twist the throttle"
 }
