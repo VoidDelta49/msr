@@ -68,7 +68,7 @@ export function liteMaterials(root) {
 // going up immediately made it slow again (avoids see-sawing).
 let scale = 1, ref = 0, good = 0, bad = 0, warm = 0, upT = -1e9, blockT = -1e9;
 export const resScale = () => scale;
-function apply() { renderer.setPixelRatio(baseDPR * scale); }
+function apply() { renderer._rs = scale; renderer.setPixelRatio(baseDPR * scale); }
 export function autoRes(fps, playing) {
   if (!cfg.autoRes) { if (scale !== 1) { scale = 1; apply(); } return; }
   if (!playing || document.hidden) { warm = 0; return; }

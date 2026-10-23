@@ -56,7 +56,8 @@ js/spec.js            bike data + garage settings -> flat spec the physics reads
 js/drivetrain.js      manual gearbox + CVT (ratio, clutch capacity, variator, Idling Stop)
 js/physics.js         engine, clutch-slip solver, steering/lean, bump-stop helper
 js/rapier.js          Rapier3D chassis: dynamic bike body, suspension probes, streamed static colliders (fixed 120 Hz tick)
-js/model.js           3D models (sport underbone, scooter)
+js/model.js           3D models (Raider R150 underbone, Click 125i scooter), low-poly extruded panels
+js/tex.js             N64-style procedural textures (tiny, dithered, bilinear) + sky
 js/hud.js             gauge clusters (sport / scooter LCD), messages, minimap
 js/world.js           the island, roads, town, collision footprints, parking lot
 js/renderer.js        WebGPU/WebGL setup and fallback, quality preset
@@ -73,6 +74,8 @@ Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on de
 ### Performance (Build 5.3)
 - **Quality** (Options → GRAPHICS, reloads): Low / Medium (default) / High. Sets draw distance (fog end: 550 / 1100 / 1400 m), pixel-ratio cap (1 / 1.5 / 2), shadows (off / 1024 / 2048), texture anisotropy, and on Low swaps the island's PBR materials for cheaper Lambert ones.
 - **Anti-aliasing FXAA** (on by default, reloads): one cheap post pass instead of MSAA.
+- **N64 colour filter** (on by default, reloads): 15-bit colour with a 4x4 ordered dither and a touch of saturation, in the same post pass.
+- **Retro res** (Off / 480p / 360p / 240p): caps the render height and upscales with crisp pixels. Also a big speed-up on slow phones.
 - **Auto resolution** (on by default): drops render resolution in 10% steps (down to 55%) when the game can't hold the screen's refresh rate, and creeps back up when it can.
 - **Culling**: props are static instanced chunks (700 m); off-screen chunks are skipped in the main and shadow pass. Small one-off props hide past 220 / 550 m.
 - **Terrain LOD**: the ground is 5×5 tiles of 280 m, frustum-culled, each at 5 / 10 / 20 m detail by distance, with skirts so seams never show. Physics still uses the full-detail heights.

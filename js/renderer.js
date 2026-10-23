@@ -19,23 +19,55 @@ if (renderer.backend.isWebGPUBackend) {
 // every instanced mesh use vertex attributes instead, which works everywhere.
 if (!renderer.backend.isWebGPUBackend && renderer.backend.capabilities) renderer.backend.capabilities.maxUniformBlockSize = 0;
 export const GPU = !!renderer.backend.isWebGPUBackend, API = GPU ? 'WebGPU' : 'WebGL 2', ANISO = Math.min(Q.aniso, renderer.getMaxAnisotropy ? renderer.getMaxAnisotropy() : 8);
-export const baseDPR = Math.min(devicePixelRatio, Q.dpr); renderer.setPixelRatio(baseDPR); renderer.setSize(innerWidth, innerHeight);
+// Retro res (Options): cap the render height at cfg.retro lines (480/360/240) and upscale with crisp pixels. Otherwise
+// the preset's pixel-ratio cap. autoRes (perf.js) scales on top of this via renderer._rs.
+export let baseDPR = 1; renderer._rs = 1;
+export function setDPR() {
+  baseDPR = Math.min(devicePixelRatio, Q.dpr, cfg.retro ? cfg.retro / innerHeight : 9);
+  $('gl').style.imageRendering = cfg.retro ? 'pixelated' : ''; renderer.setPixelRatio(baseDPR * renderer._rs);
+}
+setDPR(); renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = Q.shadow > 0; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping;
-export const scene = new THREE.Scene(), SKY = 0x9fcdea; scene.background = new THREE.Color(SKY); scene.fog = new THREE.Fog(SKY, Q.fog * .11, Q.fog);
+// Sky: zenith blue fading to a hazy horizon; the fog is the horizon colour, so the far island melts into the sky (N64 style).
+export const HORIZON = 0xc6dcea, ZENITH = 0x4b8fd8, SKY = HORIZON;
+export const scene = new THREE.Scene(); scene.background = new THREE.Color(SKY); scene.fog = new THREE.Fog(SKY, Q.fog * .11, Q.fog);
 export const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .03, Q.fog + 150);
-scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x4d5a32, 1.15));
-export const sun = new THREE.DirectionalLight(0xfff0d2, 2.7); sun.castShadow = Q.shadow > 0; sun.shadow.mapSize.set(Q.shadow || 1024, Q.shadow || 1024);
+{ // dome moved to the camera in the vertex shader (no per-frame JS), drawn first, never culled, no fog
+  const { positionLocal, cameraPosition } = await import('three/tsl'), { sky } = await import('./tex.js');
+  const t = new THREE.CanvasTexture(sky(ZENITH, HORIZON)); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping;
+  const m = new THREE.MeshBasicNodeMaterial({ map: t, side: THREE.BackSide, fog: false, depthWrite: false });
+  m.positionNode = positionLocal.add(cameraPosition);
+  const d = new THREE.Mesh(new THREE.SphereGeometry(Q.fog * .9, 24, 12), m); d.frustumCulled = false; d.renderOrder = -1; d.matrixAutoUpdate = false; scene.add(d);
+}
+scene.add(new THREE.HemisphereLight(0xdcecff, 0x55653a, 1.15));
+export const sun = new THREE.DirectionalLight(0xffeccc, 2.8); sun.castShadow = Q.shadow > 0; sun.shadow.mapSize.set(Q.shadow || 1024, Q.shadow || 1024);
 { const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; sun.shadow.camera.layers.enable(1); scene.add(sun, sun.target); // shadow camera also sees layer 1 = shadow-only proxies (model.js)
-// Anti-aliasing: one FXAA pass over the finished frame (far cheaper than MSAA on phone GPUs). Tone mapping + sRGB are
-// applied before FXAA (renderOutput), as FXAA expects display-space colours.
+// Post: one pass over the finished frame. Tone mapping + sRGB first (renderOutput), then FXAA (expects display-space
+// colours), then the N64 filter: a little extra saturation and 15-bit colour (5 bits per channel, like the N64's
+// framebuffer) with a 4x4 ordered dither. Both are Options toggles; with neither the scene renders directly.
 let pipe = null;
-if (cfg.fxaa) {
-  const { pass, renderOutput } = await import('three/tsl'), { fxaa } = await import('three/addons/tsl/display/FXAANode.js');
-  pipe = new THREE.RenderPipeline(renderer); pipe.outputColorTransform = false; pipe.outputNode = fxaa(renderOutput(pass(scene, camera)));
+if (cfg.fxaa || cfg.n64) {
+  const T = await import('three/tsl'); let out = T.renderOutput(T.pass(scene, camera));
+  if (cfg.fxaa) { const { fxaa } = await import('three/addons/tsl/display/FXAANode.js'); out = fxaa(out); }
+  if (cfg.n64) {
+    const b = new Uint8Array(64), BY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]; BY.forEach((v, i) => { b[i * 4] = b[i * 4 + 1] = b[i * 4 + 2] = Math.round((v + .5) / 16 * 255); b[i * 4 + 3] = 255; });
+    const bt = new THREE.DataTexture(b, 4, 4); bt.magFilter = bt.minFilter = THREE.NearestFilter; bt.wrapS = bt.wrapT = THREE.RepeatWrapping; bt.generateMipmaps = false; bt.needsUpdate = true;
+    const c = out.rgb, l = T.dot(c, T.vec3(.299, .587, .114)), sat = T.mix(T.vec3(l), c, 1.12).clamp(0, 1);
+    const d = T.texture(bt, T.screenCoordinate.xy.div(4)).r;
+    out = T.vec4(T.floor(sat.mul(31).add(d)).div(31), 1);
+  }
+  pipe = new THREE.RenderPipeline(renderer); pipe.outputColorTransform = false; pipe.outputNode = out;
 }
 export const draw = () => pipe ? pipe.render() : renderer.render(scene, camera);
-addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+addEventListener('resize', () => { setDPR(); renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
+// N64 "baked AO": a vertex colour from dark at the bottom (y0) to full at the top (y1, default the bbox). Gouraud-
+// interpolated across big faces it reads like contact shadow / sky occlusion for free. Materials need vertexColors.
+export function aoGeo(g, lo = .6, y0, y1, pw = .7) {
+  g.computeBoundingBox(); const a = y0 ?? g.boundingBox.min.y, b = y1 ?? g.boundingBox.max.y, p = g.attributes.position, c = new Float32Array(p.count * 3);
+  for (let i = 0; i < p.count; i++) { const t = Math.min(1, Math.max(0, (p.getY(i) - a) / (b - a || 1))), v = lo + (1 - lo) * Math.pow(t, pw); c[i * 3] = c[i * 3 + 1] = c[i * 3 + 2] = v; }
+  g.setAttribute('color', new THREE.Float32BufferAttribute(c, 3)); return g;
+}
 // canvas texture helper
 export function ctex(w, h, draw, rep) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
