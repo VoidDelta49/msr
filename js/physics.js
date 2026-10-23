@@ -25,10 +25,13 @@ export function step(dt) {
   const R = ctx.stand ? 0 : D.ratio(sp, S), Fb = S.brake * sp.mu * m * 9.81 * sp.brake;
   const Fg = -m * 9.81 * Math.sin(Math.atan((S.hF - S.hR) / sp.wb));
   const netF = (Fd, vv) => { let F = Fd + Fg - (sp.drag * vv * vv + (vv > .02 ? sp.roll : 0)); if (vv > .02) F -= Fb; else F = F > 0 ? Math.max(0, F - Fb - sp.roll) : 0; return F; };
-  // walk the bike backwards
-  if (v <= .02 && S.brake > .6 && S.thr < .05 && (R === 0 || c < .15)) S.padT += dt; else S.padT = 0;
+  // BACK: bikes have no reverse gear, so the rider paddles it backwards with his feet (~3 km/h). Only when (nearly)
+  // stopped, throttle shut, and nothing driving the rear wheel (neutral / clutch pulled; the CVT clutch is open at idle).
+  const canBack = S.back && v <= .3 && S.thr < .05 && (R === 0 || c < .15);
+  if (S.back && !canBack && !S.backWarned) { S.backWarned = true; say(v > .3 ? 'Stop first to walk it back' : S.thr >= .05 ? 'Let go of the throttle' : 'Shift to N or pull the clutch to walk it back', 1400); }
+  if (!S.back) S.backWarned = false;
   let a = 0;
-  if (S.padT > .6) { S.v = -.9; S.rpm = Math.max(0, (we + Te / sp.ie * dt) * 30 / PI); }
+  if (canBack) { S.v = Math.max(-.9, Math.min(v, 0) - 1.2 * dt); S.rpm = Math.max(0, (we + Te / sp.ie * dt) * 30 / PI); }
   else if (v < 0) { S.v = Math.min(0, v + 4 * dt); S.rpm = Math.max(0, (we + Te / sp.ie * dt) * 30 / PI); }
   else if (R > 0 && cap > .05) {
     const RL = (sp.red + 300) * PI / 30, over = v / r * R > RL, slip = we - v / r * R, M = m + sp.ie * R * R / (r * r);

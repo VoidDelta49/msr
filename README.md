@@ -31,6 +31,7 @@ Touch:
 - Throttle pad (drag up/down) plus a brake button (CBS on the Click)
 - Raider only: clutch pad (drag down to pull), ▲ / ▼ shift buttons (clutch must be pulled to shift)
 - START button. On the Click, hold the brake while pressing it.
+- ◀ BACK (hold): walk the bike backwards with your feet (~3 km/h, bikes have no reverse). Only when stopped with the throttle shut; on the Raider, in neutral or with the clutch pulled.
 - Top bar: CAM, PARK, GARAGE, RESET, ⚙ (options)
 
 Keyboard:
@@ -38,6 +39,7 @@ Keyboard:
 - `W` / `S`: throttle / brake, `A` / `D`: steer
 - Raider: `E` / `Shift` shift up, `Q` / `Ctrl` shift down, `Space` clutch
 - Click: `Space` is the rear (CBS) brake lever
+- `X` (hold): walk the bike backwards
 - `R`: start engine, `C`: camera, `G`: garage (bike picker is at the top), `P`: parking mission, `O`: options (`Esc` closes)
 
 ## Project layout
