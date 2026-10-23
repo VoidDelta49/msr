@@ -73,7 +73,7 @@ Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on de
 ### Performance (Build 5.3)
 - **Quality** (Options → GRAPHICS, reloads): Low / Medium (default) / High. Sets draw distance (fog end: 550 / 1100 / 1400 m), pixel-ratio cap (1 / 1.5 / 2), shadows (off / 1024 / 2048), antialiasing, texture anisotropy, and on Low swaps the island's PBR materials for cheaper Lambert ones.
 - **Auto resolution** (on by default): drops render resolution in 10% steps (down to 55%) when the game can't hold the screen's refresh rate, and creeps back up when it can.
-- **Culling**: every prop type is one instanced draw call; only instances in the camera frustum and within draw distance are sent to the GPU (shadow casters near the bike are always kept). Small one-off props hide past 220 / 550 m.
+- **Culling**: props are static instanced chunks (700 m); off-screen chunks are skipped in the main and shadow pass. Small one-off props hide past 220 / 550 m.
 - **Terrain LOD**: the ground is 5×5 tiles of 280 m, frustum-culled, each at 5 / 10 / 20 m detail by distance, with skirts so seams never show. Physics still uses the full-detail heights.
 - Bike and church meshes are merged per material (fewer draw calls); static objects don't recompute their matrices each frame; the gauge cluster and minimap only redraw when something on them changes.
 - With Show FPS on, the readout also shows draw calls per frame and the current auto-resolution scale.

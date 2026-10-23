@@ -35,47 +35,9 @@ export function cullFar(o, far) {
 export const LOD_D = [200, 480];
 export function addLOD(levels, x0, z0, x1, z1) { LODS.push({ levels, x0, z0, x1, z1, cur: -2 }); }
 
-/* ---------- per-instance culling ---------- */
-// Props spread over the whole island (trees, palms, houses, poles...) stay ONE InstancedMesh per type (one draw call),
-// and only the instances in view and within draw distance are packed into the front of the instance buffer.
-// Shadow casters near the camera are always kept: they can throw a shadow into view from behind it.
-const POOLS = [], fr = new THREE.Frustum(), pv = new THREE.Matrix4(), SHADOW_KEEP = 60;
-export function instCull(m, far, shadow) {
-  const g = m.geometry; if (!g.boundingSphere) g.computeBoundingSphere();
-  const gs = g.boundingSphere, n = m.count, M = m.instanceMatrix.array.slice(0, n * 16), C = m.instanceColor ? m.instanceColor.array.slice(0, n * 3) : null, B = new Float32Array(n * 4);
-  for (let i = 0; i < n; i++) {
-    const e = M.subarray(i * 16), c = gs.center, s = Math.sqrt(Math.max(e[0] * e[0] + e[1] * e[1] + e[2] * e[2], e[4] * e[4] + e[5] * e[5] + e[6] * e[6], e[8] * e[8] + e[9] * e[9] + e[10] * e[10]));
-    B[i * 4] = e[0] * c.x + e[4] * c.y + e[8] * c.z + e[12]; B[i * 4 + 1] = e[1] * c.x + e[5] * c.y + e[9] * c.z + e[13]; B[i * 4 + 2] = e[2] * c.x + e[6] * c.y + e[10] * c.z + e[14]; B[i * 4 + 3] = gs.radius * s;
-  }
-  m.frustumCulled = false; POOLS.push({ m, M, C, B, n, far: Math.min(far, DRAW), shadow, key: -1 });
-}
-function cullPool(p, cx, cy, cz) {
-  const { m, M, C, B, n, far, shadow } = p, dst = m.instanceMatrix.array, dc = C && m.instanceColor.array, P = fr.planes; let j = 0, key = 0;
-  for (let i = 0; i < n; i++) {
-    const x = B[i * 4], y = B[i * 4 + 1], z = B[i * 4 + 2], r = B[i * 4 + 3], d = Math.hypot(x - cx, z - cz) - r;
-    if (d > far) continue;
-    if (!(shadow && d < SHADOW_KEEP)) {
-      const mr = -(r + 2 + d * .04); let out = false; // margin: the camera keeps moving until the next update
-      for (let k = 0; k < 6; k++) { const pl = P[k], nn = pl.normal; if (nn.x * x + nn.y * y + nn.z * z + pl.constant < mr) { out = true; break; } }
-      if (out) continue;
-    }
-    if (j !== i) { dst.set(M.subarray(i * 16, i * 16 + 16), j * 16); if (C) dc.set(C.subarray(i * 3, i * 3 + 3), j * 3); }
-    key = (key * 31 + i) | 0; j++;
-  }
-  if (key === p.key && j === m.count) return; p.key = key; m.count = j;
-  // full uploads: partial updateRanges dropped instances on some mobile WebGL drivers
-  m.instanceMatrix.needsUpdate = true; if (C) m.instanceColor.needsUpdate = true;
-}
-
-let frame = 0; const last = { x: 1e9, y: 0, z: 0, fx: 0, fy: 0, fz: 0, fov: 0 };
+let frame = 0;
 export function cullUpdate(camera) {
-  const e = camera.matrixWorld.elements, cx = e[12], cy = e[13], cz = e[14];
-  // instance pools: only when the camera has moved / turned enough since the last pass
-  if (Math.hypot(cx - last.x, cy - last.y, cz - last.z) > 1.5 || e[8] * last.fx + e[9] * last.fy + e[10] * last.fz < .9995 || camera.fov !== last.fov) {
-    Object.assign(last, { x: cx, y: cy, z: cz, fx: e[8], fy: e[9], fz: e[10], fov: camera.fov });
-    fr.setFromProjectionMatrix(pv.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse.copy(camera.matrixWorld).invert()));
-    for (const p of POOLS) cullPool(p, cx, cy, cz);
-  }
+  const e = camera.matrixWorld.elements, cx = e[12], cz = e[14];
   if (frame++ & 3) return; // whole-object distance checks: every 4th frame is plenty at bike speeds
   for (const it of ITEMS) { const d = Math.hypot(it.x - cx, it.z - cz) - it.r; it.o.visible = d < it.far; }
   for (const t of LODS) {

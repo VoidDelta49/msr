@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { PI, clamp, sstep, angd, fbm, rand } from './util.js';
 import { scene, ctex, speck, std } from './renderer.js';
-import { FAR, freeze, cullFar, instCull, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
+import { FAR, freeze, cullFar, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
 
 const tAsph=ctex(256,256,(g,w,h)=>speck(g,w,h,'#3c3e41',.5,9000),225);
 const tCon=ctex(256,256,(g,w,h)=>{speck(g,w,h,'#9b988f',.35,5000);g.strokeStyle='rgba(0,0,0,.28)';g.lineWidth=2;for(let i=0;i<=256;i+=64){g.beginPath();g.moveTo(i,0);g.lineTo(i,256);g.moveTo(0,i);g.lineTo(256,i);g.stroke()}});
@@ -79,11 +79,14 @@ const OBBS=[];
 function addOBB(cx,cz,hx,hz,ry=0){const b={cx,cz,hx,hz,ry,c:Math.cos(ry),s:-Math.sin(ry)};OBBS.push(b)}
 function addBox(x0,z0,x1,z1){addOBB((x0+x1)/2,(z0+z1)/2,(x1-x0)/2,(z1-z0)/2)}
 const dummy=new THREE.Object3D(),CELL=700; // CELL: power-wire chunk size
-// Instanced props: one InstancedMesh per prop type. Bigger sets are culled per instance by perf.js (frustum + draw
-// distance, one draw call); tiny sets just get tight bounds, so three frustum-culls them (main and shadow pass).
-function inst(geo,mat,list,shadow=true,far=FAR.big){if(!list.length)return;const m=new THREE.InstancedMesh(geo,mat,list.length);
-  list.forEach((o,i)=>{dummy.position.set(o.x,o.y||0,o.z);dummy.rotation.set(0,o.ry||0,0);dummy.scale.set(o.sx||1,o.sy||1,o.sz||1);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);if(o.c!==undefined)m.setColorAt(i,new THREE.Color(o.c))});
-  m.castShadow=shadow;m.receiveShadow=true;freeze(m);scene.add(m);if(list.length<12)cullFar(m,far);else instCull(m,far,shadow);return m}
+// Instanced props, split into static 700 m chunks (one InstancedMesh per type per chunk). Buffers never change after
+// load; three frustum-culls each chunk exactly (main + shadow pass) and perf.js hides chunks past their draw distance.
+const CHUNK=700;
+function inst(geo,mat,list,shadow=true,far=FAR.big){const cells=new Map();
+  for(const o of list){const k=Math.floor(o.x/CHUNK)*1000+Math.floor(o.z/CHUNK);let a=cells.get(k);if(!a)cells.set(k,a=[]);a.push(o)}
+  for(const L of cells.values()){const m=new THREE.InstancedMesh(geo,mat,L.length);
+    L.forEach((o,i)=>{dummy.position.set(o.x,o.y||0,o.z);dummy.rotation.set(0,o.ry||0,0);dummy.scale.set(o.sx||1,o.sy||1,o.sz||1);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);if(o.c!==undefined)m.setColorAt(i,new THREE.Color(o.c))});
+    m.castShadow=shadow;m.receiveShadow=true;m.computeBoundingSphere();freeze(m);scene.add(m);cullFar(m,far)}}
 function prism(w,h,len){const s=new THREE.Shape();s.moveTo(-w/2,0);s.lineTo(w/2,0);s.lineTo(0,h);s.lineTo(-w/2,0);return new THREE.ExtrudeGeometry(s,{depth:len,bevelEnabled:false}).translate(0,0,-len/2)}
 const pastel=()=>new THREE.Color().setHSL(rand(),.35+rand()*.3,.62+rand()*.18);
 const TIN=[0xa8492f,0x2f5f9a,0x3d7a4a,0xb9bcc0,0x8a2f2f,0xc96f2a];
