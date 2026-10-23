@@ -6,7 +6,7 @@
 // Crashes (phase 4, only with Tough Biker mode OFF): hitting a wall hard, asking more grip than the tyres have, or a
 // bad landing turns the bike into a free-tumbling box on a temporary ground patch and throws the rider off as a
 // second body. Once it stops sliding (2-4 s) the bike is stood back up where it ended, engine off.
-// Loaded lazily so a CDN or WASM failure falls back to Classic physics.
+// Rapier is loaded before the game starts; if it can't load, the start screen says so.
 import { clamp, angd } from './util.js';
 import { S, ctx } from './state.js';
 import { H, OBBS } from './world.js';
@@ -19,19 +19,19 @@ import { B } from './model.js';
 import { scene } from './renderer.js';
 
 export const TICK = 1 / 120;             // fixed physics tick; the bike solver runs 3 substeps inside each
-export const RP = { ok: false, err: '', on: false };
+export const RP = { ok: false, err: '' };
 const Y0 = .6;                           // body origin above the chassis reference height S.zH
 // collision groups: high 16 bits = membership, low 16 = what it collides with
 const G_STATIC = 0x0002ffff, G_BIKE = 0x00010002, G_GROUND = 0x0004ffff, G_CRASH = 0x00010006;
 export let world, body; let R, cap, box, loading, inC = false, wasAir = false;
 // Static boxes are streamed: Rapier's step cost grows with every collider in the world (~0.2 ms for all 1,240), so only
-// the ones within 2 cells (40 m) of the bike exist. Boxes are footprints only (world.js has no heights): they are made
+// the ones in the 3 x 3 block of 25 m cells around the bike (at least 25 m in every direction) exist. Boxes are footprints only (world.js has no heights): they are made
 // tall, from below the ground to well above.
-const CELL = 40, CELLS = new Map(), live = new Set(); let lastCell = null, stamp = 0;
+const CELL = 25, CELLS = new Map(), live = new Set(); let lastCell = null, stamp = 0;
 const cellKey = (i, j) => i * 10000 + j;
 function stream(force) {
   const ci = Math.floor(S.x / CELL), cj = Math.floor(S.z / CELL), key = cellKey(ci, cj); if (!force && key === lastCell) return; lastCell = key; stamp++;
-  for (let i = ci - 2; i <= ci + 2; i++) for (let j = cj - 2; j <= cj + 2; j++) for (const b of CELLS.get(cellKey(i, j)) || []) {
+  for (let i = ci - 1; i <= ci + 1; i++) for (let j = cj - 1; j <= cj + 1; j++) for (const b of CELLS.get(cellKey(i, j)) || []) {
     b.st = stamp; if (b.col) continue;
     b.col = world.createCollider(R.ColliderDesc.cuboid(b.hx, 4, b.hz).setTranslation(b.cx, H(b.cx, b.cz) + 1, b.cz).setRotation(qYX(b.ry, 0)).setCollisionGroups(G_STATIC).setFriction(.4)); live.add(b);
   }
@@ -47,7 +47,7 @@ export function initRapier() {
   return loading || (loading = (async () => {
     try {
       R = (await import('@dimforge/rapier3d-compat')).default; await R.init();
-      world = new R.World({ x: 0, y: -9.81, z: 0 }); world.timestep = TICK;
+      world = new R.World({ x: 0, y: -9.81, z: 0 }); world.timestep = TICK; world.numSolverIterations = 2; // one dynamic body and simple box contacts: 2 is plenty
       for (const b of OBBS) { const k = cellKey(Math.floor(b.cx / CELL), Math.floor(b.cz / CELL)); (CELLS.get(k) || CELLS.set(k, []).get(k)).push(b); }
       body = world.createRigidBody(R.RigidBodyDesc.dynamic().setCanSleep(false));
       // same footprint as Classic (3 circles r .3 over ±.75 m), as a capsule lying along the bike; mass comes from the spec
@@ -56,7 +56,7 @@ export function initRapier() {
       // metal/plastic-on-asphalt friction, touching the ground patch too
       box = world.createCollider(R.ColliderDesc.roundCuboid(.14, .37, .87, .08).setTranslation(0, -.15, 0).setDensity(0).setFriction(.35).setRestitution(0).setCollisionGroups(G_CRASH), body); box.setEnabled(false);
       RP.ok = true; syncBody();
-    } catch (e) { RP.err = String(e && e.message || e); console.warn('Rapier failed, using Classic physics', e); }
+    } catch (e) { RP.err = String(e && e.message || e); console.warn('Rapier failed to load', e); }
     return RP.ok;
   })());
 }
@@ -69,6 +69,9 @@ export function syncBody() {
   S.hF = H(S.x - Math.sin(S.psi) * sp.lf, S.z - Math.cos(S.psi) * sp.lf); S.hR = H(S.x + Math.sin(S.psi) * sp.lr, S.z + Math.cos(S.psi) * sp.lr);
   body.setLinvel({ x: -Math.sin(S.psi) * S.v, y: 0, z: -Math.cos(S.psi) * S.v }, true); body.setAngvel({ x: 0, y: 0, z: 0 }, true);
 }
+
+// garage BOUNCE button: push the chassis down and pitch it
+export function bounce() { const lv = body.linvel(); body.setLinvel({ x: lv.x, y: -.9, z: lv.z }, true); body.setAngvel({ x: Math.cos(S.psi) * .6, y: 0, z: -Math.sin(S.psi) * .6 }, true); }
 
 // One fixed tick.
 export function tickR() {
@@ -92,9 +95,9 @@ export function tickR() {
   const Ff = Math.max(0, mF * g + sp.kf * (cF + sp.pf) + sp.damp * 2 * Math.sqrt(sp.kf * mF) * vF), Fr = Math.max(0, mR * g + sp.kr * (cR + sp.pr) + sp.damp * 2 * Math.sqrt(sp.kr * mR) * vR);
   S.cF = cF; S.cR = cR; S.Ff = Ff; S.Fr = Fr; S.air = Ff <= 0 && Fr <= 0;
   // drivetrain + steering. In the air the wheel is unloaded: engine free-revs, speed and heading carry on.
-  const v0 = S.v, p0 = S.psi; if (S.air) ctx.stand = true;
-  for (let i = 0; i < 3; i++) step(TICK / 3, true);
-  ctx.stand = false; if (S.air) { S.v = v0; S.psi = p0; S.yaw = 0; }
+  const v0 = S.v, p0 = S.psi, stand = ctx.stand; if (S.air) ctx.stand = true;
+  for (let i = 0; i < 3; i++) step(TICK / 3);
+  ctx.stand = stand; if (S.air) { S.v = v0; S.psi = p0; S.yaw = 0; }
   if (!cfg.tough) {
     // landing hard or nose/tail first
     if (wasAir && !S.air && (vy < -6.5 || Math.abs(S.th) > .5)) { wasAir = false; return crash('landing'); }
@@ -106,10 +109,10 @@ export function tickR() {
   fx = -Math.sin(S.psi); fz = -Math.cos(S.psi); lx = Math.cos(S.psi); lz = -Math.sin(S.psi);
   // forces: suspension lift, pitch from the springs plus load transfer under accel/braking
   const tau = Ff * lf - Fr * lr + (S.air ? 0 : m * S.a * sp.h);
-  body.resetForces(false); body.resetTorques(false);
-  body.addForce({ x: 0, y: Ff + Fr, z: 0 }, true); body.addTorque({ x: lx * tau, y: 0, z: lz * tau }, true);
+  // applied straight to the velocities we set anyway (same as a force over one tick, 4 fewer calls into WASM)
+  vy += (Ff + Fr) / m * TICK; w += tau / sp.I * TICK;
   // velocity: on the ground the tyres set horizontal speed along the heading (no side slip); vertical stays Rapier's
-  if (!S.air) body.setLinvel({ x: fx * S.v, y: vy, z: fz * S.v }, true); else if (vy !== lv.y) body.setLinvel({ x: lv.x, y: vy, z: lv.z }, true);
+  if (!S.air) body.setLinvel({ x: fx * S.v, y: vy, z: fz * S.v }, true); else body.setLinvel({ x: lv.x, y: vy, z: lv.z }, true);
   body.setRotation(qYX(S.psi, S.th), true); body.setAngvel({ x: lx * w, y: S.yaw, z: lz * w }, true);
   stream(); world.step();
   // walls. Contacts remove the velocity going into the wall; the bike keeps the rest and gets deflected along it.
@@ -140,7 +143,7 @@ function crash(kind, imp = 0) {
   S.crashed = true; crashT = 0; S.running = false; S.lim = false; S.issOff = false; inC = false; S.slideT = 0;
   blip('thud', 9); say(kind === 'wall' ? 'CRASH!' : kind === 'landing' ? 'Bad landing!' : 'Lost the front! Low-side', 1600); S.hits++;
   const fx = -Math.sin(S.psi), fz = -Math.cos(S.psi), lx = Math.cos(S.psi), lz = -Math.sin(S.psi), zx = -fx, zz = -fz, v = S.v, lv = body.linvel();
-  makeGround(S.x + fx * v * .7, S.z + fz * v * .7); body.resetForces(true); body.resetTorques(true); // the suspension forces persist otherwise
+  makeGround(S.x + fx * v * .7, S.z + fz * v * .7);
   cap.setEnabled(false); box.setEnabled(true);
   // hand the bike over with its current lean, and set it falling/tumbling the way this kind of crash goes
   body.setRotation(qmul(qYX(S.psi, S.th), qZ(-S.lean)), true);

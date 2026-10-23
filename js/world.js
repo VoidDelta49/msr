@@ -1,5 +1,5 @@
 // The island: terrain, roads, town, props, collision grid, minimap image, parking lot.
-// (Philippine-flavoured, not a real place.) Built once at load; physics reads H() and GRID.
+// (Philippine-flavoured, not a real place.) Built once at load; physics reads H() and OBBS.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { PI, clamp, sstep, angd, fbm, rand } from './util.js';
@@ -71,10 +71,9 @@ function H(x,z,mesh){if(mesh||!MH)return HA(x,z,mesh);const q=nearRoad(x,z);if(q
   if(q&&q.d<q.w/2+6){return Math.max(m,HA(x,z))}return m}
 const roadH=(x,z)=>H(x,z);
 
-/* collision: oriented boxes in a 20 m grid */
-const GRID=new Map(),OBBS=[];
-function addOBB(cx,cz,hx,hz,ry=0){const b={cx,cz,hx,hz,ry,c:Math.cos(ry),s:-Math.sin(ry)},rr=Math.hypot(hx,hz)+.5;OBBS.push(b);
-  for(let gx=Math.floor((cx-rr)/20);gx<=Math.floor((cx+rr)/20);gx++)for(let gz=Math.floor((cz-rr)/20);gz<=Math.floor((cz+rr)/20);gz++){const k=gx*1000+gz;if(!GRID.has(k))GRID.set(k,[]);GRID.get(k).push(b)}}
+/* collision footprints: oriented boxes (Rapier makes colliders from these) */
+const OBBS=[];
+function addOBB(cx,cz,hx,hz,ry=0){const b={cx,cz,hx,hz,ry,c:Math.cos(ry),s:-Math.sin(ry)};OBBS.push(b)}
 function addBox(x0,z0,x1,z1){addOBB((x0+x1)/2,(z0+z1)/2,(x1-x0)/2,(z1-z0)/2)}
 const dummy=new THREE.Object3D();
 function inst(geo,mat,list,shadow=true){const m=new THREE.InstancedMesh(geo,mat,Math.max(1,list.length));m.count=list.length;list.forEach((o,i)=>{dummy.position.set(o.x,o.y||0,o.z);dummy.rotation.set(0,o.ry||0,0);dummy.scale.set(o.sx||1,o.sy||1,o.sz||1);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);if(o.c!==undefined)m.setColorAt(i,new THREE.Color(o.c))});
@@ -238,4 +237,4 @@ const marker=new THREE.Mesh(new THREE.BoxGeometry(1.4,.02,2.4),new THREE.MeshBas
 const arrow=new THREE.Mesh(new THREE.ConeGeometry(.35,.8,4).rotateX(PI),new THREE.MeshBasicMaterial({color:0x43e07a}));
 marker.visible=arrow.visible=false;scene.add(marker,arrow);
 
-export { SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, GRID, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP };
+export { SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP };

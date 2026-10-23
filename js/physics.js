@@ -1,14 +1,12 @@
-// Bike physics: engine, clutch-slip drivetrain solver, steering/lean, 2-DOF heave+pitch suspension, collision.
+// Bike solver: engine, clutch-slip drivetrain, steering/lean, plus the bump-stop helper the Rapier chassis uses.
 // Everything bike-specific comes from ctx.spec (data) and ctx.drive (manual / cvt).
 import { PI, clamp, sstep } from './util.js';
 import { S, ctx } from './state.js';
 import { tq } from './spec.js';
-import { roadH, GRID } from './world.js';
 import { say } from './hud.js';
-import { blip } from './audio.js';
 
-// ext = true when Rapier owns the chassis (position, heave, pitch): only engine, drivetrain, speed and steering run here.
-export function step(dt, ext) {
+// Engine, drivetrain, speed along the ground and steering. Rapier (rapier.js) owns position, heave and pitch.
+export function step(dt) {
   const sp = ctx.spec, D = ctx.drive, b = ctx.bcfg, m = sp.m, r = sp.r, v = S.v, av = Math.abs(v);
   D.pre(sp, S, dt, b);
   // engine
@@ -52,34 +50,8 @@ export function step(dt, ext) {
   const kd = 9.81 * Math.tan(S.lean) / Math.max(vv * vv, .01), bl = sstep(2, 6, sv), k = kk * (1 - bl) + kd * bl; S.delta = Math.atan(k * sp.wb);
   S.yaw = -vv * k; S.psi += S.yaw * dt;
   const fx = -Math.sin(S.psi), fz = -Math.cos(S.psi); S.x += fx * vv * dt; S.z += fz * vv * dt; S.wA += vv / r * dt;
-  if (ext) return;
-  // suspension: 2-DOF heave + pitch, fork and shock as spring-dampers with bump stops at full travel
-  const hF = roadH(S.x + fx * sp.lf, S.z + fz * sp.lf), hR = roadH(S.x - fx * sp.lr, S.z - fz * sp.lr);
-  const dhF = clamp((hF - S.hF) / dt, -3, 3), dhR = clamp((hR - S.hR) / dt, -3, 3); S.hF = hF; S.hR = hR;
-  const cF = hF - (S.zH + sp.lf * S.th), cR = hR - (S.zH - sp.lr * S.th), vF = dhF - (S.zV + sp.lf * S.thV), vR = dhR - (S.zV - sp.lr * S.thV);
-  const mF = m * sp.lr / sp.wb, mR = m * sp.lf / sp.wb;
-  let Ff = sp.kf * (cF + sp.pf) + sp.damp * 2 * Math.sqrt(sp.kf * mF) * vF, Fr = sp.kr * (cR + sp.pr) + sp.damp * 2 * Math.sqrt(sp.kr * mR) * vR;
-  Ff = Math.max(Ff, -mF * 9.81); Fr = Math.max(Fr, -mR * 9.81);
-  S.zV += (Ff + Fr) / m * dt; S.zH += S.zV * dt; S.thV += (Ff * sp.lf - Fr * sp.lr + m * S.a * sp.h) / sp.I * dt; S.th = clamp(S.th + S.thV * dt, -.3, .3);
-  // bump stops: inelastic, so bottoming out can't store energy and launch the bike
-  const st = bumpStop(sp, S.zH, S.th, S.zV, S.thV, hF, hR, dhF, dhR); S.zH = st[0]; S.th = st[1]; S.zV = st[2]; S.thV = st[3];
-  S.cF = hF - (S.zH + sp.lf * S.th); S.cR = hR - (S.zH - sp.lr * S.th);
 }
 
-export function collide() {
-  const fx = -Math.sin(S.psi), fz = -Math.cos(S.psi); let hit = false;
-  for (const o of [.75, 0, -.75]) {
-    const px = S.x + fx * o, pz = S.z + fz * o, rad = .3, list = GRID.get(Math.floor(px / 20) * 1000 + Math.floor(pz / 20)); if (!list) continue;
-    for (const b of list) {
-      const dx = px - b.cx, dz = pz - b.cz, lx = dx * b.c + dz * b.s, lz = -dx * b.s + dz * b.c; if (Math.abs(lx) > b.hx + rad || Math.abs(lz) > b.hz + rad) continue;
-      const qx = clamp(lx, -b.hx, b.hx), qz = clamp(lz, -b.hz, b.hz), ex = lx - qx, ez = lz - qz, d = Math.hypot(ex, ez); if (d >= rad) continue; hit = true; let ux, uz;
-      if (d < 1e-6) { const ox = b.hx - Math.abs(lx), oz = b.hz - Math.abs(lz); if (ox < oz) { ux = Math.sign(lx || 1) * (ox + rad); uz = 0; } else { ux = 0; uz = Math.sign(lz || 1) * (oz + rad); } }
-      else { ux = ex / d * (rad - d); uz = ez / d * (rad - d); }
-      S.x += ux * b.c - uz * b.s; S.z += ux * b.s + uz * b.c;
-    }
-  }
-  if (hit) { const av = Math.abs(S.v); if (av > 1.2) { blip('thud', av); S.hits++; say(av > 7 ? 'CRASH!' : 'Bump!', 900); S.thV -= av * .05; } S.v = 0; }
-}
 
 // Hard limit at full travel: lift the chassis at that axle (pivoting on the other one) until it is back at the stop,
 // and remove the velocity still compressing it. Shared by Classic and Rapier. Returns [zH, th, zV, thV].

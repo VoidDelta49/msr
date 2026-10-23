@@ -8,10 +8,10 @@ import { SEA, ICZ, H, roadH, MAP } from './world.js';
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
 import { B, buildModel, applyLook } from './model.js';
-import { step, collide } from './physics.js';
+import { step } from './physics.js';
 import { initAudio, updAudio, blip } from './audio.js';
 import { say, drawCluster, drawMini, updPerf, setFps, setPhys } from './hud.js';
-import { RP, TICK, initRapier, tickR, syncBody, crashVisual } from './rapier.js';
+import { RP, TICK, initRapier, tickR, syncBody, crashVisual, bounce } from './rapier.js';
 import { actions, input, ptr, TC, WMAX } from './controls.js';
 import { MI, togglePark, missions, animMarker } from './missions.js';
 import { G as GARAGE, buildGarage } from './garage.js';
@@ -27,7 +27,7 @@ function reset() {
     x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: ctx.spec.idle, running: true, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
     fuel: S.fuel ?? ctx.spec.fuel.cap, wA: 0, cutT: 0, act: 0, shCD: 0, lim: false, padT: 0, hits: S.hits || 0, odo: S.odo || 0,
   });
-  ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF; if (RP.on) syncBody();
+  ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF; syncBody();
 }
 function recompute() { ctx.spec = computeSpec(ctx.bike, ctx.bcfg); applyLook(ctx.spec); }
 function setBike() {
@@ -40,6 +40,8 @@ function setBike() {
   B.rider.forEach(m => m.visible = !ctx.GAR && ctx.camMode === 1);
   $('brk').textContent = bike.drivetrain === 'cvt' ? 'BRAKE · CBS' : 'BRAKE';
 }
+// physics engine first: everything below positions the Rapier body
+if (!await initRapier()) { $('go').disabled = true; $('apiNote').textContent = ''; setTimeout(() => say("Couldn't load the physics engine (" + RP.err + '). Check your connection and reload.', 1e9), 0); }
 setBike(); save();
 
 function startEngine() {
@@ -81,9 +83,9 @@ function visuals(dt, now) {
 GARAGE.onChange = recompute;
 GARAGE.onBike = () => { setBike(); say(ctx.bike.name, 1200); };
 function openGarage() { if (ctx.GAR || ctx.OPT) return; buildGarage(); $('garage').hidden = false; ctx.GAR = true; document.body.classList.add('gar'); scene.add(camera); B.rider.forEach(m => m.visible = false); }
-$('gClose').onclick = () => { $('garage').hidden = true; ctx.GAR = false; TC.rev = 0; document.body.classList.remove('gar'); ctx.camMode ^= 1; toggleCam(); if (RP.on) syncBody(); };
+$('gClose').onclick = () => { $('garage').hidden = true; ctx.GAR = false; TC.rev = 0; document.body.classList.remove('gar'); ctx.camMode ^= 1; toggleCam(); syncBody(); };
 ptr($('revB'), () => { TC.rev = 1; $('revB').classList.add('on'); }, null, () => { TC.rev = 0; $('revB').classList.remove('on'); });
-$('bounceB').onclick = () => { S.zV = -.9; S.thV = .6; };
+$('bounceB').onclick = () => { if (RP.ok) bounce(); };
 
 /* ---------- wiring ---------- */
 Object.assign(actions, {
@@ -98,16 +100,9 @@ $('go').onclick = () => { goFS(); initAudio(); $('intro').hidden = true; ctx.pau
 
 function water() { if (S.wet) { S.v *= .9; return; } if (H(S.x, S.z) < SEA + .12) { S.wet = true; say('Splash! You rode into the water', 1600); blip('thud', 9); setTimeout(() => { reset(); S.wet = false; say('Towed back to the lot'); }, 1600); } }
 
-/* ---------- physics backend ---------- */
-// Rapier: fixed 120 Hz ticks (Rapier chassis, 3 bike-solver substeps each), at most 4 ticks per frame so a slow
-// frame drops time instead of spiralling. Classic: the old variable-step loop, kept for comparison until phase 5.
-function applyPhys() {
-  if (!cfg.rapier) { if (S.crashed) syncBody(); RP.on = false; setPhys(''); return; }
-  initRapier().then(ok => { RP.on = ok && cfg.rapier; if (RP.on) syncBody(); if (!ok) say('Rapier failed to load, using Classic physics', 2500); setPhys(''); });
-}
-O.onPhys = applyPhys; applyPhys();
-// after a crash: put the first-person camera back on the handlebars, level
-RP.onUp = () => { if (ctx.camMode === 0 && !ctx.GAR) { B.cam.add(camera); camera.position.set(0, 0, 0); camera.rotation.set(-.3, 0, 0); camera.up.set(0, 1, 0); } };
+/* ---------- physics ---------- */
+// Rapier at a fixed 120 Hz (3 bike-solver substeps per tick); at most 4 ticks per frame, so a slow frame drops time
+// instead of spiralling. Drawing is interpolated between the last two ticks.
 let acc = 0, pms = 0; const prev = { x: 0, z: 0, psi: 0, zH: 0, th: 0 };
 function tickRapier(dt) {
   const t0 = performance.now(); acc += dt; let n = 0;
@@ -128,13 +123,13 @@ function interp(on) {
 let last = performance.now(), lastDraw = 0, fN = 0, fT = 0, crashCam = false;
 function loop(t) {
   requestAnimationFrame(loop); const dt = Math.min(.05, (t - last) / 1000); last = t; fN++;
-  if (t - fT > 1000) { setFps(Math.round(fN * 1000 / (t - fT))); setPhys(RP.on ? 'Rapier ' + pms.toFixed(2) + ' ms' : 'Classic'); updPerf(API); fN = 0; fT = t; }
-  if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); for (let i = 0; i < 6; i++) step(dt / 6); }
-  else if (!ctx.paused && !ctx.OPT) { ctx.stand = false; input(dt); if (RP.on) tickRapier(dt); else { const n = 6; for (let i = 0; i < n; i++) step(dt / n); collide(); } missions(dt); water(); }
+  if (t - fT > 1000) { setFps(Math.round(fN * 1000 / (t - fT))); setPhys('Physics ' + pms.toFixed(2) + ' ms'); updPerf(API); fN = 0; fT = t; }
+  if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); if (RP.ok) tickRapier(dt); }
+  else if (!ctx.paused && !ctx.OPT) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); }
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if (S.crashed && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.on && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > 50) { lastDraw = t; drawCluster(); drawMini(MAP, ICZ); } renderer.render(scene, camera);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > 50) { lastDraw = t; drawCluster(); drawMini(MAP, ICZ); } renderer.render(scene, camera);
 }
 updPerf(API); drawCluster(); requestAnimationFrame(loop);
 $('apiNote').textContent = 'Renderer: ' + (GPU ? 'WebGPU' : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { S, cfg, ctx, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody };
+window.__cpm = { S, cfg, ctx, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce };

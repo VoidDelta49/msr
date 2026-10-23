@@ -52,11 +52,11 @@ data/bikes/*.json     specs: chassis, engine torque curve, drivetrain params, ga
 js/main.js            entry: loads data, bike switching, camera/animation, loop
 js/spec.js            bike data + garage settings -> flat spec the physics reads
 js/drivetrain.js      manual gearbox + CVT (ratio, clutch capacity, variator, Idling Stop)
-js/physics.js         engine, clutch-slip solver, steering/lean, suspension, Classic collision
+js/physics.js         engine, clutch-slip solver, steering/lean, bump-stop helper
 js/rapier.js          Rapier3D chassis: dynamic bike body, suspension probes, streamed static colliders (fixed 120 Hz tick)
 js/model.js           3D models (sport underbone, scooter)
 js/hud.js             gauge clusters (sport / scooter LCD), messages, minimap
-js/world.js           the island, roads, town, collision grid, parking lot
+js/world.js           the island, roads, town, collision footprints, parking lot
 js/renderer.js        WebGPU/WebGL setup and fallback
 js/audio.js, controls.js, garage.js, options.js, missions.js, config.js, state.js, util.js
 ```
@@ -73,15 +73,14 @@ WebGPU has not been verified on real hardware yet. Check the renderer readout on
 
 - Three.js is loaded from jsDelivr via an importmap, so an internet connection is needed.
 - Settings are stored in `localStorage` key `cpmme`: global options plus a `bikes` block per bike. Older single-bike saves are migrated into `bikes.raider150` automatically. The WebGL fallback flag is in `sessionStorage` key `cpmGL`.
-- Physics is moving to [Rapier3D](https://rapier.rs) (`@dimforge/rapier3d-compat` 0.21.0, loaded lazily from jsDelivr). Options → PHYSICS → "Rapier physics (beta)" switches between Rapier and Classic; it's on by default and falls back to Classic if Rapier fails to load.
-  - The bike is a dynamic Rapier body: Rapier integrates heave, pitch, gravity, airtime and wall contacts. The bike solver (engine, clutch/CVT, speed along the ground, steering and lean) runs 3 substeps inside each fixed 120 Hz tick (max 4 ticks per frame, drawing is interpolated).
-  - Suspension: ground probes at both axles against the drawn surface, spring-dampers applied as forces, inelastic bump stops at full travel (so bottoming out can't launch the bike).
+- Physics runs on [Rapier3D](https://rapier.rs) (`@dimforge/rapier3d-compat` 0.21.0 from jsDelivr, loaded before the start screen; if it can't load, the start screen says so).
+  - The bike is a dynamic Rapier body: Rapier integrates heave, pitch, gravity, airtime and wall contacts. The bike solver in `physics.js` (engine, clutch/CVT, speed along the ground, steering and lean) runs 3 substeps inside each fixed 120 Hz tick (max 4 ticks per frame, drawing is interpolated).
+  - Suspension: ground probes at both axles against the drawn surface, spring-dampers (with preload), inelastic bump stops at full travel.
   - Walls take away the speed going into them; a glancing hit deflects the bike along the wall, with scraping friction.
-  - Static boxes are streamed: only those within ~80 m of the bike exist in the Rapier world, because step cost grows with every collider.
+  - Static boxes are streamed: only the 3 × 3 block of 25 m cells around the bike exists in the Rapier world, because step cost grows with every collider.
   - With Show FPS on, the readout shows the physics cost per frame.
-- Crashes (Rapier only): with **Tough Biker mode** off (Options → PHYSICS, off by default), a hard wall hit (> ~25 km/h), steering harder than the tyres can grip, or a hard or nose/tail-first landing throws the rider off and the bike tumbles and slides. Once it stops it's stood back up where it ended, engine off. Tough Biker mode on: no falls, walls only stop you.
+- Crashes: with **Tough Biker mode** off (Options → PHYSICS, off by default), a hard wall hit (> ~25 km/h), steering harder than the tyres can grip, or a hard or nose/tail-first landing throws the rider off and the bike tumbles and slides. Once it stops it's stood back up where it ended, engine off. Tough Biker mode on: no falls, walls only stop you.
 - Garage: fork and shock preload (±20 mm) raise or lower the ride height and the CG, and change how much bump travel is left.
-- Classic collision uses oriented bounding boxes in a 20 m grid.
 - Debug hook: `window.__cpm` (`S`, `cfg`, `ctx`, `spec()`, `step`, `shift`, `reset`, `setBike(id)`, `startEngine`, ...).
 
 ## Known limitations
