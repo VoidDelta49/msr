@@ -62,7 +62,9 @@ function HA(x,z,mesh){const t=terr(x,z),q=nearRoad(x,z);if(!q)return t;const hw=
   const b=sstep(hw,hw+8,q.d);return q.h-.05+(t-q.h+.05)*b}
 // Ground the bike stands on = what is drawn: road ribbons (analytic) or the 5 m terrain mesh, interpolated per
 // triangle exactly like the PlaneGeometry. (The analytic terrain has detail and shoulder curves the mesh can't show.)
-const TN=280,TSZ=1400,TS=TSZ/TN;let MH=null;
+// Map size: to grow the island, raise MAP_M (and widen coastR). Everything else (terrain tiles, LOD, road chunks,
+// prop culling, physics heights) is derived from these and scales automatically; the size is rounded up to whole tiles.
+const MAP_M=1400,TS=5,TILE=280,TSZ=Math.ceil(MAP_M/TILE)*TILE,TN=TSZ/TS;let MH=null;
 function meshH(x,z){const fx=(x+TSZ/2)/TS,fz=(z+TSZ/2)/TS,ix=Math.floor(fx),iz=Math.floor(fz);if(ix<0||iz<0||ix>=TN||iz>=TN)return HA(x,z);
   const u=fx-ix,v=fz-iz,W=TN+1,a=MH[ix+W*iz],b=MH[ix+W*(iz+1)],c=MH[ix+1+W*(iz+1)],d=MH[ix+1+W*iz];
   return u+v<=1?a+(d-a)*u+(b-a)*v:c+(b-c)*(1-u)+(d-c)*(1-v)}
@@ -108,7 +110,7 @@ const tW=[1,2,3].map(n=>ctex(64,64*n,(g)=>{g.fillStyle='#e8e2d6';g.fillRect(0,0,
   // Drawn as 7x7 tiles of 200 m (frustum-culled), each at 3 detail levels (5/10/20 m grid) picked by distance.
   // Coarse levels sample the full-res vertices (same heights, colours, normals, uvs), and every tile hangs a skirt
   // down from its edges so the cracks between neighbours at different levels are never see-through.
-  const P=pos.array,NM=geo.attributes.normal.array,UV=geo.attributes.uv.array,W=N+1,TT=56,tmat=new THREE.MeshStandardMaterial({vertexColors:true,map:tDet,roughness:.95});
+  const P=pos.array,NM=geo.attributes.normal.array,UV=geo.attributes.uv.array,W=N+1,TT=TILE/TS,tmat=new THREE.MeshStandardMaterial({vertexColors:true,map:tDet,roughness:.95});
   function tile(i0,j0,st){const n=TT/st,V=n+1,p=[],cc=[],nr=[],uv=[],ix=[];
     const put=(gi,gj,dy)=>{const k=gi+W*gj;p.push(P[k*3],P[k*3+1]-dy,P[k*3+2]);cc.push(col[k*3],col[k*3+1],col[k*3+2]);nr.push(NM[k*3],NM[k*3+1],NM[k*3+2]);uv.push(UV[k*2],UV[k*2+1])};
     for(let j=0;j<=n;j++)for(let i=0;i<=n;i++)put(i0+i*st,j0+j*st,0);
@@ -136,8 +138,12 @@ const tW=[1,2,3].map(n=>ctex(64,64*n,(g)=>{g.fillStyle='#e8e2d6';g.fillRect(0,0,
         if(i%10===0)pil.push({x:s.x,y:SEA-2,z:s.z,sy:s.h-SEA+1.6})}
       if((r.hwy||r.w===7)&&i%16===0&&i>0&&i<r.s.length-1&&lastCarve<.2){const px=s.x+nx*(hw+1.8),pz=s.z+nz*(hw+1.8),ph=H(px,pz);if(rectD(px,pz,30,30,40,40)>2&&rectD(px,pz,22,22,-40,40)>2){poles.push({x:px,y:ph,z:pz,ry,r});addOBB(px,pz,.2,.2)}}});
     B.base=0}
-  for(const[k,B]of Object.entries(rb)){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(B.p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(B.u,2));g.setIndex(B.i);g.computeVertexNormals();
-    const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({map:k==='hwy'?tHwy:tRoad,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2}));m.receiveShadow=true;scene.add(freeze(m))}
+  // road ribbons split into terrain-tile-sized chunks so they get frustum + distance culled like everything else
+  for(const[k,B]of Object.entries(rb)){const mat=new THREE.MeshStandardMaterial({map:k==='hwy'?tHwy:tRoad,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2}),ch=new Map();
+    for(let t=0;t<B.i.length;t+=3){const a=B.i[t],b=B.i[t+1],c=B.i[t+2],key=Math.floor((B.p[a*3]+B.p[b*3]+B.p[c*3])/3/TILE)*1000+Math.floor((B.p[a*3+2]+B.p[b*3+2]+B.p[c*3+2])/3/TILE);
+      let C=ch.get(key);if(!C)ch.set(key,C={p:[],u:[],i:[],map:new Map()});for(const v of[a,b,c]){let n=C.map.get(v);if(n===undefined){n=C.p.length/3;C.map.set(v,n);C.p.push(B.p[v*3],B.p[v*3+1],B.p[v*3+2]);C.u.push(B.u[v*2],B.u[v*2+1])}C.i.push(n)}}
+    for(const C of ch.values()){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(C.p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(C.u,2));g.setIndex(C.i);g.computeVertexNormals();
+      const m=new THREE.Mesh(g,mat);m.receiveShadow=true;scene.add(freeze(m));cullFar(m,FAR.big)}}
   inst(new THREE.BoxGeometry(1,1,1),std(0xb5b1a8,.8),deck);inst(new THREE.BoxGeometry(1,1,1),std(0xe8e4da,.6),rail,true,FAR.mid);inst(new THREE.CylinderGeometry(.6,.7,1,10).translate(0,.5,0),std(0x9a968c,.8),pil);
   // power poles + sagging wires
   inst(mergeGeometries([new THREE.CylinderGeometry(.11,.15,8,6).translate(0,4,0),new THREE.BoxGeometry(.12,.12,1.7).translate(0,7.6,0)]),std(0x8d887e,.8),poles,false,FAR.mid);

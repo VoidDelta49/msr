@@ -122,6 +122,13 @@ export function buildModel(bike) {
   const rm = new Map(); for (const o of B.rider) { if (!rm.has(o.material)) rm.set(o.material, []); rm.get(o.material).push(o); }
   B.rider = [...rm.values()].map(L => L.length > 1 ? mergeList(L, B.ct) : L[0]);
   mergeStatic(B.ct, new Set([B.swing, ...B.rider]));
-  B.ct.traverse(o => { if (o.isMesh && o.material.map !== cluTex) o.castShadow = true; });
+  // Shadows: the bike's static + steering parts cast through ONE position-only proxy on layer 1 (only the shadow camera
+  // sees it), instead of ~25 separate shadow draws. Rider, swingarm and exhaust still cast their own (they move/swap).
+  const keep = new Set([B.swing, ...B.rider]), parts = [], inv = new THREE.Matrix4(); B.ct.updateMatrixWorld(true); inv.copy(B.ct.matrixWorld).invert();
+  B.ct.traverse(o => {
+    if (!o.isMesh || o.material.map === cluTex) return; o.castShadow = keep.has(o);
+    if (!keep.has(o)) { const g = new THREE.BufferGeometry(); g.setAttribute('position', o.geometry.attributes.position.clone()); if (o.geometry.index) g.setIndex(o.geometry.index.clone()); parts.push(g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); }
+  });
+  const px = new THREE.Mesh(mergeGeometries(parts), MB); px.castShadow = true; px.layers.set(1); B.ct.add(px);
 }
 export function applyLook(spec) { MP.color.set(spec.c); B.buildExh(spec.snd); }
