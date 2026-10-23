@@ -14,6 +14,10 @@ if (renderer.backend.isWebGPUBackend) {
   addEventListener('unhandledrejection', e => { if (/GPU|popErrorScope/i.test(String(e.reason && e.reason.message || e.reason)) && ++bad > 2) gpuFallback(); });
   addEventListener('error', e => { if (/GPU|popErrorScope|createBuffer/i.test(String(e.message)) && ++bad > 2) gpuFallback(); });
 }
+// WebGL: three puts instanced matrices in a uniform buffer when they fit MAX_UNIFORM_BLOCK_SIZE, but many Android
+// drivers then fail to link the shader (VALIDATE_STATUS false, empty log) and those meshes vanish. A limit of 0 makes
+// every instanced mesh use vertex attributes instead, which works everywhere.
+if (!renderer.backend.isWebGPUBackend && renderer.backend.capabilities) renderer.backend.capabilities.maxUniformBlockSize = 0;
 export const GPU = !!renderer.backend.isWebGPUBackend, API = GPU ? 'WebGPU' : 'WebGL 2', ANISO = Math.min(Q.aniso, renderer.getMaxAnisotropy ? renderer.getMaxAnisotropy() : 8);
 export const baseDPR = Math.min(devicePixelRatio, Q.dpr); renderer.setPixelRatio(baseDPR); renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = Q.shadow > 0; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping;
