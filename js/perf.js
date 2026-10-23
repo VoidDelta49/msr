@@ -39,9 +39,9 @@ let frame = 0;
 export function cullUpdate(camera) {
   const e = camera.matrixWorld.elements, cx = e[12], cz = e[14];
   if (frame++ & 3) return; // whole-object distance checks: every 4th frame is plenty at bike speeds
-  for (const it of ITEMS) { const d = Math.hypot(it.x - cx, it.z - cz) - it.r; it.o.visible = d < it.far; }
+  for (const it of ITEMS) { const dx = it.x - cx, dz = it.z - cz, f = it.far + it.r; it.o.visible = dx * dx + dz * dz < f * f; }
   for (const t of LODS) {
-    const d = Math.hypot(Math.max(t.x0 - cx, 0, cx - t.x1), Math.max(t.z0 - cz, 0, cz - t.z1));
+    const ex = Math.max(t.x0 - cx, 0, cx - t.x1), ez = Math.max(t.z0 - cz, 0, cz - t.z1), d = Math.sqrt(ex * ex + ez * ez);
     const k = d > DRAW ? -1 : d < LOD_D[0] ? 0 : d < LOD_D[1] ? 1 : 2;
     if (k !== t.cur) { t.cur = k; t.levels.forEach((m, i) => m.visible = i === k); }
   }
@@ -66,7 +66,7 @@ export function liteMaterials(root) {
 // Called once a second with the measured fps while riding. Drops the pixel ratio in 10% steps when the game can't
 // hold the screen's refresh rate, creeps back up after a stable stretch, and stops trying to go up for a while if
 // going up immediately made it slow again (avoids see-sawing).
-let scale = 1, ref = 0, good = 0, warm = 0, upT = -1e9, blockT = -1e9;
+let scale = 1, ref = 0, good = 0, bad = 0, warm = 0, upT = -1e9, blockT = -1e9;
 export const resScale = () => scale;
 function apply() { renderer.setPixelRatio(baseDPR * scale); }
 export function autoRes(fps, playing) {
@@ -75,10 +75,12 @@ export function autoRes(fps, playing) {
   if (++warm < 4) return; // skip shader-compile hitches right after starting / unpausing
   ref = Math.min(144, Math.max(ref, fps, 30)); // highest rate seen ≈ screen refresh
   const now = performance.now();
+  // every change resizes the canvas and post-processing targets (a hitch of its own), so one bad second isn't enough
   if (fps < ref * .82 && scale > .55) {
-    if (now - upT < 5000) blockT = now; // the last step up didn't fit
-    scale = Math.max(.55, Math.round((scale - .1) * 100) / 100); good = 0; apply();
+    good = 0; if (++bad < 2) return; bad = 0;
+    if (now - upT < 10000) blockT = now; // the last step up didn't fit
+    scale = Math.max(.55, Math.round((scale - .1) * 100) / 100); apply();
   } else if (fps >= ref * .95) {
-    if (++good >= 6 && scale < 1 && now - blockT > 30000) { scale = Math.min(1, Math.round((scale + .1) * 100) / 100); good = 0; upT = now; apply(); }
-  } else good = 0;
+    bad = 0; if (++good >= 8 && scale < 1 && now - blockT > 30000) { scale = Math.min(1, Math.round((scale + .1) * 100) / 100); good = 0; upT = now; apply(); }
+  } else { good = 0; bad = 0; }
 }

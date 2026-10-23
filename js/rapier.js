@@ -29,6 +29,11 @@ export let world, body; let R, cap, box, loading, inC = false, wasAir = false;
 // tall, from below the ground to well above.
 const CELL = 25, CELLS = new Map(), live = new Set(); let lastCell = null, stamp = 0;
 const cellKey = (i, j) => i * 10000 + j;
+// world.step() also runs mapNewSoftBodies() (wraps pieces the engine tore off soft bodies), which allocates ~5 KB of
+// JS garbage per step even with no soft bodies: ~0.6 MB/s at 120 Hz, i.e. more GC pauses. We have no soft bodies or
+// engine-made objects, so step the pipeline directly; fall back to world.step() if the internals ever change.
+let fastStep = null;
+function stepWorld() { if (fastStep) fastStep(); else world.step(); }
 function stream(force) {
   const ci = Math.floor(S.x / CELL), cj = Math.floor(S.z / CELL), key = cellKey(ci, cj); if (!force && key === lastCell) return; lastCell = key; stamp++;
   for (let i = ci - 1; i <= ci + 1; i++) for (let j = cj - 1; j <= cj + 1; j++) for (const b of CELLS.get(cellKey(i, j)) || []) {
@@ -49,6 +54,8 @@ export function initRapier() {
       R = (await import('@dimforge/rapier3d-compat')).default; await R.init();
       world = new R.World({ x: 0, y: -9.81, z: 0 }); world.timestep = TICK; world.numSolverIterations = 2; // one dynamic body and simple box contacts: 2 is plenty
       for (const b of OBBS) { const k = cellKey(Math.floor(b.cx / CELL), Math.floor(b.cz / CELL)); (CELLS.get(k) || CELLS.set(k, []).get(k)).push(b); }
+      const W = world, PP = W.physicsPipeline;
+      if (PP && PP.step && W.integrationParameters && W.softBodies) fastStep = () => PP.step(W.gravity, W.integrationParameters, W.islands, W.broadPhase, W.narrowPhase, W.bodies, W.colliders, W.softBodies, W.impulseJoints, W.multibodyJoints, W.ccdSolver);
       body = world.createRigidBody(R.RigidBodyDesc.dynamic().setCanSleep(false));
       // same footprint as Classic (3 circles r .3 over ±.75 m), as a capsule lying along the bike; mass comes from the spec
       cap = world.createCollider(R.ColliderDesc.capsule(.75, .3).setRotation({ x: Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2 }).setDensity(0).setFriction(0).setCollisionGroups(G_BIKE), body);
@@ -114,7 +121,7 @@ export function tickR() {
   // velocity: on the ground the tyres set horizontal speed along the heading (no side slip); vertical stays Rapier's
   if (!S.air) body.setLinvel({ x: fx * S.v, y: vy, z: fz * S.v }, true); else body.setLinvel({ x: lv.x, y: vy, z: lv.z }, true);
   body.setRotation(qYX(S.psi, S.th), true); body.setAngvel({ x: lx * w, y: S.yaw, z: lz * w }, true);
-  stream(); world.step();
+  stream(); stepWorld();
   // walls. Contacts remove the velocity going into the wall; the bike keeps the rest and gets deflected along it.
   if (S.air) { inC = false; return; }
   const nv = body.linvel(), sp2 = Math.hypot(nv.x, nv.z), dv = Math.abs(S.v) - sp2;
@@ -161,7 +168,7 @@ function crash(kind, imp = 0) {
 }
 function poseRG() { const t = rider.translation(), q = rider.rotation(); RG.position.set(t.x, t.y - 1.15, t.z); RG.quaternion.set(q.x, q.y, q.z, q.w); tv.set(0, 1.15, 0).applyQuaternion(RG.quaternion); RG.position.set(t.x - tv.x, t.y - tv.y, t.z - tv.z); }
 function crashTick() {
-  stream(); world.step(); crashT += TICK;
+  stream(); stepWorld(); crashT += TICK;
   const t = body.translation(), lv = body.linvel(); S.x = t.x; S.z = t.z; S.zH = t.y - Y0; S.v = Math.hypot(lv.x, lv.z); S.rpm = Math.max(0, S.rpm - 5000 * TICK); S.thrEff = 0;
   if (crashT > 2 && Math.hypot(lv.x, lv.y, lv.z) < 1.5 || crashT > 4 || t.y < H(t.x, t.z) - 3) standUp(); // once it has stopped sliding
 }

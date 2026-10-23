@@ -14,4 +14,4 @@ export const fbm = (x, z) => vnoise(x, z) * .55 + vnoise(x * 2.1, z * 2.1) * .3 
 // seeded RNG so the island is the same every load
 let RNG = 12345; export const rand = () => (RNG = (Math.imul(RNG, 1664525) + 1013904223) >>> 0) / 4294967296;
 // piecewise-linear lookup in [[x,y],...]
-export function lerpTable(T, x) { if (x <= T[0][0]) return T[0][1]; for (let i = 1; i < T.length; i++) if (x < T[i][0]) { const [a, ta] = T[i - 1], [b, tb] = T[i]; return ta + (tb - ta) * (x - a) / (b - a); } return T[T.length - 1][1]; }
+export function lerpTable(T, x) { if (x <= T[0][0]) return T[0][1]; for (let i = 1; i < T.length; i++) if (x < T[i][0]) { const p = T[i - 1], q = T[i]; return p[1] + (q[1] - p[1]) * (x - p[0]) / (q[0] - p[0]); } return T[T.length - 1][1]; }

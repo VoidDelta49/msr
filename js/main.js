@@ -63,7 +63,7 @@ const tmp = new THREE.Vector3();
 const DOMC = {}; function dom(id, v, set) { const c = DOMC[id] || (DOMC[id] = { e: $(id), v: null }); if (c.v !== v) { c.v = v; set(c.e, v); } }
 function visuals(dt, now) {
   const G = B.G, sp = ctx.spec;
-  B.root.position.set(S.x, S.zH, S.z); B.root.rotation.set(0, S.psi, 0); B.lean.rotation.z = -S.lean; B.body.position.y = .6 + (.075 - sp.sag); // lean pivots at the ground, not world y=0 B.body.rotation.x = S.th;
+  B.root.position.set(S.x, S.zH, S.z); B.root.rotation.set(0, S.psi, 0); B.lean.rotation.z = -S.lean; B.body.position.y = .6 + (.075 - sp.sag); B.body.rotation.x = S.th; // lean pivots at the ground, not world y=0
   B.steer.rotation.y = -S.delta; B.slider.position.y = -G.fork + clamp(S.cF, -.07, .11) / Math.cos(G.rake); B.rearH.position.y = G.rw + clamp(S.cR, -.07, .11);
   const dy = B.rearH.position.y - G.pivotY, dz = G.rearZ - G.pivotZ; B.swing.position.set(G.swingX, G.pivotY + dy / 2, G.pivotZ + dz / 2); B.swing.rotation.x = -Math.atan2(dy, dz); B.swing.scale.z = Math.hypot(dy, dz);
   B.frontW.rotation.x = B.rearW.rotation.x = -S.wA; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3;
@@ -104,16 +104,18 @@ $('go').onclick = () => { goFS(); initAudio(); $('intro').hidden = true; ctx.pau
 function water() { if (S.wet) { S.v *= .9; return; } if (H(S.x, S.z) < SEA + .12) { S.wet = true; say('Splash! You rode into the water', 1600); blip('thud', 9); setTimeout(() => { reset(); S.wet = false; say('Towed back to the lot'); }, 1600); } }
 
 /* ---------- physics ---------- */
-// Rapier at a fixed 120 Hz (3 bike-solver substeps per tick); at most 4 ticks per frame, so a slow frame drops time
-// instead of spiralling. Drawing is interpolated between the last two ticks.
+// Rapier at a fixed 120 Hz (3 bike-solver substeps per tick), drawn interpolated between the last two ticks.
+// dt is capped at 50 ms (a hitch drops time instead of spiralling), so 7 ticks always cover a frame. The old cap of 4
+// (33.3 ms) was hit by every frame at <=30 fps: the leftover time was thrown away and the interpolation phase reset,
+// so the drawn bike jumped back and forth up to ~35 cm per frame and ran slow-motion. Never drop the fraction.
 let acc = 0, pms = 0; const prev = { x: 0, z: 0, psi: 0, zH: 0, th: 0 }, keepS = { x: 0, z: 0, psi: 0, zH: 0, th: 0 };
 function tickRapier(dt) {
   const t0 = performance.now(); acc += dt; let n = 0;
-  while (acc >= TICK && n < 4) {
+  while (acc >= TICK && n < 7) {
     prev.x = S.x; prev.z = S.z; prev.psi = S.psi; prev.zH = S.zH; prev.th = S.th;
     tickR(); acc -= TICK; n++;
   }
-  if (acc >= TICK) acc = 0;
+  if (acc >= TICK) acc %= TICK;
   pms += (performance.now() - t0 - pms) * .05;
 }
 // draw between the last two ticks so 90/120/144 Hz screens don't judder

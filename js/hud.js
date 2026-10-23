@@ -11,7 +11,8 @@ export const cluTex = new THREE.CanvasTexture(gaugeCv); cluTex.colorSpace = THRE
 function rr(g, x, y, w, h, r) { g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h); }
 
 /* sport: Raider-style sweeping LED tach, big digital speed, gear indicator */
-function pathPt(t) { if (t < .72) return { x: 28 + t / .72 * 332, y: 58, a: 0 }; const u = (t - .72) / .28 * PI / 2; return { x: 360 + 82 * Math.sin(u), y: 140 - 82 * Math.cos(u), a: u }; }
+const PP = { x: 0, y: 0, a: 0 }; // reused: 48+ calls per redraw
+function pathPt(t) { if (t < .72) { PP.x = 28 + t / .72 * 332; PP.y = 58; PP.a = 0; return PP; } const u = (t - .72) / .28 * PI / 2; PP.x = 360 + 82 * Math.sin(u); PP.y = 140 - 82 * Math.cos(u); PP.a = u; return PP; }
 function sport(g, sp) {
   const MAX = sp.tachMax, rpm = S.running ? S.rpm : 0;
   g.fillStyle = '#0a0f12'; rr(g, 4, 4, 504, 216, 26); g.fill(); g.strokeStyle = '#2b3740'; g.lineWidth = 4; g.stroke();

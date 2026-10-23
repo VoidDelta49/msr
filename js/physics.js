@@ -5,6 +5,9 @@ import { S, ctx } from './state.js';
 import { tq } from './spec.js';
 import { say } from './hud.js';
 
+// net force along the ground for drive force Fd at speed vv (module-level instead of a closure: no allocation per substep)
+const NF = { sp: null, Fg: 0, Fb: 0 };
+function netF(Fd, vv) { const sp = NF.sp, Fb = NF.Fb; let F = Fd + NF.Fg - (sp.drag * vv * vv + (vv > .02 ? sp.roll : 0)); if (vv > .02) F -= Fb; else F = F > 0 ? Math.max(0, F - Fb - sp.roll) : 0; return F; }
 // Engine, drivetrain, speed along the ground and steering. Rapier (rapier.js) owns position, heave and pitch.
 export function step(dt) {
   const sp = ctx.spec, D = ctx.drive, b = ctx.bcfg, m = sp.m, r = sp.r, v = S.v, av = Math.abs(v);
@@ -24,7 +27,7 @@ export function step(dt) {
   // on the garage stand the rear wheel is off the ground: free-rev, no drive
   const R = ctx.stand ? 0 : D.ratio(sp, S), Fb = S.brake * sp.mu * m * 9.81 * sp.brake;
   const Fg = -m * 9.81 * Math.sin(Math.atan((S.hF - S.hR) / sp.wb));
-  const netF = (Fd, vv) => { let F = Fd + Fg - (sp.drag * vv * vv + (vv > .02 ? sp.roll : 0)); if (vv > .02) F -= Fb; else F = F > 0 ? Math.max(0, F - Fb - sp.roll) : 0; return F; };
+  NF.sp = sp; NF.Fg = Fg; NF.Fb = Fb;
   // BACK: bikes have no reverse gear, so the rider paddles it backwards with his feet (~3 km/h). Only when (nearly)
   // stopped, throttle shut, and nothing driving the rear wheel (neutral / clutch pulled; the CVT clutch is open at idle).
   const canBack = S.back && v <= .3 && S.thr < .05 && (R === 0 || c < .15);
