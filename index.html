@@ -16,6 +16,7 @@ button{font:inherit;color:inherit}
 body:not(.cam3) #gauge{display:none}
 #gauge{position:fixed;left:calc(var(--w) + 26px + env(safe-area-inset-left));bottom:calc(8px + env(safe-area-inset-bottom));width:min(210px,27vw);height:auto;border-radius:12px;pointer-events:none}
 #top{position:fixed;top:calc(8px + env(safe-area-inset-top));right:calc(8px + env(safe-area-inset-right));display:flex;gap:6px;z-index:5}
+#perf{position:fixed;top:calc(50px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));font:700 11px ui-monospace,monospace;color:rgba(255,255,255,.75);text-shadow:0 1px 2px #000;pointer-events:none}
 #mini{position:fixed;top:calc(8px + env(safe-area-inset-top));left:calc(8px + env(safe-area-inset-left));width:min(120px,26vh);height:min(120px,26vh);pointer-events:none;z-index:4}
 body.gar #mini{display:none}
 #mis{position:fixed;top:calc(52px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--glass);padding:8px 12px;border-radius:8px;display:flex;gap:10px;align-items:center;z-index:5}
@@ -64,6 +65,7 @@ input[type=range]{flex:1 1 200px;accent-color:var(--hot)}
 <canvas id="gl"></canvas>
 <canvas id="gauge" width="512" height="224"></canvas>
 <div id="msg"></div>
+<div id="perf"></div>
 <canvas id="mini" width="140" height="140"></canvas>
 <div id="mis" hidden><span id="misT"></span><button class="b" id="misNext" hidden>Next</button></div>
 <div id="top"><button class="b" id="bCam">CAM</button><button class="b" id="bPark">PARK</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button></div>
@@ -87,6 +89,7 @@ input[type=range]{flex:1 1 200px;accent-color:var(--hot)}
     <b>R · C · G · P</b><span>Start engine · camera · garage · parking</span>
     <b>Touch</b><span>Turn the wheel (bottom left), drag CLUTCH (next to throttle) down to pull, drag the throttle grip, hold BRAKE</span>
   </div>
+  <p id="apiNote"></p>
   <button class="big" id="go">RIDE</button>
 </div></div>
 
@@ -95,7 +98,7 @@ input[type=range]{flex:1 1 200px;accent-color:var(--hot)}
   <div id="gbody"></div>
 </div></div>
 
-<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/webgpu":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/tsl":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.tsl.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
 <script type="module">
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
@@ -111,8 +114,8 @@ const PARTS={
   paint:{l:'Paint',o:[{n:'Titan Blue',c:0x1f4fbf},{n:'Glass Black',c:0x17191c},{n:'Racing Red',c:0xc21d1d},{n:'Pearl White',c:0xe6e6e1},{n:'Neon Yellow',c:0xd6cf18}]}};
 const SLIDERS=[{k:'fs',l:'Front sprocket',min:13,max:16,u:'T'},{k:'rs',l:'Rear sprocket',min:34,max:46,u:'T'},
   {k:'kf',l:'Fork spring',min:7,max:20,u:' kN/m'},{k:'kr',l:'Shock spring',min:8,max:22,u:' kN/m'},{k:'damp',l:'Damping',min:20,max:90,u:'%'},{k:'sens',l:'Touch steer sens.',min:5,max:20,u:''}];
-const TOGGLES=[{k:'autoClutch',l:'Anti-stall clutch'},{k:'sound',l:'Sound'}];
-const DEF={exhaust:0,ecu:0,tires:0,paint:0,fs:14,rs:38,kf:11,kr:13,damp:45,sens:10,autoClutch:true,autoShift:false,sound:true};
+const TOGGLES=[{k:'autoClutch',l:'Anti-stall clutch'},{k:'sound',l:'Sound'},{k:'forceGL',l:'Force WebGL (reloads)'}];
+const DEF={exhaust:0,ecu:0,tires:0,paint:0,fs:14,rs:38,kf:11,kr:13,damp:45,sens:10,autoClutch:true,sound:true,forceGL:false};
 let cfg={...DEF};try{Object.assign(cfg,JSON.parse(localStorage.getItem('cpmme')||'{}'))}catch(e){}
 const save=()=>{try{localStorage.setItem('cpmme',JSON.stringify(cfg))}catch(e){}};
 // Approximate Raider R150 Fi figures: 147cc, ~18.5 PS @10k, ~13.8 Nm @8.5k
@@ -125,9 +128,19 @@ function computeSpec(){const e=PARTS.exhaust.o[cfg.exhaust],u=PARTS.ecu.o[cfg.ec
 computeSpec();
 
 /* ---------- RENDERER ---------- */
-const renderer=new THREE.WebGLRenderer({canvas:$('gl'),antialias:true,powerPreference:'high-performance'});
+// WebGPU when the browser has it, WebGL 2 otherwise (or when forced in the garage)
+let FELL=false;try{FELL=!!sessionStorage.getItem('cpmGL')}catch(e){}
+const mkR=gl=>new THREE.WebGPURenderer({canvas:$('gl'),antialias:true,powerPreference:'high-performance',forceWebGL:gl});
+let renderer=mkR(!!cfg.forceGL||FELL);
+try{await renderer.init()}catch(e){FELL=true;renderer=mkR(true);await renderer.init()}
+function gpuFallback(){if(FELL)return;FELL=true;try{sessionStorage.setItem('cpmGL','1')}catch(e){}location.reload()}
+if(renderer.backend.isWebGPUBackend){const dev=renderer.backend.device;let bad=0;
+  dev.lost.then(i=>{if(i.reason!=='destroyed')gpuFallback()});dev.addEventListener('uncapturederror',()=>{if(++bad>2)gpuFallback()});
+  addEventListener('unhandledrejection',e=>{if(/GPU|popErrorScope/i.test(String(e.reason&&e.reason.message||e.reason))&&++bad>2)gpuFallback()});
+  addEventListener('error',e=>{if(/GPU|popErrorScope|createBuffer/i.test(String(e.message))&&++bad>2)gpuFallback()})}
+const GPU=!!renderer.backend.isWebGPUBackend,ANISO=renderer.getMaxAnisotropy?renderer.getMaxAnisotropy():8;
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);
-renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;
 const scene=new THREE.Scene(),SKY=0x9fcdea;scene.background=new THREE.Color(SKY);scene.fog=new THREE.Fog(SKY,120,1100);
 const camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.03,2600);
 scene.add(new THREE.HemisphereLight(0xeaf4ff,0x4d5a32,1.15));
@@ -136,7 +149,7 @@ const sun=new THREE.DirectionalLight(0xfff0d2,2.7);sun.castShadow=true;sun.shado
 addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix()});
 
 function ctex(w,h,draw,rep){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);
-  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=renderer.capabilities.getMaxAnisotropy();if(rep)t.repeat.set(rep,rep);return t}
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=ANISO;if(rep)t.repeat.set(rep,rep);return t}
 function speck(g,w,h,base,amp,n){g.fillStyle=base;g.fillRect(0,0,w,h);for(let i=0;i<n;i++){const v=Math.random();g.fillStyle=v>.5?`rgba(255,255,255,${amp*(v-.5)})`:`rgba(0,0,0,${amp*(.5-v)})`;g.fillRect(Math.random()*w,Math.random()*h,2,2)}}
 const tAsph=ctex(256,256,(g,w,h)=>speck(g,w,h,'#3c3e41',.5,9000),225);
 const tCon=ctex(256,256,(g,w,h)=>{speck(g,w,h,'#9b988f',.35,5000);g.strokeStyle='rgba(0,0,0,.28)';g.lineWidth=2;for(let i=0;i<=256;i+=64){g.beginPath();g.moveTo(i,0);g.lineTo(i,256);g.moveTo(0,i);g.lineTo(256,i);g.stroke()}});
@@ -616,7 +629,7 @@ function buildGarage(){let h='';
 function changed(){save();computeSpec();applyLook();stats()}
 $('gbody').onclick=e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.k){cfg[b.dataset.k]=+b.dataset.i;b.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===b))}
-  else if(b.dataset.t){cfg[b.dataset.t]=!cfg[b.dataset.t];b.classList.toggle('on',cfg[b.dataset.t])}changed()};
+  else if(b.dataset.t){cfg[b.dataset.t]=!cfg[b.dataset.t];b.classList.toggle('on',cfg[b.dataset.t]);if(b.dataset.t==='forceGL'){save();location.reload();return}}changed()};
 $('gbody').oninput=e=>{const s=e.target.dataset.s;if(!s)return;cfg[s]=+e.target.value;$('v_'+s).textContent=cfg[s]+SLIDERS.find(x=>x.k===s).u;changed()};
 let GAR=false;function openGarage(){if(GAR)return;buildGarage();$('garage').hidden=false;GAR=true;document.body.classList.add('gar');scene.add(camera);B.rider.forEach(m=>m.visible=false)}
 $('gClose').onclick=()=>{$('garage').hidden=true;GAR=false;TC.rev=0;document.body.classList.remove('gar');camMode^=1;toggleCam()};
@@ -639,11 +652,12 @@ function drawMini(){mm.clearRect(0,0,140,140);mm.save();mm.beginPath();mm.arc(70
   mm.strokeStyle='rgba(255,255,255,.5)';mm.lineWidth=2;mm.beginPath();mm.arc(70,70,68,0,7);mm.stroke()}
 /* ---------- LOOP ---------- */
 let last=performance.now(),lastDraw=0;
-function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000);last=t;
+let fN=0,fT=0;const API=GPU?'WebGPU':'WebGL 2';
+function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000);last=t;fN++;if(t-fT>1000){$('perf').textContent=API+' · '+Math.round(fN*1000/(t-fT))+' fps';fN=0;fT=t}
   if(GAR){S.thr=TC.rev?1:0;S.brake=1;S.steer=0;S.cl=1;if(!S.running&&TC.rev)startEngine();for(let i=0;i<6;i++)step(dt/6)}
   else if(!paused){input(dt);const n=6;for(let i=0;i<n;i++)step(dt/n);collide();missions(dt);water()}
   visuals(dt,t/1000);updAudio();if(t-lastDraw>50){lastDraw=t;drawCluster();drawMini()}renderer.render(scene,camera)}
-drawCluster();requestAnimationFrame(loop);
+drawCluster();requestAnimationFrame(loop);$('apiNote').textContent='Renderer: '+(GPU?'WebGPU':'WebGL 2'+(cfg.forceGL?' (forced in garage)':FELL?' (WebGPU failed on this device, fell back)':' (this browser has no WebGPU)'));
 window.__cpm={S,cfg,spec:()=>spec,step,shift,reset,recompute:computeSpec,ROADS,H,toggleCam};
 </script>
 </body>
