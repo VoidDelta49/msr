@@ -1,54 +1,106 @@
-// Rapier3D physics (phase 1-2 of the migration). The island's collision boxes become static Rapier colliders and the
-// bike collides through a kinematic character controller (capsule, slides along walls). Engine, drivetrain, steering
-// and suspension still come from physics.js; this only decides where the bike is allowed to go.
+// Rapier3D chassis (phase 3). The bike is a dynamic Rapier body: Rapier integrates heave, pitch, gravity, airtime and
+// contacts with the island's boxes. The bike solver in physics.js still owns engine, drivetrain, speed along the
+// ground and steering (yaw + visual lean); Rapier gets that speed as the body's horizontal velocity, and wall
+// contacts feed back into it. Suspension = two ground probes at the axles against the exact drawn surface (world H()),
+// spring-dampers applied as forces, inelastic bump stops at full travel.
 // Loaded lazily so a CDN or WASM failure falls back to Classic physics.
-import { S } from './state.js';
+import { clamp, angd } from './util.js';
+import { S, ctx } from './state.js';
 import { H, OBBS } from './world.js';
 import { blip } from './audio.js';
 import { say } from './hud.js';
+import { step, bumpStop } from './physics.js';
 
-export const TICK = 1 / 120;             // fixed physics tick (bike solver runs 3 substeps inside each)
+export const TICK = 1 / 120;             // fixed physics tick; the bike solver runs 3 substeps inside each
 export const RP = { ok: false, err: '', on: false };
+const Y0 = .6;                           // body origin above the chassis reference height S.zH
 // collision groups: high 16 bits = membership, low 16 = what it collides with
 const G_STATIC = 0x0002ffff, G_BIKE = 0x00010002;
-let R, world, body, col, kcc, loading, inC = false;
+let R, world, body, loading, inC = false;
+// Static boxes are streamed: Rapier's step cost grows with every collider in the world (~0.2 ms for all 1,240), so only
+// the ones within 2 cells (40 m) of the bike exist. Boxes are footprints only (world.js has no heights): they are made
+// tall, from below the ground to well above.
+const CELL = 40, CELLS = new Map(), live = new Set(); let lastCell = null, stamp = 0;
+const cellKey = (i, j) => i * 10000 + j;
+function stream(force) {
+  const ci = Math.floor(S.x / CELL), cj = Math.floor(S.z / CELL), key = cellKey(ci, cj); if (!force && key === lastCell) return; lastCell = key; stamp++;
+  for (let i = ci - 2; i <= ci + 2; i++) for (let j = cj - 2; j <= cj + 2; j++) for (const b of CELLS.get(cellKey(i, j)) || []) {
+    b.st = stamp; if (b.col) continue;
+    b.col = world.createCollider(R.ColliderDesc.cuboid(b.hx, 4, b.hz).setTranslation(b.cx, H(b.cx, b.cz) + 1, b.cz).setRotation(qYX(b.ry, 0)).setCollisionGroups(G_STATIC).setFriction(.4)); live.add(b);
+  }
+  for (const b of live) if (b.st !== stamp) { world.removeCollider(b.col, false); b.col = null; live.delete(b); }
+}
 
-const qY = a => ({ x: 0, y: Math.sin(a / 2), z: 0, w: Math.cos(a / 2) });
+// rotation = yaw psi about world up, then pitch th about the bike's lateral axis (nose up = +th), never roll
+const qYX = (psi, th) => { const cy = Math.cos(psi / 2), sy = Math.sin(psi / 2), cx = Math.cos(th / 2), sx = Math.sin(th / 2); return { x: cy * sx, y: sy * cx, z: -sy * sx, w: cy * cx }; };
 
 export function initRapier() {
   return loading || (loading = (async () => {
     try {
       R = (await import('@dimforge/rapier3d-compat')).default; await R.init();
       world = new R.World({ x: 0, y: -9.81, z: 0 }); world.timestep = TICK;
-      // boxes are footprints only (world.js has no heights): make them tall, from below the ground to well above
-      for (const b of OBBS) world.createCollider(R.ColliderDesc.cuboid(b.hx, 4, b.hz).setTranslation(b.cx, H(b.cx, b.cz) + 1, b.cz).setRotation(qY(b.ry)).setCollisionGroups(G_STATIC));
-      body = world.createRigidBody(R.RigidBodyDesc.kinematicPositionBased().setTranslation(S.x, 0, S.z));
-      // same footprint as Classic (3 circles r .3 over ±.75 m), as a capsule lying along the bike
-      col = world.createCollider(R.ColliderDesc.capsule(.75, .3).setRotation({ x: Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2 }).setCollisionGroups(G_BIKE), body);
-      kcc = world.createCharacterController(.02); kcc.setSlideEnabled(true); kcc.setUp({ x: 0, y: 1, z: 0 });
-      world.step(); // builds the broad phase for the statics
-      RP.ok = true;
+      for (const b of OBBS) { const k = cellKey(Math.floor(b.cx / CELL), Math.floor(b.cz / CELL)); (CELLS.get(k) || CELLS.set(k, []).get(k)).push(b); }
+      body = world.createRigidBody(R.RigidBodyDesc.dynamic().setCanSleep(false));
+      // same footprint as Classic (3 circles r .3 over ±.75 m), as a capsule lying along the bike; mass comes from the spec
+      world.createCollider(R.ColliderDesc.capsule(.75, .3).setRotation({ x: Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2 }).setDensity(0).setFriction(0).setCollisionGroups(G_BIKE), body);
+      RP.ok = true; syncBody();
     } catch (e) { RP.err = String(e && e.message || e); console.warn('Rapier failed, using Classic physics', e); }
     return RP.ok;
   })());
 }
 
-// After the bike solver has moved S.x/S.z from (x0, z0), let Rapier clip that move against the world.
-export function collideR(x0, z0) {
-  const dx = S.x - x0, dz = S.z - z0;
-  body.setTranslation({ x: x0, y: H(x0, z0) + .6, z: z0 }, false); body.setRotation(qY(S.psi), false);
-  world.propagateModifiedBodyPositionsToColliders();
-  kcc.computeColliderMovement(col, { x: dx, y: 0, z: dz }, undefined, G_BIKE);
-  const m = kcc.computedMovement(); S.x = x0 + m.x; S.z = z0 + m.z;
-  const n = kcc.numComputedCollisions(); if (!n) { inC = false; return; }
-  // how squarely the bike's direction of travel hits the wall: 1 = head-on, 0 = scraping along it
-  const sg = Math.sign(S.v) || 1, fx = -Math.sin(S.psi) * sg, fz = -Math.cos(S.psi) * sg; let k = 0;
-  for (let i = 0; i < n; i++) { const c = kcc.computedCollision(i); if (c) k = Math.max(k, Math.abs(fx * c.normal1.x + fz * c.normal1.z)); }
-  k = Math.min(1, Math.max(0, k)); if (k < .05) { inC = false; return; }
-  const av = Math.abs(S.v), imp = av * k;
-  if (!inC) { // new impact: lose the speed going into the wall (all of it if nearly head-on)
-    if (imp > 1.2) { blip('thud', imp); S.hits++; say(imp > 7 ? 'CRASH!' : 'Bump!', 900); S.thV -= imp * .05; }
-    S.v *= k > .7 ? 0 : 1 - k;
-  } else S.v -= Math.sign(S.v) * Math.min(Math.abs(S.v), k * 6 * TICK); // scraping along it: wall friction
-  inC = true;
+// Put the body where S says (reset, bike switch, leaving the garage, turning Rapier on), at rest.
+export function syncBody() {
+  if (!RP.ok || !ctx.spec) return; const sp = ctx.spec;
+  body.setAdditionalMassProperties(sp.m, { x: 0, y: 0, z: 0 }, { x: sp.I, y: sp.I * 1.2, z: sp.I * .4 }, { x: 0, y: 0, z: 0, w: 1 }, true);
+  stream(true); body.setTranslation({ x: S.x, y: S.zH + Y0, z: S.z }, true); body.setRotation(qYX(S.psi, S.th || 0), true);
+  S.hF = H(S.x - Math.sin(S.psi) * sp.lf, S.z - Math.cos(S.psi) * sp.lf); S.hR = H(S.x + Math.sin(S.psi) * sp.lr, S.z + Math.cos(S.psi) * sp.lr);
+  body.setLinvel({ x: -Math.sin(S.psi) * S.v, y: 0, z: -Math.cos(S.psi) * S.v }, true); body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+}
+
+// One fixed tick.
+export function tickR() {
+  const sp = ctx.spec, m = sp.m, lf = sp.lf, lr = sp.lr, g = 9.81;
+  // read the chassis
+  const t = body.translation(), q = body.rotation(), lv = body.linvel(), av = body.angvel();
+  const th = Math.asin(clamp(2 * (q.y * q.z - q.w * q.x) * -1, -1, 1)); // forward = q·(0,0,-1); its y = sin(pitch)
+  S.x = t.x; S.z = t.z; S.zH = t.y - Y0; S.th = th;
+  let fx = -Math.sin(S.psi), fz = -Math.cos(S.psi), lx = Math.cos(S.psi), lz = -Math.sin(S.psi);
+  let w = av.x * lx + av.z * lz, vy = lv.y;
+  // ground under each axle, and how fast it rises under it (clamped: a kerb is a step, not a 30 m/s ram)
+  const hF = H(S.x + fx * lf, S.z + fz * lf), hR = H(S.x - fx * lr, S.z - fz * lr);
+  const dhF = clamp((hF - S.hF) / TICK, -3, 3), dhR = clamp((hR - S.hR) / TICK, -3, 3); S.hF = hF; S.hR = hR;
+  // bump stops first (position + velocity), so the springs below never see more than full travel
+  const st = bumpStop(sp, S.zH, th, vy, w, hF, hR, dhF, dhR);
+  if (st[0] !== S.zH || st[1] !== th) { S.zH = st[0]; S.th = st[1]; vy = st[2]; w = st[3]; body.setTranslation({ x: S.x, y: S.zH + Y0, z: S.z }, true); }
+  // springs measure from static sag, so add the static load; a wheel can push but never pull
+  const cF = hF - (S.zH + lf * S.th), cR = hR - (S.zH - lr * S.th), vF = dhF - (vy + lf * w), vR = dhR - (vy - lr * w);
+  const mF = m * lr / sp.wb, mR = m * lf / sp.wb;
+  const Ff = Math.max(0, mF * g + sp.kf * cF + sp.damp * 2 * Math.sqrt(sp.kf * mF) * vF), Fr = Math.max(0, mR * g + sp.kr * cR + sp.damp * 2 * Math.sqrt(sp.kr * mR) * vR);
+  S.cF = cF; S.cR = cR; S.Ff = Ff; S.Fr = Fr; S.air = Ff <= 0 && Fr <= 0;
+  // drivetrain + steering. In the air the wheel is unloaded: engine free-revs, speed and heading carry on.
+  const v0 = S.v, p0 = S.psi; if (S.air) ctx.stand = true;
+  for (let i = 0; i < 3; i++) step(TICK / 3, true);
+  ctx.stand = false; if (S.air) { S.v = v0; S.psi = p0; S.yaw = 0; }
+  fx = -Math.sin(S.psi); fz = -Math.cos(S.psi); lx = Math.cos(S.psi); lz = -Math.sin(S.psi);
+  // forces: suspension lift, pitch from the springs plus load transfer under accel/braking
+  const tau = Ff * lf - Fr * lr + (S.air ? 0 : m * S.a * sp.h);
+  body.resetForces(false); body.resetTorques(false);
+  body.addForce({ x: 0, y: Ff + Fr, z: 0 }, true); body.addTorque({ x: lx * tau, y: 0, z: lz * tau }, true);
+  // velocity: on the ground the tyres set horizontal speed along the heading (no side slip); vertical stays Rapier's
+  if (!S.air) body.setLinvel({ x: fx * S.v, y: vy, z: fz * S.v }, true); else if (vy !== lv.y) body.setLinvel({ x: lv.x, y: vy, z: lv.z }, true);
+  body.setRotation(qYX(S.psi, S.th), true); body.setAngvel({ x: lx * w, y: S.yaw, z: lz * w }, true);
+  stream(); world.step();
+  // walls. Contacts remove the velocity going into the wall; the bike keeps the rest and gets deflected along it.
+  if (S.air) { inC = false; return; }
+  const nv = body.linvel(), sp2 = Math.hypot(nv.x, nv.z), dv = Math.abs(S.v) - sp2;
+  if (dv < .02) { inC = false; return; }
+  if (!inC && dv > 1.2) { blip('thud', dv); S.hits++; say(dv > 7 ? 'CRASH!' : 'Bump!', 900); body.applyTorqueImpulse({ x: -lx * dv * 3, y: 0, z: -lz * dv * 3 }, true); }
+  let v = sp2; if (inC) v = Math.max(0, v - 6 * TICK * Math.min(1, dv / Math.max(.1, sp2) * 4)); // scraping: wall friction
+  const sg = Math.sign(S.v) || 1;
+  if (sp2 > .5) { // turn the heading toward the slide direction (backwards when reversing)
+    const pt = Math.atan2(-nv.x * sg, -nv.z * sg), d = angd(pt, S.psi);
+    if (Math.abs(d) < 1.4) S.psi += d * .5;
+  }
+  S.v = sg * v; inC = true;
 }

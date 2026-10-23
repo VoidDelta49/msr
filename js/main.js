@@ -11,7 +11,7 @@ import { B, buildModel, applyLook } from './model.js';
 import { step, collide } from './physics.js';
 import { initAudio, updAudio, blip } from './audio.js';
 import { say, drawCluster, drawMini, updPerf, setFps, setPhys } from './hud.js';
-import { RP, TICK, initRapier, collideR } from './rapier.js';
+import { RP, TICK, initRapier, tickR, syncBody } from './rapier.js';
 import { actions, input, ptr, TC, WMAX } from './controls.js';
 import { MI, togglePark, missions, animMarker } from './missions.js';
 import { G as GARAGE, buildGarage } from './garage.js';
@@ -27,7 +27,7 @@ function reset() {
     x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: ctx.spec.idle, running: true, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
     fuel: S.fuel ?? ctx.spec.fuel.cap, wA: 0, cutT: 0, act: 0, shCD: 0, lim: false, padT: 0, hits: S.hits || 0, odo: S.odo || 0,
   });
-  ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF;
+  ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF; if (RP.on) syncBody();
 }
 function recompute() { ctx.spec = computeSpec(ctx.bike, ctx.bcfg); applyLook(ctx.spec); }
 function setBike() {
@@ -81,7 +81,7 @@ function visuals(dt, now) {
 GARAGE.onChange = recompute;
 GARAGE.onBike = () => { setBike(); say(ctx.bike.name, 1200); };
 function openGarage() { if (ctx.GAR || ctx.OPT) return; buildGarage(); $('garage').hidden = false; ctx.GAR = true; document.body.classList.add('gar'); scene.add(camera); B.rider.forEach(m => m.visible = false); }
-$('gClose').onclick = () => { $('garage').hidden = true; ctx.GAR = false; TC.rev = 0; document.body.classList.remove('gar'); ctx.camMode ^= 1; toggleCam(); };
+$('gClose').onclick = () => { $('garage').hidden = true; ctx.GAR = false; TC.rev = 0; document.body.classList.remove('gar'); ctx.camMode ^= 1; toggleCam(); if (RP.on) syncBody(); };
 ptr($('revB'), () => { TC.rev = 1; $('revB').classList.add('on'); }, null, () => { TC.rev = 0; $('revB').classList.remove('on'); });
 $('bounceB').onclick = () => { S.zV = -.9; S.thV = .6; };
 
@@ -99,27 +99,27 @@ $('go').onclick = () => { goFS(); initAudio(); $('intro').hidden = true; ctx.pau
 function water() { if (S.wet) { S.v *= .9; return; } if (H(S.x, S.z) < SEA + .12) { S.wet = true; say('Splash! You rode into the water', 1600); blip('thud', 9); setTimeout(() => { reset(); S.wet = false; say('Towed back to the lot'); }, 1600); } }
 
 /* ---------- physics backend ---------- */
-// Rapier: fixed 120 Hz ticks (3 bike substeps each, then Rapier clips the move), at most 4 ticks per frame so a slow
+// Rapier: fixed 120 Hz ticks (Rapier chassis, 3 bike-solver substeps each), at most 4 ticks per frame so a slow
 // frame drops time instead of spiralling. Classic: the old variable-step loop, kept for comparison until phase 5.
 function applyPhys() {
   if (!cfg.rapier) { RP.on = false; setPhys(''); return; }
-  initRapier().then(ok => { RP.on = ok && cfg.rapier; if (!ok) say('Rapier failed to load, using Classic physics', 2500); setPhys(''); });
+  initRapier().then(ok => { RP.on = ok && cfg.rapier; if (RP.on) syncBody(); if (!ok) say('Rapier failed to load, using Classic physics', 2500); setPhys(''); });
 }
 O.onPhys = applyPhys; applyPhys();
-let acc = 0, pms = 0; const prev = { x: 0, z: 0, psi: 0 };
+let acc = 0, pms = 0; const prev = { x: 0, z: 0, psi: 0, zH: 0, th: 0 };
 function tickRapier(dt) {
   const t0 = performance.now(); acc += dt; let n = 0;
   while (acc >= TICK && n < 4) {
-    prev.x = S.x; prev.z = S.z; prev.psi = S.psi;
-    for (let i = 0; i < 3; i++) step(TICK / 3); collideR(prev.x, prev.z); acc -= TICK; n++;
+    prev.x = S.x; prev.z = S.z; prev.psi = S.psi; prev.zH = S.zH; prev.th = S.th;
+    tickR(); acc -= TICK; n++;
   }
   if (acc >= TICK) acc = 0;
   pms += (performance.now() - t0 - pms) * .05;
 }
 // draw between the last two ticks so 90/120/144 Hz screens don't judder
 function interp(on) {
-  if (!on || Math.abs(S.x - prev.x) + Math.abs(S.z - prev.z) > 5) return null; const a = acc / TICK, keep = { x: S.x, z: S.z, psi: S.psi };
-  S.x = prev.x + (S.x - prev.x) * a; S.z = prev.z + (S.z - prev.z) * a; S.psi = prev.psi + (S.psi - prev.psi) * a; return keep;
+  if (!on || Math.abs(S.x - prev.x) + Math.abs(S.z - prev.z) > 5) return null; const a = acc / TICK, keep = { x: S.x, z: S.z, psi: S.psi, zH: S.zH, th: S.th };
+  S.x = prev.x + (S.x - prev.x) * a; S.z = prev.z + (S.z - prev.z) * a; S.psi = prev.psi + (S.psi - prev.psi) * a; S.zH = prev.zH + (S.zH - prev.zH) * a; S.th = prev.th + (S.th - prev.th) * a; return keep;
 }
 
 /* ---------- loop ---------- */
@@ -133,4 +133,4 @@ function loop(t) {
 }
 updPerf(API); drawCluster(); requestAnimationFrame(loop);
 $('apiNote').textContent = 'Renderer: ' + (GPU ? 'WebGPU' : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { S, cfg, ctx, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, collideR };
+window.__cpm = { S, cfg, ctx, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody };

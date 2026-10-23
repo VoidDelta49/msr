@@ -65,7 +65,10 @@ const TN=280,TSZ=1400,TS=TSZ/TN;let MH=null;
 function meshH(x,z){const fx=(x+TSZ/2)/TS,fz=(z+TSZ/2)/TS,ix=Math.floor(fx),iz=Math.floor(fz);if(ix<0||iz<0||ix>=TN||iz>=TN)return HA(x,z);
   const u=fx-ix,v=fz-iz,W=TN+1,a=MH[ix+W*iz],b=MH[ix+W*(iz+1)],c=MH[ix+1+W*(iz+1)],d=MH[ix+1+W*iz];
   return u+v<=1?a+(d-a)*u+(b-a)*v:c+(b-c)*(1-u)+(d-c)*(1-v)}
-function H(x,z,mesh){if(mesh||!MH)return HA(x,z,mesh);const q=nearRoad(x,z);if(q&&q.d<q.w/2)return q.h+bumpAt(x,z);return meshH(x,z)}
+// Next to a road the mesh is pulled down under the ribbon, which would make every road edge a ~10 cm kerb; there the
+// smooth shoulder is used instead, but never below the mesh (so the bike can't sink into the grass).
+function H(x,z,mesh){if(mesh||!MH)return HA(x,z,mesh);const q=nearRoad(x,z);if(q&&q.d<q.w/2)return q.h+bumpAt(x,z);const m=meshH(x,z);
+  if(q&&q.d<q.w/2+6){return Math.max(m,HA(x,z))}return m}
 const roadH=(x,z)=>H(x,z);
 
 /* collision: oriented boxes in a 20 m grid */
