@@ -1,0 +1,35 @@
+{
+  "id": "raider150",
+  "name": "Suzuki Raider R150 Fi",
+  "short": "Raider 150 Fi",
+  "tag": "6-speed manual · wet clutch",
+  "blurb": "147 cc DOHC underbone. 6-speed return shift (1-N-2-3-4-5-6), wet multiplate clutch, chain final drive.",
+  "model": "sport",
+  "cluster": "sport",
+  "drivetrain": "manual",
+  "chassis": { "m": 175, "r": 0.29, "wb": 1.28, "lf": 0.63, "lr": 0.65, "h": 0.62, "I": 38, "drag": 0.19, "roll": 25, "brake": 0.9, "travel": [0.1, 0.09] },
+  "engine": {
+    "Ie": 0.015, "idle": 1400, "red": 11000, "peakPS": 18.5, "tachMax": 14000,
+    "torque": [[0, 3], [1000, 6], [2000, 8.8], [4000, 10.9], [6000, 12.4], [8500, 13.8], [10000, 13], [11000, 11.6], [13000, 8]],
+    "fric": [0.9, 0.00028],
+    "fuel": { "cap": 4, "idle": 0.00025, "k": 0.0045 }
+  },
+  "manual": { "prim": 3.238, "gears": [0, 3.083, 2.062, 1.647, 1.4, 1.227, 1.095], "eta": 0.9, "clutchCap": 30, "final": ["rs", "fs"] },
+  "sound": { "lp": 1, "gain": 1, "whine": 0 },
+  "parts": {
+    "exhaust": { "l": "Exhaust", "o": [{ "n": "Stock", "pow": 1, "snd": 0 }, { "n": "Slip-on (+10%)", "pow": 1.1, "snd": 1 }, { "n": "Full system (+18%)", "pow": 1.18, "snd": 2 }] },
+    "ecu": { "l": "ECU map", "o": [{ "n": "Stock", "pow": 1, "red": 11000, "ie": 1, "idle": 1400 }, { "n": "Street tune", "pow": 1.08, "red": 11800, "ie": 0.85, "idle": 1400 }, { "n": "Race map", "pow": 1.15, "red": 12500, "ie": 0.7, "idle": 1600 }] },
+    "tires": { "l": "Tires", "o": [{ "n": "Stock", "mu": 0.85 }, { "n": "Sport", "mu": 1 }, { "n": "Racing", "mu": 1.2 }] },
+    "paint": { "l": "Paint", "o": [{ "n": "Titan Blue", "c": "#1f4fbf" }, { "n": "Glass Black", "c": "#17191c" }, { "n": "Racing Red", "c": "#c21d1d" }, { "n": "Pearl White", "c": "#e6e6e1" }, { "n": "Neon Yellow", "c": "#d6cf18" }] }
+  },
+  "sliders": [
+    { "k": "fs", "l": "Front sprocket", "min": 13, "max": 16, "u": "T" },
+    { "k": "rs", "l": "Rear sprocket", "min": 34, "max": 46, "u": "T" },
+    { "k": "kf", "l": "Fork spring", "min": 7, "max": 20, "u": " kN/m" },
+    { "k": "kr", "l": "Shock spring", "min": 8, "max": 22, "u": " kN/m" },
+    { "k": "damp", "l": "Damping", "min": 20, "max": 90, "u": "%" }
+  ],
+  "toggles": [{ "k": "autoClutch", "l": "Anti-stall clutch" }],
+  "defaults": { "exhaust": 0, "ecu": 0, "tires": 0, "paint": 0, "fs": 14, "rs": 38, "kf": 11, "kr": 13, "damp": 45, "autoClutch": true },
+  "hint": "Pull CLUTCH, shift ▼ into 1st, ease it out"
+}

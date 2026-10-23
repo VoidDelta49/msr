@@ -1,0 +1,77 @@
+// Bike physics: engine, clutch-slip drivetrain solver, steering/lean, 2-DOF heave+pitch suspension, collision.
+// Everything bike-specific comes from ctx.spec (data) and ctx.drive (manual / cvt).
+import { PI, clamp, sstep } from './util.js';
+import { S, ctx } from './state.js';
+import { tq } from './spec.js';
+import { roadH, GRID } from './world.js';
+import { say } from './hud.js';
+import { blip } from './audio.js';
+
+export function step(dt) {
+  const sp = ctx.spec, D = ctx.drive, b = ctx.bcfg, m = sp.m, r = sp.r, v = S.v, av = Math.abs(v);
+  D.pre(sp, S, dt, b);
+  // engine
+  if (S.running && S.lim && S.rpm < sp.red - 150) S.lim = false; if (S.rpm >= sp.red) S.lim = true;
+  const thr = S.running && !S.lim && S.cutT <= 0 ? S.thr : 0;
+  const idleT = S.running ? clamp((sp.idle + 100 - S.rpm) / 400, 0, 1) * .35 : 0;
+  S.thrEff = Math.max(thr, idleT);
+  const we = S.rpm * PI / 30, Tdrive = S.running ? S.thrEff * tq(sp, S.rpm) * sp.pow : 0;
+  // published torque is already net at the crank, so friction/pumping loss mostly shows with the throttle shut
+  // (engine braking, rev decay); at full throttle only a small part is left
+  const Te = Tdrive - (we > .5 ? (sp.fric[0] + sp.fric[1] * S.rpm) * (1 - .85 * S.thrEff) + (S.running ? 0 : 1.5) : 0);
+  // drivetrain: variator / gearbox state, then clutch capacity and overall ratio
+  D.update(sp, S, dt, Tdrive, b);
+  const cap = D.clutch(sp, S, b, av), c = S.c;
+  // on the garage stand the rear wheel is off the ground: free-rev, no drive
+  const R = ctx.stand ? 0 : D.ratio(sp, S), Fb = S.brake * sp.mu * m * 9.81 * sp.brake;
+  const Fg = -m * 9.81 * Math.sin(Math.atan((S.hF - S.hR) / sp.wb));
+  const netF = (Fd, vv) => { let F = Fd + Fg - (sp.drag * vv * vv + (vv > .02 ? sp.roll : 0)); if (vv > .02) F -= Fb; else F = F > 0 ? Math.max(0, F - Fb - sp.roll) : 0; return F; };
+  // walk the bike backwards
+  if (v <= .02 && S.brake > .6 && S.thr < .05 && (R === 0 || c < .15)) S.padT += dt; else S.padT = 0;
+  let a = 0;
+  if (S.padT > .6) { S.v = -.9; S.rpm = Math.max(0, (we + Te / sp.ie * dt) * 30 / PI); }
+  else if (v < 0) { S.v = Math.min(0, v + 4 * dt); S.rpm = Math.max(0, (we + Te / sp.ie * dt) * 30 / PI); }
+  else if (R > 0 && cap > .05) {
+    const RL = (sp.red + 300) * PI / 30, over = v / r * R > RL, slip = we - v / r * R, M = m + sp.ie * R * R / (r * r);
+    const aL = netF(Te * R / r * sp.eta, v) / M, TcL = Te - sp.ie * aL * R / r;
+    if (!over && Math.abs(slip) < 3 && Math.abs(TcL) <= cap) { a = aL; S.v = Math.max(0, v + a * dt); S.rpm = S.v / r * R * 30 / PI; }
+    else {
+      const Tc = over ? -Math.min(cap, 8) : cap * Math.sign(slip || TcL); let nwe = we + (Te - Tc) / sp.ie * dt; a = netF(Tc * R / r * sp.eta, v) / m; const nv = Math.max(0, v + a * dt), nwl = nv / r * R;
+      if (!over && slip && Math.sign(nwe - nwl) !== Math.sign(slip)) nwe = nwl; nwe = Math.min(nwe, RL); S.v = nv; S.rpm = Math.max(0, nwe * 30 / PI);
+    }
+  } else { S.rpm = clamp((we + Te / sp.ie * dt) * 30 / PI, 0, sp.red + 100); a = netF(0, v) / m; S.v = Math.max(0, v + a * dt); }
+  S.a = a; S.odo += Math.abs(S.v) * dt;
+  if (S.running && S.rpm < 650) { S.running = false; S.rpm = 0; say('Stalled. Press START (R)'); }
+  if (!S.running && S.rpm < 200 && !(R > 0 && c > .5)) S.rpm = Math.max(0, S.rpm - 3000 * dt);
+  if (S.running) { S.fuel -= dt * (sp.fuel.idle + sp.fuel.k * S.thrEff * S.rpm / sp.red0); if (S.fuel <= 0) { S.fuel = 0; S.running = false; S.issOff = false; say('Out of fuel!'); } }
+  // steering, lean, yaw
+  const vv = S.v, sv = Math.abs(vv), si = Math.sign(S.steer) * Math.pow(Math.abs(S.steer), 1.4), md = .6 / (1 + Math.pow(sv * .3, 1.5));
+  let kk = Math.tan(si * md) / sp.wb; const kl = sp.mu * 9.81 * .95 / Math.max(vv * vv, .01); kk = clamp(kk, -kl, kl);
+  const hb = sstep(3, 8, sv), tl = Math.atan(vv * vv * kk / 9.81) * (1 - hb) + si * Math.atan(sp.mu * .9) * hb; S.lean += (tl - S.lean) * Math.min(1, dt * 4);
+  const kd = 9.81 * Math.tan(S.lean) / Math.max(vv * vv, .01), bl = sstep(2, 6, sv), k = kk * (1 - bl) + kd * bl; S.delta = Math.atan(k * sp.wb);
+  S.yaw = -vv * k; S.psi += S.yaw * dt;
+  const fx = -Math.sin(S.psi), fz = -Math.cos(S.psi); S.x += fx * vv * dt; S.z += fz * vv * dt; S.wA += vv / r * dt;
+  // suspension: 2-DOF heave + pitch, fork and shock as spring-dampers with bump stops at full travel
+  const hF = roadH(S.x + fx * sp.lf, S.z + fz * sp.lf), hR = roadH(S.x - fx * sp.lr, S.z - fz * sp.lr);
+  const dhF = clamp((hF - S.hF) / dt, -3, 3), dhR = clamp((hR - S.hR) / dt, -3, 3); S.hF = hF; S.hR = hR;
+  const cF = hF - (S.zH + sp.lf * S.th), cR = hR - (S.zH - sp.lr * S.th), vF = dhF - (S.zV + sp.lf * S.thV), vR = dhR - (S.zV - sp.lr * S.thV);
+  const mF = m * sp.lr / sp.wb, mR = m * sp.lf / sp.wb;
+  let Ff = sp.kf * cF + sp.damp * 2 * Math.sqrt(sp.kf * mF) * vF, Fr = sp.kr * cR + sp.damp * 2 * Math.sqrt(sp.kr * mR) * vR;
+  if (cF > sp.travel[0]) Ff += (cF - sp.travel[0]) * 2e5; if (cR > sp.travel[1]) Fr += (cR - sp.travel[1]) * 2e5; Ff = Math.max(Ff, -mF * 9.81); Fr = Math.max(Fr, -mR * 9.81);
+  S.zV += (Ff + Fr) / m * dt; S.zH += S.zV * dt; S.thV += (Ff * sp.lf - Fr * sp.lr + m * S.a * sp.h) / sp.I * dt; S.th = clamp(S.th + S.thV * dt, -.3, .3); S.cF = cF; S.cR = cR;
+}
+
+export function collide() {
+  const fx = -Math.sin(S.psi), fz = -Math.cos(S.psi); let hit = false;
+  for (const o of [.75, 0, -.75]) {
+    const px = S.x + fx * o, pz = S.z + fz * o, rad = .3, list = GRID.get(Math.floor(px / 20) * 1000 + Math.floor(pz / 20)); if (!list) continue;
+    for (const b of list) {
+      const dx = px - b.cx, dz = pz - b.cz, lx = dx * b.c + dz * b.s, lz = -dx * b.s + dz * b.c; if (Math.abs(lx) > b.hx + rad || Math.abs(lz) > b.hz + rad) continue;
+      const qx = clamp(lx, -b.hx, b.hx), qz = clamp(lz, -b.hz, b.hz), ex = lx - qx, ez = lz - qz, d = Math.hypot(ex, ez); if (d >= rad) continue; hit = true; let ux, uz;
+      if (d < 1e-6) { const ox = b.hx - Math.abs(lx), oz = b.hz - Math.abs(lz); if (ox < oz) { ux = Math.sign(lx || 1) * (ox + rad); uz = 0; } else { ux = 0; uz = Math.sign(lz || 1) * (oz + rad); } }
+      else { ux = ex / d * (rad - d); uz = ez / d * (rad - d); }
+      S.x += ux * b.c - uz * b.s; S.z += ux * b.s + uz * b.c;
+    }
+  }
+  if (hit) { const av = Math.abs(S.v); if (av > 1.2) { blip('thud', av); S.hits++; say(av > 7 ? 'CRASH!' : 'Bump!', 900); S.thV -= av * .05; } S.v = 0; }
+}

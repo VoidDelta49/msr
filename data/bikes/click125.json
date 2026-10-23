@@ -1,0 +1,41 @@
+{
+  "id": "click125",
+  "name": "Honda Click 125i",
+  "short": "Click 125i",
+  "tag": "CVT automatic · centrifugal clutch",
+  "blurb": "124.8 cc SOHC eSP, liquid-cooled. 8.2 kW @ 8,500 rpm, 10.8 Nm @ 5,000 rpm, 112 kg. V-Matic CVT with a dry centrifugal clutch, CBS brakes, Idling Stop. No clutch, no gears: twist and go.",
+  "model": "scooter",
+  "cluster": "scooter",
+  "drivetrain": "cvt",
+  "chassis": { "m": 180, "r": 0.258, "wb": 1.28, "lf": 0.72, "lr": 0.56, "h": 0.56, "I": 33, "drag": 0.25, "roll": 22, "brake": 0.8, "travel": [0.09, 0.08] },
+  "engine": {
+    "Ie": 0.012, "idle": 1700, "red": 9500, "peakPS": 11.1, "tachMax": 10000,
+    "torque": [[0, 3.5], [1000, 5.5], [2000, 7.6], [3000, 9.2], [4000, 10.3], [5000, 10.8], [6000, 10.6], [7000, 10.1], [8000, 9.6], [8500, 9.2], [9000, 8.5], [9500, 7.4], [10500, 5]],
+    "fric": [0.7, 0.00024],
+    "fuel": { "cap": 5.5, "idle": 0.0002, "k": 0.0032 }
+  },
+  "cvt": {
+    "lo": 2.4, "hi": 0.8, "final": 10.0, "eta": 0.84,
+    "clutch": { "e0": 3200, "e1": 4800, "cap": 24 },
+    "variator": { "base": 5600, "preload": 0.5, "rise": 0.25, "load": 0.95, "rate": 1.6, "roller": 18 }
+  },
+  "sound": { "lp": 0.8, "gain": 0.75, "whine": 0.03 },
+  "parts": {
+    "rollers": { "l": "Rollers (bola)", "o": [{ "n": "13 g", "roller": 13 }, { "n": "15 g", "roller": 15 }, { "n": "18 g (stock)", "roller": 18 }, { "n": "20 g", "roller": 20 }] },
+    "cspring": { "l": "Center spring", "o": [{ "n": "Stock", "csp": 1 }, { "n": "1000 rpm", "csp": 1.18 }, { "n": "1500 rpm", "csp": 1.3 }] },
+    "clspring": { "l": "Clutch springs", "o": [{ "n": "Stock", "eng": 0 }, { "n": "1000 rpm", "eng": 500 }, { "n": "1500 rpm", "eng": 800 }] },
+    "pulley": { "l": "Pulley set", "o": [{ "n": "Stock", "lo": 2.4, "hi": 0.8 }, { "n": "Racing pulley", "lo": 2.45, "hi": 0.74 }] },
+    "exhaust": { "l": "Exhaust", "o": [{ "n": "Stock", "pow": 1, "snd": 0 }, { "n": "Slip-on (+6%)", "pow": 1.06, "snd": 1 }, { "n": "Full system (+12%)", "pow": 1.12, "snd": 2 }] },
+    "ecu": { "l": "ECU map", "o": [{ "n": "Stock", "pow": 1, "red": 9500, "ie": 1, "idle": 1700 }, { "n": "Street tune", "pow": 1.05, "red": 10000, "ie": 0.9, "idle": 1700 }, { "n": "Race map", "pow": 1.1, "red": 10500, "ie": 0.8, "idle": 1800 }] },
+    "tires": { "l": "Tires", "o": [{ "n": "Stock", "mu": 0.85 }, { "n": "Sport", "mu": 1 }, { "n": "Racing", "mu": 1.2 }] },
+    "paint": { "l": "Paint", "o": [{ "n": "Pearl White", "c": "#e8e8e3" }, { "n": "Matte Black", "c": "#1c1d20" }, { "n": "Candy Red", "c": "#a8161c" }, { "n": "Matte Gray", "c": "#5d6166" }, { "n": "Sky Blue", "c": "#3a7bd5" }] }
+  },
+  "sliders": [
+    { "k": "kf", "l": "Fork spring", "min": 5, "max": 14, "u": " kN/m" },
+    { "k": "kr", "l": "Shock spring", "min": 8, "max": 24, "u": " kN/m" },
+    { "k": "damp", "l": "Damping", "min": 20, "max": 90, "u": "%" }
+  ],
+  "toggles": [{ "k": "iss", "l": "Idling Stop" }],
+  "defaults": { "rollers": 2, "cspring": 0, "clspring": 0, "pulley": 0, "exhaust": 0, "ecu": 0, "tires": 0, "paint": 0, "kf": 8, "kr": 15, "damp": 50, "iss": true },
+  "hint": "Hold BRAKE and press START, then twist the throttle"
+}

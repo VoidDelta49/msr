@@ -1,0 +1,33 @@
+// WebGPU when the browser has it, WebGL 2 otherwise (or when forced in Options / after a GPU failure)
+import * as THREE from 'three';
+import { $ } from './util.js';
+import { cfg } from './config.js';
+
+export let FELL = false; try { FELL = !!sessionStorage.getItem('cpmGL'); } catch (e) { }
+const mkR = gl => new THREE.WebGPURenderer({ canvas: $('gl'), antialias: true, powerPreference: 'high-performance', forceWebGL: gl });
+export let renderer = mkR(!!cfg.forceGL || FELL);
+try { await renderer.init(); } catch (e) { FELL = true; renderer = mkR(true); await renderer.init(); }
+function gpuFallback() { if (FELL) return; FELL = true; try { sessionStorage.setItem('cpmGL', '1'); } catch (e) { } location.reload(); }
+if (renderer.backend.isWebGPUBackend) {
+  const dev = renderer.backend.device; let bad = 0;
+  dev.lost.then(i => { if (i.reason !== 'destroyed') gpuFallback(); }); dev.addEventListener('uncapturederror', () => { if (++bad > 2) gpuFallback(); });
+  addEventListener('unhandledrejection', e => { if (/GPU|popErrorScope/i.test(String(e.reason && e.reason.message || e.reason)) && ++bad > 2) gpuFallback(); });
+  addEventListener('error', e => { if (/GPU|popErrorScope|createBuffer/i.test(String(e.message)) && ++bad > 2) gpuFallback(); });
+}
+export const GPU = !!renderer.backend.isWebGPUBackend, API = GPU ? 'WebGPU' : 'WebGL 2', ANISO = renderer.getMaxAnisotropy ? renderer.getMaxAnisotropy() : 8;
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+export const scene = new THREE.Scene(), SKY = 0x9fcdea; scene.background = new THREE.Color(SKY); scene.fog = new THREE.Fog(SKY, 120, 1100);
+export const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .03, 2600);
+scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x4d5a32, 1.15));
+export const sun = new THREE.DirectionalLight(0xfff0d2, 2.7); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+{ const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; scene.add(sun, sun.target);
+addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+
+// canvas texture helper
+export function ctex(w, h, draw, rep) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = ANISO; if (rep) t.repeat.set(rep, rep); return t;
+}
+export function speck(g, w, h, base, amp, n) { g.fillStyle = base; g.fillRect(0, 0, w, h); for (let i = 0; i < n; i++) { const v = Math.random(); g.fillStyle = v > .5 ? `rgba(255,255,255,${amp * (v - .5)})` : `rgba(0,0,0,${amp * (.5 - v)})`; g.fillRect(Math.random() * w, Math.random() * h, 2, 2); } }
+export const std = (c, r = .6, mt = 0, e) => new THREE.MeshStandardMaterial(e ? { color: c, roughness: r, metalness: mt, emissive: e, emissiveIntensity: 1.5 } : { color: c, roughness: r, metalness: mt });

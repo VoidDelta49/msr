@@ -1,0 +1,26 @@
+// Turns a bike definition + its garage settings into the flat spec the physics reads.
+import { lerpTable } from './util.js';
+import { DRIVES } from './drivetrain.js';
+
+// part option keys that multiply instead of replace
+const MUL = new Set(['pow', 'ie', 'csp']);
+
+export function computeSpec(bike, b) {
+  const ch = bike.chassis, en = bike.engine;
+  const s = {
+    type: bike.drivetrain, ...ch,
+    ie: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
+    peakPS: en.peakPS, tachMax: en.tachMax, sound: bike.sound,
+    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888',
+  };
+  for (const [k, p] of Object.entries(bike.parts)) {
+    const o = p.o[b[k]] || p.o[0];
+    for (const [kk, v] of Object.entries(o)) { if (kk === 'n') continue; if (MUL.has(kk)) s[kk] *= v; else s[kk] = v; }
+  }
+  s.kf = b.kf * 1000; s.kr = b.kr * 1000; s.damp = b.damp / 100;
+  s.sag = (s.m * s.lr / s.wb * 9.81 / s.kf + s.m * s.lf / s.wb * 9.81 / s.kr) / 2;
+  s.tqMax = Math.max(...s.TQ.map(p => p[1]));
+  DRIVES[bike.drivetrain].spec(s, bike, b);
+  return s;
+}
+export const tq = (s, rpm) => lerpTable(s.TQ, rpm);
