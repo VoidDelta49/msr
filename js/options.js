@@ -3,7 +3,7 @@ import { $ } from './util.js';
 import { ctx } from './state.js';
 import { cfg, save, BUILD } from './config.js';
 
-const OPTS = { oHud: [{ k: 'showFps', l: 'Show FPS' }, { k: 'showApi', l: 'Show renderer' }], oAud: [{ k: 'sound', l: 'Sound' }], oPhy: [{ k: 'tough', l: 'Tough Biker mode' }], oGfx: [{ k: 'autoRes', l: 'Auto resolution' }, { k: 'forceGL', l: 'Force WebGL (reloads)' }] };
+const OPTS = { oHud: [{ k: 'showFps', l: 'Show FPS' }, { k: 'showApi', l: 'Show renderer' }], oAud: [{ k: 'sound', l: 'Sound' }], oPhy: [{ k: 'tough', l: 'Tough Biker mode' }], oGfx: [{ k: 'fxaa', l: 'Anti-aliasing FXAA (reloads)' }, { k: 'autoRes', l: 'Auto resolution' }, { k: 'forceGL', l: 'Force WebGL (reloads)' }] };
 const QL = { low: 'Low', med: 'Medium', high: 'High' };
 export const O = { onPerf: null };
 function build() {
@@ -17,7 +17,7 @@ export function closeOpts() { if (!ctx.OPT) return; $('opts').hidden = true; ctx
 $('opts').onclick = e => {
   const q = e.target.closest('button[data-q]'); if (q) { if (cfg.gfx !== q.dataset.q) { cfg.gfx = q.dataset.q; save(); location.reload(); } return; }
   const b = e.target.closest('button[data-o]'); if (!b) return; const k = b.dataset.o; cfg[k] = !cfg[k]; b.classList.toggle('on', cfg[k]); save();
-  if (k === 'forceGL') { location.reload(); return; } O.onPerf();
+  if (k === 'forceGL' || k === 'fxaa') { location.reload(); return; } O.onPerf();
 };
 $('opts').oninput = e => { if (e.target.id !== 'oSens') return; cfg.sens = +e.target.value; $('v_sens').textContent = cfg.sens; save(); };
 $('oClose').onclick = closeOpts; $('bOpt').onclick = openOpts; $('goOpt').onclick = openOpts;

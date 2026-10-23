@@ -71,7 +71,8 @@ Part options in the bike JSON are applied generically: `pow`, `ie` and `csp` mul
 Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on device loss or errors). Options (⚙) has Force WebGL, FPS and renderer readouts, Sound, and touch steering sensitivity.
 
 ### Performance (Build 5.3)
-- **Quality** (Options → GRAPHICS, reloads): Low / Medium (default) / High. Sets draw distance (fog end: 550 / 1100 / 1400 m), pixel-ratio cap (1 / 1.5 / 2), shadows (off / 1024 / 2048), antialiasing, texture anisotropy, and on Low swaps the island's PBR materials for cheaper Lambert ones.
+- **Quality** (Options → GRAPHICS, reloads): Low / Medium (default) / High. Sets draw distance (fog end: 550 / 1100 / 1400 m), pixel-ratio cap (1 / 1.5 / 2), shadows (off / 1024 / 2048), texture anisotropy, and on Low swaps the island's PBR materials for cheaper Lambert ones.
+- **Anti-aliasing FXAA** (on by default, reloads): one cheap post pass instead of MSAA.
 - **Auto resolution** (on by default): drops render resolution in 10% steps (down to 55%) when the game can't hold the screen's refresh rate, and creeps back up when it can.
 - **Culling**: props are static instanced chunks (700 m); off-screen chunks are skipped in the main and shadow pass. Small one-off props hide past 220 / 550 m.
 - **Terrain LOD**: the ground is 5×5 tiles of 280 m, frustum-culled, each at 5 / 10 / 20 m detail by distance, with skirts so seams never show. Physics still uses the full-detail heights.

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { $, clamp } from './util.js';
 import { cfg, save, bikeCfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
-import { renderer, scene, camera, sun, GPU, API, FELL } from './renderer.js';
+import { renderer, scene, camera, sun, GPU, API, FELL, draw } from './renderer.js';
 import { SEA, ICZ, H, roadH, MAP } from './world.js';
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
@@ -131,7 +131,7 @@ function loop(t) {
   else if (!ctx.paused && !ctx.OPT) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); }
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if (S.crashed && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > 50) { lastDraw = t; drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, ICZ); } cullUpdate(camera); renderer.info.reset(); renderer.render(scene, camera);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > 50) { lastDraw = t; drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, ICZ); } cullUpdate(camera); renderer.info.reset(); draw();
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 $('apiNote').textContent = 'Renderer: ' + (GPU ? 'WebGPU' : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));

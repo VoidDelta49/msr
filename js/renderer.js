@@ -4,7 +4,7 @@ import { $ } from './util.js';
 import { cfg, Q } from './config.js';
 
 export let FELL = false; try { FELL = !!sessionStorage.getItem('cpmGL'); } catch (e) { }
-const mkR = gl => new THREE.WebGPURenderer({ canvas: $('gl'), antialias: Q.aa, powerPreference: 'high-performance', forceWebGL: gl });
+const mkR = gl => new THREE.WebGPURenderer({ canvas: $('gl'), antialias: false, powerPreference: 'high-performance', forceWebGL: gl });
 export let renderer = mkR(!!cfg.forceGL || FELL);
 try { await renderer.init(); } catch (e) { FELL = true; renderer = mkR(true); await renderer.init(); }
 function gpuFallback() { if (FELL) return; FELL = true; try { sessionStorage.setItem('cpmGL', '1'); } catch (e) { } location.reload(); }
@@ -22,6 +22,14 @@ export const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 
 scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x4d5a32, 1.15));
 export const sun = new THREE.DirectionalLight(0xfff0d2, 2.7); sun.castShadow = Q.shadow > 0; sun.shadow.mapSize.set(Q.shadow || 1024, Q.shadow || 1024);
 { const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; sun.shadow.camera.layers.enable(1); scene.add(sun, sun.target); // shadow camera also sees layer 1 = shadow-only proxies (model.js)
+// Anti-aliasing: one FXAA pass over the finished frame (far cheaper than MSAA on phone GPUs). Tone mapping + sRGB are
+// applied before FXAA (renderOutput), as FXAA expects display-space colours.
+let pipe = null;
+if (cfg.fxaa) {
+  const { pass, renderOutput } = await import('three/tsl'), { fxaa } = await import('three/addons/tsl/display/FXAANode.js');
+  pipe = new THREE.RenderPipeline(renderer); pipe.outputColorTransform = false; pipe.outputNode = fxaa(renderOutput(pass(scene, camera)));
+}
+export const draw = () => pipe ? pipe.render() : renderer.render(scene, camera);
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // canvas texture helper
