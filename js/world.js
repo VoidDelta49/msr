@@ -56,9 +56,16 @@ function nearRoad(x,z){const L=SEGG.get(Math.floor(x/20)*1000+Math.floor(z/20));
   for(const s of L){const ex=s.bx-s.ax,ez=s.bz-s.az,t=clamp(((x-s.ax)*ex+(z-s.az)*ez)/s.l2,0,1),px=s.ax+ex*t-x,pz=s.az+ez*t-z,d=px*px+pz*pz;if(d<bd){bd=d;bh=s.ha+(s.hb-s.ha)*t;bw=s.w}}
   NR.d=Math.sqrt(bd);NR.h=bh;NR.w=bw;return NR}
 function bumpAt(x,z){for(const b of BUMPS){const al=b.ax==='z'?z-b.z:x-b.x,cr=b.ax==='z'?x-b.x:z-b.z;if(Math.abs(al)<.35&&Math.abs(cr)<3.6)return .075*(1+Math.cos(PI*al/.35))/2}return 0}
-function H(x,z,mesh){const t=terr(x,z),q=nearRoad(x,z);if(!q)return t;const hw=q.w/2;
+function HA(x,z,mesh){const t=terr(x,z),q=nearRoad(x,z);if(!q)return t;const hw=q.w/2;
   if(q.d<hw)return mesh?q.h-.25:q.h+bumpAt(x,z);if(lastCarve>.25)return t;
   const b=sstep(hw,hw+8,q.d);return q.h-.05+(t-q.h+.05)*b}
+// Ground the bike stands on = what is drawn: road ribbons (analytic) or the 5 m terrain mesh, interpolated per
+// triangle exactly like the PlaneGeometry. (The analytic terrain has detail and shoulder curves the mesh can't show.)
+const TN=280,TSZ=1400,TS=TSZ/TN;let MH=null;
+function meshH(x,z){const fx=(x+TSZ/2)/TS,fz=(z+TSZ/2)/TS,ix=Math.floor(fx),iz=Math.floor(fz);if(ix<0||iz<0||ix>=TN||iz>=TN)return HA(x,z);
+  const u=fx-ix,v=fz-iz,W=TN+1,a=MH[ix+W*iz],b=MH[ix+W*(iz+1)],c=MH[ix+1+W*(iz+1)],d=MH[ix+1+W*iz];
+  return u+v<=1?a+(d-a)*u+(b-a)*v:c+(b-c)*(1-u)+(d-c)*(1-v)}
+function H(x,z,mesh){if(mesh||!MH)return HA(x,z,mesh);const q=nearRoad(x,z);if(q&&q.d<q.w/2)return q.h+bumpAt(x,z);return meshH(x,z)}
 const roadH=(x,z)=>H(x,z);
 
 /* collision: oriented boxes in a 20 m grid */
@@ -78,7 +85,7 @@ const tHwy=ctex(128,256,(g)=>{speck(g,128,256,'#a9a6a0',.35,3500);g.fillStyle='r
 const tW=[1,2,3].map(n=>ctex(64,64*n,(g)=>{g.fillStyle='#e8e2d6';g.fillRect(0,0,64,64*n);for(let y=0;y<n;y++){g.fillStyle='#3a4a52';g.fillRect(8,y*64+14,18,24);g.fillRect(38,y*64+14,18,24);g.fillStyle='rgba(0,0,0,.25)';g.fillRect(0,y*64+60,64,4)}if(n===1){g.fillStyle='#5a3b26';g.fillRect(24,26,16,38)}}));
 {
   // terrain mesh with vertex colours
-  const N=280,SZ=1400,geo=new THREE.PlaneGeometry(SZ,SZ,N,N).rotateX(-PI/2),pos=geo.attributes.position,col=new Float32Array(pos.count*3),c=new THREE.Color();
+  const N=TN,SZ=TSZ,geo=new THREE.PlaneGeometry(SZ,SZ,N,N).rotateX(-PI/2),pos=geo.attributes.position,col=new Float32Array(pos.count*3),c=new THREE.Color();
   const C={sand:new THREE.Color(0xe2d2a2),grass:new THREE.Color(0x76a845),grass2:new THREE.Color(0x5e9438),forest:new THREE.Color(0x3d6b2c),rock:new THREE.Color(0x7c746a),ash:new THREE.Color(0x55504c),town:new THREE.Color(0xb3a98f),rice:new THREE.Color(0x9fd24a),rice2:new THREE.Color(0x7dbf3c),bed:new THREE.Color(0x8a7a5a)};
   for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i),h=H(x,z,true),inl=inland(x,z);pos.setY(i,h);
     const dv=Math.hypot(x-VX,z-VZ),dt=Math.hypot(x-TERR.x,z-TERR.z),n=fbm(x*.03,z*.03);
@@ -90,6 +97,7 @@ const tW=[1,2,3].map(n=>ctex(64,64*n,(g)=>{g.fillStyle='#e8e2d6';g.fillRect(0,0,
     else if(h>14)c.copy(C.forest).lerp(C.grass2,n*.5);
     else c.copy(C.grass).lerp(C.grass2,n);
     col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b}
+  MH=new Float32Array(pos.count);for(let i=0;i<pos.count;i++)MH[i]=pos.getY(i);
   geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.computeVertexNormals();
   geo.attributes.uv.array.forEach((v,i,a)=>a[i]=v);
   const tm=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,map:tDet,roughness:.95}));tm.receiveShadow=true;scene.add(tm);

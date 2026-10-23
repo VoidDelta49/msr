@@ -58,7 +58,7 @@ ctx.camMode = 1; toggleCam();
 const tmp = new THREE.Vector3();
 function visuals(dt, now) {
   const G = B.G, sp = ctx.spec;
-  B.root.position.set(S.x, 0, S.z); B.root.rotation.y = S.psi; B.lean.rotation.z = -S.lean; B.body.position.y = .6 + S.zH + (.075 - sp.sag); B.body.rotation.x = S.th;
+  B.root.position.set(S.x, S.zH, S.z); B.root.rotation.y = S.psi; B.lean.rotation.z = -S.lean; B.body.position.y = .6 + (.075 - sp.sag); // lean pivots at the ground, not world y=0 B.body.rotation.x = S.th;
   B.steer.rotation.y = -S.delta; B.slider.position.y = -G.fork + clamp(S.cF, -.07, .11) / Math.cos(G.rake); B.rearH.position.y = G.rw + clamp(S.cR, -.07, .11);
   const dy = B.rearH.position.y - G.pivotY, dz = G.rearZ - G.pivotZ; B.swing.position.set(G.swingX, G.pivotY + dy / 2, G.pivotZ + dz / 2); B.swing.rotation.x = -Math.atan2(dy, dz); B.swing.scale.z = Math.hypot(dy, dz);
   B.frontW.rotation.x = B.rearW.rotation.x = -S.wA; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3;
