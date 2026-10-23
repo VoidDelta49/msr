@@ -21,7 +21,7 @@ export const scene = new THREE.Scene(), SKY = 0x9fcdea; scene.background = new T
 export const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .03, Q.fog + 150);
 scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x4d5a32, 1.15));
 export const sun = new THREE.DirectionalLight(0xfff0d2, 2.7); sun.castShadow = Q.shadow > 0; sun.shadow.mapSize.set(Q.shadow || 1024, Q.shadow || 1024);
-{ const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; sun.shadow.camera.layers.enable(1); // layer 1 = shadow-only proxies (see model.js) scene.add(sun, sun.target);
+{ const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; sun.shadow.camera.layers.enable(1); scene.add(sun, sun.target); // shadow camera also sees layer 1 = shadow-only proxies (model.js)
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // canvas texture helper

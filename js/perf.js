@@ -63,8 +63,8 @@ function cullPool(p, cx, cy, cz) {
     key = (key * 31 + i) | 0; j++;
   }
   if (key === p.key && j === m.count) return; p.key = key; m.count = j;
-  const im = m.instanceMatrix; im.clearUpdateRanges(); im.addUpdateRange(0, j * 16); im.needsUpdate = true;
-  if (C) { const ic = m.instanceColor; ic.clearUpdateRanges(); ic.addUpdateRange(0, j * 3); ic.needsUpdate = true; }
+  // full uploads: partial updateRanges dropped instances on some mobile WebGL drivers
+  m.instanceMatrix.needsUpdate = true; if (C) m.instanceColor.needsUpdate = true;
 }
 
 let frame = 0; const last = { x: 1e9, y: 0, z: 0, fx: 0, fy: 0, fz: 0, fov: 0 };
