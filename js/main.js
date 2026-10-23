@@ -1,7 +1,7 @@
 // Entry point: load bike data, wire modules together, run the loop.
 import * as THREE from 'three';
 import { $, clamp } from './util.js';
-import { cfg, save, bikeCfg } from './config.js';
+import { cfg, save, bikeCfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, camera, sun, GPU, API, FELL } from './renderer.js';
 import { SEA, ICZ, H, roadH, MAP } from './world.js';
@@ -18,8 +18,8 @@ import { G as GARAGE, buildGarage } from './garage.js';
 import { O, openOpts, closeOpts } from './options.js';
 
 /* ---------- data ---------- */
-const ids = await (await fetch('data/bikes/index.json')).json();
-for (const d of await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json`).then(r => r.json())))) ctx.bikes[d.id] = d;
+const ids = await (await fetch('data/bikes/index.json?v=' + BUILD)).json();
+for (const d of await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=${BUILD}`).then(r => r.json())))) ctx.bikes[d.id] = d;
 
 const SPAWN = { x: 62, z: 30, psi: Math.PI / 2 };
 function reset() {

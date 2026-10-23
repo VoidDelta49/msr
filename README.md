@@ -73,6 +73,8 @@ WebGPU has not been verified on real hardware yet. Check the renderer readout on
 
 ## Technical notes
 
+- Cache busting: `index.html` maps every `./js/*.js` module to `?v=<build>` through the importmap, and the data files use `?v=<BUILD>`. **When you ship a change, bump `BUILD` in `js/config.js` and the `?v=` values in `index.html` together** (a phone can otherwise run a new page with old scripts).
+
 - Three.js is loaded from jsDelivr via an importmap, so an internet connection is needed.
 - Settings are stored in `localStorage` key `cpmme`: global options plus a `bikes` block per bike. Older single-bike saves are migrated into `bikes.raider150` automatically. The WebGL fallback flag is in `sessionStorage` key `cpmGL`.
 - Physics runs on [Rapier3D](https://rapier.rs) (`@dimforge/rapier3d-compat` 0.21.0 from jsDelivr, loaded before the start screen; if it can't load, the start screen says so).
