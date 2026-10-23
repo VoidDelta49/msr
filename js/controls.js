@@ -25,7 +25,7 @@ const wEl = $('wheel'); export const WMAX = () => 2.3 * 10 / cfg.sens;
 ptr(wEl, e => { const r = wEl.getBoundingClientRect(); TC.cx = r.left + r.width / 2; TC.cy = r.top + r.height / 2; TC.stId = e.pointerId; TC.pa = Math.atan2(e.clientY - TC.cy, e.clientX - TC.cx); },
   e => { const dx = e.clientX - TC.cx, dy = e.clientY - TC.cy; if (dx * dx + dy * dy < 256) return; const a = Math.atan2(dy, dx); let d = a - TC.pa; if (d > PI) d -= 2 * PI; if (d < -PI) d += 2 * PI; TC.pa = a; TC.wa = clamp(TC.wa + d, -WMAX(), WMAX()); },
   () => { TC.stId = null; });
-ptr($('thr'), e => { TC.thrId = e.pointerId; TC.ty = e.clientY; TC.thr = 0; $('thr').classList.add('on'); }, e => { TC.thr = clamp(Math.abs(e.clientY - TC.ty) / 70, 0, 1); }, () => { TC.thrId = null; TC.thr = 0; $('thr').classList.remove('on'); });
+ptr($('thr'), e => { TC.thrId = e.pointerId; TC.ty = e.clientY; TC.thr = 0; $('thr').classList.add('on'); }, e => { TC.thr = clamp((e.clientY - TC.ty) / 70, 0, 1); // roll-on = drag down only, up does nothing }, () => { TC.thrId = null; TC.thr = 0; $('thr').classList.remove('on'); });
 ptr($('brk'), () => { TC.brk = 1; $('brk').classList.add('on'); }, null, () => { TC.brk = 0; $('brk').classList.remove('on'); });
 ptr($('clu'), e => { TC.cluId = e.pointerId; TC.cy0 = e.clientY; TC.cl0 = TC.clu; }, e => { TC.clu = clamp(TC.cl0 + (e.clientY - TC.cy0) / 90, 0, 1); }, () => { TC.cluId = null; });
 ptr($('bBack'), () => { TC.back = 1; $('bBack').classList.add('on'); }, null, () => { TC.back = 0; $('bBack').classList.remove('on'); });

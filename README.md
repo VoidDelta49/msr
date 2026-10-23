@@ -28,7 +28,7 @@ Click 125i figures are Honda's published specs. Honda doesn't publish the CVT ra
 Touch:
 
 - Handlebar: bottom-left (drag around it to steer)
-- Throttle pad (drag up/down) plus a brake button (CBS on the Click)
+- Throttle pad (drag down to open, release to close) plus a brake button (CBS on the Click)
 - Raider only: clutch pad (drag down to pull), ▲ / ▼ shift buttons (clutch must be pulled to shift)
 - START button. On the Click, hold the brake while pressing it.
 - ◀ BACK (hold): walk the bike backwards with your feet (~3 km/h, bikes have no reverse). Only when stopped with the throttle shut; on the Raider, in neutral or with the clutch pulled.
