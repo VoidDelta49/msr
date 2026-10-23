@@ -152,3 +152,11 @@ export function plate() { // Philippine-style white plate, blocky characters
 export function stripes(a, b) { // angular two-tone stripes on black (Raider shroud graphic)
   return paint(32, 32, (x, y) => { const d = x + y * .9; return d > 14 && d < 20 ? hex(a) : d > 22 && d < 25 ? hex(b) : [22, 23, 26]; });
 }
+
+/* ---------- bike details ---------- */
+export function grille() { // radiator: dark core with silver honeycomb-ish mesh lines
+  return paint(16, 16, (x, y) => ((x + (y >> 2 & 1) * 2) % 4 === 0 || y % 4 === 0) ? [168, 172, 178] : [26, 28, 31]);
+}
+export function ribs() { // rubber floor mat ribs
+  return paint(8, 16, (x, y) => y % 4 < 2 ? [58, 60, 64] : [24, 25, 27]);
+}
