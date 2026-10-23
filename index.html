@@ -106,6 +106,7 @@ input[type=range]{flex:1 1 200px;accent-color:var(--hot)}
 <div id="opts" class="panel" hidden><div class="card">
   <div class="row"><h2>Options</h2><button class="b" id="oClose">Done</button></div>
   <div class="sec">HUD</div><div id="oHud" class="chips"></div>
+  <div class="sec">AUDIO</div><div id="oAud" class="chips"></div>
   <div class="sec">GRAPHICS</div><div id="oGfx" class="chips"></div>
   <p id="oNote"></p>
 </div></div>
@@ -126,8 +127,8 @@ const PARTS={
   paint:{l:'Paint',o:[{n:'Titan Blue',c:0x1f4fbf},{n:'Glass Black',c:0x17191c},{n:'Racing Red',c:0xc21d1d},{n:'Pearl White',c:0xe6e6e1},{n:'Neon Yellow',c:0xd6cf18}]}};
 const SLIDERS=[{k:'fs',l:'Front sprocket',min:13,max:16,u:'T'},{k:'rs',l:'Rear sprocket',min:34,max:46,u:'T'},
   {k:'kf',l:'Fork spring',min:7,max:20,u:' kN/m'},{k:'kr',l:'Shock spring',min:8,max:22,u:' kN/m'},{k:'damp',l:'Damping',min:20,max:90,u:'%'},{k:'sens',l:'Touch steer sens.',min:5,max:20,u:''}];
-const TOGGLES=[{k:'autoClutch',l:'Anti-stall clutch'},{k:'sound',l:'Sound'}];
-const OPTS={oHud:[{k:'showFps',l:'Show FPS'},{k:'showApi',l:'Show renderer'}],oGfx:[{k:'forceGL',l:'Force WebGL (reloads)'}]};
+const TOGGLES=[{k:'autoClutch',l:'Anti-stall clutch'}];
+const OPTS={oAud:[{k:'sound',l:'Sound'}],oHud:[{k:'showFps',l:'Show FPS'},{k:'showApi',l:'Show renderer'}],oGfx:[{k:'forceGL',l:'Force WebGL (reloads)'}]};
 const DEF={exhaust:0,ecu:0,tires:0,paint:0,fs:14,rs:38,kf:11,kr:13,damp:45,sens:10,autoClutch:true,sound:true,forceGL:false,showFps:true,showApi:true};
 let cfg={...DEF};try{Object.assign(cfg,JSON.parse(localStorage.getItem('cpmme')||'{}'))}catch(e){}
 const save=()=>{try{localStorage.setItem('cpmme',JSON.stringify(cfg))}catch(e){}};

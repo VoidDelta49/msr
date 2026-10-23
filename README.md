@@ -31,7 +31,7 @@ Keyboard:
 
 ## Renderer
 
-Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on device loss or errors). The Options menu (⚙, also on the start screen) has a "Force WebGL" toggle and lets you show or hide the on-screen renderer and FPS readouts. Riding pauses while Options is open.
+Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on device loss or errors). The Options menu (⚙, also on the start screen) has a "Force WebGL" toggle and lets you show or hide the on-screen renderer and FPS readouts. Sound is toggled there too. Riding pauses while Options is open.
 
 WebGPU has not been verified on real hardware yet. Check the renderer readout on your device.
 
