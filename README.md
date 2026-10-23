@@ -52,7 +52,8 @@ data/bikes/*.json     specs: chassis, engine torque curve, drivetrain params, ga
 js/main.js            entry: loads data, bike switching, camera/animation, loop
 js/spec.js            bike data + garage settings -> flat spec the physics reads
 js/drivetrain.js      manual gearbox + CVT (ratio, clutch capacity, variator, Idling Stop)
-js/physics.js         engine, clutch-slip solver, steering/lean, suspension, collision
+js/physics.js         engine, clutch-slip solver, steering/lean, suspension, Classic collision
+js/rapier.js          Rapier3D world: static colliders, bike collision (fixed 120 Hz tick)
 js/model.js           3D models (sport underbone, scooter)
 js/hud.js             gauge clusters (sport / scooter LCD), messages, minimap
 js/world.js           the island, roads, town, collision grid, parking lot
@@ -72,7 +73,8 @@ WebGPU has not been verified on real hardware yet. Check the renderer readout on
 
 - Three.js is loaded from jsDelivr via an importmap, so an internet connection is needed.
 - Settings are stored in `localStorage` key `cpmme`: global options plus a `bikes` block per bike. Older single-bike saves are migrated into `bikes.raider150` automatically. The WebGL fallback flag is in `sessionStorage` key `cpmGL`.
-- Collision uses oriented bounding boxes in a 20 m grid.
+- Physics is moving to [Rapier3D](https://rapier.rs) (`@dimforge/rapier3d-compat` 0.21.0, loaded lazily from jsDelivr). Options → PHYSICS → "Rapier physics (beta)" switches between Rapier and Classic; it's on by default and falls back to Classic if Rapier fails to load. Right now Rapier handles collision only: the island's boxes are static colliders and the bike is a capsule moved by a kinematic character controller, so it slides along walls instead of stopping dead. The bike solver runs at a fixed 120 Hz (3 substeps per tick, max 4 ticks per frame) with interpolated drawing. With Show FPS on, the readout shows the physics cost per frame.
+- Classic collision uses oriented bounding boxes in a 20 m grid.
 - Debug hook: `window.__cpm` (`S`, `cfg`, `ctx`, `spec()`, `step`, `shift`, `reset`, `setBike(id)`, `startEngine`, ...).
 
 ## Known limitations

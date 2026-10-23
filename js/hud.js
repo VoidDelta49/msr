@@ -78,5 +78,5 @@ export function drawMini(MAP, ICZ) {
 }
 
 /* FPS / renderer readout */
-let fpsV = 0; export const setFps = v => { fpsV = v; };
-export function updPerf(API) { const p = []; if (cfg.showApi) p.push(API); if (cfg.showFps) p.push(fpsV + ' fps'); $('perf').textContent = p.join(' · '); $('perf').hidden = !p.length; }
+let fpsV = 0, physV = ''; export const setFps = v => { fpsV = v; }; export const setPhys = v => { physV = v; };
+export function updPerf(API) { const p = []; if (cfg.showApi) p.push(API); if (cfg.showFps) p.push(fpsV + ' fps'); if (cfg.showFps && physV) p.push(physV); $('perf').textContent = p.join(' · '); $('perf').hidden = !p.length; }

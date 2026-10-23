@@ -62,8 +62,8 @@ function H(x,z,mesh){const t=terr(x,z),q=nearRoad(x,z);if(!q)return t;const hw=q
 const roadH=(x,z)=>H(x,z);
 
 /* collision: oriented boxes in a 20 m grid */
-const GRID=new Map();
-function addOBB(cx,cz,hx,hz,ry=0){const b={cx,cz,hx,hz,c:Math.cos(ry),s:-Math.sin(ry)},rr=Math.hypot(hx,hz)+.5;
+const GRID=new Map(),OBBS=[];
+function addOBB(cx,cz,hx,hz,ry=0){const b={cx,cz,hx,hz,ry,c:Math.cos(ry),s:-Math.sin(ry)},rr=Math.hypot(hx,hz)+.5;OBBS.push(b);
   for(let gx=Math.floor((cx-rr)/20);gx<=Math.floor((cx+rr)/20);gx++)for(let gz=Math.floor((cz-rr)/20);gz<=Math.floor((cz+rr)/20);gz++){const k=gx*1000+gz;if(!GRID.has(k))GRID.set(k,[]);GRID.get(k).push(b)}}
 function addBox(x0,z0,x1,z1){addOBB((x0+x1)/2,(z0+z1)/2,(x1-x0)/2,(z1-z0)/2)}
 const dummy=new THREE.Object3D();
@@ -227,4 +227,4 @@ const marker=new THREE.Mesh(new THREE.BoxGeometry(1.4,.02,2.4),new THREE.MeshBas
 const arrow=new THREE.Mesh(new THREE.ConeGeometry(.35,.8,4).rotateX(PI),new THREE.MeshBasicMaterial({color:0x43e07a}));
 marker.visible=arrow.visible=false;scene.add(marker,arrow);
 
-export { SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, GRID, addBox, addOBB, freeBays, marker, arrow, MAP };
+export { SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, GRID, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP };
