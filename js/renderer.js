@@ -1,10 +1,10 @@
 // WebGPU when the browser has it, WebGL 2 otherwise (or when forced in Options / after a GPU failure)
 import * as THREE from 'three';
 import { $ } from './util.js';
-import { cfg } from './config.js';
+import { cfg, Q } from './config.js';
 
 export let FELL = false; try { FELL = !!sessionStorage.getItem('cpmGL'); } catch (e) { }
-const mkR = gl => new THREE.WebGPURenderer({ canvas: $('gl'), antialias: true, powerPreference: 'high-performance', forceWebGL: gl });
+const mkR = gl => new THREE.WebGPURenderer({ canvas: $('gl'), antialias: Q.aa, powerPreference: 'high-performance', forceWebGL: gl });
 export let renderer = mkR(!!cfg.forceGL || FELL);
 try { await renderer.init(); } catch (e) { FELL = true; renderer = mkR(true); await renderer.init(); }
 function gpuFallback() { if (FELL) return; FELL = true; try { sessionStorage.setItem('cpmGL', '1'); } catch (e) { } location.reload(); }
@@ -14,13 +14,13 @@ if (renderer.backend.isWebGPUBackend) {
   addEventListener('unhandledrejection', e => { if (/GPU|popErrorScope/i.test(String(e.reason && e.reason.message || e.reason)) && ++bad > 2) gpuFallback(); });
   addEventListener('error', e => { if (/GPU|popErrorScope|createBuffer/i.test(String(e.message)) && ++bad > 2) gpuFallback(); });
 }
-export const GPU = !!renderer.backend.isWebGPUBackend, API = GPU ? 'WebGPU' : 'WebGL 2', ANISO = renderer.getMaxAnisotropy ? renderer.getMaxAnisotropy() : 8;
-renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); renderer.setSize(innerWidth, innerHeight);
-renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping;
-export const scene = new THREE.Scene(), SKY = 0x9fcdea; scene.background = new THREE.Color(SKY); scene.fog = new THREE.Fog(SKY, 120, 1100);
-export const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .03, 2600);
+export const GPU = !!renderer.backend.isWebGPUBackend, API = GPU ? 'WebGPU' : 'WebGL 2', ANISO = Math.min(Q.aniso, renderer.getMaxAnisotropy ? renderer.getMaxAnisotropy() : 8);
+export const baseDPR = Math.min(devicePixelRatio, Q.dpr); renderer.setPixelRatio(baseDPR); renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = Q.shadow > 0; renderer.shadowMap.type = THREE.PCFShadowMap; renderer.toneMapping = THREE.ACESFilmicToneMapping;
+export const scene = new THREE.Scene(), SKY = 0x9fcdea; scene.background = new THREE.Color(SKY); scene.fog = new THREE.Fog(SKY, Q.fog * .11, Q.fog);
+export const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .03, Q.fog + 150);
 scene.add(new THREE.HemisphereLight(0xeaf4ff, 0x4d5a32, 1.15));
-export const sun = new THREE.DirectionalLight(0xfff0d2, 2.7); sun.castShadow = true; sun.shadow.mapSize.set(1024, 1024);
+export const sun = new THREE.DirectionalLight(0xfff0d2, 2.7); sun.castShadow = Q.shadow > 0; sun.shadow.mapSize.set(Q.shadow || 1024, Q.shadow || 1024);
 { const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; scene.add(sun, sun.target);
 addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 

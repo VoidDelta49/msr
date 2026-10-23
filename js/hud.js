@@ -61,13 +61,22 @@ function scooter(g, sp) {
   if (S.lim && (performance.now() / 90 | 0) % 2) { g.fillStyle = '#ff3b2f'; g.font = 'bold 18px system-ui'; g.fillText('PGM-FI', 52, 100); }
 }
 const CLUSTERS = { sport, scooter };
-export function drawCluster() {
-  const g = gc; g.clearRect(0, 0, 512, 224); CLUSTERS[ctx.bike.cluster](g, ctx.spec); cluTex.needsUpdate = true;
+// Redrawn only when something on it changes; the texture is uploaded to the GPU only while the in-world cluster can
+// be seen (1st person / garage). In 3rd person the same canvas is shown as the on-screen HUD, no upload needed.
+let cluKey = '', texDirty = true;
+export function drawCluster(inWorld = true) {
+  const sp = ctx.spec, bl = (performance.now() / 90 | 0) % 2, now = new Date();
+  const key = [ctx.bike.id, Math.round(Math.abs(S.v) * 3.6), S.gear, S.running ? Math.ceil(S.rpm / sp.tachMax * 47) : -1, (S.fuel / sp.fuel.cap * 100 | 0), S.lim && bl, S.cl > .05 ? S.cl * 100 | 0 : -1,
+    ctx.bike.cluster === 'scooter' ? [now.getMinutes(), now.getSeconds() & 1, (S.odo / 100) | 0, S.running && Math.abs(S.v) > 2 && S.thrEff < .35, S.issOff && (performance.now() / 400 | 0) % 2, ctx.bcfg.iss, S.issOff].join() : ''].join('|');
+  if (key !== cluKey) { cluKey = key; gc.clearRect(0, 0, 512, 224); CLUSTERS[ctx.bike.cluster](gc, sp); texDirty = true; }
+  if (inWorld && texDirty) { cluTex.needsUpdate = true; texDirty = false; }
 }
 
 /* minimap */
-const mm = $('mini').getContext('2d');
+const mm = $('mini').getContext('2d'); let miniKey = '';
 export function drawMini(MAP, ICZ) {
+  const MI0 = ctx.MI, k = (S.x * 2 | 0) + ',' + (S.z * 2 | 0) + ',' + (S.psi * 100 | 0) + ',' + (MI0 && MI0.on && !MI0.done ? MI0.bay.x + ':' + MI0.bay.z : '');
+  if (k === miniKey) return; miniKey = k;
   mm.clearRect(0, 0, 140, 140); mm.save(); mm.beginPath(); mm.arc(70, 70, 68, 0, 7); mm.clip();
   const u = (S.x / 1300 + .5) * 140, v = ((S.z - ICZ) / 1300 + .5) * 140, Z = 2.6;
   mm.translate(70, 70); mm.rotate(S.psi); mm.scale(Z, Z); mm.translate(-u, -v); mm.drawImage(MAP, 0, 0);
@@ -78,5 +87,6 @@ export function drawMini(MAP, ICZ) {
 }
 
 /* FPS / renderer readout */
-let fpsV = 0, physV = ''; export const setFps = v => { fpsV = v; }; export const setPhys = v => { physV = v; };
-export function updPerf(API) { const p = []; if (cfg.showApi) p.push(API); if (cfg.showFps) p.push(fpsV + ' fps'); if (cfg.showFps && physV) p.push(physV); $('perf').textContent = p.join(' · '); $('perf').hidden = !p.length; }
+let fpsV = 0, physV = '', gfxV = ''; export const setFps = v => { fpsV = v; }; export const setPhys = v => { physV = v; };
+export const setGfx = (draws, res) => { gfxV = draws + ' draws' + (res < 1 ? ' · res ' + Math.round(res * 100) + '%' : ''); };
+export function updPerf(API) { const p = []; if (cfg.showApi) p.push(API); if (cfg.showFps) p.push(fpsV + ' fps'); if (cfg.showFps && physV) p.push(physV); if (cfg.showFps && gfxV) p.push(gfxV); $('perf').textContent = p.join(' · '); $('perf').hidden = !p.length; }

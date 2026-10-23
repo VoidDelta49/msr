@@ -2,6 +2,7 @@
 // B.rider, B.cam, B.exh) and sets B.G, the geometry the animation in main.js reads.
 // Front of the bike is -z; ct coordinates are ground-relative at static sag.
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { PI } from './util.js';
 import { scene, std } from './renderer.js';
 import { cluTex } from './hud.js';
@@ -98,9 +99,29 @@ function scooter(ct) {
   };
 }
 
+// Draw-call diet: meshes that share a parent and a material are baked into one mesh (a bike drew ~50 meshes, each twice
+// with its shadow). Animated groups (wheels, steering, fork slider, levers, throttle) keep their own transforms; their
+// static children are merged inside them. The swingarm is skipped (it is rescaled every frame).
+function mergeList(L, par) {
+  const g = mergeGeometries(L.map(o => { o.updateMatrix(); return o.geometry.clone().applyMatrix4(o.matrix); }));
+  const m = new THREE.Mesh(g, L[0].material); m.castShadow = true; par.add(m); for (const o of L) { par.remove(o); o.geometry.dispose(); } return m;
+}
+function mergeStatic(par, skip) {
+  const by = new Map();
+  for (const o of [...par.children]) {
+    if (o.isGroup) { if (o !== B.exh) mergeStatic(o, skip); continue; }
+    if (!o.isMesh || skip.has(o) || o.material.map === cluTex) continue;
+    if (!by.has(o.material)) by.set(o.material, []); by.get(o.material).push(o);
+  }
+  for (const L of by.values()) if (L.length > 1) mergeList(L, par);
+}
 const MODELS = { sport, scooter };
 export function buildModel(bike) {
   B.ct.clear(); MODELS[bike.model](B.ct);
+  // rider: one mesh per material, still listed in B.rider (camera toggles visibility, crashes move them)
+  const rm = new Map(); for (const o of B.rider) { if (!rm.has(o.material)) rm.set(o.material, []); rm.get(o.material).push(o); }
+  B.rider = [...rm.values()].map(L => L.length > 1 ? mergeList(L, B.ct) : L[0]);
+  mergeStatic(B.ct, new Set([B.swing, ...B.rider]));
   B.ct.traverse(o => { if (o.isMesh && o.material.map !== cluTex) o.castShadow = true; });
 }
 export function applyLook(spec) { MP.color.set(spec.c); B.buildExh(spec.snd); }
