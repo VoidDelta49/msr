@@ -106,6 +106,8 @@ function applyPhys() {
   initRapier().then(ok => { RP.on = ok && cfg.rapier; if (RP.on) syncBody(); if (!ok) say('Rapier failed to load, using Classic physics', 2500); setPhys(''); });
 }
 O.onPhys = applyPhys; applyPhys();
+// after a crash: put the first-person camera back on the handlebars, level
+RP.onUp = () => { if (ctx.camMode === 0 && !ctx.GAR) { B.cam.add(camera); camera.position.set(0, 0, 0); camera.rotation.set(-.3, 0, 0); camera.up.set(0, 1, 0); } };
 let acc = 0, pms = 0; const prev = { x: 0, z: 0, psi: 0, zH: 0, th: 0 };
 function tickRapier(dt) {
   const t0 = performance.now(); acc += dt; let n = 0;

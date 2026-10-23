@@ -174,6 +174,9 @@ function endCrash() {
   if (rider) { world.removeRigidBody(rider); rider = null; }
   if (kept) { for (const k of kept) { k.p.add(k.m); k.m.position.copy(k.pos); k.m.quaternion.copy(k.q); k.m.scale.copy(k.s); } kept = null; scene.remove(RG); }
   box.setEnabled(false); cap.setEnabled(true); wasAir = false;
+  // back on the bike: every node the crash pose touched goes back upright (main.js redraws the heading next frame)
+  B.root.quaternion.identity(); B.root.rotation.set(0, S.psi, 0); B.lean.rotation.set(0, 0, 0); B.body.rotation.set(0, 0, 0);
+  RP.onUp && RP.onUp();
 }
 // drawing while crashed: the whole bike follows the tumbling body, the rider follows his own
 export function crashVisual() {
