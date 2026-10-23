@@ -4,6 +4,8 @@ import { DRIVES } from './drivetrain.js';
 
 // part option keys that multiply instead of replace
 const MUL = new Set(['pow', 'ie', 'csp']);
+// ... and keys that add (dm: mass change in kg, e.g. carbon parts)
+const ADD = new Set(['dm']);
 
 export function computeSpec(bike, b) {
   const ch = bike.chassis, en = bike.engine;
@@ -11,15 +13,18 @@ export function computeSpec(bike, b) {
     type: bike.drivetrain, ...ch,
     ie: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
     peakPS: en.peakPS, tachMax: en.tachMax, sound: bike.sound,
-    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888',
+    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', dm: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0,
   };
   for (const [k, p] of Object.entries(bike.parts)) {
     const o = p.o[b[k]] || p.o[0];
-    for (const [kk, v] of Object.entries(o)) { if (kk === 'n') continue; if (MUL.has(kk)) s[kk] *= v; else s[kk] = v; }
+    for (const [kk, v] of Object.entries(o)) { if (kk === 'n') continue; if (MUL.has(kk)) s[kk] *= v; else if (ADD.has(kk)) s[kk] += v; else s[kk] = v; }
   }
+  s.m0 = s.m; s.m += s.dm;
   s.kf = b.kf * 1000; s.kr = b.kr * 1000; s.damp = b.damp / 100;
   // preload: spring pre-compressed by pf/pr metres, so the bike sits that much higher (CG too) with more bump travel left
   s.pf = (b.pf || 0) / 1000; s.pr = (b.pr || 0) / 1000; s.h += (s.pf + s.pr) / 2;
+  // ride height (fork tubes slid in the clamps / shock length): chassis sits yf/yr higher, same travel and sag
+  s.yf = (b.yf || 0) / 1000; s.yr = (b.yr || 0) / 1000; s.h += (s.yf + s.yr) / 2;
   s.sag = (s.m * s.lr / s.wb * 9.81 / s.kf + s.m * s.lf / s.wb * 9.81 / s.kr) / 2;
   s.tqMax = Math.max(...s.TQ.map(p => p[1]));
   DRIVES[bike.drivetrain].spec(s, bike, b);

@@ -28,7 +28,7 @@ function reset() {
     x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: ctx.spec.idle, running: true, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
     fuel: S.fuel ?? ctx.spec.fuel.cap, wA: 0, cutT: 0, act: 0, shCD: 0, lim: false, padT: 0, hits: S.hits || 0, odo: S.odo || 0,
   });
-  ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF; syncBody();
+  ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody();
 }
 function recompute() { ctx.spec = computeSpec(ctx.bike, ctx.bcfg); applyLook(ctx.spec); }
 function setBike() {
@@ -64,7 +64,7 @@ const DOMC = {}; function dom(id, v, set) { const c = DOMC[id] || (DOMC[id] = { 
 function visuals(dt, now) {
   const G = B.G, sp = ctx.spec;
   B.root.position.set(S.x, S.zH, S.z); B.root.rotation.set(0, S.psi, 0); B.lean.rotation.z = -S.lean; B.body.position.y = .6 + (.075 - sp.sag); B.body.rotation.x = S.th; // lean pivots at the ground, not world y=0
-  B.steer.rotation.y = -S.delta; B.slider.position.y = -G.fork + clamp(S.cF, -.07, .11) / Math.cos(G.rake); B.rearH.position.y = G.rw + clamp(S.cR, -.07, .11);
+  B.steer.rotation.y = -S.delta; B.slider.position.y = -G.fork + (clamp(S.cF, -.07, .11) - sp.yf) / Math.cos(G.rake); B.rearH.position.y = G.rw + clamp(S.cR, -.07, .11) - sp.yr; // yf/yr: ride height lifts the chassis, wheels stay down
   const dy = B.rearH.position.y - G.pivotY, dz = G.rearZ - G.pivotZ; B.swing.position.set(G.swingX, G.pivotY + dy / 2, G.pivotZ + dz / 2); B.swing.rotation.x = -Math.atan2(dy, dz); B.swing.scale.z = Math.hypot(dy, dz);
   B.frontW.rotation.x = B.rearW.rotation.x = -S.wA; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3;
   B.cluL.rotation.y = (sp.type === 'cvt' ? S.brake : Math.max(S.cl, ctx.bcfg.autoClutch && S.c < .5 ? 1 : 0)) * .3;

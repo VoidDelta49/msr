@@ -13,7 +13,7 @@ Open the GitHub Pages site for this repo on your phone. It plays fullscreen. (Op
 | Engine | 147 cc DOHC, ~18.5 PS @ 10,000 rpm, ~13.8 Nm @ 8,500 | 124.8 cc SOHC eSP, 8.2 kW (11.1 PS) @ 8,500 rpm, 10.8 Nm @ 5,000 |
 | Transmission | 6-speed return shift (1-N-2-3-4-5-6), wet clutch, chain | V-Matic CVT, dry centrifugal clutch, belt |
 | Extras | Anti-stall clutch assist | Idling Stop, CBS brakes, start needs the brake held |
-| Garage | Exhaust, ECU, tires, paint, sprockets, springs, damping | Rollers (bola), center spring, clutch springs, pulley set, exhaust, ECU, tires, paint, springs, damping |
+| Garage | Exhaust, ECU, tires, paint, sprockets, carbon fiber parts, preload, ride height, springs, damping | Rollers (bola), center spring, clutch springs, pulley set, exhaust, ECU, tires, paint, carbon fiber parts, preload, ride height, springs, damping |
 
 Click 125i figures are Honda's published specs. Honda doesn't publish the CVT ratio range or final drive, so those are estimates (2.40–0.80 × 10.0) chosen to match the claimed ~100 km/h top speed.
 
@@ -27,7 +27,7 @@ Click 125i figures are Honda's published specs. Honda doesn't publish the CVT ra
 
 Touch:
 
-- Steering wheel: bottom-left
+- Handlebar: bottom-left (drag around it to steer)
 - Throttle pad (drag up/down) plus a brake button (CBS on the Click)
 - Raider only: clutch pad (drag down to pull), ▲ / ▼ shift buttons (clutch must be pulled to shift)
 - START button. On the Click, hold the brake while pressing it.
@@ -95,6 +95,7 @@ WebGPU has not been verified on real hardware yet. Check the renderer readout on
   - With Show FPS on, the readout shows the physics cost per frame.
 - Crashes: with **Tough Biker mode** off (Options → PHYSICS, off by default), a hard wall hit (> ~25 km/h), steering harder than the tyres can grip, or a hard or nose/tail-first landing throws the rider off and the bike tumbles and slides. Once it stops it's stood back up where it ended, engine off. Tough Biker mode on: no falls, walls only stop you.
 - Garage: fork and shock preload (±20 mm) raise or lower the ride height and the CG, and change how much bump travel is left.
+- Garage (Update 2): front/rear ride height (±25 mm, 5 mm steps) lifts the chassis and CG without changing sag or travel. Carbon fiber body panels (plain or paint-tinted), fenders, wheels and muffler cover each cut weight (option key `dm`, kg, added to the chassis mass); the weight shows in the stats. RESET TO STOCK (tap twice) puts every part, slider and assist of the current bike back to its defaults.
 - Debug hook: `window.__cpm` (`S`, `cfg`, `ctx`, `spec()`, `step`, `shift`, `reset`, `setBike(id)`, `startEngine`, ...).
 
 ## Known limitations

@@ -10,11 +10,30 @@ import { cluTex } from './hud.js';
 const MP = std(0x888888, .32, .35), MB = std(0x141518, .6, .2), MR = std(0x0d0d0d, .95), MC = std(0xd5dae0, .22, 1), ME = std(0x45484d, .45, .7),
   MS = std(0x1b1b1b, .85), MG = std(0x2b2e33, .8), MRd = std(0x223344, .7), MTail = std(0x330000, .4, 0, 0xff1a1a), MHead = std(0xfff8e0, .2, 0, 0xfff4d0),
   MAmb = std(0x3a2400, .4, 0, 0xff9a1a);
+// Carbon fiber: one 2x2 twill canvas texture shared by every carbon part. Fenders (MF) and wheel spokes (MW) have their own
+// materials so each garage option can switch just its parts; MCF is plain carbon (fenders, wheels, muffler cover).
+const MF = std(0x888888, .32, .35), MW = std(0x141518, .6, .2);
+const CF = (() => {
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
+    const h = (x + y) % 4 < 2, gr = h ? g.createLinearGradient(0, y * 8, 0, y * 8 + 8) : g.createLinearGradient(x * 8, 0, x * 8 + 8, 0);
+    gr.addColorStop(0, h ? '#5a5a5a' : '#262626'); gr.addColorStop(.5, h ? '#c4c4c4' : '#6a6a6a'); gr.addColorStop(1, h ? '#5a5a5a' : '#262626');
+    g.fillStyle = gr; g.fillRect(x * 8, y * 8, 8, 8);
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(4, 4); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+})();
+const MCF = new THREE.MeshStandardMaterial({ color: 0x8a9099, map: CF, roughness: .22, metalness: .1 });
+// switch a material between its stock look and carbon (needsUpdate only when the map changes: that recompiles the shader)
+function carbon(m, on, col, tint) {
+  if (!!m.map !== on) { m.map = on ? CF : null; m.needsUpdate = true; }
+  if (on) { m.color.set(tint ? col : 0x8a9099); if (tint) m.color.lerp(MCF.color, .25); m.roughness = .22; m.metalness = .1; } else { m.color.set(col); m.roughness = m.userData.r; m.metalness = m.userData.mt; }
+}
+for (const m of [MP, MF, MW]) m.userData = { r: m.roughness, mt: m.metalness };
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d), cyl = (a, b, h, s = 12) => new THREE.CylinderGeometry(a, b, h, s);
 function mk(geo, m, par, x, y, z, rx = 0, ry = 0, rz = 0) { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = true; par.add(o); return o; }
 function wheelG(R, t, rim, spokes, sw) {
   const g = new THREE.Group(); mk(new THREE.TorusGeometry(R, t, 10, 30), MR, g, 0, 0, 0, 0, PI / 2); mk(new THREE.TorusGeometry(rim, .012, 6, 30), MC, g, 0, 0, 0, 0, PI / 2);
-  for (let i = 0; i < spokes; i++) mk(box(.012, rim * 2, sw), MB, g, 0, 0, 0, i * PI / spokes); mk(cyl(.11, .11, .01, 20), MC, g, .05, 0, 0, 0, 0, PI / 2); return g;
+  for (let i = 0; i < spokes; i++) mk(box(.012, rim * 2, sw), MW, g, 0, 0, 0, i * PI / spokes); mk(cyl(.11, .11, .01, 20), MC, g, .05, 0, 0, 0, 0, PI / 2); return g;
 }
 export const B = { root: new THREE.Group(), lean: new THREE.Group(), body: new THREE.Group(), ct: new THREE.Group(), MP };
 B.root.add(B.lean); B.lean.add(B.body); B.body.add(B.ct); B.ct.position.y = -.6; scene.add(B.root);
@@ -36,7 +55,7 @@ function sport(ct) {
   mk(box(.22, .03, .08), MB, st, 0, .04, 0);
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -.728;
   for (const s of [-1, 1]) mk(cyl(.028, .028, .32), MB, B.slider, s * .08, .16, 0);
-  B.frontW = wheelG(.245, .048, .2, 5, .03); B.slider.add(B.frontW); mk(box(.11, .025, .42), MP, B.slider, 0, .31, -.02, .05);
+  B.frontW = wheelG(.245, .048, .2, 5, .03); B.slider.add(B.frontW); mk(box(.11, .025, .42), MF, B.slider, 0, .31, -.02, .05); mk(box(.1, .02, .3), MF, B.rearH, 0, .33, -.07, -.25); // front fender, rear hugger
   mk(box(.3, .22, .14), MP, st, 0, .02, -.16, .3); mk(box(.16, .07, .03), MHead, st, 0, 0, -.235, .3);
   clusterPlane(st, 0, .2, -.08, -.9);
   mk(cyl(.011, .011, .62), MC, st, 0, .16, .07, 0, 0, PI / 2); mk(cyl(.018, .018, .12), MR, st, -.29, .16, .07, 0, 0, PI / 2);
@@ -49,9 +68,9 @@ function sport(ct) {
   for (const s of [-1, 1]) B.rider.push(mk(box(.08, .08, .45), MRd, ct, s * .22, 1.18, 0, .6), mk(box(.13, .13, .45), MRd, ct, s * .15, .9, .2, .2), mk(box(.11, .42, .11), MRd, ct, s * .18, .58, .02, -.2));
   B.cam = new THREE.Group(); B.cam.position.set(0, 1.36, .1); ct.add(B.cam);
   B.exh = new THREE.Group(); ct.add(B.exh);
-  B.buildExh = s => {
+  B.buildExh = (s, cf) => {
     B.exh.clear(); const L = [.48, .4, .34][s], R = [.065, .06, .055][s], col = [0x2a2c30, 0x111111, 0x6f7fa8][s];
-    mk(cyl(.025, .025, .6), MC, B.exh, .12, .3, .15, PI / 2 - .3); mk(cyl(R, R * .85, L, 16), std(col, .35, .8), B.exh, .16, .44, .62, PI / 2 - .3);
+    mk(cyl(.025, .025, .6), MC, B.exh, .12, .3, .15, PI / 2 - .3); mk(cyl(R, R * .85, L, 16), cf ? MCF : std(col, .35, .8), B.exh, .16, .44, .62, PI / 2 - .3);
   };
 }
 
@@ -78,7 +97,7 @@ function scooter(ct) {
   for (const s of [-1, 1]) mk(cyl(.019, .019, .42), MC, st, s * .07, -.22, 0);
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
   for (const s of [-1, 1]) mk(cyl(.026, .026, .28), MB, B.slider, s * .07, .14, 0);
-  B.frontW = wheelG(.215, .043, .175, 5, .045); B.slider.add(B.frontW); mk(box(.1, .025, .36), MP, B.slider, 0, .27, -.02, .05);
+  B.frontW = wheelG(.215, .043, .175, 5, .045); B.slider.add(B.frontW); mk(box(.1, .025, .36), MF, B.slider, 0, .27, -.02, .05); mk(box(.09, .02, .26), MF, B.rearH, 0, .29, -.08, -.25);
   // handlebar cover with headlight, cluster on top
   mk(box(.52, .1, .2), MP, st, 0, .1, -.02); mk(box(.34, .06, .05), MHead, st, 0, .09, -.13);
   clusterPlane(st, 0, .16, .04, -1.05, .26);
@@ -93,9 +112,9 @@ function scooter(ct) {
   for (const s of [-1, 1]) B.rider.push(mk(box(.08, .08, .66), MRd, ct, s * .25, 1.14, 0, -.58), mk(box(.13, .13, .42), MRd, ct, s * .14, .88, .12, -.05), mk(box(.11, .44, .11), MRd, ct, s * .16, .58, -.12, .08));
   B.cam = new THREE.Group(); B.cam.position.set(0, 1.38, .2); ct.add(B.cam);
   B.exh = new THREE.Group(); ct.add(B.exh);
-  B.buildExh = s => {
+  B.buildExh = (s, cf) => {
     B.exh.clear(); const L = [.42, .36, .32][s], R = [.07, .062, .056][s], col = [0x2a2c30, 0x111111, 0x6f7fa8][s];
-    mk(cyl(.022, .022, .4), MC, B.exh, .1, .22, .18, PI / 2 - .15); mk(cyl(R, R * .85, L, 16), std(col, .35, .8), B.exh, .15, .34, .52, PI / 2 - .2);
+    mk(cyl(.022, .022, .4), MC, B.exh, .1, .22, .18, PI / 2 - .15); mk(cyl(R, R * .85, L, 16), cf ? MCF : std(col, .35, .8), B.exh, .15, .34, .52, PI / 2 - .2);
   };
 }
 
@@ -131,4 +150,8 @@ export function buildModel(bike) {
   });
   const px = new THREE.Mesh(mergeGeometries(parts), MB); px.castShadow = true; px.layers.set(1); B.ct.add(px);
 }
-export function applyLook(spec) { MP.color.set(spec.c); B.buildExh(spec.snd); }
+// cfb: body 0 paint / 1 carbon / 2 paint-tinted carbon · cff fenders · cfw wheels · cfx muffler cover
+export function applyLook(spec) {
+  carbon(MP, !!spec.cfb, spec.c, spec.cfb === 2); carbon(MF, !!spec.cff, spec.c, spec.cfb === 2); carbon(MW, !!spec.cfw, 0x141518);
+  B.buildExh(spec.snd, !!spec.cfx);
+}

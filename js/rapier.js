@@ -97,7 +97,7 @@ export function tickR() {
   const st = bumpStop(sp, S.zH, th, vy, w, hF, hR, dhF, dhR);
   if (st[0] !== S.zH || st[1] !== th) { S.zH = st[0]; S.th = st[1]; vy = st[2]; w = st[3]; body.setTranslation({ x: S.x, y: S.zH + Y0, z: S.z }, true); }
   // springs measure from static sag, so add the static load; a wheel can push but never pull
-  const cF = hF - (S.zH + lf * S.th), cR = hR - (S.zH - lr * S.th), vF = dhF - (vy + lf * w), vR = dhR - (vy - lr * w);
+  const cF = hF + sp.yf - (S.zH + lf * S.th), cR = hR + sp.yr - (S.zH - lr * S.th), vF = dhF - (vy + lf * w), vR = dhR - (vy - lr * w);
   const mF = m * lr / sp.wb, mR = m * lf / sp.wb;
   const Ff = Math.max(0, mF * g + sp.kf * (cF + sp.pf) + sp.damp * 2 * Math.sqrt(sp.kf * mF) * vF), Fr = Math.max(0, mR * g + sp.kr * (cR + sp.pr) + sp.damp * 2 * Math.sqrt(sp.kr * mR) * vR);
   S.cF = cF; S.cR = cR; S.Ff = Ff; S.Fr = Fr; S.air = Ff <= 0 && Fr <= 0;
@@ -177,7 +177,7 @@ function standUp() {
   const q = body.rotation(), f = new THREE.Vector3(0, 0, -1).applyQuaternion(tq.set(q.x, q.y, q.z, q.w));
   if (Math.hypot(f.x, f.z) > .2) S.psi = Math.atan2(-f.x, -f.z);
   endCrash(); Object.assign(S, { v: 0, lean: 0, th: 0, thV: 0, zV: 0, yaw: 0, delta: 0, rpm: 0, running: false, gear: 0, padT: 0 }); ctx.drive.reset(S);
-  S.zH = H(S.x, S.z); syncBody(); say('Picked the bike up. Press START', 1800);
+  S.zH = H(S.x, S.z) + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody(); say('Picked the bike up. Press START', 1800);
 }
 function endCrash() {
   S.crashed = false; if (ground) { world.removeCollider(ground, false); ground = null; }
