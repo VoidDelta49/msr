@@ -42,6 +42,10 @@ body{--w:min(150px,38vh)}
 #garage{left:auto;width:min(430px,100%);background:rgba(6,8,10,.8);padding:10px}
 #garage .card{margin:0;max-width:none;background:transparent;border:0;padding:6px}
 body.gar #tc,body.gar #top,body.gar #gauge,body.gar #mis{display:none}
+body.opt #tc,body.opt #top,body.opt #mis{display:none}
+#opts{z-index:25}
+#opts .card{max-width:420px}
+.sec{font:800 11px system-ui;letter-spacing:.14em;color:var(--dim);margin-top:4px}
 #revB.on{background:var(--hot);color:#1a1000}
 .panel{position:fixed;inset:0;z-index:20;display:flex;overflow-y:auto;touch-action:pan-y;background:rgba(6,8,10,.82);padding:16px}
 .card{margin:auto;width:100%;max-width:620px;background:#14181c;border:1px solid #2a3138;border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:12px}
@@ -68,7 +72,7 @@ input[type=range]{flex:1 1 200px;accent-color:var(--hot)}
 <div id="perf"></div>
 <canvas id="mini" width="140" height="140"></canvas>
 <div id="mis" hidden><span id="misT"></span><button class="b" id="misNext" hidden>Next</button></div>
-<div id="top"><button class="b" id="bCam">CAM</button><button class="b" id="bPark">PARK</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button></div>
+<div id="top"><button class="b" id="bCam">CAM</button><button class="b" id="bPark">PARK</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button><button class="b" id="bOpt" aria-label="Options">⚙</button></div>
 
 <div id="tc">
   <div id="lb"><button id="bStart">START</button><button id="bDn">▼</button><button id="bUp">▲</button></div>
@@ -91,11 +95,19 @@ input[type=range]{flex:1 1 200px;accent-color:var(--hot)}
   </div>
   <p id="apiNote"></p>
   <button class="big" id="go">RIDE</button>
+  <button class="b" id="goOpt">OPTIONS</button>
 </div></div>
 
 <div id="garage" class="panel" hidden><div class="card">
   <div class="row"><h2>Garage</h2><div class="chips"><button class="b" id="revB">HOLD TO REV</button><button class="b" id="bounceB">BOUNCE</button><button class="b" id="gClose">Done</button></div></div><p>Changes apply instantly. Rev it to hear the exhaust, bounce it to feel the suspension.</p>
   <div id="gbody"></div>
+</div></div>
+
+<div id="opts" class="panel" hidden><div class="card">
+  <div class="row"><h2>Options</h2><button class="b" id="oClose">Done</button></div>
+  <div class="sec">HUD</div><div id="oHud" class="chips"></div>
+  <div class="sec">GRAPHICS</div><div id="oGfx" class="chips"></div>
+  <p id="oNote"></p>
 </div></div>
 
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/webgpu":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/tsl":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.tsl.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
@@ -114,8 +126,9 @@ const PARTS={
   paint:{l:'Paint',o:[{n:'Titan Blue',c:0x1f4fbf},{n:'Glass Black',c:0x17191c},{n:'Racing Red',c:0xc21d1d},{n:'Pearl White',c:0xe6e6e1},{n:'Neon Yellow',c:0xd6cf18}]}};
 const SLIDERS=[{k:'fs',l:'Front sprocket',min:13,max:16,u:'T'},{k:'rs',l:'Rear sprocket',min:34,max:46,u:'T'},
   {k:'kf',l:'Fork spring',min:7,max:20,u:' kN/m'},{k:'kr',l:'Shock spring',min:8,max:22,u:' kN/m'},{k:'damp',l:'Damping',min:20,max:90,u:'%'},{k:'sens',l:'Touch steer sens.',min:5,max:20,u:''}];
-const TOGGLES=[{k:'autoClutch',l:'Anti-stall clutch'},{k:'sound',l:'Sound'},{k:'forceGL',l:'Force WebGL (reloads)'}];
-const DEF={exhaust:0,ecu:0,tires:0,paint:0,fs:14,rs:38,kf:11,kr:13,damp:45,sens:10,autoClutch:true,sound:true,forceGL:false};
+const TOGGLES=[{k:'autoClutch',l:'Anti-stall clutch'},{k:'sound',l:'Sound'}];
+const OPTS={oHud:[{k:'showFps',l:'Show FPS'},{k:'showApi',l:'Show renderer'}],oGfx:[{k:'forceGL',l:'Force WebGL (reloads)'}]};
+const DEF={exhaust:0,ecu:0,tires:0,paint:0,fs:14,rs:38,kf:11,kr:13,damp:45,sens:10,autoClutch:true,sound:true,forceGL:false,showFps:true,showApi:true};
 let cfg={...DEF};try{Object.assign(cfg,JSON.parse(localStorage.getItem('cpmme')||'{}'))}catch(e){}
 const save=()=>{try{localStorage.setItem('cpmme',JSON.stringify(cfg))}catch(e){}};
 // Approximate Raider R150 Fi figures: 147cc, ~18.5 PS @10k, ~13.8 Nm @8.5k
@@ -138,7 +151,7 @@ if(renderer.backend.isWebGPUBackend){const dev=renderer.backend.device;let bad=0
   dev.lost.then(i=>{if(i.reason!=='destroyed')gpuFallback()});dev.addEventListener('uncapturederror',()=>{if(++bad>2)gpuFallback()});
   addEventListener('unhandledrejection',e=>{if(/GPU|popErrorScope/i.test(String(e.reason&&e.reason.message||e.reason))&&++bad>2)gpuFallback()});
   addEventListener('error',e=>{if(/GPU|popErrorScope|createBuffer/i.test(String(e.message))&&++bad>2)gpuFallback()})}
-const GPU=!!renderer.backend.isWebGPUBackend,ANISO=renderer.getMaxAnisotropy?renderer.getMaxAnisotropy():8;
+const GPU=!!renderer.backend.isWebGPUBackend,API=GPU?'WebGPU':'WebGL 2',ANISO=renderer.getMaxAnisotropy?renderer.getMaxAnisotropy():8;
 renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;renderer.toneMapping=THREE.ACESFilmicToneMapping;
 const scene=new THREE.Scene(),SKY=0x9fcdea;scene.background=new THREE.Color(SKY);scene.fog=new THREE.Fog(SKY,120,1100);
@@ -631,13 +644,13 @@ $('gbody').onclick=e=>{const b=e.target.closest('button');if(!b)return;
   if(b.dataset.k){cfg[b.dataset.k]=+b.dataset.i;b.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on',c===b))}
   else if(b.dataset.t){cfg[b.dataset.t]=!cfg[b.dataset.t];b.classList.toggle('on',cfg[b.dataset.t]);if(b.dataset.t==='forceGL'){save();location.reload();return}}changed()};
 $('gbody').oninput=e=>{const s=e.target.dataset.s;if(!s)return;cfg[s]=+e.target.value;$('v_'+s).textContent=cfg[s]+SLIDERS.find(x=>x.k===s).u;changed()};
-let GAR=false;function openGarage(){if(GAR)return;buildGarage();$('garage').hidden=false;GAR=true;document.body.classList.add('gar');scene.add(camera);B.rider.forEach(m=>m.visible=false)}
+let GAR=false;function openGarage(){if(GAR||OPT)return;buildGarage();$('garage').hidden=false;GAR=true;document.body.classList.add('gar');scene.add(camera);B.rider.forEach(m=>m.visible=false)}
 $('gClose').onclick=()=>{$('garage').hidden=true;GAR=false;TC.rev=0;document.body.classList.remove('gar');camMode^=1;toggleCam()};
 ptr($('revB'),()=>{TC.rev=1;$('revB').classList.add('on')},null,()=>{TC.rev=0;$('revB').classList.remove('on')});
 $('bounceB').onclick=()=>{S.zV=-.9;S.thV=.6};
 $('bGar').onclick=openGarage;$('bCam').onclick=toggleCam;$('bPark').onclick=togglePark;$('bReset').onclick=()=>{reset();say('Back at the lot')};
 function goFS(){const d=document.documentElement;if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen({navigationUI:'hide'}).then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{})).catch(()=>{})}
-addEventListener('pointerdown',()=>{if(!paused&&!GAR)goFS()});
+addEventListener('pointerdown',()=>{if(!paused&&!GAR&&!OPT)goFS()});
 $('go').onclick=()=>{goFS();initAudio();$('intro').hidden=true;paused=false;say('Pull CLUTCH, shift ▼ into 1st, ease it out')};
 
 /* ---------- WATER / MINIMAP ---------- */
@@ -650,14 +663,25 @@ function drawMini(){mm.clearRect(0,0,140,140);mm.save();mm.beginPath();mm.arc(70
   dot(-40,40,'#ff4a3d',4);if(MI.on&&!MI.done)dot(MI.bay.x,MI.bay.z,'#43e07a',4);mm.restore();
   mm.fillStyle='#ffb020';mm.beginPath();mm.moveTo(70,62);mm.lineTo(76,76);mm.lineTo(70,72);mm.lineTo(64,76);mm.fill();
   mm.strokeStyle='rgba(255,255,255,.5)';mm.lineWidth=2;mm.beginPath();mm.arc(70,70,68,0,7);mm.stroke()}
+/* ---------- OPTIONS ---------- */
+let OPT=false;
+function buildOpts(){for(const[id,l]of Object.entries(OPTS))$(id).innerHTML=l.map(t=>`<button class="chip${cfg[t.k]?' on':''}" data-o=${t.k}>${t.l}</button>`).join('');
+  $('oNote').textContent=$('apiNote').textContent}
+function openOpts(){if(OPT||GAR)return;buildOpts();$('opts').hidden=false;OPT=true;document.body.classList.add('opt')}
+function closeOpts(){$('opts').hidden=true;OPT=false;document.body.classList.remove('opt')}
+$('opts').onclick=e=>{const b=e.target.closest('button[data-o]');if(!b)return;const k=b.dataset.o;cfg[k]=!cfg[k];b.classList.toggle('on',cfg[k]);save();
+  if(k==='forceGL'){location.reload();return}updPerf()};
+$('oClose').onclick=closeOpts;$('bOpt').onclick=openOpts;$('goOpt').onclick=openOpts;
+addEventListener('keydown',e=>{if(e.code==='KeyO')OPT?closeOpts():openOpts();else if(e.code==='Escape'&&OPT)closeOpts()});
+let fpsV=0;function updPerf(){const p=[];if(cfg.showApi)p.push(API);if(cfg.showFps)p.push(fpsV+' fps');$('perf').textContent=p.join(' · ');$('perf').hidden=!p.length}
 /* ---------- LOOP ---------- */
 let last=performance.now(),lastDraw=0;
-let fN=0,fT=0;const API=GPU?'WebGPU':'WebGL 2';
-function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000);last=t;fN++;if(t-fT>1000){$('perf').textContent=API+' · '+Math.round(fN*1000/(t-fT))+' fps';fN=0;fT=t}
+let fN=0,fT=0;
+function loop(t){requestAnimationFrame(loop);const dt=Math.min(.05,(t-last)/1000);last=t;fN++;if(t-fT>1000){fpsV=Math.round(fN*1000/(t-fT));updPerf();fN=0;fT=t}
   if(GAR){S.thr=TC.rev?1:0;S.brake=1;S.steer=0;S.cl=1;if(!S.running&&TC.rev)startEngine();for(let i=0;i<6;i++)step(dt/6)}
-  else if(!paused){input(dt);const n=6;for(let i=0;i<n;i++)step(dt/n);collide();missions(dt);water()}
+  else if(!paused&&!OPT){input(dt);const n=6;for(let i=0;i<n;i++)step(dt/n);collide();missions(dt);water()}
   visuals(dt,t/1000);updAudio();if(t-lastDraw>50){lastDraw=t;drawCluster();drawMini()}renderer.render(scene,camera)}
-drawCluster();requestAnimationFrame(loop);$('apiNote').textContent='Renderer: '+(GPU?'WebGPU':'WebGL 2'+(cfg.forceGL?' (forced in garage)':FELL?' (WebGPU failed on this device, fell back)':' (this browser has no WebGPU)'));
+updPerf();drawCluster();requestAnimationFrame(loop);$('apiNote').textContent='Renderer: '+(GPU?'WebGPU':'WebGL 2'+(cfg.forceGL?' (forced in options)':FELL?' (WebGPU failed on this device, fell back)':' (this browser has no WebGPU)'));
 window.__cpm={S,cfg,spec:()=>spec,step,shift,reset,recompute:computeSpec,ROADS,H,toggleCam};
 </script>
 </body>

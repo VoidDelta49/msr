@@ -22,16 +22,16 @@ Touch:
 - Steering wheel: bottom-left
 - Clutch pad (drag down to pull) beside the throttle pad (drag up/down), plus a brake button
 - START button, and ▲ / ▼ shift buttons (clutch must be pulled to shift)
-- Top bar: CAM, PARK, GARAGE, RESET
+- Top bar: CAM, PARK, GARAGE, RESET, ⚙ (options)
 
 Keyboard:
 
 - `E` / `Shift`: shift up, `Q` / `Ctrl`: shift down
-- `R`: start engine, `C`: toggle camera, `G`: garage, `P`: parking mission
+- `R`: start engine, `C`: toggle camera, `G`: garage, `P`: parking mission, `O`: options (`Esc` closes)
 
 ## Renderer
 
-Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on device loss or errors). The garage has a "Force WebGL" toggle, and the active renderer plus FPS are shown on screen.
+Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on device loss or errors). The Options menu (⚙, also on the start screen) has a "Force WebGL" toggle and lets you show or hide the on-screen renderer and FPS readouts. Riding pauses while Options is open.
 
 WebGPU has not been verified on real hardware yet. Check the renderer readout on your device.
 
