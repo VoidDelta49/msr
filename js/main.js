@@ -14,7 +14,7 @@ import { initAudio, updAudio, blip } from './audio.js';
 import { say, drawCluster, drawMini, updPerf, setFps, setPhys, setGfx, setJank } from './hud.js';
 import { RP, TICK, initRapier, tickR, syncBody, crashVisual, bounce } from './rapier.js';
 import { actions, input, ptr, TC, WMAX } from './controls.js';
-import { MI, togglePark, missions, animMarker } from './missions.js';
+import { missions, animMarker } from './missions.js';
 import { G as GARAGE, buildGarage } from './garage.js';
 import { O, openOpts, closeOpts } from './options.js';
 import { cullUpdate, autoRes, resScale, jankStart, jankEnd, jankText } from './perf.js';
@@ -101,11 +101,11 @@ $('bounceB').onclick = () => { if (RP.ok) bounce(); };
 
 /* ---------- wiring ---------- */
 Object.assign(actions, {
-  shift: d => ctx.drive.shift(ctx.spec, S, d, ctx.bcfg), start: startEngine, cam: toggleCam, garage: openGarage, park: togglePark,
+  shift: d => ctx.drive.shift(ctx.spec, S, d, ctx.bcfg), start: startEngine, cam: toggleCam, garage: openGarage,
   opts: () => ctx.OPT ? closeOpts() : openOpts(), closeOpts,
 });
 O.onPerf = () => updPerf(API);
-$('bGar').onclick = openGarage; $('bCam').onclick = toggleCam; $('bPark').onclick = togglePark; $('bReset').onclick = () => { reset(); say('Back at the lot'); };
+$('bGar').onclick = openGarage; $('bCam').onclick = toggleCam; $('bReset').onclick = () => { reset(); say('Back at the lot'); };
 function goFS() { const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => { })).catch(() => { }); }
 addEventListener('pointerdown', () => { if (!ctx.paused && !ctx.GAR && !ctx.OPT) goFS(); });
 // menu.js: PLAY / RESUME (fullscreen was requested there, inside the tap) and the menu's bike picker

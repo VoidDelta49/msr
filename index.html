@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>CPM Motor Edition</title>
-<link rel="stylesheet" href="css/style.css?v=8.7">
+<link rel="stylesheet" href="css/style.css?v=8.8">
 </head>
 <body>
 <canvas id="gl"></canvas>
@@ -12,8 +12,8 @@
 <div id="msg"></div>
 <div id="perf"></div>
 <canvas id="mini" width="140" height="140"></canvas>
-<div id="mis" hidden><span id="misT"></span><button class="b" id="misNext" hidden>Next</button></div>
-<div id="top"><button class="b" id="bMenu" aria-label="Menu">☰</button><button class="b" id="bCam">CAM</button><button class="b" id="bPark">PARK</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button><button class="b" id="bOpt" aria-label="Options">⚙</button></div>
+<div id="mis" hidden><span id="misT"></span><button class="b" id="misNext" hidden>Next</button><button class="b" id="misX">✕</button></div>
+<div id="top"><button class="b" id="bMenu" aria-label="Menu">☰</button><button class="b" id="bCam">CAM</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button><button class="b" id="bOpt" aria-label="Options">⚙</button></div>
 
 <div id="tc">
   <div id="lb"><button id="bStart">START</button><button id="bBack">◀ BACK</button><button id="bDn">▼</button><button id="bUp">▲</button></div>
@@ -65,13 +65,13 @@
     </nav>
     <section id="mBikes" class="mp" hidden><div id="mCards"></div><button class="mb sm" data-back>◀ BACK</button></section>
     <section id="mHelpP" class="mp" hidden>
-      <p class="mtxt">Ride an island town: coastal highway, beaches, a volcano, rice terraces, a river with bridges, a switchback mountain pass and an airstrip for top-speed runs. PARK starts parking challenges; fuel up at the station next to the lot (red dot on the map).</p>
+      <p class="mtxt">Ride an island town: coastal highway, beaches, a volcano, rice terraces, a river with bridges, a switchback mountain pass and an airstrip for top-speed runs. Quests: ride into a coloured beacon and hold still to take a job (blue P = parking challenge, tan B = parcel delivery, pink F = food delivery); they are pinned on the minimap too. Fuel up at the station next to the lot (red dot on the map).</p>
       <div class="keys">
         <b>W / S</b><span>Throttle / brake (hold S while stopped to walk the bike back)</span>
         <b>A / D</b><span>Steer</span>
         <b>E / Q</b><span>Manual bikes: shift up / down (1-N-2-3-4-5-6). Pull the clutch first, unless E-Clutch is on</span>
         <b>Space</b><span>Manual: clutch (hold to pull) · Scooter: rear brake lever</span>
-        <b>R · C · G · P · O</b><span>Start engine (scooter: hold the brake) · camera · garage · parking · options</span>
+        <b>R · C · G · O</b><span>Start engine (scooter: hold the brake) · camera · garage · options</span>
         <b>Esc</b><span>Pause menu</span>
         <b>Touch</b><span>Turn the handlebar (bottom left), drag the throttle grip, hold BRAKE. Manual: drag CLUTCH down to pull, ▲▼ to shift</span>
       </div>
@@ -103,7 +103,7 @@
   <div class="sec">ERROR LOG</div><pre id="oLog"></pre>
 </div></div>
 
-<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=8.7","./js/audio.js":"./js/audio.js?v=8.7","./js/config.js":"./js/config.js?v=8.7","./js/controls.js":"./js/controls.js?v=8.7","./js/drivetrain.js":"./js/drivetrain.js?v=8.7","./js/garage.js":"./js/garage.js?v=8.7","./js/hud.js":"./js/hud.js?v=8.7","./js/main.js":"./js/main.js?v=8.7","./js/missions.js":"./js/missions.js?v=8.7","./js/model.js":"./js/model.js?v=8.7","./js/options.js":"./js/options.js?v=8.7","./js/perf.js":"./js/perf.js?v=8.7","./js/physics.js":"./js/physics.js?v=8.7","./js/rapier.js":"./js/rapier.js?v=8.7","./js/renderer.js":"./js/renderer.js?v=8.7","./js/spec.js":"./js/spec.js?v=8.7","./js/state.js":"./js/state.js?v=8.7","./js/util.js":"./js/util.js?v=8.7","./js/world.js":"./js/world.js?v=8.7","./js/tex.js":"./js/tex.js?v=8.7","./js/gpucull.js":"./js/gpucull.js?v=8.7","@dimforge/rapier3d-compat":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs","three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/webgpu":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/tsl":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.tsl.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
-<script type="module" src="js/menu.js?v=8.7"></script>
+<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=8.8","./js/audio.js":"./js/audio.js?v=8.8","./js/config.js":"./js/config.js?v=8.8","./js/controls.js":"./js/controls.js?v=8.8","./js/drivetrain.js":"./js/drivetrain.js?v=8.8","./js/garage.js":"./js/garage.js?v=8.8","./js/hud.js":"./js/hud.js?v=8.8","./js/main.js":"./js/main.js?v=8.8","./js/missions.js":"./js/missions.js?v=8.8","./js/model.js":"./js/model.js?v=8.8","./js/options.js":"./js/options.js?v=8.8","./js/perf.js":"./js/perf.js?v=8.8","./js/physics.js":"./js/physics.js?v=8.8","./js/rapier.js":"./js/rapier.js?v=8.8","./js/renderer.js":"./js/renderer.js?v=8.8","./js/spec.js":"./js/spec.js?v=8.8","./js/state.js":"./js/state.js?v=8.8","./js/util.js":"./js/util.js?v=8.8","./js/world.js":"./js/world.js?v=8.8","./js/tex.js":"./js/tex.js?v=8.8","./js/gpucull.js":"./js/gpucull.js?v=8.8","@dimforge/rapier3d-compat":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs","three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/webgpu":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/tsl":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.tsl.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module" src="js/menu.js?v=8.8"></script>
 </body>
 </html>

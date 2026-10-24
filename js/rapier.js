@@ -128,7 +128,7 @@ export function tickR() {
   const nv = body.linvel(), sp2 = Math.hypot(nv.x, nv.z), dv = Math.abs(S.v) - sp2;
   if (dv < .02) { inC = false; return; }
   if (!inC && dv > 7 && !cfg.tough) { S.v = v0; return crash('wall', dv); }
-  if (!inC && dv > 1.2) { blip('thud', dv); S.hits++; say(dv > 7 ? 'CRASH!' : 'Bump!', 900); body.applyTorqueImpulse({ x: -lx * dv * 3, y: 0, z: -lz * dv * 3 }, true); }
+  if (!inC && dv > 1.2) { ctx.onHit && ctx.onHit(dv); blip('thud', dv); S.hits++; say(dv > 7 ? 'CRASH!' : 'Bump!', 900); body.applyTorqueImpulse({ x: -lx * dv * 3, y: 0, z: -lz * dv * 3 }, true); }
   let v = sp2; if (inC) v = Math.max(0, v - 6 * TICK * Math.min(1, dv / Math.max(.1, sp2) * 4)); // scraping: wall friction
   const sg = Math.sign(S.v) || 1;
   if (sp2 > .5) { // turn the heading toward the slide direction (backwards when reversing)

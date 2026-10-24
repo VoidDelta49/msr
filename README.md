@@ -33,6 +33,16 @@ Click 125i figures are Honda's published specs. Honda doesn't publish the CVT ra
 - **Variator:** the rollers push the drive pulley closed with about m·ω². The center spring and torque cam push back, harder as the belt climbs and harder under load. The ratio moves until those balance, so at full throttle the engine holds roughly 6,700–7,200 rpm while speed rises. Lighter rollers raise that rpm, and a stiffer center spring raises it further.
 - **Idling Stop:** the engine shuts off after 3 s stopped at idle and restarts when you open the throttle.
 
+## Quests (Build 8.8)
+
+Three quest hubs sit in town, each a coloured beacon in the world and a pin on the minimap (pins at the minimap rim point towards hubs that are further away). Ride into one and hold still for a moment to take the job; the pin then becomes the drop-off. ✕ in the panel cancels, and after a job you have to leave the hub before it can trigger again.
+
+- **Parking challenge** (blue P, in the lot): park in the green bay. Stars for time and hits. *Next* gives another bay.
+- **Parcel delivery** (tan B): the parcel rides on the pillion seat. A crash, a hard wall hit (> 7 m/s, also with Tough Biker on) or a swim and it falls off: game over. Stars for time and hits.
+- **Food delivery** (pink F): quality starts at 100% and drops with bumps, hard braking, hard acceleration, fast lean changes, strong cornering and walls; heat drops steadily to 0 at the time limit (about 7.5 m/s average over the straight-line distance, plus 30 s). A crash, a swim, quality 0 or heat 0 and it is game over. Stars for quality and heat left.
+
+The spoilage numbers are the `K` table at the top of `js/missions.js`.
+
 ## Controls
 
 Touch:
@@ -42,7 +52,7 @@ Touch:
 - Raider / CBR650R: clutch pad (drag down to pull), ▲ / ▼ shift buttons (clutch must be pulled to shift, except on the CBR with E-Clutch on)
 - START button. On the Click, hold the brake while pressing it.
 - ◀ BACK (hold): walk the bike backwards with your feet (~3 km/h, bikes have no reverse). Only when stopped with the throttle shut; on the Raider, in neutral or with the clutch pulled.
-- Top bar: CAM, PARK, GARAGE, RESET, ⚙ (options)
+- Top bar: CAM, GARAGE, RESET, ⚙ (options)
 
 Keyboard:
 
@@ -50,7 +60,7 @@ Keyboard:
 - Raider: `E` / `Shift` shift up, `Q` / `Ctrl` shift down, `Space` clutch
 - Click: `Space` is the rear (CBS) brake lever
 - `X` (hold): walk the bike backwards
-- `R`: start engine, `C`: camera, `G`: garage (bike picker is at the top), `P`: parking mission, `O`: options (`Esc` closes), `Esc`: pause menu (also ☰ in the top bar)
+- `R`: start engine, `C`: camera, `G`: garage (bike picker is at the top), `O`: options (`Esc` closes), `Esc`: pause menu (also ☰ in the top bar)
 
 ## Project layout
 

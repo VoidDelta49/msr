@@ -9,7 +9,7 @@ export const K = {}, TC = { back: 0, st: 0, stId: null, thr: 0, thrId: null, brk
 addEventListener('keydown', e => {
   if (e.repeat) return; K[e.code] = true; const A = actions; if (ctx.MENU) return; // pause menu open (menu.js)
   if (e.code === 'KeyE' || e.code === 'ShiftLeft') A.shift(1); if (e.code === 'KeyQ' || e.code === 'ControlLeft') A.shift(-1);
-  if (e.code === 'KeyR') A.start(); if (e.code === 'KeyC') A.cam(); if (e.code === 'KeyG') A.garage(); if (e.code === 'KeyP') A.park();
+  if (e.code === 'KeyR') A.start(); if (e.code === 'KeyC') A.cam(); if (e.code === 'KeyG') A.garage();
   if (e.code === 'KeyO') A.opts(); else if (e.code === 'Escape') A.closeOpts();
   if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
 });

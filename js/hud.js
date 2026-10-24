@@ -107,13 +107,20 @@ export function drawCluster(inWorld = true) {
 /* minimap */
 const mm = $('mini').getContext('2d'); let miniKey = '';
 export function drawMini(MAP, V) { // V = world.js MAPV {cx, cz, w metres, n px}
-  const MI0 = ctx.MI, k = (S.x * 2 | 0) + ',' + (S.z * 2 | 0) + ',' + (S.psi * 100 | 0) + ',' + (MI0 && MI0.on && !MI0.done ? MI0.bay.x + ':' + MI0.bay.z : '');
+  const MI0 = ctx.MI, k = (S.x * 2 | 0) + ',' + (S.z * 2 | 0) + ',' + (S.psi * 100 | 0) + ',' + (MI0 ? MI0.pk : '');
   if (k === miniKey) return; miniKey = k;
   mm.clearRect(0, 0, 140, 140); mm.save(); mm.beginPath(); mm.arc(70, 70, 68, 0, 7); mm.clip();
   const px = x => ((x - V.cx) / V.w + .5) * V.n, pz = z => ((z - V.cz) / V.w + .5) * V.n, u = px(S.x), v = pz(S.z), Z = 2.6;
   mm.translate(70, 70); mm.rotate(S.psi); mm.scale(Z, Z); mm.translate(-u, -v); mm.drawImage(MAP, 0, 0);
   const dot = (x, z, c, r) => { mm.fillStyle = c; mm.beginPath(); mm.arc(px(x), pz(z), r / Z, 0, 7); mm.fill(); };
-  dot(-40, 40, '#ff4a3d', 4); const MI = ctx.MI; if (MI && MI.on && !MI.done) dot(MI.bay.x, MI.bay.z, '#43e07a', 4); mm.restore();
+  dot(-40, 40, '#ff4a3d', 4); mm.restore();
+  // quest pins (missions.js): hubs while free, the target while on a job; far ones stick to the rim
+  const ca = Math.cos(S.psi), sa = Math.sin(S.psi); mm.textAlign = 'center'; mm.textBaseline = 'middle'; mm.font = 'bold 8px system-ui';
+  for (const p of (MI0 && MI0.pins) || []) {
+    const dx = (px(p.x) - u) * Z, dz = (pz(p.z) - v) * Z, X = dx * ca - dz * sa, Y = dx * sa + dz * ca, d = Math.hypot(X, Y), f = d > 56 ? 56 / d : 1, r = f < 1 ? 4.5 : 6, cx = 70 + X * f, cy = 70 + Y * f;
+    mm.fillStyle = p.c; mm.beginPath(); mm.arc(cx, cy, r, 0, 7); mm.fill(); mm.strokeStyle = '#fff'; mm.lineWidth = 1.5; mm.stroke();
+    mm.fillStyle = '#fff'; if (p.g && f === 1) mm.fillText(p.g, cx, cy + .5); else { mm.beginPath(); mm.arc(cx, cy, 1.8, 0, 7); mm.fill(); }
+  }
   mm.fillStyle = '#ffb020'; mm.beginPath(); mm.moveTo(70, 62); mm.lineTo(76, 76); mm.lineTo(70, 72); mm.lineTo(64, 76); mm.fill();
   mm.strokeStyle = 'rgba(255,255,255,.5)'; mm.lineWidth = 2; mm.beginPath(); mm.arc(70, 70, 68, 0, 7); mm.stroke();
 }

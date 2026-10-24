@@ -199,7 +199,7 @@ function controls(st, y, z, hw, lv, mir) {
 // visor), black spine, big angular shrouds over the radiator, white side panel with black blocks, black upswept tail
 // with grab rails and a long plate hanger, silver heat-shielded can, copper 6-spoke mags with petal discs.
 function sport(ct) {
-  B.G = { rw: .29, rearZ: .65, fork: .728, rake: .436, pivotY: .42, pivotZ: .08, swingX: 0 }; B.wheelCol = 0xb8682c;
+  B.G = { rw: .29, rearZ: .65, fork: .728, rake: .436, pivotY: .42, pivotZ: .08, swingX: 0 }; B.wheelCol = 0xb8682c; B.cargo = { y: .9, z: .47 };
   B.rearH = new THREE.Group(); B.rearH.position.set(0, .29, .65); ct.add(B.rearH); B.rearW = wheelG(.25, .04, .212, 6, .026, false, .095); B.rearH.add(B.rearW);
   mk(cyl(.075, .075, .012, 10), MB, B.rearH, -.065, 0, 0, 0, 0, PI / 2);                                       // sprocket
   mk(arc(.305, .33, 1.35, 2.6, .11), MF, B.rearH, 0, 0, 0);                                                   // inner rear fender
@@ -263,7 +263,7 @@ function sport(ct) {
 // tail lamp under the grab rail, long plate hanger, chunky black muffler, black twin-spoke wheels.
 function scooter(ct) {
   const rw = .258, rake = .46, headY = .86, fork = (headY - rw) / Math.cos(rake), headZ = -.64 + fork * Math.sin(rake);
-  B.G = { rw, rearZ: .64, fork, rake, pivotY: .34, pivotZ: .02, swingX: -.1 }; B.wheelCol = 0x1c1d21;
+  B.G = { rw, rearZ: .64, fork, rake, pivotY: .34, pivotZ: .02, swingX: -.1 }; B.wheelCol = 0x1c1d21; B.cargo = { y: .78, z: .46 };
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .64); ct.add(B.rearH); B.rearW = wheelG(.215, .045, .175, 5, .022, true, 0); B.rearH.add(B.rearW);
   mk(arc(.27, .295, 1.3, 2.55, .11), MF, B.rearH, 0, 0, 0);                                                  // rear hugger
   // unit swing: engine + CVT case pivots with the rear wheel (stretched between pivot and axle each frame)
@@ -329,7 +329,7 @@ const DEC = (() => { const c = document.createElement('canvas'); c.width = 36; c
 const MDec = new THREE.MeshStandardMaterial({ map: DEC, alphaTest: .5, roughness: .4 });
 function supersport(ct) {
   const rw = .315, rake = .445, headY = .92, fz = -.731, fy = .30, fork = (headY - fy) / Math.cos(rake), headZ = fz + fork * Math.sin(rake);
-  B.G = { rw, rearZ: .72, fork, rake, pivotY: .505, pivotZ: .28, swingX: 0 }; B.wheelCol = 0x15161a; B.fenderPaint = true; B.decal = MDec;
+  B.G = { rw, rearZ: .72, fork, rake, pivotY: .505, pivotZ: .28, swingX: 0 }; B.wheelCol = 0x15161a; B.cargo = { y: .84, z: .6 }; B.fenderPaint = true; B.decal = MDec;
   // rear wheel, sprocket (left), caliper (right), hugger
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .72); ct.add(B.rearH); B.rearW = wheelS(.265, .05, 1.8, .216, false); B.rearH.add(B.rearW);
   mk(cyl(.1, .1, .012, 12), MB, B.rearH, -.085, 0, 0, 0, 0, PI / 2); mk(box(.03, .06, .07), MB, B.rearH, .1, .09, -.08);
