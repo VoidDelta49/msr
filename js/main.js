@@ -94,7 +94,7 @@ function toggleCam() {
 ctx.camMode = 1; toggleCam();
 const tmp = new THREE.Vector3();
 // free look: drag the empty scene to orbit, wheel to zoom (FOV); the view eases back to normal once the bike is moving
-const LK = { y: 0, p: 0, id: null, x: 0, yy: 0 }, PT = new Map(); let pinch = 0; camera.rotation.order = 'YXZ';
+const LK = { y: 0, p: 0, id: null, x: 0, yy: 0, yr: 0 }, PT = new Map(); let pinch = 0; camera.rotation.order = 'YXZ';
 const pdist = () => { const [a, b] = [...PT.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
 addEventListener('pointerdown', e => { if (e.target.id !== 'gl' || ctx.GAR || ctx.OPT) return; PT.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (PT.size === 2) { LK.id = null; pinch = pdist(); } else if (PT.size === 1) { LK.id = e.pointerId; LK.x = e.clientX; LK.yy = e.clientY; } });
 addEventListener('pointermove', e => {
@@ -122,7 +122,7 @@ function visuals(dt, now) {
   if (LK.id === null && av > 1.5) { const k = Math.exp(-dt * 3); LK.y *= k; LK.p *= k; if (Math.abs(LK.y) < .002) LK.y = 0; if (Math.abs(LK.p) < .002) LK.p = 0; }
   if (ctx.GAR) studioFrame(dt, now);
   else if (ctx.camMode === 0) {
-    B.cam.rotation.set(-(S.th + (S.wp || 0)) * .4, clamp(S.yaw * .12, -.25, .25), S.lean * .35); camera.rotation.set(-.3 + LK.p, LK.y, 0);
+    LK.yr += (clamp(S.yaw * .12, -.25, .25) - LK.yr) * (1 - Math.exp(-dt * 8)); B.cam.rotation.set(-(S.th + (S.wp || 0)) * .4, LK.yr, S.lean * .35); camera.rotation.set(-.3 + LK.p, LK.y, 0);
     const vib = S.running ? .0007 * (.4 + S.rpm / 9000) : 0, ph = now * S.rpm / 60 * 2 * Math.PI; camera.position.set(Math.sin(ph * .5) * vib, Math.sin(ph) * vib, 0);
   } else {
     const bx = Math.sin(S.psi), bz = Math.cos(S.psi), ox = bx * Math.cos(LK.y) + bz * Math.sin(LK.y), oz = bz * Math.cos(LK.y) - bx * Math.sin(LK.y); tmp.set(S.x + ox * 4.2, 1.9 + S.zH + LK.p * 4, S.z + oz * 4.2); camera.position.lerp(tmp, 1 - Math.exp(-dt * 5)); camera.position.y = Math.max(camera.position.y, H(camera.position.x, camera.position.z) + .6);
@@ -168,11 +168,13 @@ function water() { if (S.wet) { S.v *= .9; return; } if (H(S.x, S.z) < SEA + .12
 // dt is capped at 50 ms (a hitch drops time instead of spiralling), so 7 ticks always cover a frame. The old cap of 4
 // (33.3 ms) was hit by every frame at <=30 fps: the leftover time was thrown away and the interpolation phase reset,
 // so the drawn bike jumped back and forth up to ~35 cm per frame and ran slow-motion. Never drop the fraction.
-let acc = 0, pms = 0; const prev = { x: 0, z: 0, psi: 0, zH: 0, th: 0 }, keepS = { x: 0, z: 0, psi: 0, zH: 0, th: 0 };
+let acc = 0, pms = 0; // everything the renderer/camera reads from S gets interpolated between the last two 120 Hz ticks: a frame sees 1, 2 or 3
+// ticks, so a raw value (lean, yaw rate, steering) moves in uneven steps and the camera, parented to the lean, judders in turns
+const IK = ['x', 'z', 'psi', 'zH', 'th', 'lean', 'yaw', 'wp', 'delta'], prev = {}, keepS = {}; for (const k of IK) prev[k] = keepS[k] = 0;
 function tickRapier(dt) {
   const t0 = performance.now(); acc += dt; let n = 0;
   while (acc >= TICK && n < 7) {
-    prev.x = S.x; prev.z = S.z; prev.psi = S.psi; prev.zH = S.zH; prev.th = S.th;
+    for (const k of IK) prev[k] = S[k] || 0;
     tickR(); acc -= TICK; n++;
   }
   if (acc >= TICK) acc %= TICK;
@@ -180,8 +182,9 @@ function tickRapier(dt) {
 }
 // draw between the last two ticks so 90/120/144 Hz screens don't judder
 function interp(on) {
-  if (!on || Math.abs(S.x - prev.x) + Math.abs(S.z - prev.z) > 5) return null; const a = acc / TICK, keep = keepS; keep.x = S.x; keep.z = S.z; keep.psi = S.psi; keep.zH = S.zH; keep.th = S.th;
-  S.x = prev.x + (S.x - prev.x) * a; S.z = prev.z + (S.z - prev.z) * a; S.psi = prev.psi + (S.psi - prev.psi) * a; S.zH = prev.zH + (S.zH - prev.zH) * a; S.th = prev.th + (S.th - prev.th) * a; return keep;
+  if (!on || Math.abs(S.x - prev.x) + Math.abs(S.z - prev.z) > 5) return null; const a = acc / TICK, keep = keepS;
+  for (const k of IK) { const v = S[k] || 0; keep[k] = v; let d = v - prev[k]; if (k === 'psi') d = Math.atan2(Math.sin(d), Math.cos(d)); S[k] = prev[k] + d * a; } // psi: shortest way round (atan2 resets wrap it)
+  return keep;
 }
 
 /* ---------- loop ---------- */
