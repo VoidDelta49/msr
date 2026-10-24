@@ -62,6 +62,7 @@ js/hud.js             gauge clusters (sport / scooter LCD), messages, minimap
 js/world.js           the island, roads, town, collision footprints, parking lot
 js/renderer.js        WebGPU/WebGL setup and fallback, quality preset
 js/perf.js            culling, terrain LOD, merging, Lambert materials, auto resolution
+js/gpucull.js         WebGPU compute culling + indirect draws for instanced props
 js/audio.js, controls.js, garage.js, options.js, missions.js, config.js, state.js, util.js
 ```
 
@@ -78,6 +79,8 @@ Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on de
 - **Retro res** (Off / 480p / 360p / 240p): caps the render height and upscales with crisp pixels. Also a big speed-up on slow phones.
 - **Auto resolution** (on by default): drops render resolution in 10% steps (down to 55%) when the game can't hold the screen's refresh rate, and creeps back up when it can.
 - **Culling**: props are static instanced chunks (700 m); off-screen chunks are skipped in the main and shadow pass. Small one-off props hide past 220 / 550 m.
+- **GPU culling** (WebGPU only, on by default, reloads): each prop type is one instanced mesh for the whole island; a compute pass culls every instance against the view and its draw distance each frame and draws the survivors with an indirect draw. Props near the bike are kept for the shadow pass. On WebGL the chunked culling above is used.
+- **Shader warm-up**: while the title screen shows LOADING…, every material's shader is built up front (in parallel where the browser supports it), so switching camera, crashing or riding into a new area doesn't stall on a shader compile.
 - **Terrain LOD**: the ground is 5×5 tiles of 280 m, frustum-culled, each at 5 / 10 / 20 m detail by distance, with skirts so seams never show. Physics still uses the full-detail heights.
 - Bike and church meshes are merged per material (fewer draw calls); static objects don't recompute their matrices each frame; the gauge cluster and minimap only redraw when something on them changes.
 - With Show FPS on, the readout also shows draw calls per frame and the current auto-resolution scale.

@@ -3,10 +3,12 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { PI, clamp, sstep, angd, fbm, rand } from './util.js';
-import { scene, ctex, std, aoGeo, ANISO } from './renderer.js';
+import { scene, ctex, std, aoGeo, ANISO, GPU } from './renderer.js';
+import { cfg } from './config.js';
+import { gpuInst, finishGpuInst } from './gpucull.js';
 import * as T from './tex.js';
 import { mkTex } from './tex.js';
-import { FAR, freeze, cullFar, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
+import { DRAW, FAR, freeze, cullFar, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
 
 // N64-style textures (tex.js): tiny, dithered, bilinear. Tiling scale ~ what the old 256 px speck textures had.
 const tAsph=mkTex(T.asphalt()),tCon=mkTex(T.concrete());
@@ -82,7 +84,12 @@ const dummy=new THREE.Object3D(),CELL=700; // CELL: power-wire chunk size
 // Instanced props, split into static 700 m chunks (one InstancedMesh per type per chunk). Buffers never change after
 // load; three frustum-culls each chunk exactly (main + shadow pass) and perf.js hides chunks past their draw distance.
 const CHUNK=700;
-function inst(geo,mat,list,shadow=true,far=FAR.big){const cells=new Map();
+// WebGPU + Options > GPU culling: per-instance culling in a compute pass instead (gpucull.js). Tiny lists and flat
+// decals stay here.
+const GCULL=GPU&&cfg.gpuCull!==false;
+function inst(geo,mat,list,shadow=true,far=FAR.big){
+  if(GCULL&&list.length>=8&&!mat.transparent){geo.computeBoundingBox();const b=geo.boundingBox;if(b.max.y-b.min.y>.05){gpuInst(geo,mat,list,shadow,Math.min(far,DRAW));return}}
+  const cells=new Map();
   for(const o of list){const k=Math.floor(o.x/CHUNK)*1000+Math.floor(o.z/CHUNK);let a=cells.get(k);if(!a)cells.set(k,a=[]);a.push(o)}
   for(const L of cells.values()){const m=new THREE.InstancedMesh(geo,mat,L.length);
     L.forEach((o,i)=>{dummy.position.set(o.x,o.y||0,o.z);dummy.rotation.set(0,o.ry||0,0);dummy.scale.set(o.sx||1,o.sy||1,o.sz||1);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);if(o.c!==undefined)m.setColorAt(i,new THREE.Color(o.c))});
@@ -271,6 +278,7 @@ const freeBays=[];
 }
 const marker=new THREE.Mesh(new THREE.BoxGeometry(1.4,.02,2.4),new THREE.MeshBasicMaterial({color:0x43e07a,transparent:true,opacity:.45,depthWrite:false}));
 const arrow=new THREE.Mesh(new THREE.ConeGeometry(.35,.8,4).rotateX(PI),new THREE.MeshBasicMaterial({color:0x43e07a}));
+export const GPU_TYPES=finishGpuInst(scene);
 marker.visible=arrow.visible=false;liteMaterials(scene);scene.add(marker,arrow);
 
 export { SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP };

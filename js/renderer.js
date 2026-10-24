@@ -45,9 +45,9 @@ export const sun = new THREE.DirectionalLight(0xffeccc, 2.8); sun.castShadow = Q
 // Post: one pass over the finished frame. Tone mapping + sRGB first (renderOutput), then FXAA (expects display-space
 // colours), then the N64 filter: a little extra saturation and 15-bit colour (5 bits per channel, like the N64's
 // framebuffer) with a 4x4 ordered dither. Both are Options toggles; with neither the scene renders directly.
-let pipe = null;
+let pipe = null, scenePass = null;
 if (cfg.fxaa || cfg.n64) {
-  const T = await import('three/tsl'); let out = T.renderOutput(T.pass(scene, camera));
+  const T = await import('three/tsl'); scenePass = T.pass(scene, camera); let out = T.renderOutput(scenePass);
   if (cfg.fxaa) { const { fxaa } = await import('three/addons/tsl/display/FXAANode.js'); out = fxaa(out); }
   if (cfg.n64) {
     const b = new Uint8Array(64), BY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]; BY.forEach((v, i) => { b[i * 4] = b[i * 4 + 1] = b[i * 4 + 2] = Math.round((v + .5) / 16 * 255); b[i * 4 + 3] = 255; });
@@ -59,6 +59,21 @@ if (cfg.fxaa || cfg.n64) {
   pipe = new THREE.RenderPipeline(renderer); pipe.outputColorTransform = false; pipe.outputNode = out;
 }
 export const draw = () => pipe ? pipe.render() : renderer.render(scene, camera);
+// Shader warm-up, during loading: build every material's shader/pipeline now instead of on first use (the first
+// crash, switching to 3rd person, a new area coming into view). Everything hidden is shown and frustum culling is off
+// for the duration. compileAsync links the programs in parallel where the driver allows (KHR_parallel_shader_compile on
+// WebGL, async pipelines on WebGPU), targeting the same render target as the post pass so the variants match; one real
+// draw then catches what compileAsync doesn't cover (shadow-pass depth shaders, post-processing).
+export async function warm() {
+  const hid = [], fc = [], t0 = performance.now();
+  scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } if (o.frustumCulled) { fc.push(o); o.frustumCulled = false; } });
+  try {
+    if (renderer.compileAsync) { const rt = renderer.getRenderTarget(); if (scenePass) renderer.setRenderTarget(scenePass.renderTarget); try { await renderer.compileAsync(scene, camera); } finally { renderer.setRenderTarget(rt); } }
+    draw();
+  } catch (e) { console.warn('shader warm-up', e); }
+  for (const o of hid) o.visible = false; for (const o of fc) o.frustumCulled = true;
+  return performance.now() - t0;
+}
 addEventListener('resize', () => { setDPR(); renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 // N64 "baked AO": a vertex colour from dark at the bottom (y0) to full at the top (y1, default the bbox). Gouraud-

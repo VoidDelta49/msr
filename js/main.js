@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { $, clamp } from './util.js';
 import { cfg, save, bikeCfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
-import { renderer, scene, camera, sun, GPU, API, FELL, draw } from './renderer.js';
+import { renderer, scene, camera, sun, GPU, API, FELL, draw, warm } from './renderer.js';
 import { SEA, ICZ, H, roadH, MAP } from './world.js';
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
@@ -17,6 +17,8 @@ import { MI, togglePark, missions, animMarker } from './missions.js';
 import { G as GARAGE, buildGarage } from './garage.js';
 import { O, openOpts, closeOpts } from './options.js';
 import { cullUpdate, autoRes, resScale } from './perf.js';
+import { gpuCull } from './gpucull.js';
+import { GPU_TYPES } from './world.js';
 
 /* ---------- data ---------- */
 const ids = await (await fetch('data/bikes/index.json?v=' + BUILD)).json();
@@ -44,6 +46,8 @@ function setBike() {
 // physics engine first: everything below positions the Rapier body
 if (!await initRapier()) { $('go').disabled = true; $('apiNote').textContent = ''; setTimeout(() => say("Couldn't load the physics engine (" + RP.err + '). Check your connection and reload.', 1e9), 0); }
 setBike(); save();
+// build every shader now, behind the title screen (see renderer.js warm())
+{ const go = $('go'), was = go.disabled, txt = go.textContent; go.disabled = true; go.textContent = 'LOADING…'; gpuCull(camera); ctx.warmMs = await warm(); go.disabled = was; go.textContent = txt; }
 
 function startEngine() {
   if (S.running) return; if (S.fuel <= 0) return say('Out of fuel. Push it to the gas station.');
@@ -133,8 +137,8 @@ function loop(t) {
   else if (!ctx.paused && !ctx.OPT) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); }
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if (S.crashed && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > 50) { lastDraw = t; drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, ICZ); } cullUpdate(camera); renderer.info.reset(); draw();
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > 50) { lastDraw = t; drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, ICZ); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw();
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
-$('apiNote').textContent = 'Renderer: ' + (GPU ? 'WebGPU' : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
+$('apiNote').textContent = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
 window.__cpm = { renderer, scene, camera, S, cfg, ctx, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce };
