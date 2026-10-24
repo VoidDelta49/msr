@@ -40,7 +40,7 @@ export function initAudio() {
   A.wLoF = node('lowpass', 200, .7); A.wLo = node('gain'); chain(b1, A.wLoF, A.wLo, A.wPan);          // wind rumble / buffeting
   A.wHiF = node('bandpass', 900, .7); A.wHi = node('gain'); chain(w1, A.wHiF, A.wHi, A.wPan);         // wind rush past the helmet
   A.tAF = node('lowpass', 300, .8); A.tA = node('gain'); chain(b2, A.tAF, A.tA, A.road);              // tyre roar on asphalt
-  A.tDF = node('bandpass', 2200, .6); A.tD = node('gain'); chain(w2, A.tDF, A.tD, A.road);            // gravel/grass crunch
+  A.tDF = node('bandpass', 1600, .9); A.tD = node('gain'); chain(w2, A.tDF, A.tD, A.road);            // gravel/grass crunch
   A.skF = node('bandpass', 1150, 7); A.sk = node('gain'); chain(w1, A.skF, A.sk, A.road);             // tyre squeal
   A.scF = node('bandpass', 2800, 1.6); A.sc = node('gain'); chain(w2, A.scF, A.sc, A.road);           // metal/plastic scraping
   // CVT belt whine (Click); gain 0 for chain bikes
@@ -115,7 +115,8 @@ export function updAudio() {
   // squeal = low-side warning: follows the same overload the crash check uses (ABS braking doesn't count), full and highest-pitched
   // at 1.4 where the half-second crash timer starts
   const slip = grounded ? Math.max(sstep(.95, 1.4, S.overLS ?? S.over ?? 0) * Math.min(1, v / 6), S.skid || 0) : 0;
-  st(A.sk.gain, slip * .22 * onRd, .03); st(A.skF.frequency, 1000 + 300 * slip + 160 * vnoise(t * 3, 5), .05); st(A.tD.gain, roll * (1 - onRd) * .16 * grit + slip * (1 - onRd) * .25, .03);
+  st(A.sk.gain, slip * .22 * onRd, .03); st(A.skF.frequency, 1000 + 300 * slip + 160 * vnoise(t * 3, 5), .05); // crunch is white noise in the band ears (and phone speakers) are most sensitive to, so it sits far below the asphalt roar's gain
+  st(A.tD.gain, roll * (1 - onRd) * .045 * grit + slip * (1 - onRd) * .08, .03);
   const scr = live ? (S.crashed ? (S.v || 0) : (S.scrape || 0)) : 0;
   st(A.sc.gain, Math.min(.35, scr * .035) * grit, .03);
   // crash: muffle everything briefly (a knock to the helmet)
