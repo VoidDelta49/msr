@@ -3,6 +3,7 @@
 // Front of the bike is -z; ct coordinates are ground-relative at static sag.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { attribute, uniformArray, texture, uv, vec2, vec3, select } from 'three/tsl';
 import { PI } from './util.js';
 import { scene, std } from './renderer.js';
 import * as T from './tex.js';
@@ -246,12 +247,12 @@ function sport(ct) {
   B.exh = new THREE.Group(); ct.add(B.exh);
   // stock: black header under the engine into a big silver heat-shielded can angled up; aftermarket: shorter, louder cans
   B.buildExh = (s, cf) => {
-    B.exh.clear(); const L = [.5, .4, .34][s], Rr = [.068, .06, .055][s], col = [0xb9bec4, 0x111111, 0x6f7fa8][s], m = cf ? MCF : s ? std(col, .35, .8) : MAlu;
+    B.exh.clear(); const L = [.5, .4, .34][s], Rr = [.068, .06, .055][s], col = [0xb9bec4, 0x111111, 0x6f7fa8][s], m = cf ? MCF : s ? xstd(col, .35, .8) : MAlu;
     tube([.04, .33, -.26], [.07, .2, -.12], .022, MB, B.exh); tube([.07, .2, -.12], [.13, .22, .2], .024, MB, B.exh);
     const a = [.14, .25, .2], d = [0, Math.sin(.32), Math.cos(.32)], b = a.map((v, i) => v + d[i] * L);
     tube(a, b, Rr, m, B.exh, 8); tube(b, b.map((v, i) => v + d[i] * .05), Rr * .8, MB, B.exh, 8);
     if (s === 0) { mk(prof([[.24, .27], [.62, .4], [.66, .37], [.28, .22]], .015, .004), MAlu, B.exh, .14 + Rr, 0, 0); mk(box(.03, .05, .08), MB, B.exh, .14, .4, .42); }
-    mergeStatic(B.exh, new Set());
+    batchExh();
   };
 }
 
@@ -302,12 +303,12 @@ function scooter(ct) {
   B.cam = new THREE.Group(); B.cam.position.set(0, 1.38, .2); ct.add(B.cam);
   B.exh = new THREE.Group(); ct.add(B.exh);
   B.buildExh = (s, cf) => {
-    B.exh.clear(); const col = [0x1a1b1e, 0x111111, 0x6f7fa8][s], m = cf ? MCF : std(col, .45, .5), L = [1, .85, .75][s];
+    B.exh.clear(); const col = [0x1a1b1e, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, .45, .5), L = [1, .85, .75][s];
     tube([.05, .2, -.02], [.13, .25, .26], .022, MC, B.exh);
     const P = [[.24, .36], [.24 + .4 * L, .42], [.32 + .42 * L, .4], [.32 + .42 * L, .28], [.32, .22], [.22, .27]];
     mk(prof(P, .1, .015), m, B.exh, .17, 0, 0); mk(cyl(.026, .026, .05, 8), MC, B.exh, .17, .33, .34 + .43 * L, PI / 2);
     if (s === 0) mk(prof([[.3, .37], [.6, .41], [.6, .35], [.3, .3]], .012, .004), MAlu, B.exh, .225, 0, 0); // heat guard
-    mergeStatic(B.exh, new Set());
+    batchExh();
   };
 }
 
@@ -394,24 +395,69 @@ function supersport(ct) {
   // stock: 4 headers sweep down in front of the engine into a collector and the short silver belly box;
   // slip-on / full system: link pipe to a side can on the right (full system: heat-blued titanium headers)
   B.buildExh = (s, cf) => {
-    B.exh.clear(); const hm = s === 2 ? std(0x8a7f9a, .3, .85) : MAlu;
+    B.exh.clear(); const hm = s === 2 ? xstd(0x8a7f9a, .3, .85) : MAlu;
     for (const x of [-.12, -.04, .04, .12]) { tube([x, .6, -.31], [x * .9, .3, -.4], .019, hm, B.exh); tube([x * .9, .3, -.4], [x * .5, .17, -.25], .019, hm, B.exh); tube([x * .5, .17, -.25], [.03, .17, -.06], .02, hm, B.exh); }
     if (s === 0) {
       mk(prof(pp([[430, 615], [470, 598], [650, 640], [690, 690], [665, 705], [440, 660]]), .17, .015), cf ? MCF : MAlu, B.exh, .04, 0, 0);
       mk(box(.12, .05, .02), MB, B.exh, .04, .29, .45, .5);
     } else {
-      const L = [0, .34, .3][s], Rr = [0, .056, .05][s], m = cf ? MCF : std([0, 0x9a9ea4, 0x6f7fa8][s], .3, .85);
+      const L = [0, .34, .3][s], Rr = [0, .056, .05][s], m = cf ? MCF : xstd([0, 0x9a9ea4, 0x6f7fa8][s], .3, .85);
       tube([.03, .17, -.06], [.06, .19, .12], .03, hm, B.exh); tube([.06, .19, .12], [.15, .29, .34], .028, hm, B.exh);
       const a = [.15, .29, .34], d = [0, Math.sin(.25), Math.cos(.25)], b = a.map((v, i) => v + d[i] * L);
       tube(a, b, Rr, m, B.exh, 8); tube(b, b.map((v, i) => v + d[i] * .04), Rr * .75, MB, B.exh, 8);
     }
-    mergeStatic(B.exh, new Set());
+    batchExh();
   };
 }
 
-// Draw-call diet: meshes that share a parent and a material are baked into one mesh (a bike drew ~50 meshes, each twice
-// with its shadow). Animated groups (wheels, steering, fork slider, levers, throttle) keep their own transforms; their
-// static children are merged inside them. The swingarm is skipped (it is rescaled every frame).
+// Draw-call diet (Build 8.2). Every plain-coloured part of the bike (all MeshStandardMaterials without a texture, plus
+// the livery-painted panels and carbon parts) is drawn by ONE material, MT: each source material becomes an entry in a
+// small uniform palette (colour, roughness, metalness, emissive, texture mode), and every vertex carries its entry's
+// index ('pal'). The bike's animated groups (steering, fork slider, wheels, rear hub, swingarm, levers, throttle) become
+// the bones of one SkinnedMesh, so the whole bike is a single draw with the parts still moving exactly as before (main.js
+// keeps animating the same groups). The source materials stay the garage's handles: carbon()/colour changes edit them
+// and syncPal() copies them into the palette (no shader recompiles; switching bikes reuses the same shaders too).
+// Leftovers with their own textures (grille, plate, floor mat, decal, cluster) are merged per material per group.
+const PN = 48, PA = [], PB = [], PE = [], PAL = new Map();
+for (let i = 0; i < PN; i++) { PA.push(new THREE.Vector4(1, 1, 1, .5)); PB.push(new THREE.Vector4()); PE.push(new THREE.Vector4()); }
+const uA = uniformArray(PA, 'vec4'), uB = uniformArray(PB, 'vec4'), uE = uniformArray(PE, 'vec4');
+function writePal(m, i) { const c = m.color, e = m.emissive, k = m.emissiveIntensity; PA[i].set(c.r, c.g, c.b, m.roughness); PB[i].set(m.metalness, m.map === LIV.t ? 1 : m.map === CF ? 2 : 0, 0, 0); PE[i].set(e.r * k, e.g * k, e.b * k, 0); }
+function palIdx(m) { let i = PAL.get(m); if (i === undefined) { i = Math.min(PAL.size, PN - 1); PAL.set(m, i); writePal(m, i); } return i; }
+function syncPal() { for (const [m, i] of PAL) writePal(m, i); }
+const palable = m => m.isMeshStandardMaterial && !m.vertexColors && !m.transparent && !m.alphaTest && (!m.map || m.map === LIV.t || m.map === CF);
+const MT = (() => {
+  const m = new THREE.MeshStandardNodeMaterial(), i = attribute('pal', 'float').add(.5).toInt(), a = uA.element(i), b = uB.element(i), u = uv();
+  const liv = texture(LIV.t, u.mul(vec2(1 / (LZ1 - LZ0), 1 / (LY1 - LY0))).add(vec2(-LZ0 / (LZ1 - LZ0), -LY0 / (LY1 - LY0)))), cf = texture(CF, u.mul(4));
+  m.colorNode = a.rgb.mul(select(b.y.greaterThan(1.5), cf.rgb, select(b.y.greaterThan(.5), liv.rgb, vec3(1))));
+  m.roughnessNode = a.w; m.metalnessNode = b.x; m.emissiveNode = uE.element(i).rgb; return m;
+})();
+// one mesh's geometry in the frame `rel` (a Matrix4 from its world to the target), with pal (+ bone) attributes
+function palGeo(o, rel, bone) {
+  const src = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, g = new THREE.BufferGeometry(), n = src.attributes.position.count;
+  g.setAttribute('position', src.attributes.position.clone()); g.setAttribute('normal', src.attributes.normal.clone());
+  g.setAttribute('uv', src.attributes.uv ? src.attributes.uv.clone() : new THREE.BufferAttribute(new Float32Array(n * 2), 2));
+  g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(rel, o.matrixWorld));
+  g.setAttribute('pal', new THREE.BufferAttribute(new Float32Array(n).fill(palIdx(o.material)), 1));
+  if (bone !== undefined) { const si = new Uint16Array(n * 4), sw = new Float32Array(n * 4); for (let k = 0; k < n; k++) { si[k * 4] = bone; sw[k * 4] = 1; } g.setAttribute('skinIndex', new THREE.BufferAttribute(si, 4)); g.setAttribute('skinWeight', new THREE.BufferAttribute(sw, 4)); }
+  return g;
+}
+// exhaust: rebuilt on garage changes, one plain palette mesh (casts its own shadow)
+const XC = new Map(), xstd = (c, r, mt) => { const k = c + '/' + r + '/' + mt; let m = XC.get(k); if (!m) XC.set(k, m = std(c, r, mt)); return m; };
+function batchExh() {
+  const L = B.exh.children.filter(o => o.isMesh); if (!L.length) return; B.exh.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(B.exh.matrixWorld).invert(), m = new THREE.Mesh(mergeGeometries(L.map(o => palGeo(o, inv))), MT);
+  m.castShadow = true; for (const o of L) { B.exh.remove(o); o.geometry.dispose(); } B.exh.add(m);
+}
+function batchBike() {
+  // the swingarm mesh is rescaled every frame: its transform moves to an empty group (still B.swing) that becomes a bone
+  const sw = new THREE.Group(), sm = B.swing; sw.position.copy(sm.position); sw.quaternion.copy(sm.quaternion); sw.scale.copy(sm.scale); sm.parent.add(sw); sw.add(sm); sm.position.set(0, 0, 0); sm.quaternion.identity(); sm.scale.set(1, 1, 1); B.swing = sw;
+  const bones = [B.ct, B.steer, B.slider, B.frontW, B.rearW, B.rearH, sw, B.thrG, B.brkL, B.cluL], bi = new Map(bones.map((b, i) => [b, i]));
+  B.root.updateMatrixWorld(true); const inv = new THREE.Matrix4().copy(B.ct.matrixWorld).invert(), skip = new Set(B.rider), L = [], parts = [];
+  B.ct.traverse(o => { if (o === B.exh) return; if (o.isMesh && !skip.has(o) && palable(o.material) && !(o.parent === B.exh)) L.push(o); });
+  for (const o of L) { let p = o.parent; while (!bi.has(p)) p = p.parent; parts.push(palGeo(o, inv, bi.get(p))); o.parent.remove(o); o.geometry.dispose(); }
+  const m = new THREE.SkinnedMesh(mergeGeometries(parts), MT); m.castShadow = true; m.frustumCulled = false; B.ct.add(m);
+  m.bind(new THREE.Skeleton(bones)); B.skin = m;
+}
 function mergeList(L, par) {
   const g = mergeGeometries(L.map(o => { o.updateMatrix(); return (o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone()).applyMatrix4(o.matrix); }));
   const m = new THREE.Mesh(g, L[0].material); m.castShadow = true; par.add(m); for (const o of L) { par.remove(o); o.geometry.dispose(); } return m;
@@ -420,31 +466,26 @@ function mergeStatic(par, skip) {
   const by = new Map();
   for (const o of [...par.children]) {
     if (o.isGroup) { if (o !== B.exh) mergeStatic(o, skip); continue; }
-    if (!o.isMesh || skip.has(o) || o.material.map === cluTex) continue;
+    if (!o.isMesh || o.isSkinnedMesh || skip.has(o) || o.material.map === cluTex) continue;
     if (!by.has(o.material)) by.set(o.material, []); by.get(o.material).push(o);
   }
   for (const L of by.values()) if (L.length > 1) mergeList(L, par);
 }
 const MODELS = { sport, scooter, supersport };
 export function buildModel(bike) {
-  B.ct.clear(); B.fenderPaint = false; B.decal = null; MODELS[bike.model](B.ct); B.kind = bike.model; setLiveryUV();
+  if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
+  B.ct.clear(); B.fenderPaint = false; B.decal = null; PAL.clear(); MODELS[bike.model](B.ct); B.kind = bike.model; setLiveryUV();
   // rider: one mesh per material, still listed in B.rider (camera toggles visibility, crashes move them)
   const rm = new Map(); for (const o of B.rider) { if (!rm.has(o.material)) rm.set(o.material, []); rm.get(o.material).push(o); }
   B.rider = [...rm.values()].map(L => L.length > 1 ? mergeList(L, B.ct) : L[0]);
-  mergeStatic(B.ct, new Set([B.swing, ...B.rider]));
-  // Shadows: the bike's static + steering parts cast through ONE proxy (position + normal: WebGPU's shadow pass needs normals) on layer 1 (only the shadow camera
-  // sees it), instead of ~25 separate shadow draws. Rider, swingarm and exhaust still cast their own (they move/swap).
-  const keep = new Set([B.swing, ...B.rider]), parts = [], inv = new THREE.Matrix4(); B.ct.updateMatrixWorld(true); inv.copy(B.ct.matrixWorld).invert();
-  B.ct.traverse(o => {
-    if (!o.isMesh || o.material.map === cluTex) return; o.castShadow = keep.has(o);
-    if (!keep.has(o)) { const src = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, g = new THREE.BufferGeometry(); g.setAttribute('position', src.attributes.position.clone()); g.setAttribute('normal', src.attributes.normal.clone()); parts.push(g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld))); }
-  });
-  const px = new THREE.Mesh(mergeGeometries(parts), MB); px.castShadow = true; px.layers.set(1); B.ct.add(px);
+  batchBike(); mergeStatic(B.ct, new Set(B.rider));
+  // shadows: the skinned bike (1 draw, animated parts included), rider and exhaust; the small textured leftovers don't cast
+  const keep = new Set([B.skin, ...B.rider]); B.ct.traverse(o => { if (o.isMesh && o.parent !== B.exh) o.castShadow = keep.has(o); });
 }
 // cfb: body 0 paint / 1 carbon / 2 paint-tinted carbon · cff fenders · cfw wheels · cfx muffler cover
 export function applyLook(spec) {
   drawLivery(B.kind, '#' + new THREE.Color(spec.c).getHexString(), spec.lv || ''); MP.userData.r = spec.rough ?? .3; // matt paints: rougher
   carbon(MP, !!spec.cfb, spec.c, spec.cfb === 2); carbon(MF, !!spec.cff, B.fenderPaint ? spec.c : 0x15161a); carbon(MW, !!spec.cfw, B.wheelCol);
   MRS.color.set(spec.rim || B.wheelCol); MCov.color.set(spec.ec || 0x60656d); if (B.decal) B.decal.color.set(spec.hd || '#f1f1ec');
-  B.buildExh(spec.snd, !!spec.cfx);
+  B.buildExh(spec.snd, !!spec.cfx); syncPal();
 }
