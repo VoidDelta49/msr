@@ -118,11 +118,13 @@ function clearPeers() { for (const P of [...NET.peers.values()]) delPeer(P); ctx
 // u8 type, u8 flags, u16 rpm, u32 t(ms), f32 x y z, i16 quat xyzw, i16 lean th steer slider rearH bodyY (1e-4), i16 v (cm/s), u8 thr, i8 gear
 // flags: 1 engine on, 2 crashed, 4 braking, 8 paused / in the garage, 16 racing
 const OUT = new DataView(new ArrayBuffer(PKT)), I16 = 32767;
+const GP = new THREE.Vector3(), GQ = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
 function pack() {
-  const d = OUT, r = B.root, q = r.quaternion;
+  // in the garage the drawn bike sits on the studio pedestal (900 m up): send where it really is on the island instead
+  const d = OUT, r = ctx.GAR ? GP.set(S.x, S.zH, S.z) : B.root.position, q = ctx.GAR ? GQ.setFromAxisAngle(UP, S.psi) : B.root.quaternion;
   d.setUint8(0, 1); d.setUint8(1, (S.running ? 1 : 0) | (S.crashed ? 2 : 0) | (S.brake > .1 ? 4 : 0) | (ctx.paused || ctx.GAR ? 8 : 0) | (ctx.racing ? 16 : 0));
   d.setUint16(2, Math.max(0, Math.min(65535, S.rpm | 0)), true); d.setUint32(4, performance.now() >>> 0, true);
-  d.setFloat32(8, r.position.x, true); d.setFloat32(12, r.position.y, true); d.setFloat32(16, r.position.z, true);
+  d.setFloat32(8, r.x, true); d.setFloat32(12, r.y, true); d.setFloat32(16, r.z, true);
   d.setInt16(20, q.x * I16, true); d.setInt16(22, q.y * I16, true); d.setInt16(24, q.z * I16, true); d.setInt16(26, q.w * I16, true);
   const s16 = (o, v) => d.setInt16(o, Math.max(-I16, Math.min(I16, Math.round(v * 1e4))), true);
   s16(28, B.lean.rotation.z); s16(30, B.body.rotation.x); s16(32, B.steer.rotation.y); s16(34, B.slider.position.y); s16(36, B.rearH.position.y); s16(38, B.body.position.y);
@@ -188,7 +190,7 @@ export function netFrame(dt, now) {
     const crashed = !!(b.fl & 2); if (P.fl !== b.fl) { P.fl = b.fl; for (const r of h.rider) r.visible = !crashed; P.tag.classList.toggle('idle', !!(b.fl & 8)); P.tag.classList.toggle('race', !!(b.fl & 16)); }
     // cull: far bikes off, and frustum (the skinned mesh skips three's own culling)
     P.x = o.position.x; P.z = o.position.z; P.d = Math.hypot(P.x - S.x, P.z - S.z);
-    SPH.center.copy(o.position); o.visible = P.d < 350 && FR.intersectsSphere(SPH);
+    SPH.center.copy(o.position); o.visible = !ctx.GAR && P.d < 350 && FR.intersectsSphere(SPH); // the studio is private: no one else in it
     dots.push(P); mk += (P.x / 3 | 0) + ',' + (P.z / 3 | 0) + ';';
     tag(P, now);
   }
