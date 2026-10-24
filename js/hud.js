@@ -59,7 +59,7 @@ function scooter(g, sp) {
   const iss = ctx.bcfg.iss, blink = (performance.now() / 400 | 0) % 2;
   g.fillStyle = S.issOff ? (blink ? '#ffb020' : dim) : iss ? '#3d6b7a' : dim; g.fillText('IDLING STOP', 262, 62);
   if (!S.running && !S.issOff) { g.fillStyle = '#ff4a3d'; g.font = 'bold 18px system-ui'; g.fillText('ENGINE OFF', 52, 100); }
-  if (S.lim && (performance.now() / 90 | 0) % 2) { g.fillStyle = '#ff3b2f'; g.font = 'bold 18px system-ui'; g.fillText('PGM-FI', 52, 100); }
+  if (S.lim && (performance.now() / 90 | 0) % 2) { g.fillStyle = '#ff3b2f'; g.font = 'bold 18px system-ui'; g.fillText('FI', 52, 100); }
 }
 /* tft: CBR650R 5" colour TFT. Bar tach across the top (red from the redline), shift light, big speed, gear, E-Clutch
    lamp, fuel bar, clock and odometer */
@@ -85,7 +85,7 @@ function tft(g, sp) {
   const fr = S.fuel / sp.fuel.cap;
   for (let i = 0; i < 8; i++) { g.fillStyle = fr > (i + .5) / 8 ? (fr < .2 ? '#ff4a3d' : '#dfe7ee') : '#16202a'; g.fillRect(26 + i * 13, 140, 10, 16); }
   g.fillStyle = '#8a97a3'; g.font = 'bold 13px system-ui'; g.fillText('FUEL', 26, 172);
-  if (ctx.bcfg.autoClutch) { g.fillStyle = '#43e07a'; g.font = 'bold 14px system-ui'; g.fillText('E-CLUTCH', 396, 214); }
+  if (ctx.bcfg.autoClutch) { g.fillStyle = '#43e07a'; g.font = 'bold 14px system-ui'; g.fillText('AUTO CLU', 396, 214); }
   g.font = 'bold 18px system-ui';
   if (!S.running) { g.fillStyle = '#ff4a3d'; g.fillText('ENGINE OFF', 130, 118); }
   else if (S.cl > .05) { g.fillStyle = '#ffb020'; g.fillText('CLUTCH ' + (S.cl * 100 | 0) + '%', 130, 118); }

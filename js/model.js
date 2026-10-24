@@ -317,9 +317,14 @@ function scooter(ct) {
 // 603 px per metre). Upper fairing, screen, lamps, mirrors and TFT are frame-mounted (they don't turn with the bars),
 // gold Showa SFF-BP upside-down fork, black Y-spoke wheels, four stainless headers into a belly muffler.
 const pp = a => a.map(([x, y]) => [.72 - (x - 265) / 603, (800 - y) / 603]);
-const DEC = (() => { const c = document.createElement('canvas'); c.width = 128; c.height = 24; const g = c.getContext('2d');
-  g.fillStyle = '#fff'; g.font = 'bold 23px Georgia,"Times New Roman",serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('HONDA', 64, 13);
-  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = THREE.NearestFilter; return t; })();
+// belly-pan "word": no real branding, just five chunky pseudo-letters (seeded pixel noise with letter-like stems) on a
+// tiny canvas, magnified with nearest filtering so it reads as pixelated N64 gibberish
+const DEC = (() => { const c = document.createElement('canvas'); c.width = 36; c.height = 9; const g = c.getContext('2d'); let sd = 0x5eed1e;
+  const rnd = () => { sd ^= sd << 13; sd ^= sd >>> 17; sd ^= sd << 5; return (sd >>> 0) / 4294967296; };
+  g.fillStyle = '#fff';
+  for (let k = 0; k < 5; k++) { const x0 = 1 + k * 7;
+    for (let y = 1; y < 8; y++) for (let x = 0; x < 5; x++) { const stem = (x === 0 || x === 4) && rnd() < .8, bar = (y === 1 || y === 4 || y === 7) && rnd() < .55; if (stem || bar || rnd() < .12) g.fillRect(x0 + x, y, 1, 1); } }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; return t; })();
 const MDec = new THREE.MeshStandardMaterial({ map: DEC, alphaTest: .5, roughness: .4 });
 function supersport(ct) {
   const rw = .315, rake = .445, headY = .92, fz = -.731, fy = .30, fork = (headY - fy) / Math.cos(rake), headZ = fz + fork * Math.sin(rake);
@@ -367,7 +372,7 @@ function supersport(ct) {
     mk(prof([[-.045, -.02], [.045, -.026], [.05, .022], [-.04, .03]], .018, .005), MB, ct, s * .29, 1.08, -.63, -.25, PI / 2 + s * .25, 0);
   }
   mk(box(.06, .1, .06), MK, ct, 0, .75, -.85, .3);                                                                 // centre intake between the lamps
-  // HONDA on the belly pan, both sides (one decal material; reads correctly on each side)
+  // unbranded pixel 'lettering' on the belly pan, both sides (one decal material)
   for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.36, .068), MDec, ct, s * .213, .18, -.19, 0, s * (PI / 2 - .077), 0);
   // stainless headers live in B.exh (the full system swaps them)
   // steering: gold USD fork, yokes, clip-ons, front wheel and fender
