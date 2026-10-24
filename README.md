@@ -16,16 +16,18 @@ The layout is data: `data/map/island.json` holds the coastline (radius samples a
 
 ## Bikes
 
-| | Suzuki Raider R150 Fi | Honda Click 125i | Honda CBR650R |
-|---|---|---|---|
-| Engine | 147 cc DOHC, ~18.5 PS @ 10,000 rpm, ~13.8 Nm @ 8,500 | 124.8 cc SOHC eSP, 8.2 kW (11.1 PS) @ 8,500 rpm, 10.8 Nm @ 5,000 | 649 cc DOHC inline-four, 95 PS @ 12,000 rpm, 63 Nm @ 9,500 |
-| Transmission | 6-speed return shift (1-N-2-3-4-5-6), wet clutch, chain | V-Matic CVT, dry centrifugal clutch, belt | 6-speed (primary 1.690, gears 3.071–1.214), assist/slipper clutch, 15/42 chain |
-| Extras | Anti-stall clutch assist | Idling Stop, CBS brakes, start needs the brake held | Honda E-Clutch (clutchless starts and shifts, can't stall), slipper clutch, 5" TFT with shift light |
-| Garage | Exhaust, ECU, tires, paint, sprockets, carbon fiber parts, preload, ride height, springs, damping | Rollers (bola), center spring, clutch springs, pulley set, exhaust, ECU, tires, paint, carbon fiber parts, preload, ride height, springs, damping | Exhaust, ECU, tires, 3 factory paints, sprockets, carbon fiber parts, preload, ride height, springs, damping, E-Clutch on/off |
+| | Suzuki Raider R150 Fi | Honda Click 125i | Suzuki Smash 115 / Fi | Honda CBR650R |
+|---|---|---|---|---|
+| Engine | 147 cc DOHC, ~18.5 PS @ 10,000 rpm, ~13.8 Nm @ 8,500 | 124.8 cc SOHC eSP, 8.2 kW (11.1 PS) @ 8,500 rpm, 10.8 Nm @ 5,000 | Carb: 109.7 cc SOHC 2-valve, 5.6 kW @ 7,000 rpm, 9.0 Nm @ 4,000. Fi: 113 cc, 6.4 kW @ 8,000, 9.0 Nm @ 4,000 | 649 cc DOHC inline-four, 95 PS @ 12,000 rpm, 63 Nm @ 9,500 |
+| Transmission | 6-speed return shift (1-N-2-3-4-5-6), wet clutch, chain | V-Matic CVT, dry centrifugal clutch, belt | 4-speed rotary (N-1-2-3-4, 4 → N only when stopped), automatic centrifugal clutch, no clutch lever, 14/36 chain | 6-speed (primary 1.690, gears 3.071–1.214), assist/slipper clutch, 15/42 chain |
+| Extras | Anti-stall clutch assist | Idling Stop, CBS brakes, start needs the brake held | Carb or fuel injection in one bike (Parts > Fuel system), three trims: spokes + drums, spokes + front disc, mags + front disc | Honda E-Clutch (clutchless starts and shifts, can't stall), slipper clutch, 5" TFT with shift light |
+| Garage | Exhaust, ECU, tires, paint, sprockets, carbon fiber parts, preload, ride height, springs, damping | Rollers (bola), center spring, clutch springs, pulley set, exhaust, ECU, tires, paint, carbon fiber parts, preload, ride height, springs, damping | Fuel system, wheels & brakes, engine tune, exhaust, tires, paint, sprockets, carbon fiber parts, preload, ride height, springs, damping | Exhaust, ECU, tires, 3 factory paints, sprockets, carbon fiber parts, preload, ride height, springs, damping, E-Clutch on/off |
 
 CBR650R figures are Honda's published specs (208 kg, 1,450 mm wheelbase, 25.5° rake, 15.4 L, 120/70-17 + 180/55-17, 310 mm twin discs). Honda doesn't publish the torque curve or rev limit: the curve is shaped to the published peaks, the limiter is set at 12,750 rpm. In-game (flat road, 68 kg rider, E-Clutch launch): 0–100 km/h ≈ 4.1 s, 400 m ≈ 12.2 s @ 191 km/h, top ≈ 226 km/h, 1st gear tops out at 104 km/h.
 
 Click 125i figures are Honda's published specs. Honda doesn't publish the CVT ratio range or final drive, so those are estimates (2.40–0.80 × 10.0) chosen to match the claimed ~100 km/h top speed.
+
+Smash figures are Suzuki Philippines' published specs (99 kg curb, 1,240 mm wheelbase, 750 mm seat, 70/90-17 + 80/90-17). Suzuki doesn't publish the gear ratios, tank size or torque curve: the ratios (primary 3.421, 2.833 / 1.705 / 1.238 / 0.958, 14/36) are typical of Suzuki's 110 cc rotary engines, the tank is 4.0 L, and the curves are shaped to the published peaks.
 
 ### How the CVT works in-game
 
@@ -61,6 +63,7 @@ Touch:
 
 - Handlebar: bottom-left (drag around it to steer)
 - Throttle pad (drag down to open, release to close) plus a brake button (CBS on the Click)
+- Smash: ▲ / ▼ shift buttons only (automatic clutch, shift any time)
 - Raider / CBR650R: clutch pad (drag down to pull), ▲ / ▼ shift buttons (clutch must be pulled to shift, except on the CBR with E-Clutch on)
 - KEY (ignition) and KILL (engine stop switch) buttons, START (hold to crank). Start sequence: key on, wait ~2 s for the fuel pump, neutral or clutch in (Click: hold the brake), hold START with the throttle closed. Cold engines crank longer and idle high until warm. A crash trips the tip-over sensor: turn the key off and on again.
 - ◀ BACK (hold): walk the bike backwards with your feet (~3 km/h, bikes have no reverse). Only when stopped with the throttle shut; on the Raider, in neutral or with the clutch pulled.
@@ -71,6 +74,7 @@ Keyboard:
 - `W` / `S`: throttle / brake, `A` / `D`: steer
 - Raider: `E` / `Shift` shift up, `Q` / `Ctrl` shift down, `Space` clutch
 - Click: `Space` is the rear (CBS) brake lever
+- Smash: `E` / `Q` shift (no clutch), `Space` is the rear brake. Carb version: no pump to prime, but a cold start cranks longer
 - `X` (hold): walk the bike backwards
 - `K`: ignition key, `T`: kill switch, `R` (hold): starter, `C`: camera, `G`: garage (bike picker is at the top), `O`: options (`Esc` closes), `Esc`: pause menu (also ☰ in the top bar)
 
@@ -90,7 +94,7 @@ js/drivetrain.js      manual gearbox + CVT (ratio, clutch capacity, variator, Id
 js/physics.js         engine, clutch-slip solver, steering/lean, bump-stop helper
 js/tyre.js            tyre slip->force curve and surface grip (asphalt / dirt shoulder / grass / paddy)
 js/rapier.js          Rapier3D chassis: dynamic bike body, suspension probes, streamed static colliders (fixed 120 Hz tick)
-js/model.js           3D models (Raider R150 underbone, Click 125i scooter, CBR650R supersport), low-poly extruded panels
+js/model.js           3D models (Raider R150 underbone, Click 125i scooter, Smash 115 step-through, CBR650R supersport), low-poly extruded panels
 js/tex.js             N64-style procedural textures (tiny, dithered, bilinear) + sky
 js/hud.js             gauge clusters (sport / scooter LCD / CBR TFT), messages, minimap
 js/world.js           builds the island from data/map/island.json: terrain, roads, town, props, collision footprints, parking lot

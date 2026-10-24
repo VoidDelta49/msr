@@ -3,7 +3,7 @@ import { lerpTable } from './util.js';
 import { DRIVES } from './drivetrain.js';
 
 // part option keys that multiply instead of replace
-const MUL = new Set(['pow', 'ie', 'csp']);
+const MUL = new Set(['pow', 'ie', 'csp', 'brake']);
 // ... and keys that add (dm: mass change in kg, e.g. carbon parts)
 const ADD = new Set(['dm']);
 

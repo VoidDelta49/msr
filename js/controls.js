@@ -36,8 +36,8 @@ ptr($('bStart'), () => { buzz(15); $('bStart').classList.add('on'); actions.star
 export function input(dt) {
   const kT = K.KeyW || K.ArrowUp, kB = K.KeyS || K.ArrowDown, kS = ((K.KeyD || K.ArrowRight) ? 1 : 0) - ((K.KeyA || K.ArrowLeft) ? 1 : 0);
   S.thr = TC.thrId !== null ? TC.thr : appr(S.thr, kT ? 1 : 0, (kT ? 3.5 : 9) * dt);
-  // scooter: Space is the left (rear/CBS) brake lever instead of a clutch
-  const cvt = ctx.spec.type === 'cvt', kBr = kB || (cvt && K.Space);
+  // scooter / rotary semi-auto: no clutch lever, so Space is the rear brake instead
+  const cvt = ctx.spec.type !== 'manual', kBr = kB || (cvt && K.Space);
   // analog lever: touch sets the pull directly, keys squeeze it on progressively (hold longer = harder)
   S.brake = TC.brkId !== null ? TC.brk : appr(S.brake, kBr ? 1 : 0, (kBr && cfg.analogBrk !== false ? 2.5 : 12) * dt);
   if (TC.stId === null) TC.wa = appr(TC.wa, 0, 5 * dt); const wt = TC.stId !== null || TC.wa !== 0, tgt = wt ? TC.wa / WMAX() : kS; S.steer = wt ? tgt : appr(S.steer, tgt, (kS ? 2.2 : 4) * dt);

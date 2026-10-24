@@ -146,6 +146,9 @@ body.cvt #brkFill{left:0;right:0;bottom:auto;width:auto;height:var(--p,0%);backg
 /* scooter: no clutch or shifter, so the brake lever becomes a big pad where the clutch would be */
 body.cvt #clu,body.cvt #shift{display:none}
 body.cvt #brk{right:calc(var(--er) + var(--tw) + 12px);bottom:var(--eb);width:var(--cw);height:var(--th);border-radius:16px;font-size:13px;line-height:1.5}
+/* rotary semi-auto: shifter but no clutch, so the shifter drops into the clutch pad's place */
+body.nocl #clu{display:none}
+body.nocl #shift{bottom:var(--eb)}
 body.gar #shift{display:none}
 body.opt #shift{display:none}
 /* left-handed: swap the two thumb clusters */

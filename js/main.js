@@ -41,7 +41,8 @@ function reset() {
   });
   ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody();
 }
-function recompute() { ctx.spec = computeSpec(ctx.bike, ctx.bcfg); applyLook(ctx.spec); }
+// a part that changes the model's shape (B.var, e.g. spoke vs mag wheels) rebuilds it
+function recompute() { ctx.spec = computeSpec(ctx.bike, ctx.bcfg); if ((ctx.spec.var | 0) !== B.var) { buildModel(ctx.bike, ctx.spec); attachCam(); } applyLook(ctx.spec); }
 // put the camera / rider visibility back on a freshly built local model
 function attachCam() { if (!ctx.GAR && ctx.camMode === 0) { B.cam.add(camera); camera.position.set(0, 0, 0); camera.rotation.set(-.3, 0, 0); } B.rider.forEach(m => m.visible = !ctx.GAR && ctx.camMode === 1); }
 // multiplayer (net.js): a remote rider's bike + paint is built into B like ours, snapshotted, then ours is rebuilt.
@@ -59,14 +60,14 @@ ctx.bikeTemplate = look => {
   for (const k in bike.parts) { const v = P[k]; if (Number.isInteger(v)) c[k] = Math.max(0, Math.min(bike.parts[k].o.length - 1, v)); }
   const key = bike.id + JSON.stringify(Object.keys(bike.parts).map(k => c[k])); if (TPL.has(key)) return TPL.get(key); if (S.crashed) return null; evictTpl();
   let spec; try { spec = computeSpec(bike, c); } catch (e) { spec = computeSpec(bike, { ...bike.defaults }); }
-  buildModel(bike); applyLook(spec); const t = snapshot(); releaseSkin(); buildModel(ctx.bike); recompute(); attachCam();
+  buildModel(bike, spec); applyLook(spec); const t = snapshot(); releaseSkin(); buildModel(ctx.bike, ctx.spec); recompute(); attachCam();
   TPL.set(key, t); return t;
 };
 function setBike(keepPos) {
   const bike = ctx.bikes[cfg.bike] || ctx.bikes[ids[0]]; cfg.bike = bike.id;
   ctx.bike = bike; ctx.bcfg = bikeCfg(bike); ctx.drive = DRIVES[bike.drivetrain];
-  buildModel(bike); recompute();
-  document.body.classList.toggle('cvt', bike.drivetrain === 'cvt');
+  buildModel(bike, computeSpec(bike, ctx.bcfg)); recompute();
+  document.body.classList.toggle('cvt', bike.drivetrain === 'cvt'); document.body.classList.toggle('nocl', bike.drivetrain === 'rotary');
   S.fuel = ctx.spec.fuel.cap; if (!keepPos) S.warm = 0; const keep = ctx.GAR || keepPos ? { x: S.x, z: S.z, psi: S.psi } : null; reset(); if (keep) Object.assign(S, keep);
   attachCam();
   $('brkT').textContent = bike.drivetrain === 'cvt' ? 'BRAKE · CBS' : 'BRAKE';

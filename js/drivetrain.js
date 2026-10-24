@@ -97,4 +97,24 @@ const cvt = {
   },
 };
 
-export const DRIVES = { manual, cvt };
+/* ---------- rotary: 4-speed rotary gearbox + automatic centrifugal clutch (Suzuki Smash-style "semi-auto") ---------- */
+// No clutch lever. A centrifugal clutch bites as the revs rise (so it idles and pulls away in gear), and the gear pedal
+// opens the clutch through its linkage while it is pressed. Rotary pattern N-1-2-3-4: from top the pedal goes round to
+// N, which the gearbox only allows at a standstill.
+const rotary = {
+  ...manual,
+  spec(s, bike, b) { manual.spec(s, bike, b); [s.e0, s.e1] = bike.manual.cent; s.e0 += s.eng; s.e1 += s.eng; },
+  clutch(s, S) {
+    const f = S.act > 0 ? 0 : clamp((S.rpm * S.rpm - s.e0 * s.e0) / (s.e1 * s.e1 - s.e0 * s.e0), 0, 1);
+    S.lev = 1; S.c = f; return f * s.cap;
+  },
+  shift(s, S, d) {
+    if (S.shCD > 0) return; S.shCD = .2; let g = S.gear;
+    if (d > 0) { if (g < s.nG) g++; else if (Math.abs(S.v) < .6) g = 0; else { say('Stop to rotate into N', 900); return; } } else g = Math.max(0, g - 1);
+    if (g !== S.gear) { S.gear = g; S.act = .18; blip('click'); } // pedal down: the linkage holds the clutch open
+  },
+  canStart() { },
+  stats(s, b) { return manual.stats.call(this, s, b) + `<br>Centrifugal clutch bites ${s.e0} rpm, locks ${s.e1} rpm`; },
+};
+
+export const DRIVES = { manual, cvt, rotary };

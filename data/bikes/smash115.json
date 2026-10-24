@@ -1,0 +1,332 @@
+{
+  "id": "smash115",
+  "name": "Suzuki Smash 115 / Fi",
+  "short": "Smash 115",
+  "tag": "4-speed rotary · auto clutch",
+  "blurb": "Step-through underbone, two engines in one: switch Fuel system in Parts. Carb: 109.7 cc SOHC 2-valve, 5.6 kW @ 7,000 rpm, 9.0 Nm @ 4,000 rpm. Fi: 113 cc, 6.4 kW @ 8,000 rpm, 9.0 Nm @ 4,000 rpm. 4-speed rotary gearbox with an automatic centrifugal clutch (no clutch lever), chain drive, 17\" wheels, 99 kg.",
+  "model": "underbone",
+  "cluster": "smash",
+  "drivetrain": "rotary",
+  "chassis": {
+    "m": 167,
+    "r": 0.285,
+    "wb": 1.24,
+    "lf": 0.68,
+    "lr": 0.56,
+    "h": 0.55,
+    "I": 30,
+    "drag": 0.23,
+    "roll": 22,
+    "brake": 0.7,
+    "bf": 0.65,
+    "travel": [0.09, 0.07]
+  },
+  "engine": {
+    "Ie": 0.01,
+    "idle": 1400,
+    "red": 8500,
+    "peakPS": 7.6,
+    "tachMax": 10000,
+    "torque": [
+      [0, 3],
+      [1000, 5],
+      [2000, 7],
+      [3000, 8.4],
+      [4000, 9],
+      [5000, 8.8],
+      [6000, 8.3],
+      [7000, 7.64],
+      [8000, 6.6],
+      [9000, 5.2],
+      [10000, 3.5]
+    ],
+    "fric": [0.5, 0.0002],
+    "fuel": {
+      "cap": 4,
+      "idle": 0.00016,
+      "k": 0.0026
+    }
+  },
+  "manual": {
+    "prim": 3.421,
+    "gears": [0, 2.833, 1.705, 1.238, 0.958],
+    "eta": 0.88,
+    "clutchCap": 20,
+    "cent": [2200, 3600],
+    "final": ["rs", "fs"]
+  },
+  "sound": {
+    "lp": 0.9,
+    "gain": 0.85,
+    "whine": 0,
+    "cyl": 1,
+    "pipe": 300,
+    "pq": 4,
+    "body": 90,
+    "bq": 2.2,
+    "punch": 0.9,
+    "rough": 0.14,
+    "crackle": 0.12,
+    "crackRpm": 5500,
+    "mech": 0.55,
+    "intake": 0.5,
+    "bright": 0.8,
+    "drive": 1.4,
+    "starter": 0.8
+  },
+  "parts": {
+    "fuelsys": {
+      "l": "Fuel system",
+      "o": [
+        { "n": "Carburetor (Smash 115)", "carb": 1 },
+        {
+          "n": "Fuel injection (Smash Fi 115)",
+          "carb": 0,
+          "peakPS": 8.7,
+          "red": 9000,
+          "dm": 1,
+          "TQ": [
+            [0, 3.2],
+            [1000, 5.4],
+            [2000, 7.4],
+            [3000, 8.6],
+            [4000, 9],
+            [5000, 8.9],
+            [6000, 8.6],
+            [7000, 8.2],
+            [8000, 7.64],
+            [9000, 6.4],
+            [10000, 4.5]
+          ],
+          "fuel": { "cap": 4, "idle": 0.00013, "k": 0.0023 }
+        }
+      ]
+    },
+    "trim": {
+      "l": "Wheels & brakes",
+      "o": [
+        { "n": "Spokes · drum / drum", "var": 0 },
+        { "n": "Spokes · front disc", "var": 1, "brake": 1.15, "bf": 0.75 },
+        { "n": "Mags · front disc", "var": 2, "brake": 1.15, "bf": 0.75 }
+      ]
+    },
+    "tune": {
+      "l": "Engine tune",
+      "o": [
+        { "n": "Stock", "pow": 1 },
+        { "n": "Street tune (+4%)", "pow": 1.04, "ie": 0.9 },
+        { "n": "Bore-up kit (+12%)", "pow": 1.12, "ie": 0.85, "idle": 1500 }
+      ]
+    },
+    "exhaust": {
+      "l": "Exhaust",
+      "o": [
+        { "n": "Stock", "pow": 1, "snd": 0 },
+        { "n": "Slip-on (+5%)", "pow": 1.05, "snd": 1 },
+        { "n": "Open pipe (+9%)", "pow": 1.09, "snd": 2 }
+      ]
+    },
+    "tires": {
+      "l": "Tires",
+      "o": [
+        { "n": "Stock", "mu": 0.85 },
+        { "n": "Sport", "mu": 1 },
+        { "n": "Racing", "mu": 1.2 }
+      ]
+    },
+    "paint": {
+      "l": "Paint",
+      "o": [
+        { "n": "White / Blue", "c": "#ecebe6", "lv": "wb", "hd": "#1f2a5c" },
+        { "n": "Black / Red", "c": "#1b1c1f", "lv": "kr", "wc": "#c21d1d" },
+        { "n": "Matte Navy / Gold", "c": "#2e3157", "lv": "ng", "rough": 0.65, "wc": "#c9a24a", "hd": "#c9a24a" },
+        { "n": "Red / Black", "c": "#c8161e", "lv": "rk" }
+      ]
+    },
+    "intake": {
+      "l": "Air filter",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Sport foam (+3%)", "pow": 1.03 },
+        { "n": "Cold-air intake (+5%)", "pow": 1.05 }
+      ]
+    },
+    "flywheel": {
+      "l": "Flywheel",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Lightened (quicker revs)", "ie": 0.8 },
+        { "n": "Heavy (smoother)", "ie": 1.3 }
+      ]
+    },
+    "brakes": {
+      "l": "Brake pads",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Sintered", "brake": 1.08 },
+        { "n": "Race compound", "brake": 1.17 }
+      ]
+    },
+    "wheelcol": {
+      "l": "Wheel colour",
+      "o": [
+        { "n": "Match paint" },
+        { "n": "Black", "wc": "#16171a" },
+        { "n": "Gold", "wc": "#c9a24a" },
+        { "n": "Silver", "wc": "#b9bdc2" },
+        { "n": "Red", "wc": "#c21d1d" },
+        { "n": "Blue", "wc": "#1f4fbf" },
+        { "n": "White", "wc": "#e9e9e4" }
+      ]
+    },
+    "rimstripe": {
+      "l": "Rim stripe",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Gold", "rim": "#c9a24a" },
+        { "n": "Red", "rim": "#d42a2a" },
+        { "n": "White", "rim": "#f1f1ec" },
+        { "n": "Cyan", "rim": "#16b3cc" }
+      ]
+    },
+    "cover": {
+      "l": "Engine cover",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Black", "ec": "#1b1c1f" },
+        { "n": "Gold", "ec": "#c9a24a" },
+        { "n": "Red", "ec": "#a8161c" },
+        { "n": "Blue", "ec": "#1f44d8" }
+      ]
+    },
+    "cfbody": {
+      "l": "Body panels",
+      "g": "Carbon fiber",
+      "o": [
+        { "n": "Stock (painted)" },
+        { "n": "Carbon (−1.6 kg)", "dm": -1.6, "cfb": 1 },
+        { "n": "Tinted carbon (−1.6 kg)", "dm": -1.6, "cfb": 2 }
+      ]
+    },
+    "cffender": {
+      "l": "Fenders",
+      "g": "Carbon fiber",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Carbon (−0.4 kg)", "dm": -0.4, "cff": 1 }
+      ]
+    },
+    "cfwheel": {
+      "l": "Wheels",
+      "g": "Carbon fiber",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Carbon (−1.8 kg)", "dm": -1.8, "cfw": 1 }
+      ]
+    },
+    "cfexh": {
+      "l": "Muffler cover",
+      "g": "Carbon fiber",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Carbon (−0.3 kg)", "dm": -0.3, "cfx": 1 }
+      ]
+    }
+  },
+  "sliders": [
+    {
+      "k": "pf",
+      "l": "Fork preload",
+      "min": -20,
+      "max": 20,
+      "u": " mm"
+    },
+    {
+      "k": "pr",
+      "l": "Shock preload",
+      "min": -20,
+      "max": 20,
+      "u": " mm"
+    },
+    {
+      "k": "yf",
+      "l": "Front ride height",
+      "min": -25,
+      "max": 25,
+      "step": 5,
+      "u": " mm"
+    },
+    {
+      "k": "yr",
+      "l": "Rear ride height",
+      "min": -25,
+      "max": 25,
+      "step": 5,
+      "u": " mm"
+    },
+    {
+      "k": "fs",
+      "l": "Front sprocket",
+      "min": 13,
+      "max": 15,
+      "u": "T"
+    },
+    {
+      "k": "rs",
+      "l": "Rear sprocket",
+      "min": 32,
+      "max": 42,
+      "u": "T"
+    },
+    {
+      "k": "kf",
+      "l": "Fork spring",
+      "min": 5,
+      "max": 14,
+      "u": " kN/m"
+    },
+    {
+      "k": "kr",
+      "l": "Shock spring",
+      "min": 8,
+      "max": 20,
+      "u": " kN/m"
+    },
+    {
+      "k": "damp",
+      "l": "Damping",
+      "min": 20,
+      "max": 90,
+      "u": "%"
+    }
+  ],
+  "toggles": [],
+  "defaults": {
+    "fuelsys": 0,
+    "trim": 0,
+    "tune": 0,
+    "exhaust": 0,
+    "tires": 0,
+    "paint": 0,
+    "intake": 0,
+    "flywheel": 0,
+    "brakes": 0,
+    "wheelcol": 0,
+    "rimstripe": 0,
+    "cover": 0,
+    "cfbody": 0,
+    "cffender": 0,
+    "cfwheel": 0,
+    "cfexh": 0,
+    "pf": 0,
+    "pr": 0,
+    "yf": 0,
+    "yr": 0,
+    "fs": 14,
+    "rs": 36,
+    "kf": 8,
+    "kr": 12,
+    "damp": 45
+  },
+  "hint": "KEY on, hold START (the clutch is automatic, so any gear works), then twist. ▲▼ shift with no clutch: N-1-2-3-4, and 4 → N only when stopped"
+}

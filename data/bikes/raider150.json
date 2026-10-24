@@ -129,8 +129,8 @@
       "l": "Brake pads",
       "o": [
         { "n": "Stock" },
-        { "n": "Sintered", "brake": 0.972 },
-        { "n": "Race compound", "brake": 1.053 }
+        { "n": "Sintered", "brake": 1.08 },
+        { "n": "Race compound", "brake": 1.17 }
       ]
     },
     "wheelcol": {
