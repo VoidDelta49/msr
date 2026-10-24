@@ -106,13 +106,13 @@ export function drawCluster(inWorld = true) {
 
 /* minimap */
 const mm = $('mini').getContext('2d'); let miniKey = '';
-export function drawMini(MAP, ICZ) {
+export function drawMini(MAP, V) { // V = world.js MAPV {cx, cz, w metres, n px}
   const MI0 = ctx.MI, k = (S.x * 2 | 0) + ',' + (S.z * 2 | 0) + ',' + (S.psi * 100 | 0) + ',' + (MI0 && MI0.on && !MI0.done ? MI0.bay.x + ':' + MI0.bay.z : '');
   if (k === miniKey) return; miniKey = k;
   mm.clearRect(0, 0, 140, 140); mm.save(); mm.beginPath(); mm.arc(70, 70, 68, 0, 7); mm.clip();
-  const u = (S.x / 1300 + .5) * 140, v = ((S.z - ICZ) / 1300 + .5) * 140, Z = 2.6;
+  const px = x => ((x - V.cx) / V.w + .5) * V.n, pz = z => ((z - V.cz) / V.w + .5) * V.n, u = px(S.x), v = pz(S.z), Z = 2.6;
   mm.translate(70, 70); mm.rotate(S.psi); mm.scale(Z, Z); mm.translate(-u, -v); mm.drawImage(MAP, 0, 0);
-  const dot = (x, z, c, r) => { mm.fillStyle = c; mm.beginPath(); mm.arc((x / 1300 + .5) * 140, ((z - ICZ) / 1300 + .5) * 140, r / Z, 0, 7); mm.fill(); };
+  const dot = (x, z, c, r) => { mm.fillStyle = c; mm.beginPath(); mm.arc(px(x), pz(z), r / Z, 0, 7); mm.fill(); };
   dot(-40, 40, '#ff4a3d', 4); const MI = ctx.MI; if (MI && MI.on && !MI.done) dot(MI.bay.x, MI.bay.z, '#43e07a', 4); mm.restore();
   mm.fillStyle = '#ffb020'; mm.beginPath(); mm.moveTo(70, 62); mm.lineTo(76, 76); mm.lineTo(70, 72); mm.lineTo(64, 76); mm.fill();
   mm.strokeStyle = 'rgba(255,255,255,.5)'; mm.lineWidth = 2; mm.beginPath(); mm.arc(70, 70, 68, 0, 7); mm.stroke();

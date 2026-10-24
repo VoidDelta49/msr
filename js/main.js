@@ -4,7 +4,7 @@ import { $, clamp } from './util.js';
 import { cfg, save, bikeCfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, camera, sun, GPU, API, FELL, draw, warm } from './renderer.js';
-import { SEA, ICZ, H, roadH, MAP, zones, nearRoad } from './world.js';
+import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad } from './world.js';
 ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
@@ -138,7 +138,7 @@ function loop(t) {
   else if (!ctx.paused && !ctx.OPT) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); }
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if (S.crashed && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > 50) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, ICZ); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); jankEnd(t, performance.now() - J0, hudUp);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > 50) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); jankEnd(t, performance.now() - J0, hudUp);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 $('apiNote').textContent = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));

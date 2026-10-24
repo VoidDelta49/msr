@@ -2,9 +2,9 @@
 // (Philippine-flavoured, not a real place.) Built once at load; physics reads H() and OBBS.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { PI, clamp, sstep, angd, fbm, rand } from './util.js';
+import { PI, clamp, sstep, fbm, rand } from './util.js';
 import { scene, ctex, std, aoGeo, ANISO, GPU } from './renderer.js';
-import { cfg, Q } from './config.js';
+import { cfg, Q, BUILD } from './config.js';
 import { attribute, texture, uv, vec2, vec3, float, select } from 'three/tsl';
 import { gpuInst, finishGpuInst } from './gpucull.js';
 import * as T from './tex.js';
@@ -13,48 +13,69 @@ import { DRAW, FAR, freeze, cullFar, addLOD, liteMaterials, mergeByMaterial } fr
 
 // N64-style textures (tex.js): tiny, dithered, bilinear. Tiling scale ~ what the old 256 px speck textures had.
 const tAsph=mkTex(T.asphalt()),tCon=mkTex(T.concrete());
-const SEA=-2.2,ICX=0,ICZ=-100,VX=-60,VZ=-300;
-function coastR(th){return 520+70*Math.sin(2*th+.6)+45*Math.sin(5*th+2)+18*Math.sin(11*th)-160*Math.exp(-(((angd(th,PI/2))/.45)**2))}
+// The island layout (coast, terrain features, river, roads, town blocks, parked vehicles, prop counts) lives in
+// data/map/island.json, so a map editor only has to edit that file. This module turns it into terrain, roads and props.
+// Landmarks with hand-placed detail (parking lot, gas station, plaza, church, market) are still code below.
+export const MD=await (await fetch('data/map/island.json?v='+BUILD)).json();
+const SEA=MD.sea,ICX=MD.island.cx,ICZ=MD.island.cz,CR=MD.island.coast,CN=CR.length;
+// shoreline radius: periodic Catmull-Rom through the coast samples (sample 0 at +x, turning towards +z)
+function coastR(th){const f=(((th/(2*PI))%1)+1)%1*CN,i=Math.floor(f),t=f-i,g=k=>CR[((k%CN)+CN)%CN],a=g(i-1),b=g(i),c=g(i+1),d=g(i+2);
+  return .5*(2*b+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t)}
 const inland=(x,z)=>coastR(Math.atan2(z-ICZ,x-ICX))-Math.hypot(x-ICX,z-ICZ);
-const TOWN={x:210,z:110},PADDY={x0:230,x1:420,z0:-190,z1:10},TERR={x:160,z:-320,r:120};
 const rectD=(x,z,hx,hz,cx=0,cz=0)=>Math.hypot(Math.max(Math.abs(x-cx)-hx,0),Math.max(Math.abs(z-cz)-hz,0));
+const rd=(x,z,r,pad=0)=>rectD(x,z,(r.x1-r.x0)/2+pad,(r.z1-r.z0)/2+pad,(r.x0+r.x1)/2,(r.z0+r.z1)/2); // distance to a {x0,z0,x1,z1} rect
+const TOWN=MD.town,PADDY=MD.paddy,FEAT=MD.features,HL=MD.hills,PROPS=MD.props;
+const VOL=FEAT.find(f=>f.type==='volcano')||{x:1e6,z:1e6,h:0,r:1,crater:0,craterR:1},TERR=FEAT.find(f=>f.type==='terraces')||{x:1e6,z:1e6,r:0};
+for(const f of FEAT)if(f.type==='ridge'){const p=f.pts;f.bb=[Math.min(...p.map(q=>q[0]))-3*f.w,Math.max(...p.map(q=>q[0]))+3*f.w,Math.min(...p.map(q=>q[1]))-3*f.w,Math.max(...p.map(q=>q[1]))+3*f.w]}
+// distance to a polyline; PD.h = the 3rd coordinate (if any) interpolated at the nearest point (ridge crest heights)
+const PD={d:0,h:0};
+function polyD(x,z,P){let bd=1e18,bh=0;for(let i=1;i<P.length;i++){const[ax,az,ah=0]=P[i-1],[bx,bz,bh2=0]=P[i],ex=bx-ax,ez=bz-az,t=clamp(((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez),0,1),dx=ax+ex*t-x,dz=az+ez*t-z,d=dx*dx+dz*dz;if(d<bd){bd=d;bh=ah+(bh2-ah)*t}}PD.d=Math.sqrt(bd);PD.h=bh;return PD}
+// Terrain = coast profile + rolling hills inland, then each feature in file order:
+//  volcano {x,z,h,r,crater,craterR} · terraces {x,z,r,h,step} (stepped rice terraces) · ridge {pts:[[x,z,crest h]...],w}
+//  (a mountain range along a polyline, crest height per point, gaussian cross-section of half-width w) · flat {x0,z0,x1,z1,h,blend} (levelled to height h,
+//  blending back over 'blend' metres: town, paddies, airstrip).
 function terrBase(x,z){
   const inl=inland(x,z);
   let h=inl>0?SEA+.2+Math.min(inl,60)*.045:Math.max(-10,SEA-.2+inl*.06);
-  const hl=sstep(60,320,inl);h+=(fbm(x*.006+7,z*.006)*40-6)*hl;
-  const dv=Math.hypot(x-VX,z-VZ);h+=200*Math.exp(-Math.pow(dv/150,1.8))-22*Math.exp(-((dv/22)**2));
-  const dt=Math.hypot(x-TERR.x,z-TERR.z);if(dt<TERR.r+40){h+=32*Math.exp(-((dt/100)**2));const w=1-sstep(TERR.r-40,TERR.r,dt),q=h/2.4,f=q-Math.floor(q);h+=((Math.floor(q)+sstep(.7,1,f))*2.4-h)*w*.85}
-  const pf=1-sstep(0,60,rectD(x,z,(PADDY.x1-PADDY.x0)/2,(PADDY.z1-PADDY.z0)/2,(PADDY.x0+PADDY.x1)/2,(PADDY.z0+PADDY.z1)/2));h+=(.6-h)*pf*hl;
-  const tf=1-sstep(0,110,rectD(x,z,TOWN.x,TOWN.z));h+=(0-h)*tf;
+  const hl=sstep(HL.inl0,HL.inl1,inl);h+=(fbm(x*HL.scale+7,z*HL.scale)*HL.amp+HL.off)*hl;if(inl>60)h=Math.max(h,SEA+3); // hollows in the hills would fill with sea water (the sea plane is everywhere)
+  for(const f of FEAT){const t=f.type;
+    if(t==='volcano'){const dv=Math.hypot(x-f.x,z-f.z);h+=f.h*Math.exp(-Math.pow(dv/f.r,1.8))-f.crater*Math.exp(-((dv/f.craterR)**2))}
+    else if(t==='terraces'){const dt=Math.hypot(x-f.x,z-f.z);if(dt<f.r+260){/* was r+40: the hill gaussian ended in a 2.5 m step on a circle */h+=f.h*Math.exp(-((dt/100)**2));const w=1-sstep(f.r-40,f.r,dt),q=h/f.step,fr=q-Math.floor(q);h+=((Math.floor(q)+sstep(.7,1,fr))*f.step-h)*w*.85}}
+    else if(t==='ridge'){if(x>f.bb[0]&&x<f.bb[1]&&z>f.bb[2]&&z<f.bb[3]){const p=polyD(x,z,f.pts);h+=p.h*Math.exp(-((p.d/f.w)**2))*sstep(0,80,inl)*(1+.18*(fbm(x*.02+3,z*.02)-.5))}}
+    else if(t==='flat'){const w=1-sstep(0,f.blend,rd(x,z,f));if(w>0)h+=(f.h-h)*w}}
   return h}
-const RIVER=[[-230,-150],[-250,-60],[-275,20],[-300,110],[-330,200],[-360,290],[-380,360]];
+const RIVER=MD.river.pts,RW0=MD.river.w0,RW1=MD.river.w1;
 const RLEN=[0];for(let i=1;i<RIVER.length;i++)RLEN.push(RLEN[i-1]+Math.hypot(RIVER[i][0]-RIVER[i-1][0],RIVER[i][1]-RIVER[i-1][1]));
+const RB=[Math.min(...RIVER.map(p=>p[0]))-RW1-12,Math.max(...RIVER.map(p=>p[0]))+RW1+12,Math.min(...RIVER.map(p=>p[1]))-RW1-12,Math.max(...RIVER.map(p=>p[1]))+RW1+12];
 let lastCarve=0;
-function riverAmt(x,z){if(x>-200||z<-190)return 0;let bd=1e9,bs=0;for(let i=1;i<RIVER.length;i++){const[ax,az]=RIVER[i-1],[bx,bz]=RIVER[i],ex=bx-ax,ez=bz-az,l2=ex*ex+ez*ez,t=clamp(((x-ax)*ex+(z-az)*ez)/l2,0,1),dx=ax+ex*t-x,dz=az+ez*t-z,d=dx*dx+dz*dz;if(d<bd){bd=d;bs=(RLEN[i-1]+t*Math.sqrt(l2))/RLEN[RLEN.length-1]}}
-  return(1-sstep(6,18,Math.sqrt(bd)))*sstep(0,.15,bs)}
+function riverAmt(x,z){if(x<RB[0]||x>RB[1]||z<RB[2]||z>RB[3])return 0;let bd=1e9,bs=0;for(let i=1;i<RIVER.length;i++){const[ax,az]=RIVER[i-1],[bx,bz]=RIVER[i],ex=bx-ax,ez=bz-az,l2=ex*ex+ez*ez,t=clamp(((x-ax)*ex+(z-az)*ez)/l2,0,1),dx=ax+ex*t-x,dz=az+ez*t-z,d=dx*dx+dz*dz;if(d<bd){bd=d;bs=(RLEN[i-1]+t*Math.sqrt(l2))/RLEN[RLEN.length-1]}}
+  return(1-sstep(RW0,RW1,Math.sqrt(bd)))*sstep(0,.15,bs)}
 function terr(x,z){const h=terrBase(x,z);lastCarve=riverAmt(x,z);return h+(SEA-1.4-h)*lastCarve}
 
-/* roads: Catmull-Rom splines, heights smoothed from the terrain and grade-limited */
-const ROADS=[],SEGG=new Map(),BUMPS=[];
-{const p=[];for(let i=0;i<40;i++){const th=i/40*2*PI,R=coastR(th)-55;p.push([ICX+Math.cos(th)*R,ICZ+Math.sin(th)*R])}ROADS.push({pts:p,w:8,closed:true,hwy:true})}
-for(const x of[-160,-80,0,80,160])ROADS.push({pts:[[x,-80],[x,80]],w:7});
-for(const z of[-80,0,80])ROADS.push({pts:[[-160,z],[160,z]],w:7});
-ROADS.push({pts:[[0,80],[0,ICZ+coastR(PI/2)-50]],w:7});
-ROADS.push({pts:[[-160,40],[-230,40],[-290,30],[-360,0],[-420,-50],[-462,-100]],w:7,hwy:true});
-ROADS.push({pts:[[160,0],[230,-10],[300,-60],[380,-80],[470,-90],[556,-100]],w:7,hwy:true});
-ROADS.push({pts:[[80,-80],[90,-130],[60,-170],[110,-200],[90,-240],[140,-262],[160,-300]],w:6});
+/* roads: Catmull-Rom splines, heights smoothed from the terrain and grade-limited.
+   island.json road = {pts, w, hwy?, closed?, kind?}; kind 'strip' = airstrip (concrete, runway markings, no poles/houses) */
+const ROADS=MD.roads.map(r=>({pts:r.pts,w:r.w,closed:!!r.closed,hwy:!!r.hwy,kind:r.kind||''})),SEGG=new Map(),BUMPS=[];
 function crSample(r){const P=r.pts,n=P.length,out=[];const get=i=>r.closed?P[(i+n)%n]:P[clamp(i,0,n-1)];
   for(let i=0;i<(r.closed?n:n-1);i++){const p0=get(i-1),p1=get(i),p2=get(i+1),p3=get(i+2),L=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]),k=Math.max(1,Math.round(L/2));
     for(let j=0;j<k;j++){const t=j/k,t2=t*t,t3=t2*t,f=(a,b,c,d)=>.5*(2*b+(-a+c)*t+(2*a-5*b+4*c-d)*t2+(-a+3*b-3*c+d)*t3);out.push([f(p0[0],p1[0],p2[0],p3[0]),f(p0[1],p1[1],p2[1],p3[1])])}}
   out.push(r.closed?out[0]:P[n-1]);return out}
 for(const r of ROADS){const S=crSample(r);let h=S.map(([x,z])=>terrBase(x,z));
   for(let pass=0;pass<3;pass++){const a=h.slice();for(let i=0;i<h.length;i++){let s=0,c=0;for(let j=-12;j<=12;j++){const k=i+j;if(k>=0&&k<h.length){s+=a[k];c++}}h[i]=s/c}}
-  for(let i=1;i<h.length;i++)h[i]=clamp(h[i],h[i-1]-.26,h[i-1]+.26);for(let i=h.length-2;i>=0;i--)h[i]=clamp(h[i],h[i+1]-.26,h[i+1]+.26);
-  r.s=S.map(([x,z],i)=>({x,z,h:Math.max(h[i],.05)}));
+  const G=r.grade||.13,dl=i=>Math.hypot(S[i][0]-S[i-1][0],S[i][1]-S[i-1][1]); // max grade per metre (was .26 per sample, so short samples in hairpins allowed 35%)
+  for(let i=1;i<h.length;i++){const g=G*dl(i);h[i]=clamp(h[i],h[i-1]-g,h[i-1]+g)}for(let i=h.length-2;i>=0;i--){const g=G*dl(i+1);h[i]=clamp(h[i],h[i+1]-g,h[i+1]+g)}
+  r.s=S.map(([x,z],i)=>({x,z,h:Math.max(h[i],.05)}));r.G=G}
+// Junctions: a road that ends on another road takes that road's height at its end and eases away from it at its own
+// grade limit (each road is smoothed on its own, so a branch used to meet its parent with a step: 39 cm at the terrace
+// road, 19 m where the pass met it).
+for(const r of ROADS){if(r.closed)continue;for(const e of[0,r.s.length-1]){const E=r.s[e];let bd=1e9,bh=0;
+  for(const o of ROADS){if(o===r)continue;for(const q of o.s){const d=Math.hypot(q.x-E.x,q.z-E.z);if(d<bd&&d<o.w/2+2){bd=d;bh=q.h}}}
+  if(bd===1e9)continue;E.h=bh;const dir=e===0?1:-1;
+  for(let i=e+dir;i>=0&&i<r.s.length;i+=dir){const A=r.s[i-dir],B=r.s[i],g=r.G*Math.hypot(B.x-A.x,B.z-A.z),c=clamp(B.h,A.h-g,A.h+g);if(c===B.h)break;B.h=c}}}
+for(const r of ROADS){
   for(let i=0;i<r.s.length;i++){const a=r.s[Math.max(0,i-1)],b=r.s[Math.min(r.s.length-1,i+1)],l=Math.hypot(b.x-a.x,b.z-a.z)||1;r.s[i].tx=(b.x-a.x)/l;r.s[i].tz=(b.z-a.z)/l}
   for(let i=1;i<r.s.length;i++){const A=r.s[i-1],B=r.s[i],sg={ax:A.x,az:A.z,bx:B.x,bz:B.z,ha:A.h,hb:B.h,w:r.w,l2:Math.max(1e-6,(B.x-A.x)**2+(B.z-A.z)**2)},m=r.w/2+9;
     for(let gx=Math.floor((Math.min(A.x,B.x)-m)/20);gx<=Math.floor((Math.max(A.x,B.x)+m)/20);gx++)for(let gz=Math.floor((Math.min(A.z,B.z)-m)/20);gz<=Math.floor((Math.max(A.z,B.z)+m)/20);gz++){const k=gx*1000+gz;if(!SEGG.has(k))SEGG.set(k,[]);SEGG.get(k).push(sg)}}}
-for(const[x,z,ax]of[[0,-40,'z'],[0,40,'z'],[-80,40,'z'],[120,0,'x'],[-120,0,'x'],[40,-80,'x'],[-40,80,'x']])BUMPS.push({x,z,ax});
+for(const[x,z,ax]of MD.bumps)BUMPS.push({x,z,ax});
 const NR={d:0,h:0,w:0};
 function nearRoad(x,z){const L=SEGG.get(Math.floor(x/20)*1000+Math.floor(z/20));if(!L)return null;let bd=1e18,bh=0,bw=0;
   for(const s of L){const ex=s.bx-s.ax,ez=s.bz-s.az,t=clamp(((x-s.ax)*ex+(z-s.az)*ez)/s.l2,0,1),px=s.ax+ex*t-x,pz=s.az+ez*t-z,d=px*px+pz*pz;if(d<bd){bd=d;bh=s.ha+(s.hb-s.ha)*t;bw=s.w}}
@@ -65,10 +86,10 @@ function HA(x,z,mesh){const t=terr(x,z),q=nearRoad(x,z);if(!q)return t;const hw=
   const b=sstep(hw,hw+8,q.d);return q.h-.05+(t-q.h+.05)*b}
 // Ground the bike stands on = what is drawn: road ribbons (analytic) or the 5 m terrain mesh, interpolated per
 // triangle exactly like the PlaneGeometry. (The analytic terrain has detail and shoulder curves the mesh can't show.)
-// Map size: to grow the island, raise MAP_M (and widen coastR). Everything else (terrain tiles, LOD, road chunks,
-// prop culling, physics heights) is derived from these and scales automatically; the size is rounded up to whole tiles.
-const MAP_M=1400,TS=5,TILE=280,TSZ=Math.ceil(MAP_M/TILE)*TILE,TN=TSZ/TS;let MH=null;
-function meshH(x,z){const fx=(x+TSZ/2)/TS,fz=(z+TSZ/2)/TS,ix=Math.floor(fx),iz=Math.floor(fz);if(ix<0||iz<0||ix>=TN||iz>=TN)return HA(x,z);
+// Map size follows the coast: the terrain grid is centred on the island and covers its widest radius + 80 m of sea,
+// rounded up to whole tiles. Terrain tiles, LOD, road chunks, prop culling and physics heights all derive from it.
+const CMAX=Math.max(...CR),TS=5,TILE=280,TSZ=Math.ceil((2*CMAX+160)/TILE)*TILE,TN=TSZ/TS,GX=Math.round(ICX/TS)*TS,GZ=Math.round(ICZ/TS)*TS;let MH=null;
+function meshH(x,z){const fx=(x-GX+TSZ/2)/TS,fz=(z-GZ+TSZ/2)/TS,ix=Math.floor(fx),iz=Math.floor(fz);if(ix<0||iz<0||ix>=TN||iz>=TN)return HA(x,z);
   const u=fx-ix,v=fz-iz,W=TN+1,a=MH[ix+W*iz],b=MH[ix+W*(iz+1)],c=MH[ix+1+W*(iz+1)],d=MH[ix+1+W*iz];
   return u+v<=1?a+(d-a)*u+(b-a)*v:c+(b-c)*(1-u)+(d-c)*(1-v)}
 // Next to a road the mesh is pulled down under the ribbon, which would make every road edge a ~10 cm kerb; there the
@@ -76,6 +97,13 @@ function meshH(x,z){const fx=(x+TSZ/2)/TS,fz=(z+TSZ/2)/TS,ix=Math.floor(fx),iz=M
 function H(x,z,mesh){if(mesh||!MH)return HA(x,z,mesh);const q=nearRoad(x,z);if(q&&q.d<q.w/2)return q.h+bumpAt(x,z);const m=meshH(x,z);
   if(q&&q.d<q.w/2+6){return Math.max(m,HA(x,z))}return m}
 const roadH=(x,z)=>H(x,z);
+// Lowest / highest DRAWN ground under a footprint (centre, corners, edge midpoints). Props are placed on this, not on
+// terr(): the analytic terrain has detail the 5 m mesh can't show and ignores the road cuts/fills, so props placed on it
+// floated (trees up to 53 m beside cut roads) or sank. Build 8.5.
+const FP={lo:0,hi:0};
+function foot(x,z,hx,hz,ry=0){const c=Math.cos(ry),s=Math.sin(ry);let lo=1e9,hi=-1e9;
+  for(const[a,b]of[[0,0],[-hx,-hz],[hx,-hz],[-hx,hz],[hx,hz],[0,-hz],[0,hz],[-hx,0],[hx,0]]){const h=H(x+a*c+b*s,z-a*s+b*c);if(h<lo)lo=h;if(h>hi)hi=h}
+  FP.lo=lo;FP.hi=hi;return FP}
 
 /* collision footprints: oriented boxes (Rapier makes colliders from these) */
 const OBBS=[];
@@ -126,13 +154,13 @@ const tW=[1,2,3].map(n=>mkTex(T.walls(n))),tTin=mkTex(T.tin()),tBark=mkTex(T.bar
 const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:mt,map:map||null,vertexColors:true});
 {
   // terrain mesh with vertex colours
-  const N=TN,SZ=TSZ,geo=new THREE.PlaneGeometry(SZ,SZ,N,N).rotateX(-PI/2),pos=geo.attributes.position,col=new Float32Array(pos.count*3),c=new THREE.Color();
+  const N=TN,SZ=TSZ,geo=new THREE.PlaneGeometry(SZ,SZ,N,N).rotateX(-PI/2).translate(GX,0,GZ),pos=geo.attributes.position,col=new Float32Array(pos.count*3),c=new THREE.Color();
   const C={sand:new THREE.Color(0xe2d2a2),grass:new THREE.Color(0x76a845),grass2:new THREE.Color(0x5e9438),forest:new THREE.Color(0x3d6b2c),rock:new THREE.Color(0x7c746a),ash:new THREE.Color(0x55504c),town:new THREE.Color(0xb3a98f),rice:new THREE.Color(0x9fd24a),rice2:new THREE.Color(0x7dbf3c),bed:new THREE.Color(0x8a7a5a),dry:new THREE.Color(0xa3ab4e),dirt:new THREE.Color(0x9c8a5e),wet:new THREE.Color(0xb8a57a)};
   for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i),h=H(x,z,true),inl=inland(x,z);pos.setY(i,h);
-    const dv=Math.hypot(x-VX,z-VZ),dt=Math.hypot(x-TERR.x,z-TERR.z),n=fbm(x*.03,z*.03);
+    const dv=Math.hypot(x-VOL.x,z-VOL.z),dt=Math.hypot(x-TERR.x,z-TERR.z),n=fbm(x*.03,z*.03);
     if(lastCarve>.4)c.copy(C.bed);
     else if(h<SEA+1.3&&inl<90)c.copy(C.sand);
-    else if(rectD(x,z,TOWN.x+10,TOWN.z+10)<1)c.copy(C.town).lerp(C.grass,n*.35);
+    else if(rd(x,z,TOWN,10)<1)c.copy(C.town).lerp(C.grass,n*.35);
     else if(dt<TERR.r-30)c.copy((Math.floor(h/2.4)&1)?C.rice:C.rice2);
     else if(h>115||dv<45)c.copy(dv<30?C.ash:C.rock).lerp(C.forest,sstep(140,110,h)*.5);
     else if(h>14)c.copy(C.forest).lerp(C.grass2,n*.5);
@@ -160,7 +188,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(nr,3));
     g.setAttribute('color',new THREE.Float32BufferAttribute(cc,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(ix);
     const m=new THREE.Mesh(g,tmat);m.receiveShadow=true;freeze(m);scene.add(m);return m}
-  for(let tj=0;tj<N/TT;tj++)for(let ti=0;ti<N/TT;ti++){const x0=ti*TT*TS-SZ/2,z0=tj*TT*TS-SZ/2;addLOD([1,2,4].map(st=>tile(ti*TT,tj*TT,st)),x0,z0,x0+TT*TS,z0+TT*TS)}
+  for(let tj=0;tj<N/TT;tj++)for(let ti=0;ti<N/TT;ti++){const x0=ti*TT*TS-SZ/2+GX,z0=tj*TT*TS-SZ/2+GZ;addLOD([1,2,4].map(st=>tile(ti*TT,tj*TT,st)),x0,z0,x0+TT*TS,z0+TT*TS)}
   geo.dispose();
   const sea=new THREE.Mesh(new THREE.PlaneGeometry(8000,8000).rotateX(-PI/2),new THREE.MeshStandardMaterial({color:0x2a88a6,map:mkTex(T.sea(),400),roughness:.2,metalness:.15,transparent:true,opacity:.9}));sea.position.y=SEA;scene.add(freeze(sea));
   // rice paddies: patchwork texture with dikes
@@ -168,18 +196,21 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   const tPad=mkTex(T.paddy());
   const pd=new THREE.Mesh(new THREE.PlaneGeometry(PADDY.x1-PADDY.x0,PADDY.z1-PADDY.z0).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tPad,roughness:.6}));pd.position.set((PADDY.x0+PADDY.x1)/2,.63,(PADDY.z0+PADDY.z1)/2);pd.receiveShadow=true;scene.add(freeze(pd));
   // road ribbons
-  const rb={hwy:{p:[],u:[],i:[]},st:{p:[],u:[],i:[]}},rail=[],deck=[],pil=[],poles=[],wires=[];
-  for(const r of ROADS){const B=r.hwy?rb.hwy:rb.st,base=B.p.length/3;let L=0;
-    r.s.forEach((s,i)=>{if(i)L+=Math.hypot(s.x-r.s[i-1].x,s.z-r.s[i-1].z);const nx=-s.tz,nz=s.tx,hw=r.w/2;B.p.push(s.x+nx*hw,s.h+.04,s.z+nz*hw,s.x-nx*hw,s.h+.04,s.z-nz*hw);B.u.push(0,L/4.5,1,L/4.5);
+  const rb={hwy:{p:[],u:[],i:[]},st:{p:[],u:[],i:[]},strip:{p:[],u:[],i:[]}},rwy=[],rail=[],deck=[],pil=[],poles=[],wires=[];
+  for(const r of ROADS){const SR=r.kind==='strip',B=SR?rb.strip:r.hwy?rb.hwy:rb.st,base=B.p.length/3;let L=0;
+    r.s.forEach((s,i)=>{if(i)L+=Math.hypot(s.x-r.s[i-1].x,s.z-r.s[i-1].z);const nx=-s.tz,nz=s.tx,hw=r.w/2;B.p.push(s.x+nx*hw,s.h+.04,s.z+nz*hw,s.x-nx*hw,s.h+.04,s.z-nz*hw);if(SR)B.u.push(0,L/6,r.w/6,L/6);else B.u.push(0,L/4.5,1,L/4.5);
       if(i)B.i.push(base+(i-1)*2,base+i*2,base+(i-1)*2+1,base+(i-1)*2+1,base+i*2,base+i*2+1);
       const ry=Math.atan2(-s.tz,s.tx);
-      if(i%2===0&&terr(s.x,s.z)<s.h-1.2){deck.push({x:s.x,y:s.h-.3,z:s.z,ry,sx:2.2,sy:.6,sz:r.w+.6});
+      if(!SR&&i%2===0&&terr(s.x,s.z)<s.h-1.2){deck.push({x:s.x,y:s.h-.3,z:s.z,ry,sx:2.2,sy:.6,sz:r.w+.6});
         for(const sd of[-1,1]){rail.push({x:s.x+nx*sd*(hw+.15),y:s.h+.55,z:s.z+nz*sd*(hw+.15),ry,sx:2.1,sy:.12,sz:.15},{x:s.x+nx*sd*(hw+.15),y:s.h+.3,z:s.z+nz*sd*(hw+.15),ry,sx:.15,sy:.6,sz:.15});addOBB(s.x+nx*sd*(hw+.2),s.z+nz*sd*(hw+.2),1.1,.12,ry)}
         if(i%10===0)pil.push({x:s.x,y:SEA-2,z:s.z,sy:s.h-SEA+1.6})}
-      if((r.hwy||r.w===7)&&i%16===0&&i>0&&i<r.s.length-1&&lastCarve<.2){const px=s.x+nx*(hw+1.8),pz=s.z+nz*(hw+1.8),ph=H(px,pz);if(rectD(px,pz,30,30,40,40)>2&&rectD(px,pz,22,22,-40,40)>2){poles.push({x:px,y:ph,z:pz,ry,r});addOBB(px,pz,.2,.2)}}});
+      if(SR){const ry=Math.atan2(-s.tz,s.tx),E=r.s.length-1,ed=Math.min(i,E-i)*2; // runway paint: centre dashes, threshold bars near both ends
+        if(ed>30&&i%15===0)rwy.push({x:s.x,y:s.h+.06,z:s.z,ry,sx:12,sz:.9,g:1});
+        if(ed>=8&&ed<10)for(let k=-5;k<=5;k++)if(k)rwy.push({x:s.x,y:s.h+.06,z:s.z+0,ry,sx:22,sz:1.5,...(o=>({x:s.x+nx*o,z:s.z+nz*o}))(k*2.3)})}
+      if(!SR&&(r.hwy||r.w===7)&&i%16===0&&i>0&&i<r.s.length-1&&lastCarve<.2){const px=s.x+nx*(hw+1.8),pz=s.z+nz*(hw+1.8),ph=H(px,pz);if(rectD(px,pz,30,30,40,40)>2&&rectD(px,pz,22,22,-40,40)>2){poles.push({x:px,y:ph,z:pz,ry,r});addOBB(px,pz,.2,.2)}}});
     B.base=0}
   // road ribbons split into terrain-tile-sized chunks so they get frustum + distance culled like everything else
-  for(const[k,B]of Object.entries(rb)){const mat=new THREE.MeshStandardMaterial({map:k==='hwy'?tHwy:tRoad,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2}),ch=new Map();
+  for(const[k,B]of Object.entries(rb)){const mat=new THREE.MeshStandardMaterial({map:k==='hwy'?tHwy:k==='strip'?tCon:tRoad,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2}),ch=new Map();
     for(let t=0;t<B.i.length;t+=3){const a=B.i[t],b=B.i[t+1],c=B.i[t+2],key=Math.floor((B.p[a*3]+B.p[b*3]+B.p[c*3])/3/TILE)*1000+Math.floor((B.p[a*3+2]+B.p[b*3+2]+B.p[c*3+2])/3/TILE);
       let C=ch.get(key);if(!C)ch.set(key,C={p:[],u:[],i:[],map:new Map()});for(const v of[a,b,c]){let n=C.map.get(v);if(n===undefined){n=C.p.length/3;C.map.set(v,n);C.p.push(B.p[v*3],B.p[v*3+1],B.p[v*3+2]);C.u.push(B.u[v*2],B.u[v*2+1])}C.i.push(n)}}
     for(const C of ch.values()){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(C.p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(C.u,2));g.setIndex(C.i);g.computeVertexNormals();
@@ -192,6 +223,8 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
       for(let k=1;k<=6;k++){const t=k/6,x=a.x+ox+(b.x+ox2-a.x-ox)*t,z=a.z+oz+(b.z+oz2-a.z-oz)*t,y=a.y+7.7+(b.y-a.y)*t-Math.sin(PI*t)*.7;wires.push(px,py,pz,x,y,z);px=x;py=y;pz=z}}}
   {const wm=new THREE.LineBasicMaterial({color:0x1a1a1a}),wc=new Map();for(let i=0;i<wires.length;i+=6){const k=Math.floor(wires[i]/CELL)*1000+Math.floor(wires[i+2]/CELL);if(!wc.has(k))wc.set(k,[]);wc.get(k).push(...wires.slice(i,i+6))}
     for(const w of wc.values()){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(w,3));const l=freeze(new THREE.LineSegments(g,wm));scene.add(l);cullFar(l,FAR.mid)}}
+  for(const o of rwy)o.y=H(o.x,o.z)+.03; // on the drawn surface (the strip end meets the taxiway ribbon)
+  if(rwy.length)inst(new THREE.BoxGeometry(1,.012,1),new THREE.MeshBasicMaterial({color:0xeeeeea}),rwy,false,FAR.mid);
   inst(new THREE.BoxGeometry(7,.07,.7),std(0xe0b41a,.7),BUMPS.map(b=>({x:b.x,y:.06,z:b.z,ry:b.ax==='z'?0:PI/2})),false,FAR.small);
   // ----- town (población): shophouses with tin roofs, plaza + church, market, jeepneys -----
   const bl=[[],[],[]],roofs=[],awn=[];
@@ -203,7 +236,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     if(sides.includes('n'))edge(x0+I,z1-I,x1-I,z1-I,0);if(sides.includes('s'))edge(x0+I,z0+I,x1-I,z0+I,PI);
     if(sides.includes('e'))edge(x1-I,z0+I+12,x1-I,z1-I-12,PI/2);if(sides.includes('w'))edge(x0+I,z0+I+12,x0+I,z1-I-12,-PI/2)}
   // ry convention: front of a shop faces +z rotated by ry (front normal = (sin ry, cos ry))
-  block(-160,0,-80,80);block(-160,-80,-80,0);block(-80,-80,0,0);block(0,-80,80,0);block(-80,0,0,80,'nw');block(80,0,160,80,'e');
+  for(const b of TOWN.blocks)block(...b);
   [1,2,3].forEach((n,i)=>inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6/(n)),vstd(0xffffff,.85,0,tW[i]),bl[i]));
   inst(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),roofs);inst(new THREE.BoxGeometry(1,1,1),std(0xffffff,.7),awn,false,FAR.small);
   // plaza + church
@@ -227,23 +260,29 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   const tMr=mkTex(T.tin(),[8,1]);const mr=new THREE.Mesh(prism(56,4,46),new THREE.MeshStandardMaterial({color:0x9aa0a6,map:tMr,roughness:.5,metalness:.5}));mr.rotation.y=PI/2;mr.position.set(120,6,-40);mr.castShadow=true;scene.add(freeze(mr));cullFar(mr,FAR.big);
   for(let i=0;i<8;i++)for(let j=0;j<2;j++){const x=100+i*5.5,z=-52+j*22;stall.push({x,y:0,z,sx:3.6,sy:1,sz:2.2,c:new THREE.Color().setHSL(rand(),.6,.55)});addOBB(x,z,1.8,1.1)}
   inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.55),vstd(0xffffff,.8),stall,true,FAR.small);
+  // airstrip hangars (island.json 'hangars': [x, z, ry]; front faces +z rotated by ry): tin shed + dark doorway
+  const hg=(MD.hangars||[]).map(([x,z,ry])=>{const f=foot(x,z,13,11,ry);addOBB(x,z,13,11,ry);return{x,y:f.lo-.2,z,ry,sy:1+(f.hi-f.lo)/7.5}});
+  if(hg.length){const tH=mkTex(T.tin(),[4,1]);inst(aoGeo(mergeGeometries([new THREE.BoxGeometry(26,7.5,22).translate(0,3.75,0).toNonIndexed(),prism(26.6,3.5,22.6).translate(0,7.5,0)]),.6,0,6),vstd(0xc4c8cc,.5,.4,tH),hg,true,FAR.big);
+    inst(new THREE.BoxGeometry(18,6,.2).translate(0,3,11.05),std(0x1d1f22,.9),hg.map(o=>({...o,y:H(o.x+Math.sin(o.ry)*11,o.z+Math.cos(o.ry)*11)-.1,sy:1})),false,FAR.mid)}
   // jeepneys + tricycles parked along streets
   const jeep=[],tri=[];
   const jbody=mergeGeometries([new THREE.BoxGeometry(2,1.25,4.6).translate(0,1.1,.4),new THREE.BoxGeometry(1.8,.75,1.4).translate(0,.85,-2.5),new THREE.BoxGeometry(2.15,.12,5.2).translate(0,2.05,.3),new THREE.BoxGeometry(1.6,.3,.25).translate(0,.5,-3.3)]);
   const jd=mergeGeometries([...[[-.95,-2.2],[.95,-2.2],[-.95,1.9],[.95,1.9]].map(([x,z])=>new THREE.CylinderGeometry(.38,.38,.28,12).rotateZ(PI/2).translate(x,.38,z)),new THREE.BoxGeometry(1.7,.6,.05).translate(0,1.55,-1.85)]);
-  for(const[x,z,ry]of[[3.2,-30,0],[3.2,-18,0],[-3.2,52,PI],[-50,3.2,PI/2],[-110,-3.2,-PI/2],[-3.2,-55,PI],[83.2,-20,0],[-123,3.2,PI/2]]){const c=new THREE.Color().setHSL(rand(),.85,.5);jeep.push({x,z,ry,c});addOBB(x,z,1.05,3.4,ry)}
+  for(const[x,z,ry]of TOWN.jeeps){const c=new THREE.Color().setHSL(rand(),.85,.5);jeep.push({x,z,ry,c});addOBB(x,z,1.05,3.4,ry)}
   inst(...pair({g:aoGeo(jbody,.6,.3,2.1),m:vstd(0xffffff,.35,.4,tJeep)},{g:jd,m:std(0x111111,.8)}),jeep,true,FAR.mid); // dark parts now get the instance tint too (×0.07: still black)
   const trig=mergeGeometries([new THREE.BoxGeometry(1.2,1.2,1.6).translate(.75,.95,0),new THREE.BoxGeometry(1.4,.08,2).translate(.6,1.6,0),new THREE.BoxGeometry(.25,.6,1.4).translate(-.2,.7,0)]);
-  for(const[x,z,ry]of[[-3,-10,PI],[-3,-14,PI],[83,40,0],[-77,-40,0],[3,62,0]]){tri.push({x,z,ry,c:new THREE.Color().setHSL(rand(),.7,.45)});addOBB(x+Math.cos(ry)*.4,z,1.2,1.1,ry)}
-  inst(aoGeo(trig,.6),vstd(0xffffff,.45,.3),tri,true,FAR.small);
+  for(const[x,z,ry]of TOWN.trikes){tri.push({x,z,ry,c:new THREE.Color().setHSL(rand(),.7,.45)});addOBB(x+Math.cos(ry)*.4,z,1.2,1.1,ry)}
+  const tw=(x,z,r)=>new THREE.CylinderGeometry(r,r,.12,10).rotateZ(PI/2).translate(x,r,z);
+  inst(...pair({g:aoGeo(trig,.6),m:vstd(0xffffff,.45,.3)},{g:mergeGeometries([tw(-.2,.72,.3),tw(-.2,-.72,.3),tw(1.42,0,.3)]),m:std(0x111111,.8)}),tri,true,FAR.small); // wheels: bike front/rear + sidecar
   // houses along the roads outside town: concrete bungalows and nipa huts
   const hb=[],hr=[],nipa=[];
   for(const r of ROADS){if(!r.hwy&&r.w!==6)continue;for(let i=6;i<r.s.length-6;i+=14){const s=r.s[i];for(const sd of[-1,1]){if(rand()>.42)continue;
-    const off=r.w/2+8+rand()*5,x=s.x-s.tz*off*sd,z=s.z+s.tx*off*sd;if(rectD(x,z,TOWN.x+10,TOWN.z+10)<1)continue;const q=nearRoad(x,z);if(q&&q.d<r.w/2+5)continue;
-    const h=terr(x,z);if(h<SEA+1.2||lastCarve>.05||h>45||rectD(x,z,(PADDY.x1-PADDY.x0)/2,(PADDY.z1-PADDY.z0)/2,(PADDY.x0+PADDY.x1)/2,(PADDY.z0+PADDY.z1)/2)<2)continue;
+    const off=r.w/2+8+rand()*5,x=s.x-s.tz*off*sd,z=s.z+s.tx*off*sd;if(rd(x,z,TOWN,10)<1)continue;const q=nearRoad(x,z);if(q&&q.d<r.w/2+5)continue;
+    const h=terr(x,z);if(h<SEA+1.2||lastCarve>.05||h>45||rd(x,z,PADDY)<2)continue;
     const ry=Math.atan2(-s.tz,s.tx)+(sd>0?PI:0);
-    if(rand()<.35){nipa.push({x,y:h,z,ry,sx:4.5,sy:2.6,sz:4.2,c:0xb59a5e});addOBB(x,z,2.3,2.2,ry)}
-    else{const w=6+rand()*3,d=6+rand()*2.5;hb.push({x,y:h-.2,z,ry,sx:w,sy:3.3,sz:d,c:pastel()});hr.push({x,y:h+3.1,z,ry,sx:w+.8,sy:1,sz:d+.9,c:TIN[(rand()*TIN.length)|0]});addOBB(x,z,w/2,d/2,ry)}}}}
+    if(rand()<.35){const f=foot(x,z,2.25,2.1,ry);if(f.hi-f.lo<.9){nipa.push({x,y:f.lo,z,ry,sx:4.5,sy:2.6,sz:4.2,c:0xb59a5e});addOBB(x,z,2.3,2.2,ry)}} // stilts (1 m) absorb up to .9 m of slope
+    else{const w=6+rand()*3,d=6+rand()*2.5,c=pastel(),rc=TIN[(rand()*TIN.length)|0],f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo;
+      if(sl<2.4){hb.push({x,y:f.lo-.25,z,ry,sx:w,sy:3.35+sl,sz:d,c});hr.push({x,y:f.hi+3.1,z,ry,sx:w+.8,sy:1,sz:d+.9,c:rc});addOBB(x,z,w/2,d/2,ry)}}}}} // walls reach down to the low corner
   inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6),vstd(0xffffff,.85,0,tW[0]),hb,true,FAR.tree);
   inst(prism(1,1.6,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),hr,true,FAR.tree);
   // roof in the hut's instance space (hut scale 4.5/2.6/4.2, roof 4.4/2.4/4.4 sitting 2.6 m up); its colour divided by the
@@ -255,13 +294,14 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   const trunk=new THREE.CylinderGeometry(.14,.22,8,6,4).translate(0,4,0);{const p=trunk.attributes.position;for(let i=0;i<p.count;i++){const y=p.getY(i);p.setX(i,p.getX(i)+(y/8)**2*1.3)}}
   const fronds=mergeGeometries(Array.from({length:8},(_,i)=>new THREE.BoxGeometry(.55,.04,3.6).translate(0,0,1.8).rotateX(.45+(i%2)*.25).rotateY(i*PI/4).translate(1.3,8,0)));
   const palms=[],trees=[];
-  for(let i=0;i<2600&&palms.length<520;i++){const th=rand()*2*PI,r=coastR(th)-8-rand()*rand()*160,x=ICX+Math.cos(th)*r,z=ICZ+Math.sin(th)*r,h=terr(x,z);
-    if(h<SEA+.4||h>12||lastCarve>.05)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+2.5)continue;if(rectD(x,z,TOWN.x,TOWN.z)<1&&rand()<.85)continue;
-    palms.push({x,y:h-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4});addOBB(x,z,.25,.25)}
+  const PP=PROPS.palms,TP=PROPS.trees;
+  for(let i=0;i<PP.tries&&palms.length<PP.max;i++){const th=rand()*2*PI,r=coastR(th)-8-rand()*rand()*PP.band,x=ICX+Math.cos(th)*r,z=ICZ+Math.sin(th)*r,h=terr(x,z);
+    if(h<SEA+.4||h>12||lastCarve>.05)continue;if(hg.some(o=>Math.hypot(x-o.x,z-o.z)<22))continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+2.5)continue;if(rd(x,z,TOWN)<1&&rand()<.85)continue;
+    palms.push({x,y:foot(x,z,.3,.3).lo-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4});addOBB(x,z,.25,.25)}
   inst(...pair({g:aoGeo(trunk,.55,0,5),m:vstd(0xd8c8b0,.9,0,tBark)},{g:aoGeo(fronds,.7,6.4,8.4),m:vstd(0xffffff,.8,0,tFrond)}),palms,false,FAR.tree);
-  for(let i=0;i<9000&&trees.length<1900;i++){const x=(rand()-.5)*1300,z=ICZ+(rand()-.5)*1200,h=terr(x,z);if(h<10||h>150||lastCarve>.05)continue;
-    if(Math.hypot(x-TERR.x,z-TERR.z)<TERR.r-20)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+3)continue;const s=.7+rand()*.8;
-    trees.push({x,y:h-.2,z,sx:s,sy:s*(.8+rand()*.5),sz:s,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)});if(q&&q.d<20)addOBB(x,z,.3,.3)}
+  for(let i=0;i<TP.tries&&trees.length<TP.max;i++){const x=ICX+(rand()-.5)*2*CMAX,z=ICZ+(rand()-.5)*2*CMAX,h=terr(x,z);if(h<10||h>150||lastCarve>.05)continue;
+    if(Math.hypot(x-TERR.x,z-TERR.z)<TERR.r-20)continue;if(hg.some(o=>Math.hypot(x-o.x,z-o.z)<22))continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+3)continue;const s=.7+rand()*.8;
+    trees.push({x,y:foot(x,z,.3*s,.3*s).lo-.2,z,sx:s,sy:s*(.8+rand()*.5),sz:s,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)});if(q&&q.d<20)addOBB(x,z,.3,.3)}
   inst(...pair({g:aoGeo(new THREE.CylinderGeometry(.2,.28,3,5).translate(0,1.5,0),.45),m:vstd(0x9a7a5a,.9,0,tBark)},{g:aoGeo(new THREE.IcosahedronGeometry(2.4,0).translate(0,4.4,0),.45,2.2,6.8,.8),m:vstd(0xffffff,.9,0,tLeaf)}),trees,false,FAR.tree);
   // lot + gas station paving
   const tLot=tAsph.clone();tLot.repeat.set(17,17);tLot.needsUpdate=true;
@@ -270,11 +310,13 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   const gp=new THREE.Mesh(new THREE.PlaneGeometry(40,40).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tGas,roughness:.9}));gp.position.set(-40,.015,40);gp.receiveShadow=true;scene.add(freeze(gp));cullFar(gp,FAR.mid);
 }
 /* minimap base image */
-const MAP=document.createElement('canvas');MAP.width=MAP.height=140;
-{const g=MAP.getContext('2d'),img=g.createImageData(140,140);for(let j=0;j<140;j++)for(let i=0;i<140;i++){const x=(i/140-.5)*1300,z=ICZ+(j/140-.5)*1300,h=terr(x,z),k=(j*140+i)*4;
-  const c=lastCarve>.4||h<SEA?[31,120,150]:h<SEA+1.3?[226,210,162]:rectD(x,z,TOWN.x,TOWN.z)<1?[170,160,140]:h>115?[124,116,106]:h>14?[61,107,44]:[118,168,69];img.data.set([...c,235],k)}
+// ~9.3 m per pixel (the old 140 px over 1300 m), sized to the island; hud.js maps world -> pixels with MAPV
+const MPN=Math.ceil((2*CMAX+120)/(1300/140)),MAPV={cx:ICX,cz:ICZ,w:MPN*1300/140,n:MPN};
+const MAP=document.createElement('canvas');MAP.width=MAP.height=MPN;
+{const g=MAP.getContext('2d'),img=g.createImageData(MPN,MPN),W=MAPV.w;for(let j=0;j<MPN;j++)for(let i=0;i<MPN;i++){const x=ICX+(i/MPN-.5)*W,z=ICZ+(j/MPN-.5)*W,h=terr(x,z),k=(j*MPN+i)*4;
+  const c=lastCarve>.4||h<SEA?[31,120,150]:h<SEA+1.3?[226,210,162]:rd(x,z,TOWN)<1?[170,160,140]:h>115?[124,116,106]:h>14?[61,107,44]:[118,168,69];img.data.set([...c,235],k)}
   g.putImageData(img,0,0);g.strokeStyle='#f4f1e8';g.lineCap='round';
-  for(const r of ROADS){g.lineWidth=r.hwy?2:1.3;g.beginPath();r.s.forEach((s,i)=>{const u=(s.x/1300+.5)*140,v=((s.z-ICZ)/1300+.5)*140;i?g.lineTo(u,v):g.moveTo(u,v)});g.stroke()}}
+  for(const r of ROADS){g.lineWidth=r.kind==='strip'?3:r.hwy?2:1.3;g.strokeStyle=r.kind==='strip'?'#c9c6bd':'#f4f1e8';g.beginPath();r.s.forEach((s,i)=>{const u=((s.x-ICX)/W+.5)*MPN,v=((s.z-ICZ)/W+.5)*MPN;i?g.lineTo(u,v):g.moveTo(u,v)});g.stroke()}}
 
 /* parking lot (block 0,0) + gas station (block -1,0) */
 const freeBays=[];
@@ -289,7 +331,8 @@ const freeBays=[];
   const bw=(r,z)=>new THREE.CylinderGeometry(r,r,.09,14).rotateZ(PI/2).translate(0,r,z);
   const bikeGeo=mergeGeometries([bw(.29,.64),bw(.29,-.64),new THREE.BoxGeometry(.24,.35,1.1).translate(0,.55,0),new THREE.BoxGeometry(.3,.22,.5).translate(0,.85,-.1),new THREE.BoxGeometry(.22,.08,.5).translate(0,.84,.35),new THREE.BoxGeometry(.66,.03,.03).translate(0,1.05,-.5)]);
   inst(bikeGeo,std(0xffffff,.5,.2),pb,true,FAR.small);
-  inst(mergeGeometries([new THREE.BoxGeometry(1.8,.7,4.3).translate(0,.55,0),new THREE.BoxGeometry(1.6,.55,2.2).translate(0,1.17,.2)]),std(0xffffff,.4,.3),cars,true,FAR.mid);
+  inst(...pair({g:mergeGeometries([new THREE.BoxGeometry(1.8,.7,4.3).translate(0,.55,0),new THREE.BoxGeometry(1.6,.55,2.2).translate(0,1.17,.2)]),m:std(0xffffff,.4,.3)},
+    {g:mergeGeometries([[-.8,-1.35],[.8,-1.35],[-.8,1.35],[.8,1.35]].map(([x,z])=>new THREE.CylinderGeometry(.32,.32,.22,12).rotateZ(PI/2).translate(x,.32,z))),m:std(0x111111,.8)}),cars,true,FAR.mid);
   // gas station
   const gx=-40,gz=40;
   inst(new THREE.BoxGeometry(1,1,1),std(0xb8bcc2,.6),[{x:gx,y:.12,z:gz-5,sx:6,sy:.24,sz:1.2},{x:gx,y:.12,z:gz+5,sx:6,sy:.24,sz:1.2}],false,FAR.small);
@@ -308,7 +351,7 @@ marker.visible=arrow.visible=false;liteMaterials(scene);scene.add(marker,arrow);
 // ambience weights for audio.js (0..1 each) plus direction vectors to the sea (sx, sz) and the nearest river point (rx, rz)
 function zones(x,z,o){const inl=inland(x,z),dx=x-ICX,dz=z-ICZ,l=Math.hypot(dx,dz)||1;o.coast=1-sstep(10,170,inl);o.sx=dx/l;o.sz=dz/l;
   let bd=1e18,bx=0,bz=0;for(let i=1;i<RIVER.length;i++){const[ax,az]=RIVER[i-1],[cx,cz]=RIVER[i],ex=cx-ax,ez=cz-az,t=clamp(((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez),0,1),px=ax+ex*t,pz=az+ez*t,d=(px-x)**2+(pz-z)**2;if(d<bd){bd=d;bx=px-x;bz=pz-z}}
-  o.river=1-sstep(8,90,Math.sqrt(bd));o.rx=bx;o.rz=bz;o.town=1-sstep(0,130,rectD(x,z,TOWN.x,TOWN.z));
-  o.paddy=1-sstep(0,90,rectD(x,z,(PADDY.x1-PADDY.x0)/2,(PADDY.z1-PADDY.z0)/2,(PADDY.x0+PADDY.x1)/2,(PADDY.z0+PADDY.z1)/2));
-  const dv=Math.hypot(x-VX,z-VZ);o.volc=1-sstep(60,420,dv);o.wild=(1-o.town)*sstep(0,50,inl)*(1-sstep(90,160,200*Math.exp(-Math.pow(dv/150,1.8))));return o}
-export { zones, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP };
+  o.river=1-sstep(8,90,Math.sqrt(bd));o.rx=bx;o.rz=bz;o.town=1-sstep(0,130,rd(x,z,TOWN));
+  o.paddy=1-sstep(0,90,rd(x,z,PADDY));
+  const dv=Math.hypot(x-VOL.x,z-VOL.z);o.volc=1-sstep(60,420,dv);o.wild=(1-o.town)*sstep(0,50,inl)*(1-sstep(90,160,VOL.h*Math.exp(-Math.pow(dv/VOL.r,1.8))));return o}
+export { zones, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPV };

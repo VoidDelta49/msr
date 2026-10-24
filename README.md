@@ -8,6 +8,12 @@ A 3D web game about riding and parking Philippine-market motorcycles on a Philip
 
 Open the GitHub Pages site for this repo on your phone. It plays fullscreen. (Opening `index.html` straight from disk won't work: ES modules and the bike data need to be served over http.)
 
+## The island
+
+About 1.7 × 1.5 km (2.2× the area before Build 8.5): a town with a parking lot and gas station, a coastal ring highway, beaches, a volcano, rice terraces and paddies, a river with bridges, a switchback mountain pass over a ridge in the northeast (guardrails, viaduct sections, ~13% max grade) and a 900 m airstrip on the north plain for top-speed and 0–100 runs, linked to the highway by taxiways.
+
+The layout is data: `data/map/island.json` holds the coastline (radius samples around the island centre), terrain features (volcano, terraces, ridges with per-point crest heights, levelled areas), the river, every road (points, width, highway/airstrip kind), speed bumps, town blocks, parked vehicles, hangars and prop counts. The game builds terrain, roads and props from it at load, so editing the file (or a future map editor) changes the island.
+
 ## Bikes
 
 | | Suzuki Raider R150 Fi | Honda Click 125i | Honda CBR650R |
@@ -63,7 +69,8 @@ js/rapier.js          Rapier3D chassis: dynamic bike body, suspension probes, st
 js/model.js           3D models (Raider R150 underbone, Click 125i scooter, CBR650R supersport), low-poly extruded panels
 js/tex.js             N64-style procedural textures (tiny, dithered, bilinear) + sky
 js/hud.js             gauge clusters (sport / scooter LCD / CBR TFT), messages, minimap
-js/world.js           the island, roads, town, collision footprints, parking lot
+js/world.js           builds the island from data/map/island.json: terrain, roads, town, props, collision footprints, parking lot
+data/map/island.json  the island layout (coast, features, river, roads, town blocks, vehicles, hangars, prop counts)
 js/renderer.js        WebGPU/WebGL setup and fallback, quality preset
 js/perf.js            culling, terrain LOD, merging, Lambert materials, auto resolution
 js/gpucull.js         WebGPU compute culling + indirect draws for instanced props
