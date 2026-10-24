@@ -31,7 +31,7 @@ export const MI = ctx.MI = { q: null, pins: [], pk: 'idle', arm: true, ay: 0, re
 
 /* ---------- world objects (all created at load, hidden, so the shader warm-up covers them) ---------- */
 const beamG = new THREE.CylinderGeometry(1.1, 1.1, 40, 10, 1, true).translate(0, 20, 0);
-function beacon(c, r) {
+export function beacon(c, r) {
   const g = new THREE.Group(), pm = { color: c, transparent: true, depthWrite: false, side: THREE.DoubleSide };
   const ring = new THREE.Mesh(new THREE.RingGeometry(r - .6, r, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ ...pm, opacity: .75, polygonOffset: true, polygonOffsetFactor: -2 }));
   ring.position.y = .1; g.add(ring, new THREE.Mesh(beamG, new THREE.MeshBasicMaterial({ ...pm, opacity: .3 })));
@@ -51,7 +51,7 @@ function init() { // needs the ground height, so not at import time
   ready = true; HUBS.forEach((h, i) => hubB[i].position.set(h.x, H(h.x, h.z), h.z)); showHubs(true); pins(null);
 }
 function showHubs(on) { hubB.forEach(b => b.visible = on); }
-function pins(list) { // minimap pins: [{x, z, c, g}]
+export function pins(list) { // minimap pins: [{x, z, c, g}]
   MI.pins = list || HUBS.map(h => ({ x: h.x, z: h.z, c: h.css, g: h.g })); MI.pk = list ? 'q' + ((list[0] && list[0].x * 7 + list[0].z) | 0) : 'idle';
 }
 

@@ -107,3 +107,21 @@ body.ingame #menu{background:rgba(6,9,13,.55)}body.ingame #mBg{display:none}
 @media (max-height:420px){#mUI{gap:8px;padding-top:calc(10px + env(safe-area-inset-top))}.mb{padding:9px 14px;font-size:16px}.mb.hot{font-size:20px;padding:10px 14px}.mp{gap:6px}}
 body.menu #tc,body.menu #top,body.menu #mis,body.menu #gauge,body.menu #mini,body.menu #perf,body.menu #msg{display:none}
 .bc span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* multiplayer (Build 9.0) */
+#tags{position:fixed;inset:0;pointer-events:none;z-index:3;overflow:hidden}
+.ntag{position:absolute;left:0;top:0;pointer-events:auto;display:grid;justify-items:center;padding:3px 8px;border-radius:7px;border:1px solid rgba(58,215,255,.55);background:rgba(8,14,20,.62);color:#e9f8ff;white-space:nowrap;will-change:transform}
+.ntag b{font:800 12px system-ui}.ntag i{font:700 10px system-ui;font-style:normal;color:#8fdcf2}
+.ntag.idle{opacity:.6}.ntag.race{border-color:var(--hot)}
+#race{position:fixed;top:calc(52px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--glass);padding:8px 12px;border-radius:8px;display:flex;gap:10px;align-items:center;z-index:6;border:1px solid rgba(255,176,32,.5);white-space:nowrap}
+#race .hot{background:var(--hot);color:#1a1000;border-color:var(--hot)}
+#rcd{position:fixed;top:30%;left:0;right:0;text-align:center;font:italic 900 72px system-ui;color:var(--hot);text-shadow:4px 4px 0 #0b1118;opacity:0;pointer-events:none;transition:opacity .15s;z-index:6}
+#rcd.on{opacity:1}
+body.gar #race,body.gar #tags,body.menu #race,body.menu #tags,body.menu #rcd,body.opt #tags{display:none}
+#mMPP{width:min(400px,100%);background:rgba(12,16,21,.88);padding:14px;border-radius:12px}
+.mpf{display:flex;gap:8px;flex-wrap:wrap}.mpf label{flex:1 1 140px;display:grid;gap:3px;font:700 11px system-ui;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+#mMPP input{width:100%;font:700 16px system-ui;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.22);background:#0a0e12;color:var(--ink);user-select:text;-webkit-user-select:text;touch-action:manipulation;text-transform:none}
+#mpRoom{text-transform:uppercase!important;letter-spacing:.12em}
+.mpb{display:flex;gap:8px;flex-wrap:wrap}.mpb .mb.sm.hot{font-size:15px;padding:9px 14px}
+#mpSt{min-height:1.2em;font-weight:700;color:#8fdcf2}#mpSt.bad{color:var(--bad)}
+#mMPP summary{cursor:pointer;color:var(--dim)}#mMPP details input{margin-top:6px;font-size:13px}

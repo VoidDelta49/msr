@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>CPM Motor Edition</title>
-<link rel="stylesheet" href="css/style.css?v=8.8">
+<link rel="stylesheet" href="css/style.css?v=9.0">
 </head>
 <body>
 <canvas id="gl"></canvas>
@@ -12,6 +12,9 @@
 <div id="msg"></div>
 <div id="perf"></div>
 <canvas id="mini" width="140" height="140"></canvas>
+<div id="tags"></div>
+<div id="race" hidden><span id="raceT"></span><button class="b hot" id="raceY">RACE</button><button class="b" id="raceX">✕</button></div>
+<div id="rcd"></div>
 <div id="mis" hidden><span id="misT"></span><button class="b" id="misNext" hidden>Next</button><button class="b" id="misX">✕</button></div>
 <div id="top"><button class="b" id="bMenu" aria-label="Menu">☰</button><button class="b" id="bCam">CAM</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button><button class="b" id="bOpt" aria-label="Options">⚙</button></div>
 
@@ -59,11 +62,21 @@
     <header><h1>CPM<span>:</span> <em>Motor Edition</em></h1><p>Free-roam island riding</p></header>
     <nav id="mMain" class="mp">
       <button class="mb hot" id="mPlay"><span id="mPlayT">PLAY</span><i id="mPre"></i></button>
+      <button class="mb" id="mMP">MULTIPLAYER<small id="mMPN"></small></button>
       <button class="mb" id="mBike">BIKE<small id="mBikeN"></small></button>
       <button class="mb" id="mOpt">OPTIONS</button>
       <button class="mb" id="mHelp">HOW TO RIDE</button>
     </nav>
     <section id="mBikes" class="mp" hidden><div id="mCards"></div><button class="mb sm" data-back>◀ BACK</button></section>
+    <section id="mMPP" class="mp" hidden>
+      <div class="mpf"><label>Your name<input id="mpName" maxlength="16" autocomplete="off" placeholder="Rider"></label>
+      <label>Room code<input id="mpRoom" maxlength="8" autocomplete="off" autocapitalize="characters" placeholder="ABCD"></label></div>
+      <div class="mpb"><button class="mb sm hot" id="mpJoin">JOIN</button><button class="mb sm" id="mpNew">NEW ROOM</button><button class="mb sm" id="mpLeave" hidden>LEAVE</button></div>
+      <p id="mpSt" class="mtxt"></p>
+      <p class="mtxt">Share the room code with friends (up to 8 per room). Ghost mode: bikes ride through each other. Tap a rider's name tag to challenge them to a race.</p>
+      <details class="mtxt"><summary>Server</summary><input id="mpUrl" autocomplete="off" placeholder="https://cpm-relay.you.workers.dev"></details>
+      <button class="mb sm" data-back>◀ BACK</button>
+    </section>
     <section id="mHelpP" class="mp" hidden>
       <p class="mtxt">Ride an island town: coastal highway, beaches, a volcano, rice terraces, a river with bridges, a switchback mountain pass and an airstrip for top-speed runs. Quests: ride into a coloured beacon and hold still to take a job (blue P = parking challenge, tan B = parcel delivery, pink F = food delivery); they are pinned on the minimap too. Fuel up at the station next to the lot (red dot on the map).</p>
       <div class="keys">
@@ -103,7 +116,7 @@
   <div class="sec">ERROR LOG</div><pre id="oLog"></pre>
 </div></div>
 
-<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=8.8","./js/audio.js":"./js/audio.js?v=8.8","./js/config.js":"./js/config.js?v=8.8","./js/controls.js":"./js/controls.js?v=8.8","./js/drivetrain.js":"./js/drivetrain.js?v=8.8","./js/garage.js":"./js/garage.js?v=8.8","./js/hud.js":"./js/hud.js?v=8.8","./js/main.js":"./js/main.js?v=8.8","./js/missions.js":"./js/missions.js?v=8.8","./js/model.js":"./js/model.js?v=8.8","./js/options.js":"./js/options.js?v=8.8","./js/perf.js":"./js/perf.js?v=8.8","./js/physics.js":"./js/physics.js?v=8.8","./js/rapier.js":"./js/rapier.js?v=8.8","./js/renderer.js":"./js/renderer.js?v=8.8","./js/spec.js":"./js/spec.js?v=8.8","./js/state.js":"./js/state.js?v=8.8","./js/util.js":"./js/util.js?v=8.8","./js/world.js":"./js/world.js?v=8.8","./js/tex.js":"./js/tex.js?v=8.8","./js/gpucull.js":"./js/gpucull.js?v=8.8","@dimforge/rapier3d-compat":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs","three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/webgpu":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/tsl":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.tsl.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
-<script type="module" src="js/menu.js?v=8.8"></script>
+<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=9.0","./js/audio.js":"./js/audio.js?v=9.0","./js/config.js":"./js/config.js?v=9.0","./js/controls.js":"./js/controls.js?v=9.0","./js/drivetrain.js":"./js/drivetrain.js?v=9.0","./js/garage.js":"./js/garage.js?v=9.0","./js/hud.js":"./js/hud.js?v=9.0","./js/main.js":"./js/main.js?v=9.0","./js/missions.js":"./js/missions.js?v=9.0","./js/model.js":"./js/model.js?v=9.0","./js/options.js":"./js/options.js?v=9.0","./js/perf.js":"./js/perf.js?v=9.0","./js/physics.js":"./js/physics.js?v=9.0","./js/rapier.js":"./js/rapier.js?v=9.0","./js/renderer.js":"./js/renderer.js?v=9.0","./js/spec.js":"./js/spec.js?v=9.0","./js/state.js":"./js/state.js?v=9.0","./js/util.js":"./js/util.js?v=9.0","./js/world.js":"./js/world.js?v=9.0","./js/tex.js":"./js/tex.js?v=9.0","./js/gpucull.js":"./js/gpucull.js?v=9.0","./js/net.js":"./js/net.js?v=9.0","./js/race.js":"./js/race.js?v=9.0","@dimforge/rapier3d-compat":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs","three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/webgpu":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/tsl":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.tsl.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module" src="js/menu.js?v=9.0"></script>
 </body>
 </html>

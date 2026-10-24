@@ -107,7 +107,7 @@ export function drawCluster(inWorld = true) {
 /* minimap */
 const mm = $('mini').getContext('2d'); let miniKey = '';
 export function drawMini(MAP, V) { // V = world.js MAPV {cx, cz, w metres, n px}
-  const MI0 = ctx.MI, k = (S.x * 2 | 0) + ',' + (S.z * 2 | 0) + ',' + (S.psi * 100 | 0) + ',' + (MI0 ? MI0.pk : '');
+  const MI0 = ctx.MI, k = (S.x * 2 | 0) + ',' + (S.z * 2 | 0) + ',' + (S.psi * 100 | 0) + ',' + (MI0 ? MI0.pk : '') + (ctx.mpK || '');
   if (k === miniKey) return; miniKey = k;
   mm.clearRect(0, 0, 140, 140); mm.save(); mm.beginPath(); mm.arc(70, 70, 68, 0, 7); mm.clip();
   const px = x => ((x - V.cx) / V.w + .5) * V.n, pz = z => ((z - V.cz) / V.w + .5) * V.n, u = px(S.x), v = pz(S.z), Z = 2.6;
@@ -120,6 +120,11 @@ export function drawMini(MAP, V) { // V = world.js MAPV {cx, cz, w metres, n px}
     const dx = (px(p.x) - u) * Z, dz = (pz(p.z) - v) * Z, X = dx * ca - dz * sa, Y = dx * sa + dz * ca, d = Math.hypot(X, Y), f = d > 56 ? 56 / d : 1, r = f < 1 ? 4.5 : 6, cx = 70 + X * f, cy = 70 + Y * f;
     mm.fillStyle = p.c; mm.beginPath(); mm.arc(cx, cy, r, 0, 7); mm.fill(); mm.strokeStyle = '#fff'; mm.lineWidth = 1.5; mm.stroke();
     mm.fillStyle = '#fff'; if (p.g && f === 1) mm.fillText(p.g, cx, cy + .5); else { mm.beginPath(); mm.arc(cx, cy, 1.8, 0, 7); mm.fill(); }
+  }
+  // other riders (net.js): cyan dots, far ones on the rim
+  for (const p of ctx.mpDots || []) {
+    const dx = (px(p.x) - u) * Z, dz = (pz(p.z) - v) * Z, X = dx * ca - dz * sa, Y = dx * sa + dz * ca, d = Math.hypot(X, Y), f = d > 60 ? 60 / d : 1;
+    mm.fillStyle = '#3ad7ff'; mm.beginPath(); mm.arc(70 + X * f, 70 + Y * f, 3.5, 0, 7); mm.fill(); mm.strokeStyle = '#0b1a22'; mm.lineWidth = 1.2; mm.stroke();
   }
   mm.fillStyle = '#ffb020'; mm.beginPath(); mm.moveTo(70, 62); mm.lineTo(76, 76); mm.lineTo(70, 72); mm.lineTo(64, 76); mm.fill();
   mm.strokeStyle = 'rgba(255,255,255,.5)'; mm.lineWidth = 2; mm.beginPath(); mm.arc(70, 70, 68, 0, 7); mm.stroke();

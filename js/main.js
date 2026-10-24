@@ -8,7 +8,7 @@ import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad } from './world.js';
 ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
-import { B, buildModel, applyLook } from './model.js';
+import { B, buildModel, applyLook, snapshot, releaseSkin } from './model.js';
 import { step } from './physics.js';
 import { initAudio, updAudio, blip } from './audio.js';
 import { say, drawCluster, drawMini, updPerf, setFps, setPhys, setGfx, setJank } from './hud.js';
@@ -19,6 +19,8 @@ import { G as GARAGE, buildGarage } from './garage.js';
 import { O, openOpts, closeOpts } from './options.js';
 import { cullUpdate, autoRes, resScale, jankStart, jankEnd, jankText } from './perf.js';
 import { gpuCull } from './gpucull.js';
+import { NET, netFrame, join as netJoin, leave as netLeave } from './net.js';
+import { raceTick } from './race.js';
 import { GPU_TYPES } from './world.js';
 
 /* ---------- data ---------- */
@@ -37,14 +39,26 @@ function reset() {
   ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody();
 }
 function recompute() { ctx.spec = computeSpec(ctx.bike, ctx.bcfg); applyLook(ctx.spec); }
+// put the camera / rider visibility back on a freshly built local model
+function attachCam() { if (!ctx.GAR && ctx.camMode === 0) { B.cam.add(camera); camera.position.set(0, 0, 0); camera.rotation.set(-.3, 0, 0); } B.rider.forEach(m => m.visible = !ctx.GAR && ctx.camMode === 1); }
+// multiplayer (net.js): a remote rider's bike + paint is built into B like ours, snapshotted, then ours is rebuilt.
+// Cached by look, so 8 friends on the same bike and paint cost one build. Not while crashed (the rider is a ragdoll).
+const TPL = new Map();
+ctx.bikeTemplate = look => {
+  const bike = ctx.bikes[look && look.bike]; if (!bike) return null;
+  const c = { ...bike.defaults }; if (look.cfg) for (const k in bike.defaults) if (typeof look.cfg[k] === typeof bike.defaults[k]) c[k] = look.cfg[k];
+  const key = bike.id + JSON.stringify(c); if (TPL.has(key)) return TPL.get(key); if (S.crashed) return null;
+  let spec; try { spec = computeSpec(bike, c); } catch (e) { spec = computeSpec(bike, { ...bike.defaults }); }
+  buildModel(bike); applyLook(spec); const t = snapshot(); releaseSkin(); buildModel(ctx.bike); recompute(); attachCam();
+  TPL.set(key, t); return t;
+};
 function setBike() {
   const bike = ctx.bikes[cfg.bike] || ctx.bikes[ids[0]]; cfg.bike = bike.id;
   ctx.bike = bike; ctx.bcfg = bikeCfg(bike); ctx.drive = DRIVES[bike.drivetrain];
   buildModel(bike); recompute();
   document.body.classList.toggle('cvt', bike.drivetrain === 'cvt');
   S.fuel = ctx.spec.fuel.cap; const keep = ctx.GAR ? { x: S.x, z: S.z, psi: S.psi } : null; reset(); if (keep) Object.assign(S, keep);
-  if (!ctx.GAR && ctx.camMode === 0) { B.cam.add(camera); camera.position.set(0, 0, 0); camera.rotation.set(-.3, 0, 0); }
-  B.rider.forEach(m => m.visible = !ctx.GAR && ctx.camMode === 1);
+  attachCam();
   $('brk').textContent = bike.drivetrain === 'cvt' ? 'BRAKE · CBS' : 'BRAKE';
 }
 // physics engine first: everything below positions the Rapier body
@@ -111,6 +125,8 @@ addEventListener('pointerdown', () => { if (!ctx.paused && !ctx.GAR && !ctx.OPT)
 // menu.js: PLAY / RESUME (fullscreen was requested there, inside the tap) and the menu's bike picker
 let played = false;
 export function play() { initAudio(); ctx.paused = false; if (!played) { played = true; say(ctx.bike.hint); } }
+export function mpJoin(room, name, url) { netJoin(room, name, url); }
+export function mpLeave() { netLeave(); }
 export function switchBike(id) { cfg.bike = id; setBike(); save(); say(ctx.bike.name, 1200); }
 
 function water() { if (S.wet) { S.v *= .9; return; } if (H(S.x, S.z) < SEA + .12) { S.wet = true; say('Splash! You rode into the water', 1600); blip('thud', 9); setTimeout(() => { reset(); S.wet = false; say('Towed back to the lot'); }, 1600); } }
@@ -145,13 +161,15 @@ function loop(t) {
   if (cfg.fpsCap && t - capT < 1000 / cfg.fpsCap - 2) return; capT = t;
   jankStart(t); const J0 = performance.now(); let hudUp = false; const dt = Math.min(.05, (t - last) / 1000); last = t; fN++;
   if (t - fT > 1000) { const fps = Math.round(fN * 1000 / (t - fT)); setFps(fps); setPhys('Physics ' + pms.toFixed(2) + ' ms'); autoRes(fps, !ctx.paused && !ctx.GAR && !ctx.OPT); setGfx(renderer.info.render.drawCalls, resScale()); setJank(jankText()); updPerf(API); fN = 0; fT = t; }
+  raceTick(dt);
   if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); if (RP.ok) tickRapier(dt); }
   else if (!ctx.paused && !ctx.OPT) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); }
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if (S.crashed && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); jankEnd(t, performance.now() - J0, hudUp);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); jankEnd(t, performance.now() - J0, hudUp);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.live = true;
+if (ctx.mpWant) { const w = ctx.mpWant; ctx.mpWant = null; netJoin(w.room, w.name, w.url); } // MULTIPLAYER > JOIN before the game had loaded
 O.api = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce };
+window.__cpm = { renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };

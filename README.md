@@ -43,6 +43,14 @@ Three quest hubs sit in town, each a coloured beacon in the world and a pin on t
 
 The spoilage numbers are the `K` table at the top of `js/missions.js`.
 
+## Multiplayer (Build 9.0)
+
+Main menu > MULTIPLAYER: type a name, then JOIN a room code or make a NEW ROOM and share its code (up to 8 riders per room). Everyone rides their own bike with their own physics; other riders appear as ghost bikes (no collisions) with their real bike and paint, a name tag and a cyan dot on the minimap.
+
+**Racing:** tap a rider's name tag (within 90 m, it shows 🏁) to challenge them. When they accept, a finish beacon appears on a road about the same distance from both of you (350-900 m). Hold still for the 3-2-1 (moving early = +3 s), then get there first. ✕ gives up. Quests can't start during a race.
+
+The relay is a small Cloudflare Worker in `server/` (deploy steps in `server/README.md`).
+
 ## Controls
 
 Touch:
@@ -85,6 +93,9 @@ data/map/island.json  the island layout (coast, features, river, roads, town blo
 js/renderer.js        WebGPU/WebGL setup and fallback, quality preset
 js/perf.js            culling, terrain LOD, merging, Lambert materials, auto resolution
 js/gpucull.js         WebGPU compute culling + indirect draws for instanced props
+js/net.js             multiplayer: relay connection, state packets, interpolated ghost bikes, name tags
+js/race.js            tap-to-race between two riders
+server/               Cloudflare Worker + Durable Object relay (one room per code)
 js/audio.js (+ engine-worklet.js), controls.js, garage.js, options.js, missions.js, config.js, state.js, util.js
 ```
 
@@ -138,7 +149,7 @@ WebGPU has not been verified on real hardware yet. Check the renderer readout on
 
 - Compute-shader features: GPU grass, rain, more traffic
 - Visual pass (materials, lighting, bike model detail)
-- Multiplayer
+- Multiplayer: remote engine sounds, bike-to-bike bumps, races with more riders, shared quests
 
 ## Legal
 

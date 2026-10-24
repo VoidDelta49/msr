@@ -3,6 +3,7 @@
 // Front of the bike is -z; ct coordinates are ground-relative at static sag.
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { clone as skelClone } from 'three/addons/utils/SkeletonUtils.js';
 import { attribute, uniformArray, texture, uv, vec2, vec3, select } from 'three/tsl';
 import { PI } from './util.js';
 import { scene, std } from './renderer.js';
@@ -420,17 +421,20 @@ function supersport(ct) {
 // Leftovers with their own textures (grille, plate, floor mat, decal, cluster) are merged per material per group.
 const PN = 48, PA = [], PB = [], PE = [], PAL = new Map();
 for (let i = 0; i < PN; i++) { PA.push(new THREE.Vector4(1, 1, 1, .5)); PB.push(new THREE.Vector4()); PE.push(new THREE.Vector4()); }
-const uA = uniformArray(PA, 'vec4'), uB = uniformArray(PB, 'vec4'), uE = uniformArray(PE, 'vec4');
 function writePal(m, i) { const c = m.color, e = m.emissive, k = m.emissiveIntensity; PA[i].set(c.r, c.g, c.b, m.roughness); PB[i].set(m.metalness, m.map === LIV.t ? 1 : m.map === CF ? 2 : 0, 0, 0); PE[i].set(e.r * k, e.g * k, e.b * k, 0); }
 function palIdx(m) { let i = PAL.get(m); if (i === undefined) { i = Math.min(PAL.size, PN - 1); PAL.set(m, i); writePal(m, i); } return i; }
 function syncPal() { for (const [m, i] of PAL) writePal(m, i); }
 const palable = m => m.isMeshStandardMaterial && !m.vertexColors && !m.transparent && !m.alphaTest && (!m.map || m.map === LIV.t || m.map === CF);
-const MT = (() => {
+// palMat(): the palette material for one set of palette arrays + livery texture. MT is the ridden bike's; remote
+// players (snapshot() below) get their own frozen copy (same shader code, so three reuses the compiled program).
+function palMat(PA, PB, PE, lt) {
+  const uA = uniformArray(PA, 'vec4'), uB = uniformArray(PB, 'vec4'), uE = uniformArray(PE, 'vec4');
   const m = new THREE.MeshStandardNodeMaterial(), i = attribute('pal', 'float').add(.5).toInt(), a = uA.element(i), b = uB.element(i), u = uv();
-  const liv = texture(LIV.t, u.mul(vec2(1 / (LZ1 - LZ0), 1 / (LY1 - LY0))).add(vec2(-LZ0 / (LZ1 - LZ0), -LY0 / (LY1 - LY0)))), cf = texture(CF, u.mul(4));
+  const liv = texture(lt, u.mul(vec2(1 / (LZ1 - LZ0), 1 / (LY1 - LY0))).add(vec2(-LZ0 / (LZ1 - LZ0), -LY0 / (LY1 - LY0)))), cf = texture(CF, u.mul(4));
   m.colorNode = a.rgb.mul(select(b.y.greaterThan(1.5), cf.rgb, select(b.y.greaterThan(.5), liv.rgb, vec3(1))));
   m.roughnessNode = a.w; m.metalnessNode = b.x; m.emissiveNode = uE.element(i).rgb; return m;
-})();
+}
+const MT = palMat(PA, PB, PE, LIV.t);
 // one mesh's geometry in the frame `rel` (a Matrix4 from its world to the target), with pal (+ bone) attributes
 function palGeo(o, rel, bone) {
   const src = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, g = new THREE.BufferGeometry(), n = src.attributes.position.count;
@@ -489,3 +493,25 @@ export function applyLook(spec) {
   MRS.color.set(spec.rim || B.wheelCol); MCov.color.set(spec.ec || 0x60656d); if (B.decal) B.decal.color.set(spec.hd || '#f1f1ec');
   B.buildExh(spec.snd, !!spec.cfx); syncPal();
 }
+
+/* ---------- remote players (net.js) ---------- */
+// snapshot(): a frozen copy of the bike exactly as it is built and painted right now (main.js builds the remote bike into
+// B, snapshots it, then rebuilds the local one). Own palette arrays + livery canvas, so later paint changes don't leak.
+// twin(tpl): one more instance of a snapshot (shares geometry and materials). h = the animated handles in the copy.
+const HK = ['lean', 'body', 'steer', 'slider', 'frontW', 'rearW', 'rearH', 'swing'];
+function pair(a, b, m) { m.set(a, b); for (let i = 0; i < a.children.length; i++) pair(a.children[i], b.children[i], m); }
+function handles(src, h0, m) { const h = {}; for (const k of HK) h[k] = m.get(h0[k]); h.rider = h0.rider.map(r => m.get(r)); return h; }
+export function snapshot() {
+  const cams = []; B.root.traverse(o => { if (o.isCamera) cams.push([o, o.parent]); }); for (const [c, p] of cams) p.remove(c);
+  const o = skelClone(B.root), m = new Map(); pair(B.root, o, m); for (const [c, p] of cams) p.add(c);
+  const cv = document.createElement('canvas'); cv.width = LW; cv.height = LH; cv.getContext('2d').drawImage(LIV.c, 0, 0);
+  const lt = new THREE.CanvasTexture(cv); lt.colorSpace = THREE.SRGBColorSpace; lt.anisotropy = 4;
+  const mt = palMat(PA.map(v => v.clone()), PB.map(v => v.clone()), PE.map(v => v.clone()), lt), dec = B.decal ? B.decal.clone() : null, drop = [];
+  o.traverse(x => { if (!x.isMesh) return; if (x.material === MT) x.material = mt; else if (dec && x.material === B.decal) x.material = dec; else if (x.material.map === cluTex) drop.push(x); });
+  for (const x of drop) x.parent.remove(x);
+  const h = handles(B.root, B, m); h.rider.forEach(r => r.visible = true);
+  return { o, h, G: { ...B.G }, kind: B.kind, dispose() { mt.dispose(); lt.dispose(); if (dec) dec.dispose(); } };
+}
+export function twin(tpl) { const o = skelClone(tpl.o), m = new Map(); pair(tpl.o, o, m); return { o, h: handles(tpl.o, tpl.h, m) }; }
+// the local bike's skinned mesh now belongs to a snapshot: buildModel() must not dispose its geometry
+export function releaseSkin() { B.skin = null; }

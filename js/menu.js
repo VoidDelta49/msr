@@ -1,7 +1,7 @@
 // Page entry: the main menu. Plain DOM + the small settings modules only, so the page is up in a blink.
 // three.js, Rapier and the island (main.js and everything it imports) are fetched in the background once the page has
 // loaded, and only parsed/built when the player taps PLAY. The same menu is the pause menu in game (Esc / ☰).
-import { cfg, save, BUILD } from './config.js';
+import { cfg, save, BUILD, MP_URL } from './config.js';
 import { $ } from './util.js';
 import { ctx } from './state.js';
 import { O, openOpts } from './options.js';
@@ -30,7 +30,7 @@ window.__cpmLoad = (stage, f) => bar(f, stage);
 const frames = n => new Promise(r => { const f = () => --n ? requestAnimationFrame(f) : r(); requestAnimationFrame(f); });
 
 /* ---------- panes ---------- */
-const PANES = ['mMain', 'mBikes', 'mHelpP', 'mLoad'];
+const PANES = ['mMain', 'mBikes', 'mMPP', 'mHelpP', 'mLoad'];
 function show(id) { for (const p of PANES) $(p).hidden = p !== id; }
 $('menu').onclick = e => { if (e.target.closest('[data-back]')) show('mMain'); };
 $('mHelp').onclick = () => show('mHelpP');
@@ -57,6 +57,31 @@ $('mCards').onclick = e => {
   cards(); show('mMain');
 };
 loadBikes().catch(e => console.warn('bike list: ' + e.message));
+
+/* ---------- multiplayer (net.js does the work once the game has loaded) ---------- */
+const mpIn = { name: $('mpName'), room: $('mpRoom'), url: $('mpUrl') };
+mpIn.name.value = cfg.name; mpIn.room.value = cfg.room; mpIn.url.value = cfg.mpUrl || MP_URL;
+if (!MP_URL && !cfg.mpUrl) $('mpUrl').parentElement.open = true;
+const ST = { off: '', conn: 'Connecting…', retry: 'Reconnecting…' };
+function mpUI() {
+  const N = ctx.NET, on = N && N.st !== 'off';
+  $('mpSt').textContent = N && N.st === 'on' ? `In room ${N.room} · ${N.peers.size + 1}/${N.max} riders` : on ? ST[N.st] : (N && N.err) || (ctx.mpWant ? 'Joins when the game has loaded' : '');
+  $('mpSt').classList.toggle('bad', !on && !!(N && N.err)); $('mpLeave').hidden = !on; $('mpJoin').hidden = $('mpNew').hidden = on;
+  $('mMPN').textContent = N && N.st === 'on' ? N.room + ' · ' + (N.peers.size + 1) : '';
+}
+ctx.onNet = mpUI;
+mpIn.room.oninput = () => { mpIn.room.value = mpIn.room.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); };
+function mpGo(room) {
+  const name = mpIn.name.value.trim().slice(0, 16) || 'Rider', url = mpIn.url.value.trim();
+  if (!/^[A-Z0-9]{4,8}$/.test(room)) { $('mpSt').textContent = 'Room codes are 4-8 letters or numbers'; return; }
+  if (!/^(https?|wss?):\/\//.test(url)) { $('mpSt').textContent = 'Set the server address first (Server, below)'; $('mpUrl').parentElement.open = true; return; }
+  Object.assign(cfg, { name, room, mpUrl: url === MP_URL ? '' : url }); save(); mpIn.room.value = room;
+  if (G) { G.mpJoin(room, name, url); mpUI(); } else { ctx.mpWant = { room, name, url }; mpUI(); play(); }
+}
+$('mMP').onclick = () => { show('mMPP'); mpUI(); };
+$('mpJoin').onclick = () => mpGo(mpIn.room.value);
+$('mpNew').onclick = () => { const A = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r = ''; for (let i = 0; i < 4; i++) r += A[Math.random() * A.length | 0]; mpGo(r); };
+$('mpLeave').onclick = () => { if (G) G.mpLeave(); mpUI(); };
 
 /* ---------- play / pause ---------- */
 function goFS() { const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => { })).catch(() => { }); }
@@ -91,7 +116,7 @@ $('bMenu').onclick = openMenu;
 addEventListener('keydown', e => {
   if (e.code !== 'Escape' || ctx.OPT || ctx.GAR) return; // Esc in options/garage is handled there
   if (!ctx.MENU) return openMenu();
-  if (!$('mBikes').hidden || !$('mHelpP').hidden) show('mMain'); else if (G) play();
+  if (!$('mBikes').hidden || !$('mHelpP').hidden || !$('mMPP').hidden) show('mMain'); else if (G) play();
 });
 ctx.MENU = true; document.body.classList.add('menu');
 // start downloading once the menu is up (doesn't block anything: nothing is parsed until PLAY)
