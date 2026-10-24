@@ -15,7 +15,10 @@ const WMAX = 1.25;
 function pitchUp(sp, a, dt) {
   let p = S.wp || 0, pv = S.wpv || 0;
   if (S.air || ctx.stand) { S.wp = S.wpv = 0; return; }
-  const g = 9.81, h = sp.h, up = p > 0 || p === 0 && a * h > g * sp.lr, dn = !up && (p < 0 || -a * h > g * sp.lf);
+  // the trigger looks at a smoothed acceleration with a margin, so a one-step spike (clutch dump, grip returning after wheelspin,
+  // brake release) can't tip the bike up; once it is up the real acceleration drives it
+  const g = 9.81, h = sp.h, af = S.af = (S.af || 0) + (a - (S.af || 0)) * Math.min(1, dt / .15), M = 1.12;
+  const up = p > 0 || p === 0 && af * h > M * g * sp.lr, dn = !up && (p < 0 || -af * h > M * g * sp.lf);
   if (!up && !dn) return;
   const L = up ? sp.lr : sp.lf, sg = up ? 1 : -1, q0 = Math.abs(p), sn = Math.sin(q0), cs = Math.cos(q0);
   let qv = pv * sg;
@@ -37,7 +40,9 @@ export function step(dt) {
   const thr = S.running && !S.lim && S.cutT <= 0 ? S.thr : 0;
   const idleT = S.running ? clamp((sp.idle + (S.fi || 0) + 100 - S.rpm) / 400, 0, 1) * .35 : 0;
   S.thrEff = Math.max(thr, idleT);
-  const we = S.rpm * PI / 30, Tdrive = S.running ? S.thrEff * tq(sp, S.rpm) * sp.pow : 0;
+  // wheelie limiter: the balance point is unstable, so drive fades out as the nose rises and the bike settles instead of running away
+  const wl = 1 - .92 * sstep(.12, .55, S.wp || 0), sl = 1 - .92 * sstep(.12, .5, -(S.wp || 0));
+  const we = S.rpm * PI / 30, Tdrive = S.running ? S.thrEff * tq(sp, S.rpm) * sp.pow * wl : 0;
   // published torque is already net at the crank, so friction/pumping loss mostly shows with the throttle shut
   // (engine braking, rev decay); at full throttle only a small part is left
   const Te = Tdrive - (we > .5 ? (sp.fric[0] + sp.fric[1] * S.rpm) * (1 - .85 * S.thrEff) + (S.running ? 0 : 1.5) : 0);
@@ -53,7 +58,7 @@ export function step(dt) {
   const ayu = S.ayu || 0, Pxr = Pr * Math.sqrt(1 - ayu * ayu); // rear force left once cornering has taken its share (friction circle)
   // brakes: lever force split front/rear (bf). Past a tyre's peak the wheel locks and only slides (KS x peak) until the
   // brake is eased well off; ABS bikes hold each wheel at its peak instead. Standing still nothing locks.
-  const Fc = S.brake * sp.brake * sp.mu * BRK * m * g, Fcf = Fc * (sp.bf ?? .85), Fcr = Fc - Fcf, rolling = av > .8 && !S.air;
+  const Fc = S.brake * sl * sp.brake * sp.mu * BRK * m * g, Fcf = Fc * (sp.bf ?? .85), Fcr = Fc - Fcf, rolling = av > .8 && !S.air;
   // a wheel that is in the air (wheelie / stoppie) can't lock and only passes what little load it has
   const lkF = rolling && !sp.abs && !offF && (S.lkF ? Fcf > .9 * KS * Pf : Fcf > 1.05 * Pf), lkR = rolling && !sp.abs && !offR && (S.lkR ? Fcr > .9 * KS * Pr : Fcr > 1.05 * Pr);
   S.lkF = lkF; S.lkR = lkR;
