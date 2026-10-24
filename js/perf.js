@@ -73,7 +73,7 @@ export function autoRes(fps, playing) {
   if (!cfg.autoRes) { if (scale !== 1) { scale = 1; apply(); } return; }
   if (!playing || document.hidden) { warm = 0; return; }
   if (++warm < 4) return; // skip shader-compile hitches right after starting / unpausing
-  ref = Math.min(144, Math.max(ref, fps, 30)); // highest rate seen ≈ screen refresh
+  ref = Math.min(cfg.fpsCap || 144, Math.max(ref, fps, 30)); // aim at the FPS cap, not the screen's refresh // highest rate seen ≈ screen refresh
   const now = performance.now();
   // every change resizes the canvas and post-processing targets (a hitch of its own), so one bad second isn't enough
   if (fps < ref * .82 && scale > .55) {
