@@ -4,9 +4,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clone as skelClone } from 'three/addons/utils/SkeletonUtils.js';
-import { attribute, uniformArray, texture, uv, vec2, vec3, select } from 'three/tsl';
+import { attribute, uniformArray, texture, uv, vec2, vec3, select, instancedBufferAttribute, smoothstep } from 'three/tsl';
 import { PI } from './util.js';
-import { scene, std } from './renderer.js';
+import { scene, std, sun } from './renderer.js';
 import * as T from './tex.js';
 import { mkTex } from './tex.js';
 import { cluTex } from './hud.js';
@@ -476,7 +476,7 @@ const XC = new Map(), xstd = (c, r, mt) => { const k = c + '/' + r + '/' + mt; l
 function batchExh() {
   const L = B.exh.children.filter(o => o.isMesh); if (!L.length) return; B.exh.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(B.exh.matrixWorld).invert(), m = new THREE.Mesh(mergeGeometries(L.map(o => palGeo(o, inv))), MT);
-  m.castShadow = true; for (const o of L) { B.exh.remove(o); o.geometry.dispose(); } B.exh.add(m);
+  m.castShadow = !!B.castSh; for (const o of L) { B.exh.remove(o); o.geometry.dispose(); } B.exh.add(m);
 }
 function batchBike() {
   // the swingarm mesh is rescaled every frame: its transform moves to an empty group (still B.swing) that becomes a bone
@@ -587,8 +587,65 @@ export function buildModel(bike, spec) {
   const rm = new Map(); for (const o of B.rider) { if (!rm.has(o.material)) rm.set(o.material, []); rm.get(o.material).push(o); }
   B.rider = [...rm.values()].map(L => L.length > 1 ? mergeList(L, B.ct) : L[0]);
   batchBike(); mergeStatic(B.ct, new Set(B.rider));
-  // shadows: the skinned bike (1 draw, animated parts included), rider and exhaust; the small textured leftovers don't cast
-  const keep = new Set([B.skin, ...B.rider]); B.ct.traverse(o => { if (o.isMesh && o.parent !== B.exh) o.castShadow = keep.has(o); });
+  // shadows: on the island the bike draws a contact blob (below) instead of casting into the sun's shadow map; only the
+  // garage studio turns real casting back on (skinned bike, rider, exhaust; the small textured leftovers never cast)
+  bikeShadow(!!B.castSh);
+  const bb = B.skin.geometry.boundingBox || (B.skin.geometry.computeBoundingBox(), B.skin.geometry.boundingBox), front = bb.min.z + B.G.rw;
+  B.G.sh = { zc: (front + B.G.rearZ) / 2, d: Math.max(.8, B.G.rearZ - front), w: Math.min(.8, Math.max(.5, bb.max.x - bb.min.x)) }; bikeBlob(BLOB_ME, B.G);
+}
+export function bikeShadow(on) {
+  B.castSh = on; const keep = new Set([B.skin, ...B.rider]);
+  B.ct.traverse(o => { if (o.isMesh) o.castShadow = on && (keep.has(o) || o.parent === B.exh); });
+}
+
+/* ---------- contact shadows ---------- */
+// Bikes (local + remote) and the thrown rider don't cast into the sun's shadow map: a skinned bike + rider per player was
+// the priciest part of the shadow pass, and Low had no bike shadow at all. Instead one InstancedMesh of soft ground blobs,
+// one draw call for every bike: an ellipse under the bike with darker cores at the two tyre contacts. Each blob sits on
+// the ground under the bike's centre (so it slides out as the bike leans, and follows a crash), spreads as the bike tips
+// over, tilts with the slope between the wheels, fades out with height (jumps), and slides a little away from the sun
+// (or moon) so it peeks out from under the bike like a real shadow would. Fogged like the ground under it.
+// bk per instance: x = strength, y = tyre cores.
+const BLOBN = 16, BK = new THREE.InstancedBufferAttribute(new Float32Array(BLOBN * 2), 2), WQ = .5 / 1.6; // quad = 1.6 x the wheel spacing
+BK.setUsage(THREE.DynamicDrawUsage);
+const blobMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+{
+  const k = instancedBufferAttribute(BK), q = uv().sub(.5);
+  const body = smoothstep(0, .55, q.mul(2).length().oneMinus());                                            // soft ellipse, flat middle
+  const c = smoothstep(0, .7, vec2(q.x.div(.3), q.y.abs().sub(WQ).div(.13)).length().oneMinus());            // tyre contacts
+  blobMat.colorNode = vec3(0); blobMat.opacityNode = body.mul(.6).max(c.mul(k.y).mul(.85)).mul(k.x);
+}
+const blobGeo = new THREE.PlaneGeometry(1, 1).rotateX(-PI / 2); // bk reaches the shader through the node only: also adding it to the geometry reads as 0 (r186 WebGL)
+const BLOB = new THREE.InstancedMesh(blobGeo, blobMat, BLOBN); BLOB.name = 'bikeBlobs'; BLOB.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+BLOB.frustumCulled = false; BLOB.castShadow = BLOB.receiveShadow = false; BLOB.count = 1; BLOB.setMatrixAt(0, new THREE.Matrix4()); scene.add(BLOB); // 1 empty instance: the warm-up compiles it
+// entry: b = the object whose frame is the bike's (its point p = the bike's middle, h0 above the ground when upright),
+// d = wheel spacing, w = width, spread = widening when tipped over (default 1.4), cores = tyre-contact strength, vis() = draw it now, ground = optional floor height fn
+const BL = new Set();
+export const blobAdd = e => (BL.add(e), e), blobDel = e => { BL.delete(e); };
+// the player's own bike (studio.js sets ground / off while the garage is open)
+export const BLOB_ME = blobAdd({ b: B.body, p: new THREE.Vector3(), h0: .45, d: 1.3, w: .7, cores: 1, vis: () => !!B.skin, ground: null, off: false });
+export function bikeBlob(e, G) { const s = G.sh; if (s) { e.p.set(0, -.15, s.zc); e.d = s.d; e.w = s.w; } return e; } // body-local: ct sits .6 below body
+const bp = new THREE.Vector3(), bf = new THREE.Vector3(), bu = new THREE.Vector3(), bm = new THREE.Matrix4(), bq = new THREE.Quaternion(), be = new THREE.Euler(0, 0, 0, 'YXZ'), bs = new THREE.Vector3();
+const sd = new THREE.Vector3();
+export function blobTick(H) {
+  // away-from-light offset per metre of height (the bike's middle is ~.5 m up): tan of the light's zenith angle, capped
+  sd.subVectors(sun.position, sun.target.position).normalize(); const sh = Math.hypot(sd.x, sd.z), lit = Math.min(1, sun.intensity / 1.2);
+  const off = sh > 1e-3 ? Math.min(.6, .5 * sh / Math.max(.3, sd.y)) * lit / sh : 0, ox = -sd.x * off, oz = -sd.z * off;
+  let n = 0;
+  for (const e of BL) {
+    if (n >= BLOBN || e.off || !e.vis()) continue;
+    e.b.updateWorldMatrix(true, false); const mw = e.b.matrixWorld;
+    bp.copy(e.p).applyMatrix4(mw); bf.set(0, 0, -1).transformDirection(mw); bu.set(0, 1, 0).transformDirection(mw);
+    bf.y = 0; if (bf.lengthSq() < .04) { bf.set(bu.x, 0, bu.z); if (bf.lengthSq() < 1e-4) bf.set(0, 0, -1); } bf.normalize(); // nose straight up/down: the up axis lies along the ground
+    const gr = e.ground || H, hd = e.d / 2, hf = gr(bp.x + bf.x * hd, bp.z + bf.z * hd), hr = gr(bp.x - bf.x * hd, bp.z - bf.z * hd), gy = (hf + hr) / 2;
+    const air = Math.max(0, bp.y - gy - e.h0), fade = 1 - Math.min(1, Math.max(0, (air - .1) / 2.1)), grow = 1 + air * .25, tip = 1 - Math.abs(bu.y), spread = e.spread ?? 1.4;
+    if (fade <= 0) continue;
+    be.set(Math.atan2(hf - hr, e.d), Math.atan2(-bf.x, -bf.z), 0); bq.setFromEuler(be);
+    bs.set(e.w * (1 + tip * spread) * grow, 1, e.d * 1.6 * grow); bm.compose(bp.set(bp.x + ox * fade, gy + .02, bp.z + oz * fade), bq, bs);
+    BLOB.setMatrixAt(n, bm); BK.array[n * 2] = .85 * fade; BK.array[n * 2 + 1] = e.cores * (1 - tip); n++;
+  }
+  if (!n) { BK.array[0] = 0; n = 1; } // keep one (invisible) instance: count 0 would skip the draw and its pipeline
+  BLOB.count = n; BLOB.instanceMatrix.needsUpdate = true; BK.needsUpdate = true;
 }
 // cfb: body 0 paint / 1 carbon / 2 paint-tinted carbon · cff fenders · cfw wheels · cfx muffler cover
 export function applyLook(spec) {
@@ -611,7 +668,7 @@ export function snapshot() {
   const cv = document.createElement('canvas'); cv.width = LW; cv.height = LH; cv.getContext('2d').drawImage(LIV.c, 0, 0);
   const lt = new THREE.CanvasTexture(cv); lt.colorSpace = THREE.SRGBColorSpace; lt.anisotropy = 4;
   const mt = palMat(PA.map(v => v.clone()), PB.map(v => v.clone()), PE.map(v => v.clone()), lt), dec = B.decal ? B.decal.clone() : null, drop = [];
-  o.traverse(x => { if (!x.isMesh) return; if (x.material === MT) x.material = mt; else if (dec && x.material === B.decal) x.material = dec; else if (x.material.map === cluTex) drop.push(x); });
+  o.traverse(x => { if (!x.isMesh) return; x.castShadow = false; if (x.material === MT) x.material = mt; else if (dec && x.material === B.decal) x.material = dec; else if (x.material.map === cluTex) drop.push(x); });
   for (const x of drop) x.parent.remove(x);
   const h = handles(B.root, B, m); h.rider.forEach(r => r.visible = true);
   return { o, h, G: { ...B.G }, kind: B.kind, dispose() { mt.dispose(); lt.dispose(); if (dec) dec.dispose(); } };

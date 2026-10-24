@@ -8,7 +8,7 @@ import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad } from './world.js';
 ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
-import { B, buildModel, applyLook, snapshot, releaseSkin } from './model.js';
+import { B, buildModel, applyLook, snapshot, releaseSkin, blobTick } from './model.js';
 import { step } from './physics.js';
 import { dayNight } from './daynight.js';
 import { initAudio, updAudio, blip } from './audio.js';
@@ -201,7 +201,7 @@ function loop(t) {
   else if (!ctx.paused && !ctx.OPT) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); }
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if (S.crashed && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); jankEnd(t, performance.now() - J0, hudUp);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); jankEnd(t, performance.now() - J0, hudUp);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.live = true;

@@ -16,7 +16,7 @@ import * as THREE from 'three';
 import { step, bumpStop } from './physics.js';
 import { surfaceMu } from './tyre.js';
 import { cfg } from './config.js';
-import { B } from './model.js';
+import { B, blobAdd } from './model.js';
 import { scene } from './renderer.js';
 
 export const TICK = 1 / 120;             // fixed physics tick; the bike solver runs 3 substeps inside each
@@ -147,6 +147,7 @@ export function tickR() {
 /* ---------- crashes ---------- */
 export let rider = null; let ground = null, crashT = 0, kept = null;
 const RG = new THREE.Group(), tq = new THREE.Quaternion(), tv = new THREE.Vector3();
+blobAdd({ b: RG, p: new THREE.Vector3(0, 1.15, 0), h0: .2, d: 1.1, w: .55, cores: 0, spread: 0, vis: () => !!RG.parent && RG.children.length > 0, ground: null, off: false }); // rider's contact shadow (model.js)
 function makeGround(cx, cz) { // 64 x 64 m trimesh of the drawn ground, 1 m grid, centred ahead of the crash
   const n = 65, v = new Float32Array(n * n * 3), ix = [];
   for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) { const x = cx - 32 + i, z = cz - 32 + j, k = (j * n + i) * 3; v[k] = x; v[k + 1] = H(x, z); v[k + 2] = z; }

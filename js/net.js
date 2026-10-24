@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { cfg, MP_URL } from './config.js';
 import { S, ctx } from './state.js';
 import { scene, camera } from './renderer.js';
-import { B, twin } from './model.js';
+import { B, twin, blobAdd, blobDel, bikeBlob } from './model.js';
 import { say } from './hud.js';
 import { $ } from './util.js';
 
@@ -111,7 +111,7 @@ function addPeer(p) {
   tag.onclick = e => { e.stopPropagation(); if (NET.on.tap) NET.on.tap(P); };
   $('tags').appendChild(tag); NET.peers.set(p.id, P);
 }
-function delPeer(P) { clearTimeout(P.lv); if (P.inst) scene.remove(P.inst.o); P.tag.remove(); NET.peers.delete(P.id); }
+function delPeer(P) { clearTimeout(P.lv); if (P.inst) scene.remove(P.inst.o); if (P.blob) blobDel(P.blob); P.tag.remove(); NET.peers.delete(P.id); }
 function clearPeers() { for (const P of [...NET.peers.values()]) delPeer(P); ctx.mpDots = []; ctx.mpK = ''; }
 
 /* ---------- bike state packets ---------- */
@@ -202,6 +202,7 @@ function model(P) {
   if (!P.look || built || P.lk === P.key || (P.inst && performance.now() - P.lookAt < 3000)) return; const k = P.lk;
   const tpl = ctx.bikeTemplate && ctx.bikeTemplate(P.look); if (!tpl) return; built = true; P.key = k; P.lookAt = performance.now();
   if (P.inst) scene.remove(P.inst.o); P.tpl = tpl; P.inst = twin(tpl); P.inst.o.visible = false; P.fl = -1; scene.add(P.inst.o);
+  if (P.blob) blobDel(P.blob); const o = P.inst.o; P.blob = blobAdd(bikeBlob({ b: P.inst.h.body, p: new THREE.Vector3(), h0: .45, d: 1.3, w: .7, cores: 1, vis: () => o.visible, ground: null, off: false }, tpl.G));
 }
 // name tag above the rider: tap it to challenge them (race.js)
 function tag(P, now) {
