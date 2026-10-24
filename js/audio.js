@@ -112,7 +112,7 @@ export function updAudio() {
   const grounded = live && !S.air && !S.crashed, nr = ctx.nearRoad ? ctx.nearRoad(S.x, S.z) : null, onRd = Math.max(nr ? clamp(1.3 - nr.d / (nr.w / 2 + .5), 0, 1) : 0, sstep(.85, 1, Z.town)); // town and lot are paved
   const roll = grounded ? Math.min(1, v / 20) : 0, grit = .6 + .8 * vnoise(t * 9, 1.7);
   st(A.tA.gain, roll * (.08 + .15 * onRd) * (fp ? 1 : .7), .05); st(A.tAF.frequency, 140 + v * 9, .1);
-  const slip = grounded ? sstep(.95, 1.4, S.over || 0) * Math.min(1, v / 6) : 0;
+  const slip = grounded ? Math.max(sstep(.95, 1.4, S.over || 0) * Math.min(1, v / 6), S.skid || 0) : 0;
   st(A.sk.gain, slip * .12 * onRd, .03); st(A.skF.frequency, 1050 + 160 * vnoise(t * 3, 5), .05); st(A.tD.gain, roll * (1 - onRd) * .16 * grit + slip * (1 - onRd) * .25, .03);
   const scr = live ? (S.crashed ? (S.v || 0) : (S.scrape || 0)) : 0;
   st(A.sc.gain, Math.min(.35, scr * .035) * grit, .03);

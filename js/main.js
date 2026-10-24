@@ -36,8 +36,8 @@ for (const d of await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=$
 const SPAWN = { x: 62, z: 30, psi: Math.PI / 2 };
 function reset() {
   Object.assign(S, {
-    x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: 0, running: false, key: false, kill: false, tip: false, cr: 0, cranking: false, cT: 0, keyT: 0, stT: 0, fi: 0, warm: S.warm || 0, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
-    fuel: S.fuel ?? ctx.spec.fuel.cap, wA: 0, cutT: 0, act: 0, shCD: 0, lim: false, padT: 0, hits: S.hits || 0, odo: S.odo || 0,
+    x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: 0, running: false, key: false, kill: false, tip: false, cr: 0, cranking: false, cT: 0, keyT: 0, stT: 0, fi: 0, warm: S.warm || 0, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, leanV: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
+    fuel: S.fuel ?? ctx.spec.fuel.cap, wp: 0, wpv: 0, wA: 0, wAR: 0, ws: 0, lkF: false, lkR: false, ayu: 0, skid: 0, fxr: 0, surf: 1, cutT: 0, act: 0, shCD: 0, lim: false, padT: 0, hits: S.hits || 0, odo: S.odo || 0,
   });
   ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody();
 }
@@ -110,15 +110,18 @@ const DOMC = {}; function dom(id, v, set) { const c = DOMC[id] || (DOMC[id] = { 
 function visuals(dt, now) {
   const G = B.G, sp = ctx.spec;
   B.root.position.set(S.x, S.zH, S.z); B.root.rotation.set(0, S.psi, 0); B.lean.rotation.z = -S.lean; B.body.position.y = .6 + (.075 - sp.sag); B.body.rotation.x = S.th; // lean pivots at the ground, not world y=0
+  B.body.position.z = 0; if (S.wp) { // wheelie / stoppie: also turn about the contact patch of the wheel on the ground (rear +z, front -z)
+    const c = Math.cos(S.wp), sn = Math.sin(S.wp), pz = S.wp > 0 ? sp.lr : -sp.lf, y0 = B.body.position.y; B.body.rotation.x += S.wp; B.body.position.y = y0 * c + pz * sn; B.body.position.z = pz + y0 * sn - pz * c;
+  }
   B.steer.rotation.y = -S.delta; B.slider.position.y = -G.fork + (clamp(S.cF, -.07, .11) - sp.yf) / Math.cos(G.rake); B.rearH.position.y = G.rw + clamp(S.cR, -.07, .11) - sp.yr; // yf/yr: ride height lifts the chassis, wheels stay down
   const dy = B.rearH.position.y - G.pivotY, dz = G.rearZ - G.pivotZ; B.swing.position.set(G.swingX, G.pivotY + dy / 2, G.pivotZ + dz / 2); B.swing.rotation.x = -Math.atan2(dy, dz); B.swing.scale.z = Math.hypot(dy, dz);
-  B.frontW.rotation.x = B.rearW.rotation.x = -S.wA; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3;
+  B.frontW.rotation.x = -S.wA; B.rearW.rotation.x = -S.wAR; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3;
   B.cluL.rotation.y = (sp.type === 'cvt' ? S.brake : Math.max(S.cl, ctx.bcfg.autoClutch && S.c < .5 ? 1 : 0)) * .3;
   const av = Math.abs(S.v), fov = (cfg.fov ?? 72) + Math.min(14, av * .35); if (!ctx.GAR && Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); }
   if (LK.id === null && av > 1.5) { const k = Math.exp(-dt * 3); LK.y *= k; LK.p *= k; if (Math.abs(LK.y) < .002) LK.y = 0; if (Math.abs(LK.p) < .002) LK.p = 0; }
   if (ctx.GAR) studioFrame(dt, now);
   else if (ctx.camMode === 0) {
-    B.cam.rotation.set(-S.th * .4, clamp(S.yaw * .12, -.25, .25), S.lean * .35); camera.rotation.set(-.3 + LK.p, LK.y, 0);
+    B.cam.rotation.set(-(S.th + (S.wp || 0)) * .4, clamp(S.yaw * .12, -.25, .25), S.lean * .35); camera.rotation.set(-.3 + LK.p, LK.y, 0);
     const vib = S.running ? .0007 * (.4 + S.rpm / 9000) : 0, ph = now * S.rpm / 60 * 2 * Math.PI; camera.position.set(Math.sin(ph * .5) * vib, Math.sin(ph) * vib, 0);
   } else {
     const bx = Math.sin(S.psi), bz = Math.cos(S.psi), ox = bx * Math.cos(LK.y) + bz * Math.sin(LK.y), oz = bz * Math.cos(LK.y) - bx * Math.sin(LK.y); tmp.set(S.x + ox * 4.2, 1.9 + S.zH + LK.p * 4, S.z + oz * 4.2); camera.position.lerp(tmp, 1 - Math.exp(-dt * 5)); camera.position.y = Math.max(camera.position.y, H(camera.position.x, camera.position.z) + .6);

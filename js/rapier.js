@@ -14,6 +14,7 @@ import { blip } from './audio.js';
 import { say } from './hud.js';
 import * as THREE from 'three';
 import { step, bumpStop } from './physics.js';
+import { surfaceMu } from './tyre.js';
 import { cfg } from './config.js';
 import { B } from './model.js';
 import { scene } from './renderer.js';
@@ -23,7 +24,7 @@ export const RP = { ok: false, err: '' };
 const Y0 = .6;                           // body origin above the chassis reference height S.zH
 // collision groups: high 16 bits = membership, low 16 = what it collides with
 const G_STATIC = 0x0002ffff, G_BIKE = 0x00010002, G_GROUND = 0x0004ffff, G_CRASH = 0x00010006;
-export let world, body; let R, cap, box, loading, inC = false, wasAir = false;
+export let world, body; let R, cap, box, loading, inC = false, wasAir = false, surfT = 0, surfTgt = 1;
 // Static boxes are streamed: Rapier's step cost grows with every collider in the world (~0.2 ms for all 1,240), so only
 // the ones in the 3 x 3 block of 25 m cells around the bike (at least 25 m in every direction) exist. Boxes are footprints only (world.js has no heights): they are made
 // tall, from below the ground to well above.
@@ -102,9 +103,14 @@ export function tickR() {
   const Ff = Math.max(0, mF * g + sp.kf * (cF + sp.pf) + sp.damp * 2 * Math.sqrt(sp.kf * mF) * vF), Fr = Math.max(0, mR * g + sp.kr * (cR + sp.pr) + sp.damp * 2 * Math.sqrt(sp.kr * mR) * vR);
   S.cF = cF; S.cR = cR; S.Ff = Ff; S.Fr = Fr; S.air = Ff <= 0 && Fr <= 0;
   // drivetrain + steering. In the air the wheel is unloaded: engine free-revs, speed and heading carry on.
+  // grip of what is under the tyres, eased. The lookup (road search + zone blend) is the dearest thing here besides Rapier, and the
+  // easing (~0.17 s) hides sampling it at 20 Hz
+  if (surfT-- <= 0) { surfT = 5; surfTgt = surfaceMu(S.x, S.z); }
+  S.surf = (S.surf || 1) + (surfTgt - (S.surf || 1)) * Math.min(1, TICK * 6);
   const v0 = S.v, p0 = S.psi, stand = ctx.stand; if (S.air) ctx.stand = true;
   for (let i = 0; i < 3; i++) step(TICK / 3);
   ctx.stand = stand; if (S.air) { S.v = v0; S.psi = p0; S.yaw = 0; }
+  if (!cfg.tough && (S.wp > 1.1 || S.wp < -.95)) return crash(S.wp > 0 ? 'loop' : 'flip');
   if (!cfg.tough) {
     // landing hard or nose/tail first
     if (wasAir && !S.air && (vy < -6.5 || Math.abs(S.th) > .5)) { wasAir = false; return crash('landing'); }
@@ -148,8 +154,8 @@ function makeGround(cx, cz) { // 64 x 64 m trimesh of the drawn ground, 1 m grid
   ground = world.createCollider(R.ColliderDesc.trimesh(v, new Uint32Array(ix)).setFriction(.7).setCollisionGroups(G_GROUND));
 }
 function crash(kind, imp = 0) {
-  S.crashed = true; S.tip = true; S.cranking = false; crashT = 0; S.running = false; S.lim = false; S.issOff = false; inC = false; S.slideT = 0;
-  blip('thud', 9); say(kind === 'wall' ? 'CRASH!' : kind === 'landing' ? 'Bad landing!' : 'Lost the front! Low-side', 1600); S.hits++;
+  S.crashed = true; S.tip = true; S.wp = S.wpv = 0; S.cranking = false; crashT = 0; S.running = false; S.lim = false; S.issOff = false; inC = false; S.slideT = 0;
+  blip('thud', 9); say(kind === 'wall' ? 'CRASH!' : kind === 'landing' ? 'Bad landing!' : kind === 'loop' ? 'Looped out!' : kind === 'flip' ? 'Over the bars!' : 'Lost the front! Low-side', 1600); S.hits++;
   const fx = -Math.sin(S.psi), fz = -Math.cos(S.psi), lx = Math.cos(S.psi), lz = -Math.sin(S.psi), zx = -fx, zz = -fz, v = S.v, lv = body.linvel();
   makeGround(S.x + fx * v * .7, S.z + fz * v * .7);
   cap.setEnabled(false); box.setEnabled(true);
@@ -177,7 +183,7 @@ function crashTick() {
 function standUp() {
   const q = body.rotation(), f = new THREE.Vector3(0, 0, -1).applyQuaternion(tq.set(q.x, q.y, q.z, q.w));
   if (Math.hypot(f.x, f.z) > .2) S.psi = Math.atan2(-f.x, -f.z);
-  endCrash(); Object.assign(S, { v: 0, lean: 0, th: 0, thV: 0, zV: 0, yaw: 0, delta: 0, rpm: 0, running: false, gear: 0, padT: 0 }); ctx.drive.reset(S);
+  endCrash(); Object.assign(S, { v: 0, wp: 0, wpv: 0, leanV: 0, ws: 0, lkF: false, lkR: false, skid: 0, lean: 0, th: 0, thV: 0, zV: 0, yaw: 0, delta: 0, rpm: 0, running: false, gear: 0, padT: 0 }); ctx.drive.reset(S);
   S.zH = H(S.x, S.z) + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody(); say('Picked the bike up. Press START', 1800);
 }
 function endCrash() {

@@ -88,6 +88,7 @@ js/main.js            game: loads data, bike switching, camera/animation, loop
 js/spec.js            bike data + garage settings -> flat spec the physics reads
 js/drivetrain.js      manual gearbox + CVT (ratio, clutch capacity, variator, Idling Stop)
 js/physics.js         engine, clutch-slip solver, steering/lean, bump-stop helper
+js/tyre.js            tyre slip->force curve and surface grip (asphalt / dirt shoulder / grass / paddy)
 js/rapier.js          Rapier3D chassis: dynamic bike body, suspension probes, streamed static colliders (fixed 120 Hz tick)
 js/model.js           3D models (Raider R150 underbone, Click 125i scooter, CBR650R supersport), low-poly extruded panels
 js/tex.js             N64-style procedural textures (tiny, dithered, bilinear) + sky
@@ -135,6 +136,7 @@ WebGPU has not been verified on real hardware yet. Check the renderer readout on
 - Settings are stored in `localStorage` key `cpmme`: global options plus a `bikes` block per bike. Older single-bike saves are migrated into `bikes.raider150` automatically. The WebGL fallback flag is in `sessionStorage` key `cpmGL`.
 - Physics runs on [Rapier3D](https://rapier.rs) (`@dimforge/rapier3d-compat` 0.21.0, vendored, loaded before the start screen; if it can't load, the start screen says so).
   - The bike is a dynamic Rapier body: Rapier integrates heave, pitch, gravity, airtime and wall contacts. The bike solver in `physics.js` (engine, clutch/CVT, speed along the ground, steering and lean) runs 3 substeps inside each fixed 120 Hz tick (max 4 ticks per frame, drawing is interpolated).
+  - Tyres (`tyre.js` + `physics.js`): each tyre's peak force is grip × axle load (static split plus load transfer under accel/braking) × the surface under it (asphalt 1, dirt shoulder ~0.78, grass ~0.62, paddy mud lower). Cornering and driving/braking share that grip (friction circle), so braking or powering hard in a corner raises the chance of a slide. Past the slip peak the rear wheel **spins** (rpm flares, tyre noise, the tail steps out when leaned) or **skids** under engine braking, and until it re-grips only a sliding force (~85% of peak) reaches the ground. Without ABS a brake past a tyre's peak **locks** that wheel (front lock leaves almost no steering grip, rear lock steps out when leaned) until the lever is eased well off; the CBR650R has ABS. `bf` in a bike's chassis is the front share of the brake (default 0.85, Click CBS 0.7).
   - Suspension: ground probes at both axles against the drawn surface, spring-dampers (with preload), inelastic bump stops at full travel.
   - Walls take away the speed going into them; a glancing hit deflects the bike along the wall, with scraping friction.
   - Static boxes are streamed: only the 3 × 3 block of 25 m cells around the bike exists in the Rapier world, because step cost grows with every collider.
