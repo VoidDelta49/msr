@@ -97,7 +97,7 @@ $('bounceB').onclick = () => { if (RP.ok) bounce(); };
 
 /* ---------- wiring ---------- */
 Object.assign(actions, {
-  shift: d => ctx.drive.shift(ctx.spec, S, d), start: startEngine, cam: toggleCam, garage: openGarage, park: togglePark,
+  shift: d => ctx.drive.shift(ctx.spec, S, d, ctx.bcfg), start: startEngine, cam: toggleCam, garage: openGarage, park: togglePark,
   opts: () => ctx.OPT ? closeOpts() : openOpts(), closeOpts,
 });
 O.onPerf = () => updPerf(API);
@@ -142,4 +142,4 @@ function loop(t) {
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 $('apiNote').textContent = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { renderer, scene, camera, S, cfg, ctx, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce };
+window.__cpm = { renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce };

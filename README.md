@@ -8,12 +8,14 @@ Open the GitHub Pages site for this repo on your phone. It plays fullscreen. (Op
 
 ## Bikes
 
-| | Suzuki Raider R150 Fi | Honda Click 125i |
-|---|---|---|
-| Engine | 147 cc DOHC, ~18.5 PS @ 10,000 rpm, ~13.8 Nm @ 8,500 | 124.8 cc SOHC eSP, 8.2 kW (11.1 PS) @ 8,500 rpm, 10.8 Nm @ 5,000 |
-| Transmission | 6-speed return shift (1-N-2-3-4-5-6), wet clutch, chain | V-Matic CVT, dry centrifugal clutch, belt |
-| Extras | Anti-stall clutch assist | Idling Stop, CBS brakes, start needs the brake held |
-| Garage | Exhaust, ECU, tires, paint, sprockets, carbon fiber parts, preload, ride height, springs, damping | Rollers (bola), center spring, clutch springs, pulley set, exhaust, ECU, tires, paint, carbon fiber parts, preload, ride height, springs, damping |
+| | Suzuki Raider R150 Fi | Honda Click 125i | Honda CBR650R |
+|---|---|---|---|
+| Engine | 147 cc DOHC, ~18.5 PS @ 10,000 rpm, ~13.8 Nm @ 8,500 | 124.8 cc SOHC eSP, 8.2 kW (11.1 PS) @ 8,500 rpm, 10.8 Nm @ 5,000 | 649 cc DOHC inline-four, 95 PS @ 12,000 rpm, 63 Nm @ 9,500 |
+| Transmission | 6-speed return shift (1-N-2-3-4-5-6), wet clutch, chain | V-Matic CVT, dry centrifugal clutch, belt | 6-speed (primary 1.690, gears 3.071–1.214), assist/slipper clutch, 15/42 chain |
+| Extras | Anti-stall clutch assist | Idling Stop, CBS brakes, start needs the brake held | Honda E-Clutch (clutchless starts and shifts, can't stall), slipper clutch, 5" TFT with shift light |
+| Garage | Exhaust, ECU, tires, paint, sprockets, carbon fiber parts, preload, ride height, springs, damping | Rollers (bola), center spring, clutch springs, pulley set, exhaust, ECU, tires, paint, carbon fiber parts, preload, ride height, springs, damping | Exhaust, ECU, tires, 3 factory paints, sprockets, carbon fiber parts, preload, ride height, springs, damping, E-Clutch on/off |
+
+CBR650R figures are Honda's published specs (208 kg, 1,450 mm wheelbase, 25.5° rake, 15.4 L, 120/70-17 + 180/55-17, 310 mm twin discs). Honda doesn't publish the torque curve or rev limit: the curve is shaped to the published peaks, the limiter is set at 12,750 rpm. In-game (flat road, 68 kg rider, E-Clutch launch): 0–100 km/h ≈ 4.1 s, 400 m ≈ 12.2 s @ 191 km/h, top ≈ 226 km/h, 1st gear tops out at 104 km/h.
 
 Click 125i figures are Honda's published specs. Honda doesn't publish the CVT ratio range or final drive, so those are estimates (2.40–0.80 × 10.0) chosen to match the claimed ~100 km/h top speed.
 
@@ -29,7 +31,7 @@ Touch:
 
 - Handlebar: bottom-left (drag around it to steer)
 - Throttle pad (drag down to open, release to close) plus a brake button (CBS on the Click)
-- Raider only: clutch pad (drag down to pull), ▲ / ▼ shift buttons (clutch must be pulled to shift)
+- Raider / CBR650R: clutch pad (drag down to pull), ▲ / ▼ shift buttons (clutch must be pulled to shift, except on the CBR with E-Clutch on)
 - START button. On the Click, hold the brake while pressing it.
 - ◀ BACK (hold): walk the bike backwards with your feet (~3 km/h, bikes have no reverse). Only when stopped with the throttle shut; on the Raider, in neutral or with the clutch pulled.
 - Top bar: CAM, PARK, GARAGE, RESET, ⚙ (options)
@@ -56,9 +58,9 @@ js/spec.js            bike data + garage settings -> flat spec the physics reads
 js/drivetrain.js      manual gearbox + CVT (ratio, clutch capacity, variator, Idling Stop)
 js/physics.js         engine, clutch-slip solver, steering/lean, bump-stop helper
 js/rapier.js          Rapier3D chassis: dynamic bike body, suspension probes, streamed static colliders (fixed 120 Hz tick)
-js/model.js           3D models (Raider R150 underbone, Click 125i scooter), low-poly extruded panels
+js/model.js           3D models (Raider R150 underbone, Click 125i scooter, CBR650R supersport), low-poly extruded panels
 js/tex.js             N64-style procedural textures (tiny, dithered, bilinear) + sky
-js/hud.js             gauge clusters (sport / scooter LCD), messages, minimap
+js/hud.js             gauge clusters (sport / scooter LCD / CBR TFT), messages, minimap
 js/world.js           the island, roads, town, collision footprints, parking lot
 js/renderer.js        WebGPU/WebGL setup and fallback, quality preset
 js/perf.js            culling, terrain LOD, merging, Lambert materials, auto resolution
@@ -104,6 +106,7 @@ WebGPU has not been verified on real hardware yet. Check the renderer readout on
 - Crashes: with **Tough Biker mode** off (Options → PHYSICS, off by default), a hard wall hit (> ~25 km/h), steering harder than the tyres can grip, or a hard or nose/tail-first landing throws the rider off and the bike tumbles and slides. Once it stops it's stood back up where it ended, engine off. Tough Biker mode on: no falls, walls only stop you.
 - Garage: fork and shock preload (±20 mm) raise or lower the ride height and the CG, and change how much bump travel is left.
 - Garage (Update 2): front/rear ride height (±25 mm, 5 mm steps) lifts the chassis and CG without changing sag or travel. Carbon fiber body panels (plain or paint-tinted), fenders, wheels and muffler cover each cut weight (option key `dm`, kg, added to the chassis mass); the weight shows in the stats. RESET TO STOCK (tap twice) puts every part, slider and assist of the current bike back to its defaults.
+- Manual gearbox (Update 4): `manual.slipper` (Nm) caps the torque the clutch passes back from the wheel, so a downshift without a blip slips instead of locking the rear; `manual.eclutch` lets shifts happen without the lever when the bike's `autoClutch` assist is on (ignition cut on upshifts, clutch slipped on pull-away and opened near idle).
 - Debug hook: `window.__cpm` (`S`, `cfg`, `ctx`, `spec()`, `step`, `shift`, `reset`, `setBike(id)`, `startEngine`, ...).
 
 ## Known limitations

@@ -61,13 +61,43 @@ function scooter(g, sp) {
   if (!S.running && !S.issOff) { g.fillStyle = '#ff4a3d'; g.font = 'bold 18px system-ui'; g.fillText('ENGINE OFF', 52, 100); }
   if (S.lim && (performance.now() / 90 | 0) % 2) { g.fillStyle = '#ff3b2f'; g.font = 'bold 18px system-ui'; g.fillText('PGM-FI', 52, 100); }
 }
-const CLUSTERS = { sport, scooter };
+/* tft: CBR650R 5" colour TFT. Bar tach across the top (red from the redline), shift light, big speed, gear, E-Clutch
+   lamp, fuel bar, clock and odometer */
+function tft(g, sp) {
+  const MAX = sp.tachMax, rpm = S.running ? S.rpm : 0, N = 56, now = new Date(), shiftL = S.running && rpm >= sp.red - 600;
+  g.fillStyle = '#07090c'; rr(g, 4, 4, 504, 216, 18); g.fill(); g.strokeStyle = '#262b33'; g.lineWidth = 4; g.stroke();
+  g.fillStyle = shiftL && (performance.now() / 70 | 0) % 2 ? '#ffffff' : '#141820'; rr(g, 196, 10, 120, 8, 4); g.fill(); // shift light
+  for (let i = 0; i < N; i++) {
+    const r0 = i / N * MAX, x = 22 + i * 8.3, h = 14 + i / N * 26, on = rpm > r0 && rpm > 0;
+    g.fillStyle = on ? (r0 >= sp.red ? '#ff2d2d' : r0 >= sp.red - 2500 ? '#ffffff' : '#36c6ff') : (r0 >= sp.red ? '#3c1414' : '#16202a');
+    g.fillRect(x, 70 - h, 6, h);
+  }
+  g.fillStyle = '#8a97a3'; g.font = 'bold 15px system-ui'; g.textAlign = 'center';
+  for (let k = 0; k <= MAX / 1000; k += 2) g.fillText(k, 25 + k * 1000 / MAX * N * 8.3, 88);
+  g.textAlign = 'right'; g.font = 'bold 92px system-ui'; g.fillStyle = '#ffffff'; g.fillText(Math.round(Math.abs(S.v) * 3.6), 300, 186);
+  g.textAlign = 'left'; g.font = 'bold 20px system-ui'; g.fillStyle = '#8a97a3'; g.fillText('km/h', 306, 186);
+  g.strokeStyle = '#36c6ff'; g.lineWidth = 3; rr(g, 396, 100, 92, 96, 10); g.stroke();
+  g.textAlign = 'center'; g.font = 'bold 76px system-ui'; g.fillStyle = S.gear ? '#ffffff' : '#43e07a'; g.fillText(S.gear || 'N', 442, 176);
+  g.font = 'bold 13px system-ui'; g.fillStyle = '#8a97a3'; g.fillText('GEAR', 442, 116);
+  g.textAlign = 'left'; g.font = 'bold 20px ui-monospace,Menlo,monospace'; g.fillStyle = '#dfe7ee';
+  g.fillText(String(now.getHours()).padStart(2, '0') + ((now.getSeconds() & 1) ? ':' : ' ') + String(now.getMinutes()).padStart(2, '0'), 26, 118);
+  g.font = 'bold 15px ui-monospace,Menlo,monospace'; g.fillStyle = '#8a97a3'; g.fillText('ODO ' + (S.odo / 1000).toFixed(1) + ' km', 26, 206);
+  const fr = S.fuel / sp.fuel.cap;
+  for (let i = 0; i < 8; i++) { g.fillStyle = fr > (i + .5) / 8 ? (fr < .2 ? '#ff4a3d' : '#dfe7ee') : '#16202a'; g.fillRect(26 + i * 13, 140, 10, 16); }
+  g.fillStyle = '#8a97a3'; g.font = 'bold 13px system-ui'; g.fillText('FUEL', 26, 172);
+  if (ctx.bcfg.autoClutch) { g.fillStyle = '#43e07a'; g.font = 'bold 14px system-ui'; g.fillText('E-CLUTCH', 396, 214); }
+  g.font = 'bold 18px system-ui';
+  if (!S.running) { g.fillStyle = '#ff4a3d'; g.fillText('ENGINE OFF', 130, 118); }
+  else if (S.cl > .05) { g.fillStyle = '#ffb020'; g.fillText('CLUTCH ' + (S.cl * 100 | 0) + '%', 130, 118); }
+}
+const CLUSTERS = { sport, scooter, tft };
 // Redrawn only when something on it changes; the texture is uploaded to the GPU only while the in-world cluster can
 // be seen (1st person / garage). In 3rd person the same canvas is shown as the on-screen HUD, no upload needed.
 let cluKey = '', texDirty = true;
 export function drawCluster(inWorld = true) {
   const sp = ctx.spec, bl = (performance.now() / 90 | 0) % 2, now = new Date();
-  const key = [ctx.bike.id, Math.round(Math.abs(S.v) * 3.6), S.gear, S.running ? Math.ceil(S.rpm / sp.tachMax * 47) : -1, (S.fuel / sp.fuel.cap * 100 | 0), S.lim && bl, S.cl > .05 ? S.cl * 100 | 0 : -1,
+  const key = [ctx.bike.id, Math.round(Math.abs(S.v) * 3.6), S.gear, S.running ? Math.ceil(S.rpm / sp.tachMax * 56) : -1, (S.fuel / sp.fuel.cap * 100 | 0), S.lim && bl, S.cl > .05 ? S.cl * 100 | 0 : -1,
+    ctx.bike.cluster === 'tft' ? [now.getMinutes(), now.getSeconds() & 1, (S.odo / 100) | 0, ctx.bcfg.autoClutch, S.running && S.rpm >= sp.red - 600 && (performance.now() / 70 | 0) % 2].join() :
     ctx.bike.cluster === 'scooter' ? [now.getMinutes(), now.getSeconds() & 1, (S.odo / 100) | 0, S.running && Math.abs(S.v) > 2 && S.thrEff < .35, S.issOff && (performance.now() / 400 | 0) % 2, ctx.bcfg.iss, S.issOff].join() : ''].join('|');
   if (key !== cluKey) { cluKey = key; gc.clearRect(0, 0, 512, 224); CLUSTERS[ctx.bike.cluster](gc, sp); texDirty = true; }
   if (inWorld && texDirty) { cluTex.needsUpdate = true; texDirty = false; }

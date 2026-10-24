@@ -12,25 +12,40 @@ const manual = {
   spec(s, bike, b) {
     const M = bike.manual;
     s.prim = M.prim; s.g = M.gears; s.nG = M.gears.length - 1; s.eta = M.eta; s.cap = M.clutchCap;
+    s.slipper = M.slipper || 0; s.eclutch = !!M.eclutch; // slipper: back-torque the clutch carries before it slips (Nm); eclutch: ECU works the clutch on shifts
     s.final = b[M.final[0]] / b[M.final[1]];
   },
   reset(S) { S.gear = 0; },
   ratio(s, S) { return S.gear ? s.prim * s.g[S.gear] * s.final : 0; },
   // returns clutch torque capacity (Nm); S.c = engagement 0..1 for the UI
   clutch(s, S, b, av) {
-    if (S.rpm > s.idle + 1800) S.ace = true; else if (S.rpm < s.idle + 250) S.ace = false;
-    const lev = sstep(.15, .85, 1 - S.cl); S.lev = lev;
-    let c = b.autoClutch ? Math.min(lev, S.ace ? 1 : .55 * sstep(s.idle + 300, s.idle + 2600, S.rpm)) : lev;
+    const lev = sstep(.15, .85, 1 - S.cl); S.lev = lev; let c;
+    if (s.eclutch) {
+      // E-Clutch: the actuator slips the clutch on pull-away, harder with more throttle (full throttle holds ~6,000 rpm),
+      // and locks it once the engine and the gearbox side have met; opens it again near idle, so it never stalls
+      const rw = S.gear ? av / s.r * s.prim * s.g[S.gear] * s.final * 30 / PI : 0;
+      if (rw > s.idle + 300 && Math.abs(S.rpm - rw) < 400) S.ace = true; else if (S.rpm < s.idle + 250) S.ace = false;
+      c = b.autoClutch ? Math.min(lev, S.ace ? 1 : sstep(s.idle + 200, s.idle + 1200 + 8000 * S.thr, S.rpm)) : lev;
+    } else {
+      if (S.rpm > s.idle + 1800) S.ace = true; else if (S.rpm < s.idle + 250) S.ace = false;
+      c = b.autoClutch ? Math.min(lev, S.ace ? 1 : .55 * sstep(s.idle + 300, s.idle + 2600, S.rpm)) : lev;
+    }
     if (b.autoClutch && (S.act > 0 || (S.brake > .5 && S.thr < .05 && av < 1.5))) c = 0;
     S.c = c; return c * s.cap;
   },
   update() { },
   pre() { },
-  shift(s, S, d) {
-    if (S.shCD > 0) return; if (S.cl < .6) { S.shCD = .3; say('Pull the clutch to shift', 900); blip('click'); return; }
+  shift(s, S, d, b) {
+    // Honda E-Clutch: with the lever out, the ECU's actuator opens the clutch for the shift. Upshifts also cut the
+    // ignition so the engine is pulled down to the new gear's rpm; downshifts re-engage onto the slipper clutch.
+    const ec = s.eclutch && b.autoClutch && S.cl < .6;
+    if (S.shCD > 0) return; if (S.cl < .6 && !ec) { S.shCD = .3; say('Pull the clutch to shift', 900); blip('click'); return; }
     S.shCD = .15; let g = S.gear;
     if (d > 0) g = g === 0 ? 2 : g === 1 ? (Math.abs(S.v) < .6 ? 0 : 2) : Math.min(s.nG, g + 1); else g = g <= 2 ? 1 : g - 1;
-    if (g !== S.gear) { S.gear = g; blip('click'); }
+    if (g !== S.gear) {
+      if (ec && S.gear && g) { if (g > S.gear) { S.act = .03; if (S.thr > .1) S.cutT = .1; } else S.act = .1; } else if (ec) S.act = .15;
+      S.gear = g; blip('click');
+    }
   },
   canStart(s, S, b) { if (S.gear && !b.autoClutch && S.cl < .7) return 'Pull the clutch or shift to N'; },
   stats(s, b) {

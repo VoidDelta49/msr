@@ -1,0 +1,393 @@
+{
+  "id": "cbr650r",
+  "name": "Honda CBR650R",
+  "short": "CBR650R",
+  "tag": "inline-4 · 6-speed · E-Clutch",
+  "blurb": "649 cc DOHC 16-valve inline-four (67.0 × 46.0 mm, 11.6:1). 95 PS @ 12,000 rpm, 63 Nm @ 9,500 rpm, 208 kg. 6-speed with an assist/slipper clutch, Honda E-Clutch (clutchless starts and shifts), 15/42 chain, Showa SFF-BP fork, dual 310 mm discs.",
+  "model": "supersport",
+  "cluster": "tft",
+  "drivetrain": "manual",
+  "chassis": {
+    "m": 276,
+    "r": 0.315,
+    "wb": 1.45,
+    "lf": 0.75,
+    "lr": 0.7,
+    "h": 0.66,
+    "I": 77,
+    "drag": 0.23,
+    "roll": 40,
+    "brake": 1,
+    "travel": [
+      0.12,
+      0.128
+    ]
+  },
+  "engine": {
+    "Ie": 0.022,
+    "idle": 1300,
+    "red": 12750,
+    "peakPS": 95,
+    "tachMax": 14000,
+    "torque": [
+      [
+        0,
+        20
+      ],
+      [
+        1000,
+        30
+      ],
+      [
+        2000,
+        40
+      ],
+      [
+        3000,
+        46
+      ],
+      [
+        4000,
+        49
+      ],
+      [
+        5000,
+        51
+      ],
+      [
+        6000,
+        53
+      ],
+      [
+        7000,
+        55.5
+      ],
+      [
+        8000,
+        58.5
+      ],
+      [
+        9000,
+        62
+      ],
+      [
+        9500,
+        63
+      ],
+      [
+        10000,
+        62.6
+      ],
+      [
+        11000,
+        60.4
+      ],
+      [
+        12000,
+        55.7
+      ],
+      [
+        12750,
+        51
+      ],
+      [
+        13500,
+        44
+      ]
+    ],
+    "fric": [
+      3.2,
+      0.0012
+    ],
+    "fuel": {
+      "cap": 15.4,
+      "idle": 0.0005,
+      "k": 0.007
+    }
+  },
+  "manual": {
+    "prim": 1.69,
+    "gears": [
+      0,
+      3.071,
+      2.352,
+      1.888,
+      1.56,
+      1.37,
+      1.214
+    ],
+    "eta": 0.9,
+    "clutchCap": 100,
+    "slipper": 35,
+    "eclutch": true,
+    "final": [
+      "rs",
+      "fs"
+    ]
+  },
+  "sound": {
+    "lp": 1.3,
+    "gain": 1.3,
+    "whine": 0,
+    "cyl": 4,
+    "pipe": 1100,
+    "pq": 2,
+    "body": 320,
+    "bq": 1.0,
+    "punch": 1,
+    "rough": 0.04,
+    "crackle": 0.3,
+    "crackRpm": 5500,
+    "mech": 0.45,
+    "intake": 0.9,
+    "bright": 1.4,
+    "drive": 1.5,
+    "starter": 1
+  },
+  "parts": {
+    "exhaust": {
+      "l": "Exhaust",
+      "o": [
+        {
+          "n": "Stock",
+          "pow": 1,
+          "snd": 0
+        },
+        {
+          "n": "Slip-on (+2%)",
+          "pow": 1.02,
+          "snd": 1
+        },
+        {
+          "n": "Full system (+7%)",
+          "pow": 1.07,
+          "snd": 2
+        }
+      ]
+    },
+    "ecu": {
+      "l": "ECU map",
+      "o": [
+        {
+          "n": "Stock",
+          "pow": 1,
+          "red": 12750,
+          "ie": 1,
+          "idle": 1300
+        },
+        {
+          "n": "Street tune",
+          "pow": 1.04,
+          "red": 13000,
+          "ie": 0.95,
+          "idle": 1300
+        },
+        {
+          "n": "Race map",
+          "pow": 1.08,
+          "red": 13300,
+          "ie": 0.9,
+          "idle": 1500
+        }
+      ]
+    },
+    "tires": {
+      "l": "Tires",
+      "o": [
+        {
+          "n": "Stock (Roadsport)",
+          "mu": 1.05
+        },
+        {
+          "n": "Hypersport",
+          "mu": 1.15
+        },
+        {
+          "n": "Track",
+          "mu": 1.25
+        }
+      ]
+    },
+    "paint": {
+      "l": "Paint",
+      "o": [
+        {
+          "n": "Grand Prix Red",
+          "c": "#b3121d",
+          "lv": "tri",
+          "rim": "#c8141f",
+          "hd": "#f4f4f0"
+        },
+        {
+          "n": "Matt Gunpowder Black",
+          "c": "#3b3d42",
+          "lv": "red",
+          "rough": 0.78,
+          "hd": "#8d9095"
+        },
+        {
+          "n": "Graphite Black",
+          "c": "#25272b",
+          "lv": "cop",
+          "hd": "#ecebe6",
+          "ec": "#9a7650"
+        }
+      ]
+    },
+    "cfbody": {
+      "l": "Body panels",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock (painted)"
+        },
+        {
+          "n": "Carbon (−3.5 kg)",
+          "dm": -3.5,
+          "cfb": 1
+        },
+        {
+          "n": "Tinted carbon (−3.5 kg)",
+          "dm": -3.5,
+          "cfb": 2
+        }
+      ]
+    },
+    "cffender": {
+      "l": "Front fender",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Carbon (−0.4 kg)",
+          "dm": -0.4,
+          "cff": 1
+        }
+      ]
+    },
+    "cfwheel": {
+      "l": "Wheels",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock cast"
+        },
+        {
+          "n": "Carbon (−3.2 kg)",
+          "dm": -3.2,
+          "cfw": 1
+        }
+      ]
+    },
+    "cfexh": {
+      "l": "Muffler cover",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Carbon (−0.5 kg)",
+          "dm": -0.5,
+          "cfx": 1
+        }
+      ]
+    }
+  },
+  "sliders": [
+    {
+      "k": "pf",
+      "l": "Fork preload",
+      "min": -20,
+      "max": 20,
+      "u": " mm"
+    },
+    {
+      "k": "pr",
+      "l": "Shock preload",
+      "min": -20,
+      "max": 20,
+      "u": " mm"
+    },
+    {
+      "k": "yf",
+      "l": "Front ride height",
+      "min": -25,
+      "max": 25,
+      "step": 5,
+      "u": " mm"
+    },
+    {
+      "k": "yr",
+      "l": "Rear ride height",
+      "min": -25,
+      "max": 25,
+      "step": 5,
+      "u": " mm"
+    },
+    {
+      "k": "fs",
+      "l": "Front sprocket",
+      "min": 14,
+      "max": 17,
+      "u": "T"
+    },
+    {
+      "k": "rs",
+      "l": "Rear sprocket",
+      "min": 38,
+      "max": 47,
+      "u": "T"
+    },
+    {
+      "k": "kf",
+      "l": "Fork spring",
+      "min": 10,
+      "max": 26,
+      "u": " kN/m"
+    },
+    {
+      "k": "kr",
+      "l": "Shock spring",
+      "min": 14,
+      "max": 30,
+      "u": " kN/m"
+    },
+    {
+      "k": "damp",
+      "l": "Damping",
+      "min": 20,
+      "max": 90,
+      "u": "%"
+    }
+  ],
+  "toggles": [
+    {
+      "k": "autoClutch",
+      "l": "Honda E-Clutch"
+    }
+  ],
+  "defaults": {
+    "pf": 0,
+    "pr": 0,
+    "exhaust": 0,
+    "ecu": 0,
+    "tires": 0,
+    "paint": 0,
+    "fs": 15,
+    "rs": 42,
+    "kf": 16,
+    "kr": 21,
+    "damp": 50,
+    "autoClutch": true,
+    "yf": 0,
+    "yr": 0,
+    "cfbody": 0,
+    "cffender": 0,
+    "cfwheel": 0,
+    "cfexh": 0
+  },
+  "hint": "E-Clutch: just shift ▼ into 1st and twist. Turn it off in the garage to use the lever."
+}

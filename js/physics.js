@@ -37,11 +37,12 @@ export function step(dt) {
   if (canBack) { S.v = Math.max(-.9, Math.min(v, 0) - 1.2 * dt); S.rpm = Math.max(0, (we + Te / sp.ie * dt) * 30 / PI); }
   else if (v < 0) { S.v = Math.min(0, v + 4 * dt); S.rpm = Math.max(0, (we + Te / sp.ie * dt) * 30 / PI); }
   else if (R > 0 && cap > .05) {
+    const capB = sp.slipper ? Math.min(cap, sp.slipper) : cap; // slipper clutch: less capacity when the wheel drives the engine
     const RL = (sp.red + 300) * PI / 30, over = v / r * R > RL, slip = we - v / r * R, M = m + sp.ie * R * R / (r * r);
     const aL = netF(Te * R / r * sp.eta, v) / M, TcL = Te - sp.ie * aL * R / r;
-    if (!over && Math.abs(slip) < 3 && Math.abs(TcL) <= cap) { a = aL; S.v = Math.max(0, v + a * dt); S.rpm = S.v / r * R * 30 / PI; }
+    if (!over && Math.abs(slip) < 3 && (TcL >= 0 ? TcL <= cap : -TcL <= capB)) { a = aL; S.v = Math.max(0, v + a * dt); S.rpm = S.v / r * R * 30 / PI; }
     else {
-      const Tc = over ? -Math.min(cap, 8) : cap * Math.sign(slip || TcL); let nwe = we + (Te - Tc) / sp.ie * dt; a = netF(Tc * R / r * sp.eta, v) / m; const nv = Math.max(0, v + a * dt), nwl = nv / r * R;
+      const sg = Math.sign(slip || TcL), Tc = over ? -Math.min(cap, 8) : sg > 0 ? cap : sg < 0 ? -capB : 0; let nwe = we + (Te - Tc) / sp.ie * dt; a = netF(Tc * R / r * sp.eta, v) / m; const nv = Math.max(0, v + a * dt), nwl = nv / r * R;
       if (!over && slip && Math.sign(nwe - nwl) !== Math.sign(slip)) nwe = nwl; nwe = Math.min(nwe, RL); S.v = nv; S.rpm = Math.max(0, nwe * 30 / PI);
     }
   } else { S.rpm = clamp((we + Te / sp.ie * dt) * 30 / PI, 0, sp.red + 100); a = netF(0, v) / m; S.v = Math.max(0, v + a * dt); }
