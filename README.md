@@ -33,15 +33,17 @@ Click 125i figures are Honda's published specs. Honda doesn't publish the CVT ra
 - **Variator:** the rollers push the drive pulley closed with about m·ω². The center spring and torque cam push back, harder as the belt climbs and harder under load. The ratio moves until those balance, so at full throttle the engine holds roughly 6,700–7,200 rpm while speed rises. Lighter rollers raise that rpm, and a stiffer center spring raises it further.
 - **Idling Stop:** the engine shuts off after 3 s stopped at idle and restarts when you open the throttle.
 
-## Quests (Build 8.8)
+## Quests (Build 9.4)
 
-Three quest hubs sit in town, each a coloured beacon in the world and a pin on the minimap (pins at the minimap rim point towards hubs that are further away). Ride into one and hold still for a moment to take the job; the pin then becomes the drop-off. ✕ in the panel cancels, and after a job you have to leave the hub before it can trigger again.
+Quest hubs are coloured beacons in the world and pins on the minimap (pins in view, plus the three nearest at its rim). The parking hub stays in the lot (the only place with bays); 14 delivery hubs (parcel or food, rolled at random each load) sit on random roads all over the island, at least 140 m apart, three of them in town. Ride into one and hold still for a moment to take the job; the pin then becomes the drop-off. ✕ in the panel cancels, and after a job you have to leave the hub before it can trigger again. A finished or failed delivery hub moves somewhere else with a new type; a cancelled one stays.
 
-- **Parking challenge** (blue P, in the lot): park in the green bay. Stars for time and hits. *Next* gives another bay.
+About a third of delivery hubs are **bike-locked** (red outline on the map and a second red ring): taking one switches you to that bike where you stand (full tank, same position and heading), and the time limit is 15% tighter. Changing bikes during the job cancels it.
+
+- **Parking challenge** (blue P): park in the green bay. Stars for time and hits. *Next* gives another bay.
 - **Parcel delivery** (tan B): the parcel rides on the pillion seat. A crash, a hard wall hit (> 7 m/s, also with Tough Biker on) or a swim and it falls off: game over. Stars for time and hits.
-- **Food delivery** (pink F): quality starts at 100% and drops with bumps, hard braking, hard acceleration, fast lean changes, strong cornering and walls; heat drops steadily to 0 at the time limit (about 7.5 m/s average over the straight-line distance, plus 30 s). A crash, a swim or heat 0 is game over; quality 0 is not, you still deliver (for one star). Stars for quality and heat left.
+- **Food delivery** (pink F): quality starts at 100% and drops with bumps, hard braking, hard acceleration, fast lean changes, strong cornering and walls; heat drops steadily to 0 at the time limit (about 7.5 m/s average over the straight-line distance, plus 30 s). A crash, a swim or heat 0 is game over; quality 0 is not, you still deliver (for one star).
 
-The spoilage numbers are the `K` table at the top of `js/missions.js`.
+Counts, spacing and the bike-lock share are the constants at the top of `js/missions.js` (`NHUB`, `SEP`, `BIKE_P`, `HARD`), as is the spoilage table `K`.
 
 ## Multiplayer (Build 9.0)
 

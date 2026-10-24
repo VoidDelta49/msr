@@ -114,11 +114,14 @@ export function drawMini(MAP, V) { // V = world.js MAPV {cx, cz, w metres, n px}
   mm.translate(70, 70); mm.rotate(S.psi); mm.scale(Z, Z); mm.translate(-u, -v); mm.drawImage(MAP, 0, 0);
   const dot = (x, z, c, r) => { mm.fillStyle = c; mm.beginPath(); mm.arc(px(x), pz(z), r / Z, 0, 7); mm.fill(); };
   dot(-40, 40, '#ff4a3d', 4); mm.restore();
-  // quest pins (missions.js): hubs while free, the target while on a job; far ones stick to the rim
-  const ca = Math.cos(S.psi), sa = Math.sin(S.psi); mm.textAlign = 'center'; mm.textBaseline = 'middle'; mm.font = 'bold 8px system-ui';
-  for (const p of (MI0 && MI0.pins) || []) {
-    const dx = (px(p.x) - u) * Z, dz = (pz(p.z) - v) * Z, X = dx * ca - dz * sa, Y = dx * sa + dz * ca, d = Math.hypot(X, Y), f = d > 56 ? 56 / d : 1, r = f < 1 ? 4.5 : 6, cx = 70 + X * f, cy = 70 + Y * f;
-    mm.fillStyle = p.c; mm.beginPath(); mm.arc(cx, cy, r, 0, 7); mm.fill(); mm.strokeStyle = '#fff'; mm.lineWidth = 1.5; mm.stroke();
+  // quest pins (missions.js): in view = icon; out of view = the 3 nearest stick to the rim; red outline = needs a specific bike
+  const ca = Math.cos(S.psi), sa = Math.sin(S.psi), L = []; mm.textAlign = 'center'; mm.textBaseline = 'middle'; mm.font = 'bold 8px system-ui';
+  for (const p of (MI0 && MI0.pins) || []) { const dx = (px(p.x) - u) * Z, dz = (pz(p.z) - v) * Z, X = dx * ca - dz * sa, Y = dx * sa + dz * ca; L.push({ p, X, Y, d: Math.hypot(X, Y) }); }
+  L.sort((a, b) => a.d - b.d); let rim = 0;
+  for (const e of L) {
+    const f = e.d > 56 ? 56 / e.d : 1; if (f < 1 && ++rim > 3) continue;
+    const r = f < 1 ? 4.5 : 6, cx = 70 + e.X * f, cy = 70 + e.Y * f, p = e.p;
+    mm.fillStyle = p.c; mm.beginPath(); mm.arc(cx, cy, r, 0, 7); mm.fill(); mm.strokeStyle = p.h ? '#ff4a3d' : '#fff'; mm.lineWidth = 1.5; mm.stroke();
     mm.fillStyle = '#fff'; if (p.g && f === 1) mm.fillText(p.g, cx, cy + .5); else { mm.beginPath(); mm.arc(cx, cy, 1.8, 0, 7); mm.fill(); }
   }
   // other riders (net.js): cyan dots, far ones on the rim

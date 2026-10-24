@@ -59,12 +59,12 @@ ctx.bikeTemplate = look => {
   buildModel(bike); applyLook(spec); const t = snapshot(); releaseSkin(); buildModel(ctx.bike); recompute(); attachCam();
   TPL.set(key, t); return t;
 };
-function setBike() {
+function setBike(keepPos) {
   const bike = ctx.bikes[cfg.bike] || ctx.bikes[ids[0]]; cfg.bike = bike.id;
   ctx.bike = bike; ctx.bcfg = bikeCfg(bike); ctx.drive = DRIVES[bike.drivetrain];
   buildModel(bike); recompute();
   document.body.classList.toggle('cvt', bike.drivetrain === 'cvt');
-  S.fuel = ctx.spec.fuel.cap; const keep = ctx.GAR ? { x: S.x, z: S.z, psi: S.psi } : null; reset(); if (keep) Object.assign(S, keep);
+  S.fuel = ctx.spec.fuel.cap; const keep = ctx.GAR || keepPos ? { x: S.x, z: S.z, psi: S.psi } : null; reset(); if (keep) Object.assign(S, keep);
   attachCam();
   $('brk').textContent = bike.drivetrain === 'cvt' ? 'BRAKE · CBS' : 'BRAKE';
 }
@@ -134,6 +134,10 @@ let played = false;
 export function play() { initAudio(); ctx.paused = false; if (!played) { played = true; say(ctx.bike.hint); } }
 export function mpJoin(room, name, url) { netJoin(room, name, url); }
 export function mpLeave() { netLeave(); }
+// quests with a required bike (missions.js): swap right where you stand
+ctx.switchBikeHere = id => {
+  cfg.bike = id; setBike(true); S.hF = S.hR = roadH(S.x, S.z); S.zH = H(S.x, S.z) + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody(); save(); say(ctx.bike.name, 1500);
+};
 export function switchBike(id) { cfg.bike = id; setBike(); save(); say(ctx.bike.name, 1200); }
 
 function water() { if (S.wet) { S.v *= .9; return; } if (H(S.x, S.z) < SEA + .12) { S.wet = true; say('Splash! You rode into the water', 1600); blip('thud', 9); setTimeout(() => { reset(); S.wet = false; say('Towed back to the lot'); }, 1600); } }

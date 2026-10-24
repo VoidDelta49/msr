@@ -36,7 +36,7 @@ $('menu').onclick = e => { if (e.target.closest('[data-back]')) show('mMain'); }
 $('mHelp').onclick = () => show('mHelpP');
 $('mOpt').onclick = () => openOpts();
 $('mFoot').textContent = 'Build ' + BUILD;
-const TIPS = ['Manual bikes: pull the clutch before you shift, and ease it out to launch.', 'The scooter has Idling Stop: hold the brake and press START to wake it.', 'Low on fuel? The station is next to the parking lot, the red dot on the minimap.', 'Graphics too heavy? Options > Quality > Low, or a Retro res cap.', 'Tough Biker mode (Options) makes you crash-proof.', 'The airstrip in the north-west is 910 m of flat concrete for top-speed runs.', 'The GARAGE changes real specs: exhaust, ECU, tyres, suspension, carbon parts.', 'Quests: ride into a blue, tan or pink beacon and hold still to start a parking, parcel or food job.'];
+const TIPS = ['Manual bikes: pull the clutch before you shift, and ease it out to launch.', 'The scooter has Idling Stop: hold the brake and press START to wake it.', 'Low on fuel? The station is next to the parking lot, the red dot on the minimap.', 'Graphics too heavy? Options > Quality > Low, or a Retro res cap.', 'Tough Biker mode (Options) makes you crash-proof.', 'The airstrip in the north-west is 910 m of flat concrete for top-speed runs.', 'The GARAGE changes real specs: exhaust, ECU, tyres, suspension, carbon parts.', 'Quests are scattered around the island: ride into a beacon and hold still. Red-outlined ones need a specific bike and switch you to it.'];
 
 /* ---------- bikes (just JSON, no 3D needed) ---------- */
 let BIKES = [];
