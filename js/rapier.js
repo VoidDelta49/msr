@@ -114,9 +114,11 @@ export function tickR() {
   if (!cfg.tough) {
     // landing hard or nose/tail first
     if (wasAir && !S.air && (vy < -6.5 || Math.abs(S.th) > .5)) { wasAir = false; return crash('landing'); }
-    // low-side: steering asks clearly more grip than there is, for a moment (ABS bikes: braking doesn't count, see physics.js)
-    S.slideT = !S.air && Math.abs(S.v) > 5 && S.overLS > 1.3 ? (S.slideT || 0) + TICK : 0;
-    if (S.slideT > .3) return crash('lowside');
+    // low-side: steering asks clearly more grip than there is, for a while (ABS bikes: braking doesn't count, see physics.js).
+    // 1.4 means hard braking alone (no lock) never does it, only a locked front / wheelspin with a lot of bar; the tyre squeals from
+    // over .95 (audio.js) and letting off the brake inside the half second saves it
+    S.slideT = !S.air && Math.abs(S.v) > 5 && S.overLS > 1.4 ? (S.slideT || 0) + TICK : 0;
+    if (S.slideT > .5) return crash('lowside');
   }
   wasAir = S.air;
   fx = -Math.sin(S.psi); fz = -Math.cos(S.psi); lx = Math.cos(S.psi); lz = -Math.sin(S.psi);
