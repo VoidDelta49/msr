@@ -112,6 +112,10 @@ export function step(dt) {
       S.v = nv; S.rpm = Math.max(0, Math.min(nwe, RL) * 30 / PI);
       // grips again once the slip is back under the peak and what the clutch passes fits the tyre (the clutch then pulls rpm to the wheel)
       S.ws = sg * nws < 0 || sg * nws < KP * vs && Math.abs(Tcs * k1 * sp.eta) < .95 * Pxr ? 0 : nws;
+      // regrip with the clutch locked: the engine is tied to that wheel, so it comes back to ground speed with it. Otherwise it kept
+      // the spinning wheel's rpm, the next step saw a big clutch slip, pushed full clutch torque into the tyre and spun it up again:
+      // a loop that kept driving the bike with the throttle shut
+      if (!S.ws && lk) S.rpm = Math.min(nv * k1, RL) * 30 / PI;
     }
   } else { S.rpm = clamp((we + Te / sp.ie * dt) * 30 / PI, 0, sp.red + 100); a = netF(0, v) / m; S.v = Math.max(0, v + a * dt); }
   S.fxr = fxr; S.a = a; S.odo += Math.abs(S.v) * dt;
