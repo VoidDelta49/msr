@@ -2,6 +2,8 @@
 
 A 3D web game about riding and parking Philippine-market motorcycles on a Philippine-style island. Built with Three.js (WebGPU with WebGL 2 fallback), targeted at mobile browsers. No build step.
 
+> **Unofficial fan project.** Not affiliated with, authorized by or endorsed by Honda, Suzuki or any other company named here. All product names, brands and trademarks belong to their owners and are used only to identify the real motorcycles the models represent. Free and non-commercial. See [LEGAL.md](LEGAL.md).
+
 ## Play
 
 Open the GitHub Pages site for this repo on your phone. It plays fullscreen. (Opening `index.html` straight from disk won't work: ES modules and the bike data need to be served over http.)
@@ -118,3 +120,9 @@ WebGPU has not been verified on real hardware yet. Check the renderer readout on
 - Compute-shader features: GPU grass, rain, more traffic
 - Visual pass (materials, lighting, bike model detail)
 - Multiplayer
+
+## Legal
+
+- Code: MIT, see [LICENSE](LICENSE) (original code and assets only; it grants no rights to third-party trademarks or designs).
+- Dependencies (three.js MIT, Rapier3D Apache-2.0): [THIRD_PARTY.md](THIRD_PARTY.md).
+- Trademark and design notes, rules for new content, and the plan if the project goes public: [LEGAL.md](LEGAL.md).
