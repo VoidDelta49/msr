@@ -24,6 +24,7 @@ function build() {
   $('oAud').insertAdjacentHTML('beforeend', `<div class=row style="flex-basis:100%"><span>Volume <b id=v_vol>${Math.round((cfg.vol ?? .8) * 100)}</b></span><input type=range min=0 max=100 value=${Math.round((cfg.vol ?? .8) * 100)} id=oVol></div>`);
   $('oCtl').innerHTML = `<div class=row><span>Touch steer sens. <b id=v_sens>${cfg.sens}</b></span><input type=range min=5 max=20 value=${cfg.sens} id=oSens></div>` +
     `<div class=row><span>Touch control size <b id=v_ui>${cfg.ui ?? 10}</b></span><input type=range min=7 max=14 value=${cfg.ui ?? 10} id=oUi></div>` +
+    `<div class=row><span>Field of view <b id=v_fov>${cfg.fov ?? 72}</b></span><input type=range min=50 max=110 value=${cfg.fov ?? 72} id=oFov></div>` +
     `<div class=chips><button class="chip${cfg.lefty ? ' on' : ''}" data-l=1>Left-handed layout</button></div>`;
   $('oNote').textContent = (O.api || 'Renderer is picked when the game loads') + ' · Build ' + BUILD;
   $('oLog').textContent = LOG.length ? LOG.slice(-12).join('\n') : 'No errors logged';
@@ -39,5 +40,5 @@ $('opts').onclick = e => {
   const b = e.target.closest('button[data-o]'); if (!b) return; const k = b.dataset.o; cfg[k] = !cfg[k]; b.classList.toggle('on', cfg[k]); save();
   if (k === 'forceGL' || k === 'fxaa' || k === 'n64' || k === 'gpuCull') { reload(); return; } if (O.onPerf) O.onPerf();
 };
-$('opts').oninput = e => { if (e.target.id === 'oUi') { cfg.ui = +e.target.value; $('v_ui').textContent = cfg.ui; save(); applyUi(); return; } if (e.target.id === 'oVol') { cfg.vol = e.target.value / 100; $('v_vol').textContent = e.target.value; save(); return; } if (e.target.id !== 'oSens') return; cfg.sens = +e.target.value; $('v_sens').textContent = cfg.sens; save(); };
+$('opts').oninput = e => { if (e.target.id === 'oFov') { cfg.fov = +e.target.value; $('v_fov').textContent = cfg.fov; save(); return; } if (e.target.id === 'oUi') { cfg.ui = +e.target.value; $('v_ui').textContent = cfg.ui; save(); applyUi(); return; } if (e.target.id === 'oVol') { cfg.vol = e.target.value / 100; $('v_vol').textContent = e.target.value; save(); return; } if (e.target.id !== 'oSens') return; cfg.sens = +e.target.value; $('v_sens').textContent = cfg.sens; save(); };
 $('oClose').onclick = closeOpts; $('bOpt').onclick = openOpts;

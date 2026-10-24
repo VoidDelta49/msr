@@ -1,5 +1,6 @@
 :root{--ink:#f2efe8;--dim:#9aa3ad;--hot:#ffb020;--ok:#43e07a;--bad:#ff4a3d;--glass:rgba(10,12,16,.6)}
 *{box-sizing:border-box}
+#gl{touch-action:none}
 html,body{margin:0;height:100%;overflow:hidden;background:#000;color:var(--ink);font:600 14px/1.3 system-ui,"Segoe UI",Roboto,sans-serif;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;overscroll-behavior:none;touch-action:none;-webkit-tap-highlight-color:transparent}
 #gl{display:block;position:fixed;inset:0;width:100vw;height:100vh;width:100dvw;height:100dvh}
 [hidden]{display:none!important}

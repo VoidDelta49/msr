@@ -91,6 +91,19 @@ function toggleCam() {
 }
 ctx.camMode = 1; toggleCam();
 const tmp = new THREE.Vector3();
+// free look: drag the empty scene to orbit, wheel to zoom (FOV); the view eases back to normal once the bike is moving
+const LK = { y: 0, p: 0, id: null, x: 0, yy: 0 }, PT = new Map(); let pinch = 0; camera.rotation.order = 'YXZ';
+const pdist = () => { const [a, b] = [...PT.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+addEventListener('pointerdown', e => { if (e.target.id !== 'gl' || ctx.GAR || ctx.OPT) return; PT.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (PT.size === 2) { LK.id = null; pinch = pdist(); } else if (PT.size === 1) { LK.id = e.pointerId; LK.x = e.clientX; LK.yy = e.clientY; } });
+addEventListener('pointermove', e => {
+  const q = PT.get(e.pointerId); if (!q) return; q.x = e.clientX; q.y = e.clientY;
+  if (PT.size === 2) { const d = pdist(); if (pinch > 0 && d > 0) { cfg.fov = clamp((cfg.fov ?? 72) * pinch / d, 50, 110); pinch = d; } return; } // fingers apart = zoom in = smaller FOV
+  if (e.pointerId !== LK.id) return; LK.y = clamp(LK.y - (e.clientX - LK.x) * .006, -Math.PI, Math.PI); LK.p = clamp(LK.p + (e.clientY - LK.yy) * .004, -.8, .8); LK.x = e.clientX; LK.yy = e.clientY;
+});
+const lkEnd = e => { if (!PT.delete(e.pointerId)) return; if (e.pointerId === LK.id) LK.id = null; if (PT.size < 2 && pinch) { pinch = 0; cfg.fov = Math.round(cfg.fov); save(); } };
+addEventListener('pointerup', lkEnd); addEventListener('pointercancel', lkEnd);
+for (const g of ['gesturestart', 'gesturechange', 'gestureend']) addEventListener(g, e => e.preventDefault()); // Safari's native pinch
+addEventListener('wheel', e => { if (e.target.id !== 'gl' || ctx.GAR || ctx.OPT) return; cfg.fov = clamp(Math.round((cfg.fov ?? 72) + Math.sign(e.deltaY) * 3), 50, 110); save(); }, { passive: true });
 // touch-control visuals: skip the DOM write (and the style recalc it triggers) when nothing changed
 const DOMC = {}; function dom(id, v, set) { const c = DOMC[id] || (DOMC[id] = { e: $(id), v: null }); if (c.v !== v) { c.v = v; set(c.e, v); } }
 function visuals(dt, now) {
@@ -100,13 +113,14 @@ function visuals(dt, now) {
   const dy = B.rearH.position.y - G.pivotY, dz = G.rearZ - G.pivotZ; B.swing.position.set(G.swingX, G.pivotY + dy / 2, G.pivotZ + dz / 2); B.swing.rotation.x = -Math.atan2(dy, dz); B.swing.scale.z = Math.hypot(dy, dz);
   B.frontW.rotation.x = B.rearW.rotation.x = -S.wA; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3;
   B.cluL.rotation.y = (sp.type === 'cvt' ? S.brake : Math.max(S.cl, ctx.bcfg.autoClutch && S.c < .5 ? 1 : 0)) * .3;
-  const av = Math.abs(S.v), fov = 72 + Math.min(14, av * .35); if (Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  const av = Math.abs(S.v), fov = (cfg.fov ?? 72) + Math.min(14, av * .35); if (Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  if (LK.id === null && av > 1.5) { const k = Math.exp(-dt * 3); LK.y *= k; LK.p *= k; if (Math.abs(LK.y) < .002) LK.y = 0; if (Math.abs(LK.p) < .002) LK.p = 0; }
   if (ctx.GAR) { const a = now * .35, R = 3.1; tmp.set(S.x + Math.cos(a) * R, 1.25 + S.zH, S.z + Math.sin(a) * R); camera.position.copy(tmp); camera.lookAt(S.x + Math.sin(a) * 1.3, .65 + S.zH, S.z - Math.cos(a) * 1.3); }
   else if (ctx.camMode === 0) {
-    B.cam.rotation.set(-S.th * .4, clamp(S.yaw * .12, -.25, .25), S.lean * .35);
+    B.cam.rotation.set(-S.th * .4, clamp(S.yaw * .12, -.25, .25), S.lean * .35); camera.rotation.set(-.3 + LK.p, LK.y, 0);
     const vib = S.running ? .0007 * (.4 + S.rpm / 9000) : 0, ph = now * S.rpm / 60 * 2 * Math.PI; camera.position.set(Math.sin(ph * .5) * vib, Math.sin(ph) * vib, 0);
   } else {
-    const bx = Math.sin(S.psi), bz = Math.cos(S.psi); tmp.set(S.x + bx * 4.2, 1.9 + S.zH, S.z + bz * 4.2); camera.position.lerp(tmp, 1 - Math.exp(-dt * 5)); camera.position.y = Math.max(camera.position.y, H(camera.position.x, camera.position.z) + .6);
+    const bx = Math.sin(S.psi), bz = Math.cos(S.psi), ox = bx * Math.cos(LK.y) + bz * Math.sin(LK.y), oz = bz * Math.cos(LK.y) - bx * Math.sin(LK.y); tmp.set(S.x + ox * 4.2, 1.9 + S.zH + LK.p * 4, S.z + oz * 4.2); camera.position.lerp(tmp, 1 - Math.exp(-dt * 5)); camera.position.y = Math.max(camera.position.y, H(camera.position.x, camera.position.z) + .6);
     camera.lookAt(S.x - bx * 2, 1 + S.zH, S.z - bz * 2);
   }
   dayNight();
