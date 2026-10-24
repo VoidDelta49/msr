@@ -25,7 +25,7 @@ function build() {
   $('oCtl').innerHTML = `<div class=row><span>Touch steer sens. <b id=v_sens>${cfg.sens}</b></span><input type=range min=5 max=20 value=${cfg.sens} id=oSens></div>` +
     `<div class=row><span>Touch control size <b id=v_ui>${cfg.ui ?? 10}</b></span><input type=range min=7 max=14 value=${cfg.ui ?? 10} id=oUi></div>` +
     `<div class=row><span>Field of view <b id=v_fov>${cfg.fov ?? 72}</b></span><input type=range min=50 max=110 value=${cfg.fov ?? 72} id=oFov></div>` +
-    `<div class=chips><button class="chip${cfg.lefty ? ' on' : ''}" data-l=1>Left-handed layout</button></div>`;
+    `<div class=chips><button class="chip${cfg.lefty ? ' on' : ''}" data-l=1>Left-handed layout</button><button class="chip${cfg.analogBrk !== false ? ' on' : ''}" data-o=analogBrk>Analog brake</button></div>`;
   $('oNote').textContent = (O.api || 'Renderer is picked when the game loads') + ' · Build ' + BUILD;
   $('oLog').textContent = LOG.length ? LOG.slice(-12).join('\n') : 'No errors logged';
 }

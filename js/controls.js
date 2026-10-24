@@ -26,7 +26,7 @@ ptr(wEl, e => { const r = wEl.getBoundingClientRect(); TC.cx = r.left + r.width 
   e => { const dx = e.clientX - TC.cx, dy = e.clientY - TC.cy; if (dx * dx + dy * dy < 256) return; const a = Math.atan2(dy, dx); let d = a - TC.pa; if (d > PI) d -= 2 * PI; if (d < -PI) d += 2 * PI; TC.pa = a; TC.wa = clamp(TC.wa + d, -WMAX(), WMAX()); },
   () => { TC.stId = null; });
 ptr($('thr'), e => { TC.thrId = e.pointerId; TC.ty = e.clientY; TC.thr = 0; $('thr').classList.add('on'); }, e => { TC.thr = clamp((e.clientY - TC.ty) / 70, 0, 1); /* roll-on: drag down only */ }, () => { TC.thrId = null; TC.thr = 0; $('thr').classList.remove('on'); });
-ptr($('brk'), e => { TC.brkId = e.pointerId; TC.by = e.clientY; TC.brk = .35; $('brk').classList.add('on'); }, e => { TC.brk = clamp(.35 + (e.clientY - TC.by) / 80, 0, 1); /* press = light squeeze, drag down = harder */ }, () => { TC.brkId = null; TC.brk = 0; $('brk').classList.remove('on'); });
+ptr($('brk'), e => { TC.brkId = e.pointerId; TC.by = e.clientY; TC.brk = cfg.analogBrk !== false ? .35 : 1; $('brk').classList.add('on'); }, e => { if (cfg.analogBrk !== false) TC.brk = clamp(.35 + (e.clientY - TC.by) / 80, 0, 1); /* press = light squeeze, drag down = harder */ }, () => { TC.brkId = null; TC.brk = 0; $('brk').classList.remove('on'); });
 ptr($('clu'), e => { TC.cluId = e.pointerId; TC.cy0 = e.clientY; TC.cl0 = TC.clu; }, e => { TC.clu = clamp(TC.cl0 + (e.clientY - TC.cy0) / 90, 0, 1); }, () => { TC.cluId = null; });
 ptr($('bBack'), () => { TC.back = 1; $('bBack').classList.add('on'); }, null, () => { TC.back = 0; $('bBack').classList.remove('on'); });
 const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { } }; // tactile feedback where supported (Android)
@@ -39,7 +39,7 @@ export function input(dt) {
   // scooter: Space is the left (rear/CBS) brake lever instead of a clutch
   const cvt = ctx.spec.type === 'cvt', kBr = kB || (cvt && K.Space);
   // analog lever: touch sets the pull directly, keys squeeze it on progressively (hold longer = harder)
-  S.brake = TC.brkId !== null ? TC.brk : appr(S.brake, kBr ? 1 : 0, (kBr ? 2.5 : 12) * dt);
+  S.brake = TC.brkId !== null ? TC.brk : appr(S.brake, kBr ? 1 : 0, (kBr && cfg.analogBrk !== false ? 2.5 : 12) * dt);
   if (TC.stId === null) TC.wa = appr(TC.wa, 0, 5 * dt); const wt = TC.stId !== null || TC.wa !== 0, tgt = wt ? TC.wa / WMAX() : kS; S.steer = wt ? tgt : appr(S.steer, tgt, (kS ? 2.2 : 4) * dt);
   if (cvt) S.cl = 0;
   else { if (TC.cluId === null) TC.clu = appr(TC.clu, 0, 5 * dt); S.cl = K.Space ? appr(S.cl, 1, 8 * dt) : TC.cluId !== null ? TC.clu : appr(S.cl, TC.clu, 2.5 * dt); }
