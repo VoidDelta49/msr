@@ -6,6 +6,7 @@ import { tq } from './spec.js';
 import { say } from './hud.js';
 import { igPre, igPost } from './ignition.js';
 import { KP, KS, MUX, BRK, tyreF } from './tyre.js';
+import { cfg } from './config.js';
 
 // Wheelie / stoppie: the bike pitches as a rigid body about the contact patch of the wheel still on the ground (rear for a wheelie,
 // front for a stoppie). Net longitudinal acceleration a acts at the CG height h, gravity pulls it back; wp is the angle off the ground
@@ -38,10 +39,19 @@ export function step(dt) {
   // engine
   if (S.running && S.lim && S.rpm < sp.red - 150) S.lim = false; if (S.rpm >= sp.red) S.lim = true;
   const thr = S.running && !S.lim && S.cutT <= 0 ? S.thr : 0;
-  const idleT = S.running ? clamp((sp.idle + (S.fi || 0) + 100 - S.rpm) / 400, 0, 1) * .35 : 0;
+  // idle control: opens the throttle just enough to cover the engine's own friction at the idle target (x0 = zero net torque), with
+  // only ~30% spare below it. Enough to catch the revs and creep in 1st, not enough to pull the bike along in the higher gears
+  const fr0 = sp.fric[0] + sp.fric[1] * S.rpm, x0 = fr0 / (tq(sp, S.rpm) * sp.pow + .85 * fr0);
+  const idleT = S.running ? Math.min(1, x0 * clamp(1 + (sp.idle + (S.fi || 0) - S.rpm) / 150, 0, 1.3)) : 0;
   S.thrEff = Math.max(thr, idleT);
   // wheelie limiter: the balance point is unstable, so drive fades out as the nose rises and the bike settles instead of running away
-  const wl = 1 - .92 * sstep(.12, .55, S.wp || 0), sl = 1 - .92 * sstep(.12, .5, -(S.wp || 0));
+  let wl = 1 - .92 * sstep(.12, .55, S.wp || 0); const sl = 1 - .92 * sstep(.12, .5, -(S.wp || 0));
+  // wheelie control (Options, on by default): the ECU trims torque as the acceleration nears the lift point and cuts it once the
+  // front leaves the ground. Cuts fast, gives drive back gently, so the front stays down or only skims up
+  if (cfg.wc !== false && !ctx.stand) {
+    const aw = 9.81 * sp.lr / sp.h, tgt = clamp((1.04 * aw - (S.af || 0)) / (.14 * aw), 0, 1) * (1 - sstep(0, .04, S.wp || 0));
+    S.wcF = (S.wcF ?? 1) + (tgt - (S.wcF ?? 1)) * Math.min(1, dt / (tgt < (S.wcF ?? 1) ? .03 : .3)); wl *= S.wcF;
+  } else S.wcF = 1;
   const we = S.rpm * PI / 30, Tdrive = S.running ? S.thrEff * tq(sp, S.rpm) * sp.pow * wl : 0;
   // published torque is already net at the crank, so friction/pumping loss mostly shows with the throttle shut
   // (engine braking, rev decay); at full throttle only a small part is left
@@ -114,9 +124,13 @@ export function step(dt) {
   const vv = S.v, sv = Math.abs(vv), si = Math.sign(S.steer) * Math.pow(Math.abs(S.steer), 1.4) * (offF ? 1 - .8 * sstep(.04, .3, wp) : 1), md = .6 / (1 + Math.pow(sv * .3, 1.5));
   // friction circle: braking / driving force uses up grip the corner needs; a locked or spinning tyre has little left
   const spun = (lkR || S.ws) && !offR, fl = lkF ? .3 : Math.sqrt(1 - Math.min(.85, Fbf / Math.max(Pf, 1)) ** 2), rl = spun ? .5 : Math.sqrt(1 - Math.min(.85, (Math.abs(fxr) + Fbr) / Math.max(Pr, 1)) ** 2);
-  let kk = Math.tan(si * md) / sp.wb; const kl = mu * g * .95 * Math.min(fl, rl) / Math.max(vv * vv, .01); S.over = Math.abs(kk) / kl; kk = clamp(kk, -kl, kl); // over > 1: asking more grip than the tyres have
+  // asked curvature: steering geometry at walking pace; at speed the bar asks for a share of the grip (full lock = 90% of it, the
+  // rider backing off by half of what braking / drive takes from the corner), so only hard braking, a locked front or wheelspin
+  // mid-corner at full lock asks clearly more than the tyres have
+  const hb = sstep(3, 8, sv), gc = Math.min(fl, rl), v2 = Math.max(vv * vv, .01);
+  let kk = Math.tan(si * md) / sp.wb * (1 - hb) + si * .9 * (.5 + .5 * gc) * mu * g / v2 * hb; const kl = mu * g * .95 * gc / v2; S.over = Math.abs(kk) / kl; kk = clamp(kk, -kl, kl); // over > 1: asking more grip than the tyres have
   S.ayu = Math.min(.95, vv * vv * Math.abs(kk) / (mu * g * .95)); S.skid = lkF || spun ? Math.min(1, (v + (S.ws || 0)) / 3) : 0; // skid: tyre noise
-  const hb = sstep(3, 8, sv), tl = Math.atan(vv * vv * kk / 9.81) * (1 - hb) + si * Math.atan(mu * .9) * hb; 
+  const tl = Math.atan(vv * vv * kk / 9.81);
   // lean is a damped roll: the bike swings toward the lean the steering / corner asks for with roll inertia (heavy bikes are slower,
   // a bit of overshoot when flicked), and the faster it goes the stiffer and more damped it gets (gyro effect). Roll rate is capped.
   const wn = 6.5 / (1 + sv * .02) * clamp(Math.sqrt(40 / sp.I), .7, 1.2), zt = .75 + Math.min(.35, sv * .012);

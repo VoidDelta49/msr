@@ -3,7 +3,7 @@ import { $, LOG } from './util.js';
 import { ctx } from './state.js';
 import { cfg, save, BUILD } from './config.js';
 
-const OPTS = { oHud: [{ k: 'showFps', l: 'Show FPS' }, { k: 'showApi', l: 'Show renderer' }], oAud: [{ k: 'sound', l: 'Sound' }, { k: 'amb', l: 'Ambient sounds' }], oPhy: [{ k: 'tough', l: 'Tough Biker mode' }], oGfx: [{ k: 'n64', l: 'N64 colour filter (reloads)' }, { k: 'fxaa', l: 'Anti-aliasing FXAA (reloads)' }, { k: 'autoRes', l: 'Auto resolution' }, { k: 'gpuCull', l: 'GPU culling, WebGPU only (reloads)' }, { k: 'forceGL', l: 'Force WebGL (reloads)' }] };
+const OPTS = { oHud: [{ k: 'showFps', l: 'Show FPS' }, { k: 'showApi', l: 'Show renderer' }], oAud: [{ k: 'sound', l: 'Sound' }, { k: 'amb', l: 'Ambient sounds' }], oPhy: [{ k: 'tough', l: 'Tough Biker mode' }, { k: 'wc', l: 'Wheelie control' }], oGfx: [{ k: 'n64', l: 'N64 colour filter (reloads)' }, { k: 'fxaa', l: 'Anti-aliasing FXAA (reloads)' }, { k: 'autoRes', l: 'Auto resolution' }, { k: 'gpuCull', l: 'GPU culling, WebGPU only (reloads)' }, { k: 'forceGL', l: 'Force WebGL (reloads)' }] };
 const RL = [[0, 'Off'], [480, '480p'], [360, '360p'], [240, '240p']]; // render height cap, upscaled with crisp pixels
 const FL = [[30, '30'], [60, '60'], [0, 'Off']]; // FPS cap
 const TL = [['live', 'Live PH'], [7, 'Morning'], [12, 'Noon'], [17.3, 'Sunset'], [22, 'Night']]; // time of day (cfg.tod), live = real Philippine time
