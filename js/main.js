@@ -11,13 +11,13 @@ import { DRIVES } from './drivetrain.js';
 import { B, buildModel, applyLook } from './model.js';
 import { step } from './physics.js';
 import { initAudio, updAudio, blip } from './audio.js';
-import { say, drawCluster, drawMini, updPerf, setFps, setPhys, setGfx } from './hud.js';
+import { say, drawCluster, drawMini, updPerf, setFps, setPhys, setGfx, setJank } from './hud.js';
 import { RP, TICK, initRapier, tickR, syncBody, crashVisual, bounce } from './rapier.js';
 import { actions, input, ptr, TC, WMAX } from './controls.js';
 import { MI, togglePark, missions, animMarker } from './missions.js';
 import { G as GARAGE, buildGarage } from './garage.js';
 import { O, openOpts, closeOpts } from './options.js';
-import { cullUpdate, autoRes, resScale } from './perf.js';
+import { cullUpdate, autoRes, resScale, jankStart, jankEnd, jankText } from './perf.js';
 import { gpuCull } from './gpucull.js';
 import { GPU_TYPES } from './world.js';
 
@@ -132,13 +132,13 @@ function interp(on) {
 /* ---------- loop ---------- */
 let last = performance.now(), lastDraw = 0, fN = 0, fT = 0, crashCam = false;
 function loop(t) {
-  requestAnimationFrame(loop); const dt = Math.min(.05, (t - last) / 1000); last = t; fN++;
-  if (t - fT > 1000) { const fps = Math.round(fN * 1000 / (t - fT)); setFps(fps); setPhys('Physics ' + pms.toFixed(2) + ' ms'); autoRes(fps, !ctx.paused && !ctx.GAR && !ctx.OPT); setGfx(renderer.info.render.drawCalls, resScale()); updPerf(API); fN = 0; fT = t; }
+  requestAnimationFrame(loop); jankStart(t); const J0 = performance.now(); let hudUp = false; const dt = Math.min(.05, (t - last) / 1000); last = t; fN++;
+  if (t - fT > 1000) { const fps = Math.round(fN * 1000 / (t - fT)); setFps(fps); setPhys('Physics ' + pms.toFixed(2) + ' ms'); autoRes(fps, !ctx.paused && !ctx.GAR && !ctx.OPT); setGfx(renderer.info.render.drawCalls, resScale()); setJank(jankText()); updPerf(API); fN = 0; fT = t; }
   if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); if (RP.ok) tickRapier(dt); }
   else if (!ctx.paused && !ctx.OPT) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); }
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if (S.crashed && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > 50) { lastDraw = t; drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, ICZ); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw();
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > 50) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, ICZ); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); jankEnd(t, performance.now() - J0, hudUp);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 $('apiNote').textContent = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));

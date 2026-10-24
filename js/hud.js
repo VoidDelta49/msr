@@ -100,7 +100,8 @@ export function drawCluster(inWorld = true) {
     ctx.bike.cluster === 'tft' ? [now.getMinutes(), now.getSeconds() & 1, (S.odo / 100) | 0, ctx.bcfg.autoClutch, S.running && S.rpm >= sp.red - 600 && (performance.now() / 70 | 0) % 2].join() :
     ctx.bike.cluster === 'scooter' ? [now.getMinutes(), now.getSeconds() & 1, (S.odo / 100) | 0, S.running && Math.abs(S.v) > 2 && S.thrEff < .35, S.issOff && (performance.now() / 400 | 0) % 2, ctx.bcfg.iss, S.issOff].join() : ''].join('|');
   if (key !== cluKey) { cluKey = key; gc.clearRect(0, 0, 512, 224); CLUSTERS[ctx.bike.cluster](gc, sp); texDirty = true; }
-  if (inWorld && texDirty) { cluTex.needsUpdate = true; texDirty = false; }
+  if (inWorld && texDirty) { cluTex.needsUpdate = true; texDirty = false; return true; }
+  return false;
 }
 
 /* minimap */
@@ -119,5 +120,6 @@ export function drawMini(MAP, ICZ) {
 
 /* FPS / renderer readout */
 let fpsV = 0, physV = '', gfxV = ''; export const setFps = v => { fpsV = v; }; export const setPhys = v => { physV = v; };
+export let jankV = ''; export const setJank = v => { jankV = v; };
 export const setGfx = (draws, res) => { gfxV = draws + ' draws' + (res < 1 ? ' · res ' + Math.round(res * 100) + '%' : ''); };
-export function updPerf(API) { const p = []; if (cfg.showApi) p.push(API); if (cfg.showFps) p.push(fpsV + ' fps'); if (cfg.showFps && physV) p.push(physV); if (cfg.showFps && gfxV) p.push(gfxV); $('perf').textContent = p.join(' · '); $('perf').hidden = !p.length; }
+export function updPerf(API) { const p = []; if (cfg.showApi) p.push(API); if (cfg.showFps) p.push(fpsV + ' fps'); if (cfg.showFps && physV) p.push(physV); if (cfg.showFps && gfxV) p.push(gfxV); if (cfg.showFps && jankV) p.push(jankV); $('perf').textContent = p.join(' · '); $('perf').hidden = !p.length; }
