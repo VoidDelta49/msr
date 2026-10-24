@@ -2,7 +2,7 @@
 // Each quest type has a hub (a coloured beacon in the world and a pin on the minimap). Ride into it and hold still to take the job.
 //   parking: park in the green bay.
 //   parcel:  carry the parcel to the drop-off. A crash, a hard wall hit or a swim and it falls off: game over.
-//   food:    deliver before it goes cold; bumps, hard braking and sudden turns spoil it, a crash spills it.
+//   food:    deliver before it goes cold; bumps, hard braking and sudden turns spoil it (still deliverable at 0%), a crash spills it.
 import * as THREE from 'three';
 import { $ } from './util.js';
 import { S, ctx } from './state.js';
@@ -157,7 +157,6 @@ function deliveryTick(q, dt) {
       const loss = Math.max(0, cap(aL, K.cL) - K.aL) * K.kL + (fast ? Math.max(0, cap(aY, K.cY) - K.aY) * K.kY + Math.max(0, cap(lr, K.cS) - K.lr) * K.kS : 0) + Math.max(0, cap(hz, K.cZ) - K.hz) * K.kZ;
       q.quality = Math.max(0, q.quality - loss * h); if (loss * h > 1.2) say('Easy! The food is sloshing', 500);
     }
-    if (q.quality <= 0) return fail('The food is ruined! Game over');
     if (q.heat <= 0) return fail('The food went cold! Game over');
   }
   q.dtL = dt; q.lx = S.x; q.lz = S.z;

@@ -39,7 +39,7 @@ Three quest hubs sit in town, each a coloured beacon in the world and a pin on t
 
 - **Parking challenge** (blue P, in the lot): park in the green bay. Stars for time and hits. *Next* gives another bay.
 - **Parcel delivery** (tan B): the parcel rides on the pillion seat. A crash, a hard wall hit (> 7 m/s, also with Tough Biker on) or a swim and it falls off: game over. Stars for time and hits.
-- **Food delivery** (pink F): quality starts at 100% and drops with bumps, hard braking, hard acceleration, fast lean changes, strong cornering and walls; heat drops steadily to 0 at the time limit (about 7.5 m/s average over the straight-line distance, plus 30 s). A crash, a swim, quality 0 or heat 0 and it is game over. Stars for quality and heat left.
+- **Food delivery** (pink F): quality starts at 100% and drops with bumps, hard braking, hard acceleration, fast lean changes, strong cornering and walls; heat drops steadily to 0 at the time limit (about 7.5 m/s average over the straight-line distance, plus 30 s). A crash, a swim or heat 0 is game over; quality 0 is not, you still deliver (for one star). Stars for quality and heat left.
 
 The spoilage numbers are the `K` table at the top of `js/missions.js`.
 
