@@ -128,16 +128,16 @@ function ambience(t, v, live) {
   const swell = .55 + .45 * Math.pow(Math.sin(t * .85 + Math.sin(t * .31) * 2), 2);
   st(A.surf.gain, z.coast * .5 * swell, .25); if (A.surfP.pan) st(A.surfP.pan, pdir(z.sx, z.sz), .5);
   st(A.riv.gain, z.river * .22, .3); if (A.rivP.pan) st(A.rivP.pan, pdir(z.rx, z.rz), .5);
-  const cic = z.wild * (.5 + .5 * Math.sin(t * .45) * Math.sin(t * .17 + 1));
-  st(A.cic.gain, cic * .05, .4); st(A.hum.gain, z.town * .05, .4); st(A.vol.gain, z.volc * .35, .5);
+  const nt = ctx.night || 0, day = 1 - nt, cic = (z.wild + z.paddy * .6 * nt) * (.5 + .5 * Math.sin(t * .45) * Math.sin(t * .17 + 1)); // night: insects louder and in the paddies, town quieter
+  st(A.cic.gain, cic * .05 * (1 + .8 * nt), .4); st(A.hum.gain, z.town * .05 * (1 - .6 * nt), .4); st(A.vol.gain, z.volc * .35, .5);
   if (!on || ctx.paused) return;
   // one-shots, chance per 0.1 s tick
   const r = Math.random;
-  if (r() < z.wild * .035) bird();
-  if (r() < (z.paddy * .9 + z.river * .4) * .05) frog();
-  if (r() < z.town * .012 + z.wild * .002) dog();
-  if (r() < z.town * .01) horn();
-  if (r() < (z.paddy + z.town * .3) * .0015) rooster();
+  if (r() < z.wild * .035 * day) bird();
+  if (r() < (z.paddy * .9 + z.river * .4) * .05 * (1 + nt)) frog();
+  if (r() < (z.town * .012 + z.wild * .002) * (1 - .4 * nt)) dog();
+  if (r() < z.town * .01 * (1 - .8 * nt)) horn();
+  if (r() < (z.paddy + z.town * .3) * .0015 * (day * .4 + 6 * (ctx.dawn || 0))) rooster(); // roosters mostly at dawn
 }
 
 // ---- ambience one-shots: synthesized, own gain + pan + distance low-pass, auto-disconnect ----

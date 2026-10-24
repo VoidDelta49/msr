@@ -32,16 +32,34 @@ renderer.shadowMap.enabled = Q.shadow > 0; renderer.shadowMap.type = THREE.PCFSh
 export const HORIZON = 0xc6dcea, ZENITH = 0x4b8fd8, SKY = HORIZON;
 export const scene = new THREE.Scene(); scene.background = new THREE.Color(SKY); scene.fog = new THREE.Fog(SKY, Q.fog * .11, Q.fog);
 export const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .03, Q.fog + 150);
-{ // dome moved to the camera in the vertex shader (no per-frame JS), drawn first, never culled, no fog
-  const { positionLocal, cameraPosition } = await import('three/tsl'), { sky } = await import('./tex.js');
-  const t = new THREE.CanvasTexture(sky(ZENITH, HORIZON)); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = THREE.RepeatWrapping;
-  const m = new THREE.MeshBasicNodeMaterial({ map: t, side: THREE.BackSide, fog: false, depthWrite: false });
-  m.positionNode = positionLocal.add(cameraPosition);
+// Day/night (daynight.js): the dome colours come from uniforms (horizon/zenith gradient, cloud mask, sun glow + disc,
+// moon disc, stars) so the sky changes with no texture uploads. Dome moved to the camera in the vertex shader,
+// drawn first, never culled, no fog.
+export const SKYU = {};
+{
+  const T = await import('three/tsl'), { clouds } = await import('./tex.js');
+  const t = new THREE.CanvasTexture(clouds()); t.wrapS = THREE.RepeatWrapping;
+  const U = (k, v) => (SKYU[k] = T.uniform(v));
+  const zen = U('zen', new THREE.Color(ZENITH)), hor = U('hor', new THREE.Color(HORIZON)), cl = U('cloud', new THREE.Color(0xf4f4f4)), gl = U('glow', new THREE.Color(0)),
+    sd = U('sun', new THREE.Vector3(0, 1, 0)), md = U('moon', new THREE.Vector3(0, -1, 0)), sv = U('sunVis', 1), mv = U('moonVis', 0), nt = U('night', 0);
+  const m = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, fog: false, depthWrite: false });
+  m.positionNode = T.positionLocal.add(T.cameraPosition);
+  const dir = T.positionLocal.normalize(), up = T.uv().y.mul(2).sub(1).clamp(0, 1), c = T.texture(t, T.uv()), w = c.r, open = w.oneMinus(), above = T.step(0, dir.y);
+  const base = T.mix(hor, zen, T.pow(up, .7)), s = T.dot(dir, sd).max(0), mo = T.dot(dir, md).max(0);
+  let col = T.mix(base, cl.mul(c.g.mul(.075).add(.925)), w);
+  col = col.add(gl.mul(T.pow(s, 6).mul(.55).add(T.pow(s, 40).mul(.6))));                                     // glow around the sun (sunsets)
+  col = col.add(T.vec3(1, .96, .85).mul(T.smoothstep(.9988, .9993, s).mul(sv).mul(open).mul(above).mul(4)));   // sun disc
+  col = col.add(T.vec3(.85, .88, 1).mul(T.smoothstep(.99935, .99965, mo).mul(mv).mul(open).mul(above)));       // moon disc
+  const cell = T.floor(dir.mul(170)), h = T.fract(T.sin(T.dot(cell, T.vec3(12.9898, 78.233, 37.719))).mul(43758.5453));
+  col = col.add(T.vec3(T.step(.9965, h).mul(h.sub(.9965).mul(220).add(.25)).mul(nt).mul(open).mul(T.smoothstep(.03, .2, dir.y)))); // stars
+  m.colorNode = T.vec4(col, 1);
   const d = new THREE.Mesh(new THREE.SphereGeometry(Q.fog * .9, 24, 12), m); d.frustumCulled = false; d.renderOrder = -1; d.matrixAutoUpdate = false; scene.add(d);
 }
-scene.add(new THREE.HemisphereLight(0xdcecff, 0x55653a, 1.15));
+export const hemi = new THREE.HemisphereLight(0xdcecff, 0x55653a, 1.15); scene.add(hemi);
 export const sun = new THREE.DirectionalLight(0xffeccc, 2.8); sun.castShadow = Q.shadow > 0; sun.shadow.mapSize.set(Q.shadow || 1024, Q.shadow || 1024);
 { const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; sun.shadow.camera.layers.enable(1); scene.add(sun, sun.target); // shadow camera also sees layer 1 = shadow-only proxies (model.js)
+// headlight: always in the scene (intensity 0 by day) so turning it on never changes the light count = no shader recompile
+export const head = new THREE.SpotLight(0xfff0d6, 0, 75, .42, .5, 2); head.castShadow = false; scene.add(head, head.target);
 // Post: one pass over the finished frame. Tone mapping + sRGB first (renderOutput), then FXAA (expects display-space
 // colours), then the N64 filter: a little extra saturation and 15-bit colour (5 bits per channel, like the N64's
 // framebuffer) with a 4x4 ordered dither. Both are Options toggles; with neither the scene renders directly.

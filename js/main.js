@@ -10,6 +10,7 @@ import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
 import { B, buildModel, applyLook, snapshot, releaseSkin } from './model.js';
 import { step } from './physics.js';
+import { dayNight } from './daynight.js';
 import { initAudio, updAudio, blip } from './audio.js';
 import { say, drawCluster, drawMini, updPerf, setFps, setPhys, setGfx, setJank } from './hud.js';
 import { RP, TICK, initRapier, tickR, syncBody, crashVisual, bounce } from './rapier.js';
@@ -107,7 +108,7 @@ function visuals(dt, now) {
     const bx = Math.sin(S.psi), bz = Math.cos(S.psi); tmp.set(S.x + bx * 4.2, 1.9 + S.zH, S.z + bz * 4.2); camera.position.lerp(tmp, 1 - Math.exp(-dt * 5)); camera.position.y = Math.max(camera.position.y, H(camera.position.x, camera.position.z) + .6);
     camera.lookAt(S.x - bx * 2, 1 + S.zH, S.z - bz * 2);
   }
-  sun.position.set(S.x + 30, S.zH + 60, S.z + 20); sun.target.position.set(S.x, 0, S.z);
+  dayNight();
   dom('wg', 'rotate(' + (S.steer * WMAX() * 57.3).toFixed(1) + ')', (e, v) => e.setAttribute('transform', v)); dom('cluFill', (S.cl * 100).toFixed(0) + '%', (e, v) => e.style.height = v); dom('thrg', (S.thr * 36).toFixed(1) + 'px', (e, v) => e.style.backgroundPositionY = v);
   animMarker(now);
 }

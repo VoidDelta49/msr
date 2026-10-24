@@ -1,6 +1,6 @@
-export const BUILD = '9.5'; // shown in Options, so a cached old version is easy to spot
+export const BUILD = '9.6'; // shown in Options, so a cached old version is easy to spot
 // Settings: global options + one settings block per bike, stored in localStorage 'cpmme'
-export const GLOBAL_DEF = { bike: 'raider150', sound: true, amb: true, vol: .8, forceGL: false, showFps: true, showApi: true, sens: 10, tough: false, gfx: 'med', autoRes: true, fxaa: true, n64: true, retro: 0, gpuCull: true, fpsCap: 60, name: '', room: '', mpUrl: '' };
+export const GLOBAL_DEF = { bike: 'raider150', sound: true, amb: true, vol: .8, forceGL: false, showFps: true, showApi: true, sens: 10, tough: false, gfx: 'med', autoRes: true, fxaa: true, n64: true, retro: 0, gpuCull: true, fpsCap: 60, tod: 'live', name: '', room: '', mpUrl: '' };
 // multiplayer relay (server/worker.js deployed to Cloudflare); Options > MULTIPLAYER can override it (cfg.mpUrl)
 export const MP_URL = 'https://cpm-relay.msr49.workers.dev';
 export const cfg = { ...GLOBAL_DEF, bikes: {} };
@@ -30,3 +30,12 @@ export function bikeCfg(bike) {
   for (const [k, v] of Object.entries(bike.defaults)) if (!(k in c)) c[k] = v;
   return c;
 }
+// game clock (day/night, HUD clocks): real time, or today's Philippine date at the fixed hour picked in Options (cfg.tod)
+const PH = 8 * 36e5;
+export function gameMs() {
+  const n = Date.now(), h = cfg.tod; if (h == null || h === 'live') return n;
+  const day = Math.floor((n + PH) / 864e5); return day * 864e5 - PH + h * 36e5 + n % 6e4; // seconds keep ticking (clock colon)
+}
+// Philippine wall clock {h, m, s} for the HUD clocks (matches the sky, including a fixed Options hour)
+export function phClock() { const d = new Date(gameMs() + PH); return { h: d.getUTCHours(), m: d.getUTCMinutes(), s: d.getUTCSeconds() }; }
+

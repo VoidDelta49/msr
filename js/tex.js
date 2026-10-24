@@ -132,15 +132,13 @@ export function jeep() { // jeepney side: window band, chrome strip, painted str
 
 /* ---------- sky ---------- */
 // Equirect sky for a camera-following dome: zenith blue to a hazy horizon (= fog colour), puffy clouds near the horizon.
-export function sky(zen, hor) {
-  const W = 256, H = 64, n = noise(W, H, 8, 4), Z = hex(zen), Hc = hex(hor);
+// cloud mask for the day/night sky dome (256×64, horizon at the middle; same noise call the old sky texture used): R = cloud cover, G = top brightness
+export function clouds() {
+  const W = 256, H = 64, n = noise(W, H, 8, 4);
   return paint(W, H, (x, y) => {
-    const v = y / (H - 1); // 0 top .. 1 bottom; horizon at .5
-    if (v >= .5) return Hc;
-    const t = Math.pow(1 - v * 2, .7), base = Z.map((z, i) => z * t + Hc[i] * (1 - t));
+    const v = y / (H - 1); if (v >= .5) return [0, 0, 0];
     const band = Math.exp(-(((v - .36) / .1) ** 2)), k = Math.min(1, Math.max(0, (n[y * W + x] * band - .3) / .14)), w = k * k * (3 - 2 * k);
-    const shade = 236 + 19 * Math.min(1, w * 1.6); // flat white tops, slightly grey undersides
-    return base.map(b => Math.round(b + (shade - b) * w));
+    return [Math.round(w * 255), Math.round(Math.min(1, w * 1.6) * 255), 0];
   });
 }
 
