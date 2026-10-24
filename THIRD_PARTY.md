@@ -1,6 +1,6 @@
 # Third-party software and credits
 
-CPM: Motor Edition's own code is under the MIT License (see `LICENSE`). It also uses the libraries below. Unmodified copies are included in `vendor/` (see the importmap in `index.html`) so the game works offline; each folder carries the library's license file.
+CPM: Motor Edition's own code is under the MIT License (see `LICENSE`). It also uses the libraries below. Copies are included in `vendor/` (see the importmap in `index.html`) so the game works offline; each folder carries the library's license file.
 
 | Library | Version | License | Source |
 |---|---|---|---|
@@ -27,3 +27,5 @@ Copyright © Dimforge. Released under the Apache License, Version 2.0: https://w
 ## When you add a dependency
 
 Add a row to the table above with its license. If it is bundled or copied into the repo, also keep its license text and notices with it.
+
+**Local change:** `vendor/rapier/rapier.mjs` is the npm file with its embedded base64 WASM moved out to `vendor/rapier/rapier.wasm` (loaded with `fetch(new URL("rapier.wasm", import.meta.url))`), which cuts the download by about a quarter. The bytes are identical.

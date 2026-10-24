@@ -15,6 +15,7 @@ async function files() {
   for (const u of Object.values(map)) if (!u.endsWith('/')) urls.add(abs(u));
   for (const m of html.matchAll(/(?:href|src)="([^"#]+)"/g)) if (!/^(https?:)?\/\//.test(m[1]) && !m[1].startsWith('data:')) urls.add(abs(m[1]));
   urls.add(abs('js/engine-worklet.js?v=' + V));
+  if (map['@dimforge/rapier3d-compat']) urls.add(abs(map['@dimforge/rapier3d-compat'].replace('.mjs', '.wasm'))); // fetched by rapier.mjs at init
   urls.add(abs('data/map/island.json?v=' + V));
   const ix = abs('data/bikes/index.json?v=' + V); urls.add(ix);
   for (const id of await (await fetch(ix)).json()) urls.add(abs(`data/bikes/${id}.json?v=${V}`));

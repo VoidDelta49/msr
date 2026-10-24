@@ -8,7 +8,7 @@ import { O, openOpts } from './options.js';
 
 const IM = JSON.parse(document.querySelector('script[type=importmap]').textContent).imports;
 // heavy CDN files with their decompressed sizes (the progress bar counts decompressed stream bytes; versions are pinned)
-const LIBS = [[IM['three/webgpu'], 2284850], [IM['three/webgpu'].replace('three.webgpu.js', 'three.core.js'), 1458113], [IM['three/tsl'], 36854], [IM['@dimforge/rapier3d-compat'], 4340292],
+const LIBS = [[IM['three/webgpu'], 2284850], [IM['three/webgpu'].replace('three.webgpu.js', 'three.core.js'), 1458113], [IM['three/tsl'], 36854], [IM['@dimforge/rapier3d-compat'], 230847], [IM['@dimforge/rapier3d-compat'].replace('.mjs', '.wasm'), 3082103],
   [IM['three/addons/'] + 'utils/BufferGeometryUtils.js', 37712], ...(cfg.fxaa ? [[IM['three/addons/'] + 'tsl/display/FXAANode.js', 9450]] : [])];
 // our own modules too (small, not counted in the bar); fetched into the HTTP cache so import() doesn't wait on them
 const OWN = Object.entries(IM).filter(([k]) => k.startsWith('./js/') && !/menu|config|util|state|options/.test(k)).map(([, u]) => [u, 0]);
