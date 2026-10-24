@@ -84,7 +84,7 @@ export function updAudio() {
   // ---- engine ----
   const run = S.running, cut = S.lim || S.cutT > 0, dt = Math.min(.1, t - lastT); lastT = t;
   offR = run ? (S.rpm || 0) : Math.max(0, offR - dt * 3500); // switched off: the crank spins down, S.rpm may sit at idle
-  st(A.eng.gain, (fp ? 1 : .8) * sd.gain * EXH.gain[x] * .55, .05);
+  st(A.eng.gain, (fp ? 1 : .85) * sd.gain * EXH.gain[x] * .8, .05);
   if (E) {
     if (sp !== lastSpec) { lastSpec = sp; engineCfg(sp); }
     const P = E.parameters; P.get('rpm').value = offR; P.get('load').value = S.thrEff || 0; P.get('on').value = run ? 1 : 0; P.get('cut').value = cut ? 1 : 0; P.get('vol').value = 1;
@@ -97,14 +97,14 @@ export function updAudio() {
   const wv = v / sp.r * (sp.final || 1); st(A.bw.frequency, 80 + wv * 2.2, .05);
   st(A.bwg.gain, sd.whine ? sd.whine * 6 * Math.min(1, v / 12) * (.3 + .7 * (S.c || 0)) : 0, .08);
   // ---- wind: rumble grows with v², the rush brightens with speed and gusts; louder with the head out in 1st person ----
-  const gust = .65 + .7 * vnoise(t * .6, 3.1), wk = live ? (fp ? 1 : .45) : 0, ws = Math.min(1, v * v / 900);
-  st(A.wLo.gain, wk * ws * .9 * gust, .08); st(A.wLoF.frequency, 120 + v * 9, .1);
-  st(A.wHi.gain, wk * ws * .22 * (.5 + .5 * gust), .08); st(A.wHiF.frequency, 500 + v * 55 * (.8 + .4 * gust), .1);
+  const gust = .8 + .4 * vnoise(t * .6, 3.1), wk = live ? (fp ? 1 : .3) * (1 - .35 * (S.thrEff || 0)) : 0, ws = Math.min(1, v * v / 1600); // engine stays on top: wind backs off on throttle
+  st(A.wLo.gain, wk * ws * .25 * gust, .08); st(A.wLoF.frequency, 120 + v * 9, .1);
+  st(A.wHi.gain, wk * ws * .07 * (.5 + .5 * gust), .08); st(A.wHiF.frequency, 500 + v * 55 * (.8 + .4 * gust), .1);
   if (A.wPan.pan) st(A.wPan.pan, clamp(-(S.lean || 0) * .9, -.4, .4), .1);
   // ---- tyres: asphalt roar vs dirt crunch; squeal past the grip limit; scraping on walls and in crashes ----
   const grounded = live && !S.air && !S.crashed, nr = ctx.nearRoad ? ctx.nearRoad(S.x, S.z) : null, onRd = Math.max(nr ? clamp(1.3 - nr.d / (nr.w / 2 + .5), 0, 1) : 0, sstep(.85, 1, Z.town)); // town and lot are paved
   const roll = grounded ? Math.min(1, v / 20) : 0, grit = .6 + .8 * vnoise(t * 9, 1.7);
-  st(A.tA.gain, roll * (.12 + .25 * onRd) * (fp ? 1 : .7), .05); st(A.tAF.frequency, 140 + v * 9, .1);
+  st(A.tA.gain, roll * (.08 + .15 * onRd) * (fp ? 1 : .7), .05); st(A.tAF.frequency, 140 + v * 9, .1);
   const slip = grounded ? sstep(.95, 1.4, S.over || 0) * Math.min(1, v / 6) : 0;
   st(A.sk.gain, slip * .12 * onRd, .03); st(A.skF.frequency, 1050 + 160 * vnoise(t * 3, 5), .05); st(A.tD.gain, roll * (1 - onRd) * .16 * grit + slip * (1 - onRd) * .25, .03);
   const scr = live ? (S.crashed ? (S.v || 0) : (S.scrape || 0)) : 0;
