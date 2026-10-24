@@ -43,7 +43,8 @@ export function initAudio() {
   A.skF = node('bandpass', 1150, 7); A.sk = node('gain'); chain(w1, A.skF, A.sk, A.road);             // tyre squeal
   A.scF = node('bandpass', 2800, 1.6); A.sc = node('gain'); chain(w2, A.scF, A.sc, A.road);           // metal/plastic scraping
   // CVT belt whine (Click); gain 0 for chain bikes
-  A.bw = AC.createOscillator(); A.bw.type = 'sine'; A.bwg = node('gain'); chain(A.bw, A.bwg, A.eng); A.bw.start();
+  // reduction-gear whine (Click): one sine per gear mesh, pitch = wheel rev/s × the bike's `sound.mesh` multipliers
+  A.bwg = node('gain'); A.bwg.connect(A.eng); A.mesh = [0, 1].map(i => { const o = AC.createOscillator(), g = node('gain', 0, 0, i ? .5 : 1); chain(o, g, A.bwg); o.start(); return o; });
   // ---- ambience ----
   A.amb = node('gain', 0, 0, 0); A.ambLP = node('lowpass', 20000, .5); chain(A.amb, A.ambLP, A.master);
   A.surfP = pan(0); A.surfP.connect(A.amb); A.surf = node('gain'); chain(b1, node('lowpass', 650, .5), A.surf, A.surfP);
@@ -94,8 +95,8 @@ export function updAudio() {
     st(A.lg.gain, run ? (.1 + .35 * S.thrEff + .05 * S.rpm / 1e4) * 1.6 : 0, .03);
     if (run && x && S.thr < .05 && S.rpm > 5500 && Math.random() < .06 * x) blip('pop');
   }
-  const wv = v / sp.r * (sp.final || 1); st(A.bw.frequency, 80 + wv * 2.2, .05);
-  st(A.bwg.gain, sd.whine ? sd.whine * .8 * Math.min(1, v / 15) * (.4 + .6 * (S.thrEff || 0)) * (S.c || 0) : 0, .1); // faint belt whir under drive, not a tone over the engine
+  const wHz = v / (2 * Math.PI * sp.r), mm = sd.mesh || []; A.mesh.forEach((o, i) => st(o.frequency, Math.max(20, wHz * (mm[i] || 0)), .05));
+  st(A.bwg.gain, sd.whine && mm.length ? sd.whine * .8 * Math.min(1, v / 15) * (.4 + .6 * (S.thrEff || 0)) * (S.c || 0) : 0, .1); // faint belt whir under drive, not a tone over the engine
   // ---- wind: rumble grows with v², the rush brightens with speed and gusts; louder with the head out in 1st person ----
   const gust = .8 + .4 * vnoise(t * .6, 3.1), wk = live ? (fp ? 1 : .3) * (1 - .35 * (S.thrEff || 0)) : 0, ws = Math.min(1, v * v / 1600); // engine stays on top: wind backs off on throttle
   st(A.wLo.gain, wk * ws * .25 * gust, .08); st(A.wLoF.frequency, 120 + v * 9, .1);
