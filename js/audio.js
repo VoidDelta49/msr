@@ -43,7 +43,7 @@ export function initAudio() {
   A.skF = node('bandpass', 1150, 7); A.sk = node('gain'); chain(w1, A.skF, A.sk, A.road);             // tyre squeal
   A.scF = node('bandpass', 2800, 1.6); A.sc = node('gain'); chain(w2, A.scF, A.sc, A.road);           // metal/plastic scraping
   // CVT belt whine (Click); gain 0 for chain bikes
-  A.bw = AC.createOscillator(); A.bw.type = 'triangle'; A.bwg = node('gain'); chain(A.bw, A.bwg, A.eng); A.bw.start();
+  A.bw = AC.createOscillator(); A.bw.type = 'sine'; A.bwg = node('gain'); chain(A.bw, A.bwg, A.eng); A.bw.start();
   // ---- ambience ----
   A.amb = node('gain', 0, 0, 0); A.ambLP = node('lowpass', 20000, .5); chain(A.amb, A.ambLP, A.master);
   A.surfP = pan(0); A.surfP.connect(A.amb); A.surf = node('gain'); chain(b1, node('lowpass', 650, .5), A.surf, A.surfP);
@@ -95,7 +95,7 @@ export function updAudio() {
     if (run && x && S.thr < .05 && S.rpm > 5500 && Math.random() < .06 * x) blip('pop');
   }
   const wv = v / sp.r * (sp.final || 1); st(A.bw.frequency, 80 + wv * 2.2, .05);
-  st(A.bwg.gain, sd.whine ? sd.whine * 6 * Math.min(1, v / 12) * (.3 + .7 * (S.c || 0)) : 0, .08);
+  st(A.bwg.gain, sd.whine ? sd.whine * .8 * Math.min(1, v / 15) * (.4 + .6 * (S.thrEff || 0)) * (S.c || 0) : 0, .1); // faint belt whir under drive, not a tone over the engine
   // ---- wind: rumble grows with v², the rush brightens with speed and gusts; louder with the head out in 1st person ----
   const gust = .8 + .4 * vnoise(t * .6, 3.1), wk = live ? (fp ? 1 : .3) * (1 - .35 * (S.thrEff || 0)) : 0, ws = Math.min(1, v * v / 1600); // engine stays on top: wind backs off on throttle
   st(A.wLo.gain, wk * ws * .25 * gust, .08); st(A.wLoF.frequency, 120 + v * 9, .1);
