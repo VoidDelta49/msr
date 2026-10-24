@@ -147,11 +147,11 @@
     "paint": {
       "l": "Paint",
       "o": [
-        { "n": "Pearl White", "c": "#e8e8e3" },
+        { "n": "Pearl White", "c": "#ecece8", "rough": 0.5, "wc": "#c3c8cd" },
         { "n": "Matte Black", "c": "#1c1d20" },
         { "n": "Candy Red", "c": "#a8161c" },
         { "n": "Matte Gray", "c": "#5d6166" },
-        { "n": "Sky Blue", "c": "#3a7bd5" }
+        { "n": "Cyan", "c": "#16b3cc" }
       ]
     },
     "cfbody": {

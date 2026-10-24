@@ -105,7 +105,8 @@
         { "n": "Glass Black", "c": "#17191c" },
         { "n": "Racing Red", "c": "#c21d1d" },
         { "n": "Pearl White", "c": "#e6e6e1" },
-        { "n": "Neon Yellow", "c": "#d6cf18" }
+        { "n": "Neon Yellow", "c": "#d6cf18" },
+        { "n": "Matte Gray / Blue", "c": "#8a8e94", "lv": "gb", "rough": 0.7, "wc": "#1f44d8" }
       ]
     },
     "cfbody": {
@@ -162,7 +163,7 @@
     "exhaust": 0,
     "ecu": 0,
     "tires": 0,
-    "paint": 3,
+    "paint": 5,
     "fs": 14,
     "rs": 38,
     "kf": 11,
