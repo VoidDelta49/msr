@@ -199,7 +199,8 @@ function rider(ct, torso, head, arms, legs) {
 export const B = { root: new THREE.Group(), lean: new THREE.Group(), body: new THREE.Group(), ct: new THREE.Group(), MP };
 B.root.add(B.lean); B.lean.add(B.body); B.body.add(B.ct); B.ct.position.y = -.6; scene.add(B.root);
 
-function clusterPlane(par, x, y, z, rx, w = .25) { const p = mk(new THREE.PlaneGeometry(w, w * 224 / 512), new THREE.MeshBasicMaterial({ map: cluTex }), par, x, y, z, rx); p.castShadow = false; }
+// lift: pushed out along its own facing so the edges clear the cover/cowl it sits in (they used to sink into the body)
+function clusterPlane(par, x, y, z, rx, w = .25, lift = .025) { const p = mk(new THREE.PlaneGeometry(w, w * 224 / 512), new THREE.MeshBasicMaterial({ map: cluTex }), par, x, y, z, rx); p.translateZ(lift); p.castShadow = false; }
 // handlebar, grips, throttle, levers, mirrors (st-local, shared by both bikes). y/z = bar height/offset, hw = half width
 function controls(st, y, z, hw, lv, mir, noClu) {
   tube([-hw + .06, y, z], [hw - .06, y, z], .011, MB, st);
