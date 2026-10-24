@@ -5,7 +5,7 @@ import { cfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { clamp, sstep, vnoise } from './util.js';
 
-let AC = null, E = null, lastSpec = null, ambT = 0, crashWas = false, offR = 0, lastT = 0;
+let AC = null, E = null, lastSpec = null, ambT = 0, crashWas = false, airWas = false, offR = 0, lastT = 0;
 const A = {}, Z = { coast: 0, river: 0, town: 0, paddy: 0, volc: 0, wild: 0, sx: 0, sz: 0, rx: 0, rz: 0 };
 const EXH = { gain: [1, 1.35, 1.7], bright: [1, 1.3, 1.6], pq: [1, 1.3, 1.6], crackle: [1, 2.4, 4], drive: [1, 1.15, 1.3], pipe: [1, .92, .85] };
 
@@ -29,7 +29,7 @@ export function initAudio() {
   document.addEventListener('visibilitychange', () => { if (!AC) return; document.hidden ? AC.suspend() : AC.resume(); });
   // master: volume → crash muffle → gentle limiter so engine + wind + ambience never clip phone speakers
   A.master = node('gain', 0, 0, cfg.vol ?? .8); A.mLP = node('lowpass', 20000, .5);
-  const lim = AC.createDynamicsCompressor(); lim.threshold.value = -8; lim.knee.value = 6; lim.ratio.value = 6; lim.attack.value = .004; lim.release.value = .15;
+  const lim = AC.createDynamicsCompressor(); lim.threshold.value = -6; lim.knee.value = 8; lim.ratio.value = 8; lim.attack.value = .004; lim.release.value = .15;
   chain(A.master, A.mLP, lim, AC.destination);
   A.wn = noiseBuf(false); A.br = noiseBuf(true); const w1 = loop(A.wn), w2 = loop(A.wn), b1 = loop(A.br), b2 = loop(A.br);
   A.eng = node('gain', 0, 0, 0); A.eng.connect(A.master);
@@ -55,6 +55,10 @@ export function initAudio() {
   chain(w1, node('bandpass', 5200, 6), cAM, A.cic, A.amb);
   A.hum = node('gain'); chain(b2, node('lowpass', 260, .7), A.hum, A.amb);                             // town hum
   A.vol = node('gain'); chain(b1, node('lowpass', 90, .7), A.vol, A.amb);                              // volcano rumble
+  A.rus = node('gain'); A.rusF = node('bandpass', 1800, .8); chain(w1, A.rusF, A.rus, A.amb);          // wind in leaves / palms
+  A.crk = node('gain'); const kAM = node('gain', 0, 0, .5), kO = AC.createOscillator(), kD = node('gain', 0, 0, .5); kO.frequency.value = 5.2; kO.type = 'square'; kO.connect(kD); kD.connect(kAM.gain); kO.start();
+  chain(w2, node('bandpass', 4300, 14), kAM, A.crk, A.amb);                                             // night crickets: pulsed narrow band
+  A.trf = node('gain'); chain(b2, node('lowpass', 420, .7), A.trf, A.amb);                              // distant traffic wash in town
   // ---- engine voice ----
   const ok = () => { A.wk = true; };
   if (AC.audioWorklet) AC.audioWorklet.addModule(new URL('./engine-worklet.js?v=' + BUILD, import.meta.url).href).then(() => {
@@ -87,7 +91,7 @@ export function updAudio() {
   if (CR && (!S.cranking || ctx.paused)) crank(false);
   const run = S.running, cut = S.lim || S.cutT > 0, dt = Math.min(.1, t - lastT); lastT = t;
   offR = run ? (S.rpm || 0) : Math.max(0, offR - dt * 3500); // switched off: the crank spins down, S.rpm may sit at idle
-  st(A.eng.gain, (fp ? 1 : .85) * sd.gain * EXH.gain[x] * .8, .05);
+  st(A.eng.gain, (fp ? 1 : .85) * sd.gain * EXH.gain[x] * 1.35, .05);
   if (E) {
     if (sp !== lastSpec) { lastSpec = sp; engineCfg(sp); }
     const P = E.parameters; P.get('rpm').value = offR; P.get('load').value = S.thrEff || 0; P.get('on').value = run ? 1 : 0; P.get('cut').value = cut ? 1 : 0; P.get('vol').value = 1;
@@ -115,6 +119,8 @@ export function updAudio() {
   // crash: muffle everything briefly (a knock to the helmet)
   if (S.crashed && !crashWas) { const f = A.mLP.frequency; f.cancelScheduledValues(t); f.setValueAtTime(700, t); f.setTargetAtTime(20000, t + .6, .5); A.mLP.frequency._v = undefined; }
   crashWas = !!S.crashed;
+  if (airWas && !S.air && live && !S.crashed) blip('thud', 2); // touchdown: suspension thump
+  airWas = !!S.air;
   // ---- ambience (10 Hz) ----
   if (t - ambT > .1) { ambT = t; ambience(t, v, live); }
 }
@@ -130,6 +136,9 @@ function ambience(t, v, live) {
   st(A.surf.gain, z.coast * .5 * swell, .25); if (A.surfP.pan) st(A.surfP.pan, pdir(z.sx, z.sz), .5);
   st(A.riv.gain, z.river * .22, .3); if (A.rivP.pan) st(A.rivP.pan, pdir(z.rx, z.rz), .5);
   const nt = ctx.night || 0, day = 1 - nt, cic = (z.wild + z.paddy * .6 * nt) * (.5 + .5 * Math.sin(t * .45) * Math.sin(t * .17 + 1)); // night: insects louder and in the paddies, town quieter
+  const breeze = .5 + .5 * vnoise(t * .25, 8.3);
+  st(A.rus.gain, (z.wild * .9 + z.paddy * .5 + z.coast * .2) * .07 * breeze * (1 - .4 * nt), .5); st(A.rusF.frequency, 1300 + 900 * breeze, .5);
+  st(A.crk.gain, (z.wild * .6 + z.paddy) * nt * .035 * (.6 + .4 * Math.sin(t * .31)), .5); st(A.trf.gain, z.town * .06 * (1 - .5 * nt), .5);
   st(A.cic.gain, cic * .05 * (1 + .8 * nt), .4); st(A.hum.gain, z.town * .05 * (1 - .6 * nt), .4); st(A.vol.gain, z.volc * .35, .5);
   if (!on || ctx.paused) return;
   // one-shots, chance per 0.1 s tick
@@ -138,6 +147,11 @@ function ambience(t, v, live) {
   if (r() < (z.paddy * .9 + z.river * .4) * .05 * (1 + nt)) frog();
   if (r() < (z.town * .012 + z.wild * .002) * (1 - .4 * nt)) dog();
   if (r() < z.town * .01 * (1 - .8 * nt)) horn();
+  if (r() < z.wild * .006 * nt) owl();
+  if (r() < (z.wild * .4 + z.town * .5) * .012 * nt) gecko();
+  if (r() < z.town * .006 * (1 - .5 * nt)) passby();
+  if (r() < z.town * .0006 * (1 - .7 * nt)) bell();
+  if (r() < z.coast * .004 * day) gull();
   if (r() < (z.paddy + z.town * .3) * .0015 * (day * .4 + 6 * (ctx.dawn || 0))) rooster(); // roosters mostly at dawn
 }
 
@@ -181,6 +195,33 @@ function rooster() {
   const { t, inp } = shot(.07, 1.6), bp = node('bandpass', 1100, 1.2), g = node('gain'); chain(g, bp, inp); const o = osc('sawtooth', g, t, t + 1.3), f = o.frequency;
   f.setValueAtTime(520, t); f.linearRampToValueAtTime(760, t + .12); f.setValueAtTime(700, t + .2); f.linearRampToValueAtTime(900, t + .35); f.linearRampToValueAtTime(860, t + .9); f.exponentialRampToValueAtTime(520, t + 1.25);
   g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.8, t + .03); g.gain.linearRampToValueAtTime(.3, t + .17); g.gain.linearRampToValueAtTime(.9, t + .3); g.gain.linearRampToValueAtTime(.7, t + 1); g.gain.linearRampToValueAtTime(0, t + 1.28);
+}
+
+function owl() { // two low hoots
+  const { t, inp } = shot(.07, 1.4), lp = node('lowpass', 700, 1); lp.connect(inp);
+  [0, .55].forEach((d, i) => { const a = t + d, g = node('gain'); g.connect(lp); const o = osc('sine', g, a, a + .4); o.frequency.setValueAtTime(380, a); o.frequency.linearRampToValueAtTime(330 - i * 30, a + .35);
+    g.gain.setValueAtTime(0, a); g.gain.linearRampToValueAtTime(.9, a + .08); g.gain.linearRampToValueAtTime(0, a + .38); });
+}
+function gecko() { // tuko/tokay: a run of clicks that slows down
+  const n = 4 + Math.random() * 5 | 0, { t, inp } = shot(.08, n * .4 + .4), bp = node('bandpass', 1500, 2); bp.connect(inp); let a = t;
+  for (let i = 0; i < n; i++) { const g = node('gain'); g.connect(bp); const o = osc('square', g, a, a + .12); o.frequency.setValueAtTime(520 - i * 25, a); o.frequency.exponentialRampToValueAtTime(260, a + .1);
+    g.gain.setValueAtTime(0, a); g.gain.linearRampToValueAtTime(1, a + .01); g.gain.exponentialRampToValueAtTime(.001, a + .11); a += .12 + i * .045; }
+}
+function gull() { // sea bird cry
+  const { t, inp } = shot(.05, 1), g = node('gain'); g.connect(inp); const o = osc('sawtooth', g, t, t + .55), f = o.frequency;
+  f.setValueAtTime(1500, t); f.linearRampToValueAtTime(2300, t + .15); f.linearRampToValueAtTime(1300, t + .5);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.8, t + .05); g.gain.linearRampToValueAtTime(0, t + .55);
+}
+function bell() { // church bell: inharmonic partials with long decay
+  const { t, inp } = shot(.08, 5), f = 520 + Math.random() * 80;
+  for (let k = 0; k < 3; k++) [1, 2.01, 2.76, 4.1].forEach((m, i) => { const a = t + k * 1.1, g = node('gain'); g.connect(inp); osc('sine', g, a, a + 3).frequency.value = f * m;
+    g.gain.setValueAtTime(.5 / (i + 1), a); g.gain.exponentialRampToValueAtTime(.0005, a + 2.8); });
+}
+function passby() { // another vehicle passing in the distance: engine drone with a doppler glide and pan sweep
+  const { t, inp } = shot(.06, 4), g = node('gain'), lp = node('lowpass', 900, 1), p = pan(-.8), o = osc('sawtooth', lp, t, t + 3.2), f = 55 + Math.random() * 40, dir = Math.random() < .5 ? -1 : 1;
+  chain(lp, g, p, inp); o.frequency.setValueAtTime(f * 1.06, t); o.frequency.linearRampToValueAtTime(f * .94, t + 3);
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(1, t + 1.5); g.gain.linearRampToValueAtTime(0, t + 3.2);
+  if (p.pan) { p.pan.setValueAtTime(-.8 * dir, t); p.pan.linearRampToValueAtTime(.8 * dir, t + 3); }
 }
 
 // ---- game one-shots ----
