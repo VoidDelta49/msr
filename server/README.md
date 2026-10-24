@@ -12,7 +12,7 @@ npx wrangler deploy     # prints the URL, e.g. https://cpm-relay.<you>.workers.d
 ```
 
 Then either put that URL in `js/config.js` (`MP_URL`) so everyone gets it, or paste it in the game under
-MULTIPLAYER > Server. Opening the URL in a browser should show `cpm relay ok · proto 2 · max 8`.
+MULTIPLAYER > Server. Opening the URL in a browser should show `cpm relay ok · proto 3 · max 8`.
 
 Local test: `npx wrangler dev` (relay on http://127.0.0.1:8787).
 
@@ -22,7 +22,7 @@ Local test: `npx wrangler dev` (relay on http://127.0.0.1:8787).
 - Server → client text: `hi {id, max, now, peers:[{id,name,look}]}`, `join`, `leave`, `err {code,msg}` (close 4000 = wrong
   version, 4001 = full, 4002 = flooding, 4003 = page not allowed), `pong`, plus forwarded client messages with `from` added.
 - Client → server text (max 1 KB): only `ping`, `look {bike, parts:{key: index}}` (stored for later joiners) and `race`
-  (`op, to, rid` + `x, z` for go, `time` for fin; see js/race.js). Anything else, or extra fields, is dropped. `to: id` = only
+  (`op, to, rid` + `mode` (sprint / parcel / food) for ask and go + `x, z` for go, `time` for fin; see js/race.js). Anything else, or extra fields, is dropped. `to: id` = only
   that player; the server adds `echo` to `go` so both racers start together.
 - Binary: bike state (exactly 44 bytes, layout in js/net.js `pack()`, finite position within ±5 km); the server prepends the sender id byte.
 - Change the format → bump `PROTO` in both `worker.js` and `js/net.js`, redeploy. Old cached clients get a "reload" message.

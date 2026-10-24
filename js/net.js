@@ -10,7 +10,7 @@ import { B, twin } from './model.js';
 import { say } from './hud.js';
 import { $ } from './util.js';
 
-export const PROTO = 2; // = PROTO in server/worker.js
+export const PROTO = 3; // = PROTO in server/worker.js
 export const NET = ctx.NET = { st: 'off', id: 0, room: '', max: 8, peers: new Map(), err: '', note: '', on: {}, rtt: 0, live: 0, near: 1e9, slow: false };
 const KEEP = 24, PKT = 44, HB = 15000, DEAD = 40000, LEAVE_GRACE = 6000, MAX_TRIES = 40;
 let ws = null, want = null, retry = 0, retryTo = 0, rxT = 0, hbT = 0, fails = 0, lastId = 0, chkAt = 0, chkRx = 0, slowUntil = 0, backlog = 0, wake = false;

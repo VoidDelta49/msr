@@ -24,7 +24,7 @@ const HUBS = [{ id: 'park', x: 28, z: 29, y: 0 }];
 for (let i = 0; i < NHUB; i++) HUBS.push({ id: 'parcel', x: 0, z: 0, y: 0, placed: false });
 const HR = 5, DR = 6;   // hub / drop-off radius (m)
 // food spoilage tuning: loss in % per second = (measure - threshold) * k, each measure capped
-const K = {
+export const K = {
   aL: 4.0, kL: 2.5, cL: 12,   // braking / acceleration, m/s^2 (a scooter launch is ~4.4, a hard stop ~8)
   aY: 2.0, kY: 4, cY: 10,     // lateral acceleration v*yawrate, m/s^2 (fast corners)
   lr: .8, kS: 60, cS: 4,      // lean rate, rad/s: swerving (normal cornering is < .4)
@@ -87,7 +87,7 @@ export function pins(list) { // minimap pins: [{x, z, c, g, h}]; the map shows t
 }
 
 /* ---------- carried item ---------- */
-const falls = [], rnd = (a, b) => a + Math.random() * (b - a);
+const cap = (v, m) => Math.min(Math.abs(v), m), falls = [], rnd = (a, b) => a + Math.random() * (b - a);
 function carryOn(g) {
   const k = falls.findIndex(f => f.g === g); if (k >= 0) falls.splice(k, 1);
   const c = B.cargo || { y: .9, z: .5 }; B.ct.add(g); g.position.set(0, c.y, c.z); g.rotation.set(0, 0, 0); g.visible = true;
@@ -130,7 +130,7 @@ function start(h) {
   }
   const food = id === 'food', d = q.dest = pickDest(h, food ? 120 : 150, food ? 520 : 800), gy = d.h ?? H(d.x, d.z), hf = h.bike ? HARD : 1;
   q.d0 = Math.hypot(d.x - S.x, d.z - S.z); q.limit = (30 + q.d0 * 1.5 / 7.5) * hf; q.par = (20 + q.d0 * 1.35 / 9) * hf; // seconds: food gets cold / parcel three-star time
-  Object.assign(q, { quality: 100, heat: 100, sa: 0, pv: S.v, pl: S.lean, pf: S.cF, pr: S.cR, lx: S.x, lz: S.z });
+  Object.assign(q, foodNew(), { heat: 100, lx: S.x, lz: S.z });
   q.item = ITEM[id]; carryOn(q.item);
   destB.position.set(d.x, gy, d.z); destB.visible = true; arrow.position.set(d.x, gy + 2.2, d.z); MI.ay = gy; arrow.material.color.set(0x43e07a); arrow.visible = true; marker.visible = false;
   pins([{ x: d.x, z: d.z, c: '#43e07a', g: '' }]);
@@ -144,14 +144,31 @@ function endQuest() {
   if (q.hub !== HUBS[0] && q.phase !== 'on') { rng = mul(DAY * 2654435761 + HUBS.indexOf(q.hub) * 40503 + (q.hub.n = (q.hub.n | 0) + 1) * 7919); setup(q.hub, false); } // a finished job's hub moves elsewhere (a cancelled one stays)
   pins(null);
 }
-function fail(msg, sink) {
-  const q = MI.q; q.phase = 'fail'; MI.res = msg; say(msg, 3000); arrow.visible = destB.visible = false; pins([]);
-  const g = q.item; if (!g) return;
+function spill(g, sink, dtL, lx, lz) { // the item sinks, or flies off the way the bike was moving
   if (sink) return dropItem(g);
-  const dt = Math.max(.008, q.dtL || .016), vx = (S.x - q.lx) / dt, vz = (S.z - q.lz) / dt, k = Math.min(1, 25 / Math.max(1, Math.hypot(vx, vz)));
+  const dt = Math.max(.008, dtL || .016), vx = (S.x - lx) / dt, vz = (S.z - lz) / dt, k = Math.min(1, 25 / Math.max(1, Math.hypot(vx, vz)));
   fling(g, vx * k + rnd(-1.5, 1.5), rnd(2, 4.5), vz * k + rnd(-1.5, 1.5));
 }
+function fail(msg, sink) {
+  const q = MI.q; q.phase = 'fail'; MI.res = msg; say(msg, 3000); arrow.visible = destB.visible = false; pins([]);
+  if (q.item) spill(q.item, sink, q.dtL, q.lx, q.lz);
+}
+// race.js (parcel / food races) carries the same crates and uses the same spoilage rules
+export const cargo = {
+  on(type) { const g = ITEM[type]; if (g.parent !== B.ct) carryOn(g); },
+  off(type) { dropItem(ITEM[type]); },
+  lose(type, sink, dtL, lx, lz) { spill(ITEM[type], sink, dtL, lx, lz); },
+};
+export const foodNew = () => ({ quality: 100, sa: 0, pv: S.v, pl: S.lean, pf: S.cF, pr: S.cR });
+export function foodJolt(q, dt) { // jolts measured at 30 Hz so they don't depend on the frame rate
+  q.sa += dt; if (q.sa < 1 / 30) return;
+  const h = q.sa, aL = (S.v - q.pv) / h, lr = (S.lean - q.pl) / h, hz = Math.max(Math.abs(S.cF - q.pf), Math.abs(S.cR - q.pr)) / h; q.sa = 0; q.pv = S.v; q.pl = S.lean; q.pf = S.cF; q.pr = S.cR;
+  const fast = Math.abs(S.v) > 3, aY = Math.abs(S.v * S.yaw);
+  const loss = Math.max(0, cap(aL, K.cL) - K.aL) * K.kL + (fast ? Math.max(0, cap(aY, K.cY) - K.aY) * K.kY + Math.max(0, cap(lr, K.cS) - K.lr) * K.kS : 0) + Math.max(0, cap(hz, K.cZ) - K.hz) * K.kZ;
+  q.quality = Math.max(0, q.quality - loss * h); if (loss * h > 1.2) say('Easy! The food is sloshing', 500);
+}
 ctx.onHit = dv => { // rapier.js: a wall / object bump of dv m/s (a crash with Tough Biker off is caught through S.crashed instead)
+  if (ctx.raceHit) ctx.raceHit(dv);
   const q = MI.q; if (!q || q.phase !== 'on' || q.type === 'park') return;
   if (dv > 7) return fail(q.type === 'food' ? 'Food everywhere! Game over' : 'The parcel flew off! Game over');
   if (q.type === 'food') { q.quality = Math.max(0, q.quality - K.hit - dv * K.kH); say('Ouch! The food took a hit', 700); }
@@ -175,7 +192,6 @@ function parkTick(q, dt) {
     say('PARKED! ' + st, 2500); blip('ok'); arrow.visible = false; pins([]);
   }
 }
-const cap = (v, m) => Math.min(Math.abs(v), m);
 function deliveryTick(q, dt) {
   if (q.phase !== 'on') return panel(MI.res, false, 'OK');
   if (q.item.parent !== B.ct) carryOn(q.item); // bike model rebuilt
@@ -185,13 +201,7 @@ function deliveryTick(q, dt) {
   if (S.wet) return fail('Lost it in the water! Game over', true);
   const food = q.type === 'food', dist = Math.hypot(S.x - q.dest.x, S.z - q.dest.z);
   if (food) {
-    q.heat = Math.max(0, 100 * (1 - q.t / q.limit)); q.sa += dt;
-    if (q.sa >= 1 / 30) { // jolts measured at 30 Hz so they don't depend on the frame rate
-      const h = q.sa, aL = (S.v - q.pv) / h, lr = (S.lean - q.pl) / h, hz = Math.max(Math.abs(S.cF - q.pf), Math.abs(S.cR - q.pr)) / h; q.sa = 0; q.pv = S.v; q.pl = S.lean; q.pf = S.cF; q.pr = S.cR;
-      const fast = Math.abs(S.v) > 3, aY = Math.abs(S.v * S.yaw);
-      const loss = Math.max(0, cap(aL, K.cL) - K.aL) * K.kL + (fast ? Math.max(0, cap(aY, K.cY) - K.aY) * K.kY + Math.max(0, cap(lr, K.cS) - K.lr) * K.kS : 0) + Math.max(0, cap(hz, K.cZ) - K.hz) * K.kZ;
-      q.quality = Math.max(0, q.quality - loss * h); if (loss * h > 1.2) say('Easy! The food is sloshing', 500);
-    }
+    q.heat = Math.max(0, 100 * (1 - q.t / q.limit)); foodJolt(q, dt);
     if (q.heat <= 0) return fail('The food went cold! Game over');
   }
   q.dtL = dt; q.lx = S.x; q.lz = S.z;

@@ -13,7 +13,7 @@
 // message has still been counted against the quota; closing the socket is what stops it), packet sanity checks.
 import { DurableObject } from 'cloudflare:workers';
 
-const PROTO = 2; // bump together with PROTO in js/net.js when the message format or rules change
+const PROTO = 3; // bump together with PROTO in js/net.js when the message format or rules change
 const MAX = 8;   // players per room (ids are one byte: up to 255 once interest management exists)
 const PER_IP = 3; // connections per IP per room (friends behind one router / carrier NAT still fit)
 const ROOM = /^\/room\/([A-Za-z0-9]{6,8})$/;
@@ -65,6 +65,7 @@ function cleanRace(m) {
   const OPS = ['ask', 'no', 'busy', 'go', 'fin', 'quit'];
   if (!OPS.includes(m.op) || !Number.isInteger(m.to) || !Number.isInteger(m.rid)) return null;
   const r = { t: 'race', op: m.op, to: m.to, rid: m.rid };
+  if ((m.op === 'ask' || m.op === 'go') && ['sprint', 'parcel', 'food'].includes(m.mode)) r.mode = m.mode;
   if (m.op === 'go') { if (!num(m.x) || !num(m.z) || Math.abs(m.x) > 5000 || Math.abs(m.z) > 5000) return null; r.x = m.x; r.z = m.z; r.echo = true; }
   if (m.op === 'fin') { if (!num(m.time) || m.time < 0 || m.time > 3600) return null; r.time = m.time; }
   if (m.op === 'no' && m.why === 'course') r.why = 'course';

@@ -3,23 +3,29 @@
 // phones start the 3-2-1 countdown at the same moment. Times are each phone's own clock from GO (+3 s for a false
 // start); both send their time when they reach the finish and the lower one wins. No teleport, no grid: race from
 // where you are. Quests can't start during a race, and a race can't start during a quest.
+// The challenger also picks the kind: sprint (plain), parcel (both carry a parcel: a crash, hard hit or swim and it's
+// lost, which is a DNF) or food (the same, plus bumps / hard braking / swerving spoil it, which adds up to +10 s).
 import { S, ctx } from './state.js';
 import { NET, send } from './net.js';
-import { MI, beacon, pins } from './missions.js';
+import { MI, beacon, pins, cargo, foodNew, foodJolt, K } from './missions.js';
 import { ROADS, H } from './world.js';
 import { say } from './hud.js';
 import { blip } from './audio.js';
 import { $ } from './util.js';
 
-const R = { st: 'idle' }, FIN_R = 10, finB = beacon(0xffb020, FIN_R);
-const pnl = $('race'), txt = $('raceT'), bY = $('raceY'), bX = $('raceX'), cd = $('rcd');
-let yes = null, no = null, uiT = 0;
-function panel(t, y, n, fy) { txt.textContent = t; pnl.hidden = false; bY.hidden = !y; if (y) bY.textContent = y; yes = y ? fy : null; no = n || null; }
-bY.onclick = () => yes && yes(); bX.onclick = () => (no || reset)();
+const MODES = { sprint: 'sprint race', parcel: 'parcel delivery race', food: 'food delivery race' }, SPOIL = .1; // food: seconds added per % spoiled
+const R = { st: 'idle', mode: 'sprint' }, FIN_R = 10, finB = beacon(0xffb020, FIN_R);
+const pnl = $('race'), txt = $('raceT'), bY = $('raceY'), bP = $('raceP'), bF = $('raceF'), bX = $('raceX'), cd = $('rcd');
+let yes = null, no = null, pick = null, uiT = 0;
+function panel(t, y, n, fy, who) { txt.textContent = t; pnl.hidden = false; bY.hidden = !y; if (y) bY.textContent = y; yes = y ? fy : null; no = n || null; pick = who || null; bP.hidden = bF.hidden = !who; }
+bY.onclick = () => yes && yes(); bX.onclick = () => (no || reset)(); bP.onclick = () => pick && ask(pick, 'parcel'); bF.onclick = () => pick && ask(pick, 'food');
 const name = id => (NET.peers.get(id) || { name: 'Rider' }).name;
 const busy = () => R.st !== 'idle' || MI.q || ctx.GAR || ctx.OPT || ctx.paused || S.crashed;
 
-function reset() { R.st = 'idle'; R.opp = 0; R.lost = 0; ctx.racing = false; pnl.hidden = true; cd.classList.remove('on'); finB.visible = false; pins(null); }
+function reset() {
+  if (R.carry && !R.spilled) cargo.off(R.carry);
+  R.carry = null; R.spilled = false; R.mode = 'sprint'; R.st = 'idle'; R.opp = 0; R.lost = 0; ctx.racing = false; pnl.hidden = true; cd.classList.remove('on'); finB.visible = false; pins(null);
+}
 
 // tap on a name tag
 NET.on.tap = P => {
@@ -27,17 +33,17 @@ NET.on.tap = P => {
   if (MI.q) return say('Finish or cancel your job first');
   if (P.d > 90) return say(P.name + ' is too far away. Ride closer (90 m)');
   if (P.fl & 16) return say(P.name + ' is in a race');
-  panel('Race ' + P.name + '?', 'RACE', reset, () => ask(P));
+  panel('Race ' + P.name + '?', 'SPRINT', reset, () => ask(P, 'sprint'), P);
 };
-function ask(P) {
-  R.st = 'ask'; R.opp = P.id; R.rid = Math.random() * 1e9 | 0; R.until = performance.now() + 15000;
-  send({ t: 'race', op: 'ask', to: P.id, rid: R.rid }); panel('Waiting for ' + P.name + '…', null, () => { send({ t: 'race', op: 'no', to: R.opp, rid: R.rid }); reset(); });
+function ask(P, mode) {
+  R.st = 'ask'; R.mode = mode; R.opp = P.id; R.rid = Math.random() * 1e9 | 0; R.until = performance.now() + 15000;
+  send({ t: 'race', op: 'ask', to: P.id, rid: R.rid, mode }); panel('Waiting for ' + P.name + ' (' + MODES[mode] + ')…', null, () => { send({ t: 'race', op: 'no', to: R.opp, rid: R.rid }); reset(); });
 }
 function accept() {
   const P = NET.peers.get(R.opp); if (!P) return reset();
   const f = finish(S.x, S.z, P.x, P.z);
   if (!f) { send({ t: 'race', op: 'no', to: R.opp, rid: R.rid, why: 'course' }); say("Couldn't find a course from here. Try nearer the town"); return reset(); }
-  R.st = 'acc'; send({ t: 'race', op: 'go', to: R.opp, rid: R.rid, x: f.x, z: f.z, echo: true }); panel('Starting…', null, null);
+  R.st = 'acc'; send({ t: 'race', op: 'go', to: R.opp, rid: R.rid, x: f.x, z: f.z, mode: R.mode, echo: true }); panel('Starting…', null, null);
 }
 // a road point 350-900 m away whose distance from both riders differs by at most ~5 %
 function finish(ax, az, bx, bz) {
@@ -56,8 +62,8 @@ NET.on.race = m => {
   const now = performance.now();
   if (m.op === 'ask') {
     if (busy()) return send({ t: 'race', op: 'busy', to: m.from, rid: m.rid });
-    R.st = 'inv'; R.opp = m.from; R.rid = m.rid; R.until = now + 15000; blip('ok');
-    panel(name(m.from) + ' wants to race!', 'ACCEPT', () => { send({ t: 'race', op: 'no', to: R.opp, rid: R.rid }); reset(); }, accept);
+    R.st = 'inv'; R.mode = m.mode in MODES ? m.mode : 'sprint'; R.opp = m.from; R.rid = m.rid; R.until = now + 15000; blip('ok');
+    panel(name(m.from) + ' wants a ' + MODES[R.mode] + '!', 'ACCEPT', () => { send({ t: 'race', op: 'no', to: R.opp, rid: R.rid }); reset(); }, accept);
     return;
   }
   if (m.rid !== R.rid) return;
@@ -67,9 +73,10 @@ NET.on.race = m => {
   } else if (m.op === 'go') {
     if (R.st !== 'ask' && R.st !== 'acc') return;
     if (!Number.isFinite(m.x) || !Number.isFinite(m.z)) { send({ t: 'race', op: 'quit', to: R.opp, rid: R.rid }); return reset(); }
+    R.mode = m.mode in MODES ? m.mode : 'sprint';
     Object.assign(R, { st: 'count', fx: m.x, fz: m.z, tc: now + 3000, pen: 0, myT: null, oppT: null, d0: Math.hypot(m.x - S.x, m.z - S.z) });
-    R.limit = 60 + R.d0 / 6; ctx.racing = true; finB.position.set(m.x, H(m.x, m.z), m.z); finB.visible = true;
-    pins([{ x: m.x, z: m.z, c: '#ffb020', g: '' }]); panel('Race vs ' + name(R.opp) + ' · hold still', null, quit);
+    R.limit = 60 + R.d0 / 6; ctx.racing = true; R.spilled = false; if (R.mode !== 'sprint') cargo.on(R.carry = R.mode); finB.position.set(m.x, H(m.x, m.z), m.z); finB.visible = true;
+    pins([{ x: m.x, z: m.z, c: '#ffb020', g: '' }]); panel(MODES[R.mode][0].toUpperCase() + MODES[R.mode].slice(1) + ' vs ' + name(R.opp) + ' · hold still', null, quit);
   } else if (m.op === 'fin') {
     R.oppT = Number.isFinite(m.time) && m.time >= 0 ? m.time : Infinity; if (R.st === 'go') say(name(R.opp) + ' finished in ' + R.oppT.toFixed(1) + ' s. Keep going!', 2500); else if (R.st === 'done') result();
   } else if (m.op === 'quit') {
@@ -82,6 +89,13 @@ NET.on.race = m => {
 function resendFin() { if (R.st === 'done' && R.myT !== null) send({ t: 'race', op: 'fin', to: R.opp, rid: R.rid, time: R.myT }); }
 NET.on.resume = resendFin; NET.on.back = P => { if (P.id === R.opp) resendFin(); };
 NET.on.leave = P => { if (P.id !== R.opp || R.st === 'idle' || R.st === 'res') return; if (R.st === 'go' || R.st === 'done') end(P.name + ' left. You win!', true); else { say(P.name + ' left'); reset(); } };
+// parcel / food races: the cargo is lost (DNF) on a crash, a hard hit or a swim
+function lose(msg, sink) { send({ t: 'race', op: 'quit', to: R.opp, rid: R.rid }); cargo.lose(R.mode, sink, R.dtL, R.lx, R.lz); R.spilled = true; end(msg + ' Out of the race', false); }
+ctx.raceHit = dv => {
+  if (R.st !== 'go' || R.mode === 'sprint') return;
+  if (dv > 7) return lose(R.mode === 'food' ? 'Food everywhere!' : 'The parcel flew off!');
+  if (R.mode === 'food') { R.fq.quality = Math.max(0, R.fq.quality - K.hit - dv * K.kH); say('Ouch! The food took a hit', 700); }
+};
 function quit() { if (R.st !== 'idle') send({ t: 'race', op: 'quit', to: R.opp, rid: R.rid }); if (R.st === 'go') say('You gave up'); reset(); }
 function end(msg, win) { R.st = 'res'; ctx.racing = false; finB.visible = false; pins(null); cd.classList.remove('on'); if (win) blip('ok'); panel(msg, null, reset); bX.textContent = 'OK'; }
 function result() {
@@ -101,16 +115,23 @@ export function raceTick(dt) {
     const left = Math.ceil((R.tc - now) / 1000), t = left > 0 ? String(left) : 'GO!';
     if (cd.textContent !== t) { cd.textContent = t; cd.classList.add('on'); blip(left > 0 ? 'click' : 'ok'); }
     if (!R.pen && Math.abs(S.v) > 2) { R.pen = 3; say('False start! +3 s', 2000); }
-    if (now >= R.tc) { R.st = 'go'; R.t0 = now; setTimeout(() => cd.textContent === 'GO!' && cd.classList.remove('on'), 900); }
+    if (now >= R.tc) { R.st = 'go'; R.t0 = now; R.fq = foodNew(); R.lx = S.x; R.lz = S.z; R.dtL = dt; setTimeout(() => cd.textContent === 'GO!' && cd.classList.remove('on'), 900); }
     return;
   }
   if (R.st === 'go') {
     const el = (now - R.t0) / 1000, d = Math.hypot(R.fx - S.x, R.fz - S.z);
-    if ((uiT += dt) > .1) { uiT = 0; txt.textContent = '🏁 ' + name(R.opp) + ' · ' + Math.round(d) + ' m · ' + el.toFixed(1) + ' s'; }
+    const food = R.mode === 'food';
+    if (R.mode !== 'sprint') {
+      if (S.crashed) return lose(food ? 'You crashed and spilled the food!' : 'You crashed and the parcel fell out!');
+      if (S.wet) return lose('Lost it in the water!', true);
+      cargo.on(R.mode); if (food) foodJolt(R.fq, dt);
+      R.dtL = dt; R.lx = S.x; R.lz = S.z;
+    }
+    if ((uiT += dt) > .1) { uiT = 0; txt.textContent = '🏁 ' + name(R.opp) + ' · ' + Math.round(d) + ' m · ' + el.toFixed(1) + ' s' + (food ? ' · 🍔 ' + (R.fq.quality | 0) + '%' : ''); }
     if (d < FIN_R) {
-      R.myT = el + R.pen; send({ t: 'race', op: 'fin', to: R.opp, rid: R.rid, time: R.myT }); blip('ok');
+      R.myT = el + R.pen + (food ? (100 - R.fq.quality) * SPOIL : 0); send({ t: 'race', op: 'fin', to: R.opp, rid: R.rid, time: R.myT }); blip('ok');
       if (R.oppT !== null) return result();
-      R.st = 'done'; R.doneT = now; finB.visible = false; panel('Finished in ' + R.myT.toFixed(1) + ' s · waiting for ' + name(R.opp) + '…', null, quit);
+      R.st = 'done'; R.doneT = now; finB.visible = false; panel('Finished in ' + R.myT.toFixed(1) + ' s' + (food ? ' (food ' + (R.fq.quality | 0) + '%)' : '') + ' · waiting for ' + name(R.opp) + '…', null, quit);
     } else if (el > R.limit) { send({ t: 'race', op: 'quit', to: R.opp, rid: R.rid }); end('Out of time', false); }
     return;
   }
