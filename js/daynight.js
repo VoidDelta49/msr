@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { clamp, sstep } from './util.js';
 import { gameMs } from './config.js';
 import { S, ctx } from './state.js';
-import { renderer, scene, sun, hemi, head, SKYU } from './renderer.js';
+import { renderer, scene, sun, hemi, head, SKYU, GRADE } from './renderer.js';
 import { setLamps } from './lights.js';
 
 const LAT = 12.88 * Math.PI / 180, LON = 121.77, R = Math.PI / 180;
@@ -39,6 +39,20 @@ const KEYS = [
   [6, 0x4a80c8, 0xe6cca6, 0xffe2c0, 0xffb060, 0xffc890, 2.1, 0xd0dcef, 0x4c5a34, .95],
   [20, 0x4b8fd8, 0xc6dcea, 0xf4f4f4, 0x302820, 0xffeccc, 2.8, 0xdcecff, 0x55653a, 1.15],
 ];
+// colour grade keyed by sun elevation: shadow tint, highlight tint, contrast, vibrance, vignette (renderer.js GRADE)
+const GK = [
+  [-18, [.80, .90, 1.20], [1.04, .97, .90], .16, .30, .34], // moonlit night: blue shadows, warm lamp highlights
+  [-6, [.86, .86, 1.16], [1.10, .94, .96], .18, .40, .30],  // blue hour: violet shadows, rosy highlights
+  [0, [.90, .96, 1.10], [1.14, 1.00, .84], .22, .55, .26],  // sunrise / sunset: teal shadows, gold highlights
+  [10, [.93, .98, 1.08], [1.08, 1.03, .94], .22, .58, .22], // golden-ish morning / afternoon
+  [30, [.95, 1.00, 1.07], [1.03, 1.03, 1.01], .20, .70, .18], // midday: clean, bright, saturated (neutral highlights keep the sky blue)
+];
+function grade(el) {
+  if (!GRADE.sh) return; let k = 0; while (k < GK.length - 2 && el > GK[k + 1][0]) k++;
+  const a = GK[k], b = GK[k + 1], t = clamp((el - a[0]) / (b[0] - a[0]), 0, 1), m = (x, y) => x + (y - x) * t;
+  GRADE.sh.value.setRGB(m(a[1][0], b[1][0]), m(a[1][1], b[1][1]), m(a[1][2], b[1][2])); GRADE.hi.value.setRGB(m(a[2][0], b[2][0]), m(a[2][1], b[2][1]), m(a[2][2], b[2][2]));
+  GRADE.con.value = m(a[3], b[3]); GRADE.vib.value = m(a[4], b[4]); GRADE.vig.value = m(a[5], b[5]);
+}
 const cA = new THREE.Color(), cB = new THREE.Color(), tv = new THREE.Vector3();
 function key(el, i, out) {
   let k = 0; while (k < KEYS.length - 2 && el > KEYS[k + 1][0]) k++;
@@ -56,7 +70,7 @@ export function dayNight() {
   SKYU.sun.value.copy(SUN); SKYU.moon.value.copy(MOON); SKYU.sunVis.value = sstep(-1.5, .5, el); SKYU.night.value = night * (1 - .7 * SKY.phase * sstep(0, .2, MOON.y));
   SKYU.moonVis.value = (.35 + .65 * SKY.phase) * sstep(-1, 1, Math.asin(MOON.y) / R) * (1 - sstep(-4, 6, el) * .85);
   scene.fog.color.copy(SKYU.hor.value); scene.background.copy(SKYU.hor.value);
-  key(el, 7, hemi.color); key(el, 8, hemi.groundColor); hemi.intensity = key(el, 9);
+  key(el, 7, hemi.color); key(el, 8, hemi.groundColor); hemi.intensity = key(el, 9); grade(el);
   // one directional light: the sun by day, the moon (scaled by its phase) after dusk, so shadows keep working
   const moonUp = sstep(0, .15, MOON.y), useMoon = el < -4;
   if (useMoon) { tv.copy(MOON.y > .05 ? MOON : tv.set(.3, 1, .2).normalize()); sun.color.setHex(0x9fb2ff); sun.intensity = .55 * (.15 + .85 * SKY.phase) * moonUp * sstep(-6, -10, el); }

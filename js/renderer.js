@@ -60,17 +60,32 @@ export const sun = new THREE.DirectionalLight(0xffeccc, 2.8); sun.castShadow = Q
 { const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; sun.shadow.camera.layers.enable(1); scene.add(sun, sun.target); // shadow camera also sees layer 1 = shadow-only proxies (model.js)
 // headlight: always in the scene (intensity 0 by day) so turning it on never changes the light count = no shader recompile
 export const head = new THREE.SpotLight(0xfff0d6, 0, 75, .42, .5, 2); head.castShadow = false; scene.add(head, head.target);
-// Post: one pass over the finished frame. Tone mapping + sRGB first (renderOutput), then FXAA (expects display-space
-// colours), then the N64 filter: a little extra saturation and 15-bit colour (5 bits per channel, like the N64's
-// framebuffer) with a 4x4 ordered dither. Both are Options toggles; with neither the scene renders directly.
+// Post: one pass over the finished frame. Tone mapping + sRGB first (renderOutput), then the colour grade, then FXAA
+// (expects display-space colours), then the N64 filter: 15-bit colour (5 bits per channel, like the N64's framebuffer)
+// with a 4x4 ordered dither. All three are Options toggles; with none the scene renders directly.
+// Grade ("modern N64"): split toning (shadows and highlights each multiplied by a tint, blended by brightness), a soft
+// S-curve for contrast, vibrance (muted colours pushed harder than already-saturated ones, so paint and signs pop
+// without clipping to neon) and a light vignette. daynight.js sets the uniforms from a palette keyed by sun elevation
+// (teal/gold at golden hour, violet blue hour, cool moonlit night), so nothing recompiles as the day turns.
+export const GRADE = { sh: null, hi: null, con: null, vib: null, vig: null };
 let pipe = null, scenePass = null;
-if (cfg.fxaa || cfg.n64) {
+if (cfg.fxaa || cfg.n64 || cfg.grade) {
   const T = await import('three/tsl'); scenePass = T.pass(scene, camera); let out = T.renderOutput(scenePass);
+  if (cfg.grade) {
+    const G = GRADE; G.sh = T.uniform(new THREE.Color(.95, .98, 1.06)); G.hi = T.uniform(new THREE.Color(1.05, 1.02, .96)); G.con = T.uniform(.2); G.vib = T.uniform(.45); G.vig = T.uniform(.22);
+    let c = out.rgb.clamp(0, 1); const L = T.vec3(.2126, .7152, .0722);
+    c = c.mul(T.mix(G.sh, G.hi, T.smoothstep(.05, .85, T.dot(c, L)))).clamp(0, 1);                       // split toning
+    c = T.mix(c, c.mul(c).mul(c.mul(-2).add(3)), G.con);                                                    // S-curve
+    const l = T.dot(c, L), s = T.max(c.r, T.max(c.g, c.b)).sub(T.min(c.r, T.min(c.g, c.b)));
+    c = T.mix(T.vec3(l), c, G.vib.mul(s.oneMinus()).add(1)).clamp(0, 1);                                    // vibrance
+    const v = T.screenUV.sub(.5).mul(T.vec2(1.15, 1)), vg = T.smoothstep(.85, .25, v.length());           // vignette
+    out = T.vec4(c.mul(T.mix(T.float(1), vg, G.vig)), 1);
+  }
   if (cfg.fxaa) { const { fxaa } = await import('three/addons/tsl/display/FXAANode.js'); out = fxaa(out); }
   if (cfg.n64) {
     const b = new Uint8Array(64), BY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]; BY.forEach((v, i) => { b[i * 4] = b[i * 4 + 1] = b[i * 4 + 2] = Math.round((v + .5) / 16 * 255); b[i * 4 + 3] = 255; });
     const bt = new THREE.DataTexture(b, 4, 4); bt.magFilter = bt.minFilter = THREE.NearestFilter; bt.wrapS = bt.wrapT = THREE.RepeatWrapping; bt.generateMipmaps = false; bt.needsUpdate = true;
-    const c = out.rgb, l = T.dot(c, T.vec3(.299, .587, .114)), sat = T.mix(T.vec3(l), c, 1.12).clamp(0, 1);
+    const c = out.rgb, l = T.dot(c, T.vec3(.299, .587, .114)), sat = T.mix(T.vec3(l), c, cfg.grade ? 1 : 1.12).clamp(0, 1); // the grade has its own vibrance
     const d = T.texture(bt, T.screenCoordinate.xy.div(4)).r;
     out = T.vec4(T.floor(sat.mul(31).add(d)).div(31), 1);
   }
