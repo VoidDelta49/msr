@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { clamp, sstep } from './util.js';
 import { gameMs } from './config.js';
 import { S, ctx } from './state.js';
-import { renderer, scene, sun, hemi, head, SKYU, GRADE } from './renderer.js';
+import { renderer, scene, sun, hemi, head, SKYU, GRADE, IBL, ENVG, bakeEnv } from './renderer.js';
 import { setLamps } from './lights.js';
 
 const LAT = 12.88 * Math.PI / 180, LON = 121.77, R = Math.PI / 180;
@@ -61,7 +61,7 @@ function key(el, i, out) {
   return a[i] + (b[i] - a[i]) * t;
 }
 
-let last = -1e9, gate = 0;
+let last = -1e9, gate = 0, bakeEl = 1e9, bakeT = 0;
 export function dayNight() {
   const ms = gameMs();
   if (ms - last > 2000 || ms < last) { last = ms; astro(ms); } // astronomy every 2 s of game time; lighting every frame (cheap)
@@ -70,7 +70,12 @@ export function dayNight() {
   SKYU.sun.value.copy(SUN); SKYU.moon.value.copy(MOON); SKYU.sunVis.value = sstep(-1.5, .5, el); SKYU.night.value = night * (1 - .7 * SKY.phase * sstep(0, .2, MOON.y));
   SKYU.moonVis.value = (.35 + .65 * SKY.phase) * sstep(-1, 1, Math.asin(MOON.y) / R) * (1 - sstep(-4, 6, el) * .85);
   scene.fog.color.copy(SKYU.hor.value); scene.background.copy(SKYU.hor.value);
-  key(el, 7, hemi.color); key(el, 8, hemi.groundColor); hemi.intensity = key(el, 9); grade(el);
+  key(el, 7, hemi.color); key(el, 8, hemi.groundColor); hemi.intensity = key(el, 9); grade(el); if (GRADE.night) GRADE.night.value = night;
+  if (IBL) { // the sky now lights the scene through scene.environment: the hemisphere light stays as a weaker fill
+    hemi.intensity *= .6; scene.environmentIntensity = .7;
+    ENVG.c.value.copy(hemi.groundColor).multiplyScalar(.55 + .45 * key(el, 9));
+    if (Math.abs(el - bakeEl) > .5 || ms - bakeT > 6e4 || ms < bakeT) { bakeEl = el; bakeT = ms; bakeEnv(); } // the sky moved enough (or a minute passed: moon, Options hour change)
+  }
   // one directional light: the sun by day, the moon (scaled by its phase) after dusk, so shadows keep working
   const moonUp = sstep(0, .15, MOON.y), useMoon = el < -4;
   if (useMoon) { tv.copy(MOON.y > .05 ? MOON : tv.set(.3, 1, .2).normalize()); sun.color.setHex(0x9fb2ff); sun.intensity = .55 * (.15 + .85 * SKY.phase) * moonUp * sstep(-6, -10, el); }

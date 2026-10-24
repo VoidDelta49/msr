@@ -68,6 +68,7 @@ export function enter() {
   sun.color.set(0xfff0dc); sun.intensity = 3.2; sun.target.position.set(...at(0, .6, 0)); sun.position.set(...at(-14, 26, 20));
   head.position.set(...at(7, 8, -9)); head.target.position.set(...at(0, .7, 0)); head.angle = .5; head.penumbra = 1; head.distance = 40; head.intensity = 420;
   renderer.toneMappingExposure = 1;
+  scene.environmentIntensity = .3; if (GRADE.night) GRADE.night.value = 0;
   if (GRADE.sh) { GRADE.sh.value.setRGB(.94, .98, 1.08); GRADE.hi.value.setRGB(1.04, 1.02, .98); GRADE.con.value = .22; GRADE.vib.value = .4; GRADE.vig.value = .3; } // showroom grade (daynight.js takes over again on leave)
   Object.assign(V, { r: T.r * 1.7, el: T.el + .35, az: T.az - .8 }); // swoop in
 }

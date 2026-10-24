@@ -53,8 +53,27 @@ export const SKYU = {};
   const cell = T.floor(dir.mul(170)), h = T.fract(T.sin(T.dot(cell, T.vec3(12.9898, 78.233, 37.719))).mul(43758.5453));
   col = col.add(T.vec3(T.step(.9965, h).mul(h.sub(.9965).mul(220).add(.25)).mul(nt).mul(open).mul(T.smoothstep(.03, .2, dir.y)))); // stars
   m.colorNode = T.vec4(col, 1);
-  const d = new THREE.Mesh(new THREE.SphereGeometry(Q.fog * .9, 24, 12), m); d.frustumCulled = false; d.renderOrder = -1; d.matrixAutoUpdate = false; scene.add(d);
+  const dg = new THREE.SphereGeometry(Q.fog * .9, 24, 12), d = new THREE.Mesh(dg, m); d.frustumCulled = false; d.renderOrder = -1; d.matrixAutoUpdate = false; scene.add(d);
+  // environment copy (IBL bake only): the same sky at 55 % saturation, so ambient light is airy rather than zenith blue
+  const em = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, fog: false, depthWrite: false }); em.positionNode = m.positionNode;
+  em.colorNode = T.vec4(T.mix(T.vec3(T.dot(col, T.vec3(.2126, .7152, .0722))), col, .55), 1); SKYU.envMat = em; SKYU.geo = dg;
 }
+// Image-based lighting (Med/High, Options toggle): the same sky dome plus a ground-coloured floor, rendered into a tiny
+// cube and prefiltered (PMREM) into scene.environment. Every PBR material then gets sky-coloured ambient light from
+// above, ground bounce from below, and blurred sky reflections (chrome, paint, the sea) that follow the time of day.
+// Re-baked only when daynight.js says the sky moved (bakeEnv), into the same render target, so nothing recompiles;
+// set before the shader warm-up so the environment is part of every compiled material from the start.
+export const IBL = !!cfg.ibl && !Q.lite, ENVG = { c: null };
+let pmrem = null, envRT = null, envScene = null;
+if (IBL) {
+  const T = await import('three/tsl');
+  envScene = new THREE.Scene(); const dome = new THREE.Mesh(SKYU.geo, SKYU.envMat); dome.frustumCulled = false; envScene.add(dome);
+  ENVG.c = T.uniform(new THREE.Color(0x3a4a2a)); const gm = new THREE.MeshBasicNodeMaterial({ fog: false }); gm.colorNode = ENVG.c;
+  const fl = new THREE.Mesh(new THREE.CircleGeometry(Q.fog * .85, 24).rotateX(-Math.PI / 2), gm); fl.position.y = -3; fl.frustumCulled = false; envScene.add(fl);
+  pmrem = new THREE.PMREMGenerator(renderer); envRT = pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: 64 });
+  scene.environment = envRT.texture;
+}
+export function bakeEnv() { if (envRT) pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: 64, renderTarget: envRT }); }
 export const hemi = new THREE.HemisphereLight(0xdcecff, 0x55653a, 1.15); scene.add(hemi);
 export const sun = new THREE.DirectionalLight(0xffeccc, 2.8); sun.castShadow = Q.shadow > 0; sun.shadow.mapSize.set(Q.shadow || 1024, Q.shadow || 1024);
 { const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; sun.shadow.camera.layers.enable(1); scene.add(sun, sun.target); // shadow camera also sees layer 1 = shadow-only proxies (model.js)
@@ -67,9 +86,12 @@ export const head = new THREE.SpotLight(0xfff0d6, 0, 75, .42, .5, 2); head.castS
 // S-curve for contrast, vibrance (muted colours pushed harder than already-saturated ones, so paint and signs pop
 // without clipping to neon) and a light vignette. daynight.js sets the uniforms from a palette keyed by sun elevation
 // (teal/gold at golden hour, violet blue hour, cool moonlit night), so nothing recompiles as the day turns.
-export const GRADE = { sh: null, hi: null, con: null, vib: null, vig: null };
+export const GRADE = { sh: null, hi: null, con: null, vib: null, vig: null, night: null };
+// Night filter (Options): how eyes see in the dark (scotopic vision). Dim areas lose their colour and shift to a cool
+// grey-blue, lamp-lit and headlight-lit areas keep theirs, and the blacks lift a touch so the road stays readable.
+// GRADE.night (0 day .. 1 night) comes from daynight.js.
 let pipe = null, scenePass = null;
-if (cfg.fxaa || cfg.n64 || cfg.grade) {
+if (cfg.fxaa || cfg.n64 || cfg.grade || cfg.nightFx) {
   const T = await import('three/tsl'); scenePass = T.pass(scene, camera); let out = T.renderOutput(scenePass);
   if (cfg.grade) {
     const G = GRADE; G.sh = T.uniform(new THREE.Color(.95, .98, 1.06)); G.hi = T.uniform(new THREE.Color(1.05, 1.02, .96)); G.con = T.uniform(.2); G.vib = T.uniform(.45); G.vig = T.uniform(.22);
@@ -80,6 +102,12 @@ if (cfg.fxaa || cfg.n64 || cfg.grade) {
     c = T.mix(T.vec3(l), c, G.vib.mul(s.oneMinus()).add(1)).clamp(0, 1);                                    // vibrance
     const v = T.screenUV.sub(.5).mul(T.vec2(1.15, 1)), vg = T.smoothstep(.85, .25, v.length());           // vignette
     out = T.vec4(c.mul(T.mix(T.float(1), vg, G.vig)), 1);
+  }
+  if (cfg.nightFx) {
+    const n = GRADE.night = T.uniform(0), L = T.vec3(.2126, .7152, .0722); let c = out.rgb.clamp(0, 1);
+    const l = T.dot(c, L), k = n.mul(.75).mul(T.smoothstep(.55, .12, l));                                   // dim = colourless
+    c = T.mix(c, T.vec3(l).mul(T.vec3(.86, .95, 1.14)), k);                                                   // cool grey-blue
+    out = T.vec4(c.add(c.oneMinus().mul(n.mul(.045))), 1);                                                   // lift the blacks
   }
   if (cfg.fxaa) { const { fxaa } = await import('three/addons/tsl/display/FXAANode.js'); out = fxaa(out); }
   if (cfg.n64) {

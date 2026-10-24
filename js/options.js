@@ -3,7 +3,7 @@ import { $, LOG } from './util.js';
 import { ctx } from './state.js';
 import { cfg, save, BUILD } from './config.js';
 
-const OPTS = { oHud: [{ k: 'showFps', l: 'Show FPS' }, { k: 'showApi', l: 'Show renderer' }], oAud: [{ k: 'sound', l: 'Sound' }, { k: 'amb', l: 'Ambient sounds' }], oPhy: [{ k: 'tough', l: 'Tough Biker mode' }, { k: 'wc', l: 'Wheelie control' }], oGfx: [{ k: 'grade', l: 'Colour grading (reloads)' }, { k: 'n64', l: 'N64 colour filter (reloads)' }, { k: 'fxaa', l: 'Anti-aliasing FXAA (reloads)' }, { k: 'autoRes', l: 'Auto resolution' }, { k: 'gpuCull', l: 'GPU culling, WebGPU only (reloads)' }, { k: 'forceGL', l: 'Force WebGL (reloads)' }] };
+const OPTS = { oHud: [{ k: 'showFps', l: 'Show FPS' }, { k: 'showApi', l: 'Show renderer' }], oAud: [{ k: 'sound', l: 'Sound' }, { k: 'amb', l: 'Ambient sounds' }], oPhy: [{ k: 'tough', l: 'Tough Biker mode' }, { k: 'wc', l: 'Wheelie control' }], oGfx: [{ k: 'ibl', l: 'Sky lighting + reflections, Med/High (reloads)' }, { k: 'grade', l: 'Colour grading (reloads)' }, { k: 'nightFx', l: 'Night vision desaturation (reloads)' }, { k: 'n64', l: 'N64 colour filter (reloads)' }, { k: 'fxaa', l: 'Anti-aliasing FXAA (reloads)' }, { k: 'autoRes', l: 'Auto resolution' }, { k: 'gpuCull', l: 'GPU culling, WebGPU only (reloads)' }, { k: 'forceGL', l: 'Force WebGL (reloads)' }] };
 const RL = [[0, 'Off'], [480, '480p'], [360, '360p'], [240, '240p']]; // render height cap, upscaled with crisp pixels
 const FL = [[30, '30'], [60, '60'], [0, 'Off']]; // FPS cap
 const TL = [['live', 'Live PH'], [7, 'Morning'], [12, 'Noon'], [17.3, 'Sunset'], [22, 'Night']]; // time of day (cfg.tod), live = real Philippine time
@@ -38,7 +38,7 @@ $('opts').onclick = e => {
   const f = e.target.closest('button[data-f]'); if (f) { cfg.fpsCap = +f.dataset.f; save(); build(); return; }
   const lh = e.target.closest('button[data-l]'); if (lh) { cfg.lefty = !cfg.lefty; save(); applyUi(); build(); return; }
   const b = e.target.closest('button[data-o]'); if (!b) return; const k = b.dataset.o; cfg[k] = !cfg[k]; b.classList.toggle('on', cfg[k]); save();
-  if (k === 'forceGL' || k === 'fxaa' || k === 'grade' || k === 'n64' || k === 'gpuCull') { reload(); return; } if (O.onPerf) O.onPerf();
+  if (k === 'forceGL' || k === 'fxaa' || k === 'grade' || k === 'nightFx' || k === 'ibl' || k === 'n64' || k === 'gpuCull') { reload(); return; } if (O.onPerf) O.onPerf();
 };
 $('opts').oninput = e => { if (e.target.id === 'oFov') { cfg.fov = +e.target.value; $('v_fov').textContent = cfg.fov; save(); return; } if (e.target.id === 'oUi') { cfg.ui = +e.target.value; $('v_ui').textContent = cfg.ui; save(); applyUi(); return; } if (e.target.id === 'oVol') { cfg.vol = e.target.value / 100; $('v_vol').textContent = e.target.value; save(); return; } if (e.target.id !== 'oSens') return; cfg.sens = +e.target.value; $('v_sens').textContent = cfg.sens; save(); };
 $('oClose').onclick = closeOpts; $('bOpt').onclick = openOpts;
