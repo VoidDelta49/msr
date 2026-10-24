@@ -29,8 +29,9 @@ ptr($('thr'), e => { TC.thrId = e.pointerId; TC.ty = e.clientY; TC.thr = 0; $('t
 ptr($('brk'), () => { TC.brk = 1; $('brk').classList.add('on'); }, null, () => { TC.brk = 0; $('brk').classList.remove('on'); });
 ptr($('clu'), e => { TC.cluId = e.pointerId; TC.cy0 = e.clientY; TC.cl0 = TC.clu; }, e => { TC.clu = clamp(TC.cl0 + (e.clientY - TC.cy0) / 90, 0, 1); }, () => { TC.cluId = null; });
 ptr($('bBack'), () => { TC.back = 1; $('bBack').classList.add('on'); }, null, () => { TC.back = 0; $('bBack').classList.remove('on'); });
-$('bUp').onpointerdown = () => actions.shift(1); $('bDn').onpointerdown = () => actions.shift(-1); $('bKey').onpointerdown = () => actions.key(); $('bKill').onpointerdown = () => actions.kill();
-ptr($('bStart'), () => { $('bStart').classList.add('on'); actions.start(1); }, null, () => { $('bStart').classList.remove('on'); actions.start(0); }); // hold to crank
+const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { } }; // tactile feedback where supported (Android)
+$('bUp').onpointerdown = () => { buzz(10); actions.shift(1); }; $('bDn').onpointerdown = () => { buzz(10); actions.shift(-1); }; $('bKey').onpointerdown = () => { buzz(12); actions.key(); }; $('bKill').onpointerdown = () => { buzz(12); actions.kill(); };
+ptr($('bStart'), () => { buzz(15); $('bStart').classList.add('on'); actions.start(1); }, null, () => { $('bStart').classList.remove('on'); actions.start(0); }); // hold to crank
 
 export function input(dt) {
   const kT = K.KeyW || K.ArrowUp, kB = K.KeyS || K.ArrowDown, kS = ((K.KeyD || K.ArrowRight) ? 1 : 0) - ((K.KeyA || K.ArrowLeft) ? 1 : 0);

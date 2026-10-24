@@ -2,9 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no,interactive-widget=resizes-visual">
 <title>CPM Motor Edition</title>
-<link rel="stylesheet" href="css/style.css?v=10.0">
+<link rel="stylesheet" href="css/style.css?v=10.1">
 </head>
 <body>
 <canvas id="gl"></canvas>
@@ -19,7 +19,8 @@
 <div id="top"><button class="b" id="bMenu" aria-label="Menu">☰</button><button class="b" id="bCam">CAM</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button><button class="b" id="bOpt" aria-label="Options">⚙</button></div>
 
 <div id="tc">
-  <div id="lb"><button id="bKey">KEY</button><button id="bKill">KILL</button><button id="bStart">START</button><button id="bBack">◀ BACK</button><button id="bDn">▼</button><button id="bUp">▲</button></div>
+  <div id="lb"><button id="bKey">KEY</button><button id="bKill">KILL</button><button id="bStart">START</button><button id="bBack">◀ BACK</button></div>
+  <div id="shift"><button id="bUp" aria-label="Shift up">▲</button><button id="bDn" aria-label="Shift down">▼</button></div>
   <div id="clu"><div id="cluFill"></div><small>CLUTCH<br>drag ↓ to pull</small></div>
   <div id="wheel"><svg viewBox="-62 -62 124 124"><circle r="54" fill="rgba(10,12,16,.35)" stroke="rgba(255,255,255,.16)" stroke-width="2" stroke-dasharray="4 5"/><g id="wg" stroke-linecap="round" fill="none">
     <path d="M-27 -3 L-36 -27 M27 -3 L36 -27" stroke="#8a929b" stroke-width="2.5"/><ellipse cx="-38" cy="-31" rx="10" ry="6" fill="#20252b" stroke="#aab2bb" stroke-width="2"/><ellipse cx="38" cy="-31" rx="10" ry="6" fill="#20252b" stroke="#aab2bb" stroke-width="2"/>
@@ -116,7 +117,7 @@
   <div class="sec">ERROR LOG</div><pre id="oLog"></pre>
 </div></div>
 
-<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=10.0","./js/audio.js":"./js/audio.js?v=10.0","./js/config.js":"./js/config.js?v=10.0","./js/controls.js":"./js/controls.js?v=10.0","./js/drivetrain.js":"./js/drivetrain.js?v=10.0","./js/garage.js":"./js/garage.js?v=10.0","./js/hud.js":"./js/hud.js?v=10.0","./js/main.js":"./js/main.js?v=10.0","./js/missions.js":"./js/missions.js?v=10.0","./js/model.js":"./js/model.js?v=10.0","./js/options.js":"./js/options.js?v=10.0","./js/perf.js":"./js/perf.js?v=10.0","./js/physics.js":"./js/physics.js?v=10.0","./js/rapier.js":"./js/rapier.js?v=10.0","./js/renderer.js":"./js/renderer.js?v=10.0","./js/spec.js":"./js/spec.js?v=10.0","./js/state.js":"./js/state.js?v=10.0","./js/util.js":"./js/util.js?v=10.0","./js/world.js":"./js/world.js?v=10.0","./js/tex.js":"./js/tex.js?v=10.0","./js/gpucull.js":"./js/gpucull.js?v=10.0","./js/net.js":"./js/net.js?v=10.0","./js/race.js":"./js/race.js?v=10.0","./js/ignition.js":"./js/ignition.js?v=10.0","./js/daynight.js":"./js/daynight.js?v=10.0","./js/lights.js":"./js/lights.js?v=10.0","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
-<script type="module" src="js/menu.js?v=10.0"></script>
+<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=10.1","./js/audio.js":"./js/audio.js?v=10.1","./js/config.js":"./js/config.js?v=10.1","./js/controls.js":"./js/controls.js?v=10.1","./js/drivetrain.js":"./js/drivetrain.js?v=10.1","./js/garage.js":"./js/garage.js?v=10.1","./js/hud.js":"./js/hud.js?v=10.1","./js/main.js":"./js/main.js?v=10.1","./js/missions.js":"./js/missions.js?v=10.1","./js/model.js":"./js/model.js?v=10.1","./js/options.js":"./js/options.js?v=10.1","./js/perf.js":"./js/perf.js?v=10.1","./js/physics.js":"./js/physics.js?v=10.1","./js/rapier.js":"./js/rapier.js?v=10.1","./js/renderer.js":"./js/renderer.js?v=10.1","./js/spec.js":"./js/spec.js?v=10.1","./js/state.js":"./js/state.js?v=10.1","./js/util.js":"./js/util.js?v=10.1","./js/world.js":"./js/world.js?v=10.1","./js/tex.js":"./js/tex.js?v=10.1","./js/gpucull.js":"./js/gpucull.js?v=10.1","./js/net.js":"./js/net.js?v=10.1","./js/race.js":"./js/race.js?v=10.1","./js/ignition.js":"./js/ignition.js?v=10.1","./js/daynight.js":"./js/daynight.js?v=10.1","./js/lights.js":"./js/lights.js?v=10.1","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+<script type="module" src="js/menu.js?v=10.1"></script>
 </body>
 </html>
