@@ -7,6 +7,7 @@ import { clamp, sstep } from './util.js';
 import { gameMs } from './config.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, sun, hemi, head, SKYU } from './renderer.js';
+import { setLamps } from './lights.js';
 
 const LAT = 12.88 * Math.PI / 180, LON = 121.77, R = Math.PI / 180;
 
@@ -62,6 +63,7 @@ export function dayNight() {
   else { tv.copy(SUN); key(el, 5, sun.color); sun.intensity = key(el, 6) * sstep(-1, 2, el); }
   if (tv.y < .3) { tv.y = 0; tv.normalize().multiplyScalar(.954); tv.y = .3; } // light never below ~17°: grazing light gives shadow acne over the whole ground
   sun.target.position.set(S.x, 0, S.z); sun.position.set(S.x + tv.x * 90, S.zH + tv.y * 90, S.z + tv.z * 90);
+  setLamps(sstep(3, -3, el)); // street lamps, lit windows and signs come on around sunset (el 3° .. −3°)
   renderer.toneMappingExposure = 1 + .5 * night;                                     // a bit of "eye adaptation" so night stays playable
   // headlight: on with the engine from dusk to dawn (real bikes have it always on, but in daylight it adds nothing)
   gate += ((S.running && el < 4 && !S.crashed ? 1 : 0) - gate) * .2;

@@ -48,14 +48,14 @@ export function cullUpdate(camera) {
 }
 
 /* ---------- Low preset: Lambert instead of PBR on the island ---------- */
-const LITE = new Map();
+const LITE = new Map(); export const liteOf = m => LITE.get(m) || m;
 export function liteMaterials(root) {
   if (!Q.lite) return;
   root.traverse(o => {
     const m = o.material; if (!o.isMesh || !m || !m.isMeshStandardMaterial) return;
     let l = LITE.get(m);
     if (!l) {
-      l = new THREE.MeshLambertMaterial({ color: m.color, map: m.map, vertexColors: m.vertexColors, transparent: m.transparent, opacity: m.opacity, depthWrite: m.depthWrite, polygonOffset: m.polygonOffset, polygonOffsetFactor: m.polygonOffsetFactor, emissive: m.emissive, emissiveIntensity: m.emissiveIntensity });
+      l = new THREE.MeshLambertMaterial({ color: m.color, map: m.map, vertexColors: m.vertexColors, transparent: m.transparent, opacity: m.opacity, depthWrite: m.depthWrite, polygonOffset: m.polygonOffset, polygonOffsetFactor: m.polygonOffsetFactor, emissive: m.emissive, emissiveMap: m.emissiveMap, emissiveIntensity: m.emissiveIntensity });
       LITE.set(m, l);
     }
     o.material = l;

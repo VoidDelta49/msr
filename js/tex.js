@@ -90,7 +90,7 @@ export function sea() { // light wave streaks on a soft blue-green ramp (multipl
 // a roll-up shutter under a sign board; upper floors: jalousie windows with sills. n = 1 also serves the bungalows.
 export function walls(n) {
   const W = 32, H = 32 * n, wn = noise(W, H, 2, 2), sign = R(0xc8402a, 0x2a62b8, 0xe0b52a, 0x3f9a4a)[(rnd() * 4) | 0];
-  return paint(W, H, (x, y) => {
+  const col = (x, y) => {
     const f = Math.floor(y / 32), ly = y - f * 32, top = f === 0; // canvas y=0 is the top floor (texture v=1 = top of the box)
     const base = ramp(R(0xd9d6cf, 0xe6e3dc, 0xf2efe8), wn[y * W + x], x, y);
     if (ly === 31) return [150, 146, 140];                                         // floor line / slab edge
@@ -104,7 +104,21 @@ export function walls(n) {
     if (win) { const wx = x < 16 ? x : x - 16; return (ly % 3 === 0) ? [150, 170, 182] : (wx + ly) % 7 === 0 ? [140, 170, 196] : [52, 70, 88]; }
     if ((ground && n === 1 ? ly === 22 : ly === 22) && ((x >= 2 && x < 11) || (x >= 17 && x < 30))) return [168, 164, 156]; // sills
     return top && ly < 2 ? [190, 186, 178] : base;
+  };
+  const cv = paint(W, H, col);
+  // lit twin (emissive map): about half the panes glow warm (a few cool, like a TV), shop sign boards glow in their own colour.
+  // Deterministic hash, never rnd(): the seeded texture sequence must not shift.
+  const hs = (a, b, c) => { let h = Math.imul(a * 31 + b * 17 + c * 7 + n * 131 + 3, 2654435761) >>> 0; h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0; return ((h ^ (h >>> 13)) >>> 0) / 4294967296; };
+  cv.glow = paint(W, H, (x, y) => {
+    const f = Math.floor(y / 32), ly = y - f * 32, ground = f === n - 1;
+    if (ground && n > 1 && ly >= 4 && ly < 10 && x > 1 && x < 30) return ly === 4 || ly === 9 ? [0, 0, 0] : col(x, y).map(v => Math.round(v * .85));
+    const win = ground && n === 1 ? (x >= 3 && x < 10 || x >= 22 && x < 29) && ly >= 10 && ly < 22 : !ground && (x >= 4 && x < 14 || x >= 18 && x < 28) && ly >= 8 && ly < 22;
+    if (!win) return [0, 0, 0];
+    const pane = ground && n === 1 ? (x < 16 ? 0 : 1) : x < 16 ? 0 : 1; if (hs(f, pane, 1) > .55) return [0, 0, 0];
+    const k = hs(f, pane, 2), c = k < .12 ? [140, 190, 255] : k < .55 ? [255, 226, 160] : [255, 198, 118], d = ly % 3 === 0 ? .55 : 1;
+    return c.map(v => Math.round(v * d));
   });
+  return cv;
 }
 export function tin() { // corrugated roof ribs + rust spots (white: the instance colour paints the roof)
   const n = noise(32, 32, 4, 2);

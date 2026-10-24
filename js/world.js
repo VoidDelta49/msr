@@ -8,6 +8,7 @@ import { cfg, Q, BUILD } from './config.js';
 import { attribute, texture, uv, vec2, vec3, float, select } from 'three/tsl';
 import { gpuInst, finishGpuInst } from './gpucull.js';
 import * as T from './tex.js';
+import { glowMat, lampMat, poolMat, haloMat, POOL_GEO, HALO_GEO } from './lights.js';
 import { mkTex } from './tex.js';
 import { DRAW, FAR, freeze, cullFar, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
 
@@ -149,7 +150,7 @@ const pastel=()=>new THREE.Color().setHSL(rand(),.35+rand()*.3,.62+rand()*.18);
 const TIN=[0xa8492f,0x2f5f9a,0x3d7a4a,0xb9bcc0,0x8a2f2f,0xc96f2a];
 const tDet=mkTex(T.detail(),260,{aniso:ANISO});
 const tRoad=mkTex(T.roadSt(),0,{aniso:ANISO}),tHwy=mkTex(T.roadHwy(),0,{aniso:ANISO});
-const tW=[1,2,3].map(n=>mkTex(T.walls(n))),tTin=mkTex(T.tin()),tBark=mkTex(T.bark()),tFrond=mkTex(T.frond()),tLeaf=mkTex(T.leaves()),tJeep=mkTex(T.jeep());
+const WC=[1,2,3].map(n=>T.walls(n)),tW=WC.map(c=>mkTex(c)),tWG=WC.map(c=>mkTex(c.glow)),tTin=mkTex(T.tin()),tBark=mkTex(T.bark()),tFrond=mkTex(T.frond()),tLeaf=mkTex(T.leaves()),tJeep=mkTex(T.jeep());
 // materials for AO'd instanced geometry (vertexColors = the baked gradient; instance colour still tints)
 const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:mt,map:map||null,vertexColors:true});
 {
@@ -237,7 +238,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     if(sides.includes('e'))edge(x1-I,z0+I+12,x1-I,z1-I-12,PI/2);if(sides.includes('w'))edge(x0+I,z0+I+12,x0+I,z1-I-12,-PI/2)}
   // ry convention: front of a shop faces +z rotated by ry (front normal = (sin ry, cos ry))
   for(const b of TOWN.blocks)block(...b);
-  [1,2,3].forEach((n,i)=>inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6/(n)),vstd(0xffffff,.85,0,tW[i]),bl[i]));
+  [1,2,3].forEach((n,i)=>inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6/(n)),glowMat(vstd(0xffffff,.85,0,tW[i]),tWG[i]),bl[i]));
   inst(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),roofs);inst(new THREE.BoxGeometry(1,1,1),std(0xffffff,.7),awn,false,FAR.small);
   // plaza + church
   const tCourt=mkTex(T.court());
@@ -283,7 +284,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     if(rand()<.35){const f=foot(x,z,2.25,2.1,ry);if(f.hi-f.lo<.9){nipa.push({x,y:f.lo,z,ry,sx:4.5,sy:2.6,sz:4.2,c:0xb59a5e});addOBB(x,z,2.3,2.2,ry)}} // stilts (1 m) absorb up to .9 m of slope
     else{const w=6+rand()*3,d=6+rand()*2.5,c=pastel(),rc=TIN[(rand()*TIN.length)|0],f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo;
       if(sl<2.4){hb.push({x,y:f.lo-.25,z,ry,sx:w,sy:3.35+sl,sz:d,c});hr.push({x,y:f.hi+3.1,z,ry,sx:w+.8,sy:1,sz:d+.9,c:rc});addOBB(x,z,w/2,d/2,ry)}}}}} // walls reach down to the low corner
-  inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6),vstd(0xffffff,.85,0,tW[0]),hb,true,FAR.tree);
+  inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6),glowMat(vstd(0xffffff,.85,0,tW[0]),tWG[0]),hb,true,FAR.tree);
   inst(prism(1,1.6,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),hr,true,FAR.tree);
   // roof in the hut's instance space (hut scale 4.5/2.6/4.2, roof 4.4/2.4/4.4 sitting 2.6 m up); its colour divided by the
   // hut's instance tint, which now multiplies it too
@@ -308,6 +309,54 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   const lot=new THREE.Mesh(new THREE.PlaneGeometry(70,70).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tLot,roughness:.9}));lot.position.set(40,.015,40);lot.receiveShadow=true;scene.add(freeze(lot));cullFar(lot,FAR.mid);
   const tGas=tCon.clone();tGas.repeat.set(10,10);tGas.needsUpdate=true;
   const gp=new THREE.Mesh(new THREE.PlaneGeometry(40,40).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tGas,roughness:.9}));gp.position.set(-40,.015,40);gp.receiveShadow=true;scene.add(freeze(gp));cullFar(gp,FAR.mid);
+  // ----- night lights (lights.js): emissive lamp heads + additive light pools + halos; everything comes on at sunset -----
+  {
+    const LPO=[],LA=[],LH=[],LS=[],LP=[],LHA=[];
+    const poolY=(x,z,r)=>{let y=H(x,z);for(const[a,b]of[[r,0],[-r,0],[0,r],[0,-r]])y=Math.max(y,H(x+a,z+b));return y+.07};
+    const pool=(x,z,r,c=0xffd9a0,rz=r)=>LP.push({x,y:poolY(x,z,Math.min(r,rz)*.6),z,sx:r*2,sz:rz*2,c});
+    const halo=(x,y,z,s,c=0xffd890)=>LHA.push({x,y,z,sx:s,sy:s,sz:s,c});
+    // free-standing post: arm of length len pointing along (tx, tz), head over its tip, pool under the head
+    function post(x,z,hgt,tx,tz,len,rad,c){const gy=H(x,z),L=Math.hypot(tx,tz)||1,dx=tx/L,dz=tz/L,ra=Math.atan2(-dz,dx),hx=x+dx*len,hz=z+dz*len;
+      LPO.push({x,y:gy,z,sy:hgt});LA.push({x,y:gy+hgt-.05,z,ry:ra,sx:len});LH.push({x:hx,y:gy+hgt-.2,z:hz,ry:ra,sx:.7,sy:.16,sz:.4});halo(hx,gy+hgt-.3,hz,3.4,c);pool(hx,hz,rad,c);addOBB(x,z,.18,.18)}
+    // lamp on an existing power pole (arm across the road, towards the road centre)
+    function polamp(p,rad){const dx=-Math.sin(p.ry),dz=-Math.cos(p.ry),ra=Math.atan2(-dz,dx),hx=p.x+dx*2.6,hz=p.z+dz*2.6;
+      LA.push({x:p.x,y:p.y+7.55,z:p.z,ry:ra,sx:2.6});LH.push({x:hx,y:p.y+7.4,z:hz,ry:ra,sx:.7,sy:.16,sz:.4});halo(hx,p.y+7.3,hz,3.4,0xffc070);pool(hx,hz,rad,0xffc070)}
+    // 1) streets: every power pole in town, every 3rd along the highways
+    const cnt=new Map();
+    for(const p of poles){if(rd(p.x,p.z,TOWN,10)<1){polamp(p,8);continue}if(p.r.hwy){const k=(cnt.get(p.r)||0)+1;cnt.set(p.r,k);if(k%3===1)polamp(p,8)}}
+    // 2) parking lot: tall posts in the aisles and around the edge, arms pointing to the middle
+    for(const[x,z]of[[8,29],[8,57],[46,13],[46,43],[46,70],[70,20],[70,60]])post(x,z,7.5,40-x,40-z,1.8,12,0xe6efff);
+    // 3) gas station: lit canopy (panels + coloured trim + a big pool), roadside price pylon
+    {const gx=-40,gz=40;for(const sx of[-5,5])for(const sz of[-4.5,4.5])LH.push({x:gx+sx,y:5.3,z:gz+sz,sx:1.6,sy:.08,sz:1.6});
+      for(const[x,z,w,d]of[[gx,gz-9,20,.1],[gx,gz+9,20,.1],[gx-10,gz,.1,18],[gx+10,gz,.1,18]])LS.push({x,y:5.45,z,sx:w,sy:.16,sz:d,c:0x35e07a});
+      pool(gx,gz,12,0xf4f8ff,11);pool(gx,gz,9,0xf4f8ff,8);halo(gx,5.0,gz,9,0xe8f0ff);
+      const px=gx+20.6,pz=gz-9,gy=H(px,pz);LPO.push({x:px,y:gy,z:pz,sy:9});LS.push({x:px,y:gy+9.4,z:pz,sx:.5,sy:3,sz:2.4,c:0xd03028},{x:px,y:gy+11.2,z:pz,sx:.5,sy:.9,sz:2.4,c:0xffc830});halo(px,gy+9.6,pz,7,0xffb060);pool(px-3,pz,6,0xff9a60);addOBB(px,pz,.25,.25)}
+    // 4) plaza: lamp posts around the lawn; basketball court: four floodlight masts and one bright pool
+    for(const x of[91,118,145])for(const z of[10,46])post(x,z,5.5,118-x,28-z,1.3,9.5,0xfff0d0);
+    for(const[x,z]of[[91.2,13],[104.8,13],[91.2,43],[104.8,43]]){post(x,z,9,98-x,28-z,1.1,5,0xe8f0ff);LH.push({x:x+(98-x)*.12,y:H(x,z)+8.7,z:z+(28-z)*.05,sx:1.3,sy:.3,sz:.7})}
+    pool(98,28,10,0xe8f0ff,17);pool(98,28,8,0xe8f0ff,14);
+    // 5) church: floodlit facade, glowing door, stained-glass nave windows, lit belfry
+    {pool(128,44.5,10,0xffe4b0,6);pool(118.5,45,5,0xffe4b0);LS.push({x:128,y:.4,z:48.2,sx:2,sy:3.8,sz:.1,c:0xffb060});
+      const SG=[0xffc880,0xff6a4a,0x6aa0ff,0xffd36a];[54,59,64,69].forEach((z,i)=>{for(const x of[121.4,134.6])LS.push({x,y:3.4,z,sx:.12,sy:3.8,sz:1.3,c:SG[(i+(x>128?1:0))%4]})});
+      LS.push({x:118.5,y:14.2,z:48.25,sx:1.1,sy:1.5,sz:.1,c:0xffc070},{x:116.9,y:14.2,z:52,sx:.1,sy:1.5,sz:1.1,c:0xffc070},{x:120.1,y:14.2,z:52,sx:.1,sy:1.5,sz:1.1,c:0xffc070});halo(118.5,15,47,5,0xffc070)}
+    // 6) market shed: strings of bulbs over both stall rows, lamp posts at the corners
+    for(const z of[-52,-30]){for(let x=100;x<=140;x+=3.6){LH.push({x,y:4.4,z,sx:.4,sy:.4,sz:.4});halo(x,4.3,z,3.2,0xffcf88)}pool(120,z,24,0xffd9a0,6)}
+    for(const[x,z]of[[94,-62],[146,-62],[94,-18],[146,-18]])post(x,z,6.5,120-x,-40-z,1.4,10,0xffd9a0);
+    // 7) airstrip: white edge lights every 30 m, green threshold bars, red end bars; hangar floodlights
+    {const r=ROADS.find(q=>q.kind==='strip');if(r){const E=r.s.length-1,hw=r.w/2-.7;
+      for(let i=0;i<=E;i+=15){const s=r.s[i];for(const sd of[-1,1]){const x=s.x-s.tz*hw*sd,z=s.z+s.tx*hw*sd,y=H(x,z)+.25;LS.push({x,y,z,sx:.45,sy:.3,sz:.45,c:0xdbe8ff});halo(x,y+.1,z,2.6,0xcfe0ff)}}
+      for(const[i,c]of[[0,0xff3030],[E,0xff3030],[4,0x30ff60],[E-4,0x30ff60]]){const s=r.s[clamp(i,0,E)];for(let k=-6;k<=6;k+=2){const x=s.x-s.tz*k*2.2,z=s.z+s.tx*k*2.2,y=H(x,z)+.25;LS.push({x,y,z,sx:.5,sy:.3,sz:.5,c});halo(x,y+.1,z,3,c)}}}
+      for(const o of hg){const dx=Math.sin(o.ry),dz=Math.cos(o.ry),x=o.x+dx*11.7,z=o.z+dz*11.7,y=H(o.x+dx*11,o.z+dz*11);LH.push({x,y:y+6.6,z,ry:o.ry,sx:1.2,sy:.2,sz:.6});halo(x,y+6.4,z,6,0xe8f0ff);pool(x+dx*5,z+dz*5,11,0xe8f0ff,9)}}
+    // 8) nipa huts: a lantern on the porch
+    for(const o of nipa){const x=o.x+Math.sin(o.ry)*2.5,z=o.z+Math.cos(o.ry)*2.5;LH.push({x,y:o.y+1.6,z,sx:.28,sy:.34,sz:.28});halo(x,o.y+1.6,z,2.6,0xffb870);pool(x,z,5,0xffb870)}
+    const add=(g,m,L,sh,far)=>{if(L.length)inst(g,m,L,sh,far)};
+    add(new THREE.CylinderGeometry(.07,.11,1,6).translate(0,.5,0),std(0x8d887e,.8),LPO,false,FAR.mid);
+    add(new THREE.BoxGeometry(1,.1,.1).translate(.5,0,0),std(0x6e6a62,.8),LA,false,FAR.mid);
+    add(new THREE.BoxGeometry(1,1,1),lampMat(),LH,false,FAR.mid);
+    add(new THREE.BoxGeometry(1,1,1),lampMat([1.9,1.9,1.9],[.5,.5,.5]),LS,false,FAR.mid);
+    add(HALO_GEO(),haloMat(.55),LHA,false,FAR.mid);
+    add(POOL_GEO(),poolMat(.6),LP,false,FAR.small);
+  }
 }
 /* minimap base image */
 // ~9.3 m per pixel (the old 140 px over 1300 m), sized to the island; hud.js maps world -> pixels with MAPV
