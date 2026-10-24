@@ -9,12 +9,12 @@ export const K = {}, TC = { back: 0, st: 0, stId: null, thr: 0, thrId: null, brk
 addEventListener('keydown', e => {
   if (e.repeat) return; K[e.code] = true; const A = actions; if (ctx.MENU) return; // pause menu open (menu.js)
   if (e.code === 'KeyE' || e.code === 'ShiftLeft') A.shift(1); if (e.code === 'KeyQ' || e.code === 'ControlLeft') A.shift(-1);
-  if (e.code === 'KeyR') A.start(); if (e.code === 'KeyC') A.cam(); if (e.code === 'KeyG') A.garage();
+  if (e.code === 'KeyR') A.start(1); if (e.code === 'KeyK') A.key(); if (e.code === 'KeyT') A.kill(); if (e.code === 'KeyC') A.cam(); if (e.code === 'KeyG') A.garage();
   if (e.code === 'KeyO') A.opts(); else if (e.code === 'Escape') A.closeOpts();
   if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
 });
-addEventListener('keyup', e => { K[e.code] = false; });
-addEventListener('blur', () => { for (const k in K) K[k] = false; });
+addEventListener('keyup', e => { K[e.code] = false; if (e.code === 'KeyR' && actions.start) actions.start(0); });
+addEventListener('blur', () => { for (const k in K) K[k] = false; if (actions.start) actions.start(0); });
 if (matchMedia('(pointer:coarse)').matches || 'ontouchstart' in window) document.body.classList.add('touch');
 export function ptr(el, down, move, up) {
   el.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); el.setPointerCapture(e.pointerId); down(e); });
@@ -29,7 +29,8 @@ ptr($('thr'), e => { TC.thrId = e.pointerId; TC.ty = e.clientY; TC.thr = 0; $('t
 ptr($('brk'), () => { TC.brk = 1; $('brk').classList.add('on'); }, null, () => { TC.brk = 0; $('brk').classList.remove('on'); });
 ptr($('clu'), e => { TC.cluId = e.pointerId; TC.cy0 = e.clientY; TC.cl0 = TC.clu; }, e => { TC.clu = clamp(TC.cl0 + (e.clientY - TC.cy0) / 90, 0, 1); }, () => { TC.cluId = null; });
 ptr($('bBack'), () => { TC.back = 1; $('bBack').classList.add('on'); }, null, () => { TC.back = 0; $('bBack').classList.remove('on'); });
-$('bUp').onpointerdown = () => actions.shift(1); $('bDn').onpointerdown = () => actions.shift(-1); $('bStart').onpointerdown = () => actions.start();
+$('bUp').onpointerdown = () => actions.shift(1); $('bDn').onpointerdown = () => actions.shift(-1); $('bKey').onpointerdown = () => actions.key(); $('bKill').onpointerdown = () => actions.kill();
+ptr($('bStart'), () => { $('bStart').classList.add('on'); actions.start(1); }, null, () => { $('bStart').classList.remove('on'); actions.start(0); }); // hold to crank
 
 export function input(dt) {
   const kT = K.KeyW || K.ArrowUp, kB = K.KeyS || K.ArrowDown, kS = ((K.KeyD || K.ArrowRight) ? 1 : 0) - ((K.KeyA || K.ArrowLeft) ? 1 : 0);

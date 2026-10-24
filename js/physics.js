@@ -4,6 +4,7 @@ import { PI, clamp, sstep } from './util.js';
 import { S, ctx } from './state.js';
 import { tq } from './spec.js';
 import { say } from './hud.js';
+import { igPre, igPost } from './ignition.js';
 
 // net force along the ground for drive force Fd at speed vv (module-level instead of a closure: no allocation per substep)
 const NF = { sp: null, Fg: 0, Fb: 0 };
@@ -11,11 +12,11 @@ function netF(Fd, vv) { const sp = NF.sp, Fb = NF.Fb; let F = Fd + NF.Fg - (sp.d
 // Engine, drivetrain, speed along the ground and steering. Rapier (rapier.js) owns position, heave and pitch.
 export function step(dt) {
   const sp = ctx.spec, D = ctx.drive, b = ctx.bcfg, m = sp.m, r = sp.r, v = S.v, av = Math.abs(v);
-  D.pre(sp, S, dt, b);
+  D.pre(sp, S, dt, b); igPre(dt);
   // engine
   if (S.running && S.lim && S.rpm < sp.red - 150) S.lim = false; if (S.rpm >= sp.red) S.lim = true;
   const thr = S.running && !S.lim && S.cutT <= 0 ? S.thr : 0;
-  const idleT = S.running ? clamp((sp.idle + 100 - S.rpm) / 400, 0, 1) * .35 : 0;
+  const idleT = S.running ? clamp((sp.idle + (S.fi || 0) + 100 - S.rpm) / 400, 0, 1) * .35 : 0;
   S.thrEff = Math.max(thr, idleT);
   const we = S.rpm * PI / 30, Tdrive = S.running ? S.thrEff * tq(sp, S.rpm) * sp.pow : 0;
   // published torque is already net at the crank, so friction/pumping loss mostly shows with the throttle shut
@@ -50,6 +51,7 @@ export function step(dt) {
   if (S.running && S.rpm < 650) { S.running = false; S.rpm = 0; say('Stalled. Press START (R)'); }
   if (!S.running && S.rpm < 200 && !(R > 0 && c > .5)) S.rpm = Math.max(0, S.rpm - 3000 * dt);
   if (S.running) { S.fuel -= dt * (sp.fuel.idle + sp.fuel.k * S.thrEff * S.rpm / sp.red0); if (S.fuel <= 0) { S.fuel = 0; S.running = false; S.issOff = false; say('Out of fuel!'); } }
+  igPost(dt);
   // steering, lean, yaw
   const vv = S.v, sv = Math.abs(vv), si = Math.sign(S.steer) * Math.pow(Math.abs(S.steer), 1.4), md = .6 / (1 + Math.pow(sv * .3, 1.5));
   let kk = Math.tan(si * md) / sp.wb; const kl = sp.mu * 9.81 * .95 / Math.max(vv * vv, .01); S.over = Math.abs(kk) / kl; kk = clamp(kk, -kl, kl); // over > 1: asking more grip than the tyres have

@@ -148,7 +148,7 @@ function makeGround(cx, cz) { // 64 x 64 m trimesh of the drawn ground, 1 m grid
   ground = world.createCollider(R.ColliderDesc.trimesh(v, new Uint32Array(ix)).setFriction(.7).setCollisionGroups(G_GROUND));
 }
 function crash(kind, imp = 0) {
-  S.crashed = true; crashT = 0; S.running = false; S.lim = false; S.issOff = false; inC = false; S.slideT = 0;
+  S.crashed = true; S.tip = true; S.cranking = false; crashT = 0; S.running = false; S.lim = false; S.issOff = false; inC = false; S.slideT = 0;
   blip('thud', 9); say(kind === 'wall' ? 'CRASH!' : kind === 'landing' ? 'Bad landing!' : 'Lost the front! Low-side', 1600); S.hits++;
   const fx = -Math.sin(S.psi), fz = -Math.cos(S.psi), lx = Math.cos(S.psi), lz = -Math.sin(S.psi), zx = -fx, zz = -fz, v = S.v, lv = body.linvel();
   makeGround(S.x + fx * v * .7, S.z + fz * v * .7);

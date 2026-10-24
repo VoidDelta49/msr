@@ -1,4 +1,5 @@
 // On-screen messages, the gauge cluster (HUD and the in-world LCD share one canvas), minimap, perf readout
+import { dispRpm } from './ignition.js';
 import * as THREE from 'three';
 import { $, PI } from './util.js';
 import { S, ctx } from './state.js';
@@ -14,7 +15,7 @@ function rr(g, x, y, w, h, r) { g.beginPath(); g.roundRect ? g.roundRect(x, y, w
 const PP = { x: 0, y: 0, a: 0 }; // reused: 48+ calls per redraw
 function pathPt(t) { if (t < .72) { PP.x = 28 + t / .72 * 332; PP.y = 58; PP.a = 0; return PP; } const u = (t - .72) / .28 * PI / 2; PP.x = 360 + 82 * Math.sin(u); PP.y = 140 - 82 * Math.cos(u); PP.a = u; return PP; }
 function sport(g, sp) {
-  const MAX = sp.tachMax, rpm = S.running ? S.rpm : 0;
+  const MAX = sp.tachMax, rpm = dispRpm(sp);
   g.fillStyle = '#0a0f12'; rr(g, 4, 4, 504, 216, 26); g.fill(); g.strokeStyle = '#2b3740'; g.lineWidth = 4; g.stroke();
   for (let i = 0; i < 48; i++) {
     const t = i / 47, p = pathPt(t), r0 = t * MAX;
@@ -45,7 +46,7 @@ function scooter(g, sp) {
   g.fillText(String(now.h).padStart(2, '0') + ((now.s & 1) ? ':' : ' ') + String(now.m).padStart(2, '0'), 52, 62);
   // big 7-seg style speed
   g.textAlign = 'right'; g.font = 'bold 112px ui-monospace,Menlo,monospace'; g.fillStyle = dim; g.fillText('188', 352, 160);
-  g.fillStyle = lit; g.fillText(Math.round(Math.abs(S.v) * 3.6), 352, 160);
+  g.fillStyle = lit; g.fillText(S.keyT < 1.2 ? 188 : Math.round(Math.abs(S.v) * 3.6), 352, 160); // 188 = self-test segment check
   g.textAlign = 'left'; g.font = 'bold 22px system-ui'; g.fillStyle = '#7fb2c4'; g.fillText('km/h', 358, 160);
   // fuel: 6 segments, vertical on the right
   const fr = S.fuel / sp.fuel.cap;
@@ -64,7 +65,7 @@ function scooter(g, sp) {
 /* tft: CBR650R 5" colour TFT. Bar tach across the top (red from the redline), shift light, big speed, gear, E-Clutch
    lamp, fuel bar, clock and odometer */
 function tft(g, sp) {
-  const MAX = sp.tachMax, rpm = S.running ? S.rpm : 0, N = 56, now = phNow(), shiftL = S.running && rpm >= sp.red - 600;
+  const MAX = sp.tachMax, rpm = dispRpm(sp), N = 56, now = phNow(), shiftL = S.running && rpm >= sp.red - 600;
   g.fillStyle = '#07090c'; rr(g, 4, 4, 504, 216, 18); g.fill(); g.strokeStyle = '#262b33'; g.lineWidth = 4; g.stroke();
   g.fillStyle = shiftL && (performance.now() / 70 | 0) % 2 ? '#ffffff' : '#141820'; rr(g, 196, 10, 120, 8, 4); g.fill(); // shift light
   for (let i = 0; i < N; i++) {
@@ -90,16 +91,18 @@ function tft(g, sp) {
   if (!S.running) { g.fillStyle = '#ff4a3d'; g.fillText('ENGINE OFF', 130, 118); }
   else if (S.cl > .05) { g.fillStyle = '#ffb020'; g.fillText('CLUTCH ' + (S.cl * 100 | 0) + '%', 130, 118); }
 }
+// key off: the dash is dead
+function dead(g) { g.fillStyle = '#05070a'; rr(g, 4, 4, 504, 216, 26); g.fill(); }
 const CLUSTERS = { sport, scooter, tft };
 // Redrawn only when something on it changes; the texture is uploaded to the GPU only while the in-world cluster can
 // be seen (1st person / garage). In 3rd person the same canvas is shown as the on-screen HUD, no upload needed.
 let cluKey = '', texDirty = true;
 export function drawCluster(inWorld = true) {
   const sp = ctx.spec, bl = (performance.now() / 90 | 0) % 2, now = phNow();
-  const key = [ctx.bike.id, Math.round(Math.abs(S.v) * 3.6), S.gear, S.running ? Math.ceil(S.rpm / sp.tachMax * 56) : -1, (S.fuel / sp.fuel.cap * 100 | 0), S.lim && bl, S.cl > .05 ? S.cl * 100 | 0 : -1,
+  const key = [ctx.bike.id, Math.round(Math.abs(S.v) * 3.6), S.gear, S.key, S.running, S.keyT < 1.2, Math.ceil(dispRpm(sp) / sp.tachMax * 56), (S.fuel / sp.fuel.cap * 100 | 0), S.lim && bl, S.cl > .05 ? S.cl * 100 | 0 : -1,
     ctx.bike.cluster === 'tft' ? [now.m, now.s & 1, (S.odo / 100) | 0, ctx.bcfg.autoClutch, S.running && S.rpm >= sp.red - 600 && (performance.now() / 70 | 0) % 2].join() :
     ctx.bike.cluster === 'scooter' ? [now.m, now.s & 1, (S.odo / 100) | 0, S.running && Math.abs(S.v) > 2 && S.thrEff < .35, S.issOff && (performance.now() / 400 | 0) % 2, ctx.bcfg.iss, S.issOff].join() : ''].join('|');
-  if (key !== cluKey) { cluKey = key; gc.clearRect(0, 0, 512, 224); CLUSTERS[ctx.bike.cluster](gc, sp); texDirty = true; }
+  if (key !== cluKey) { cluKey = key; gc.clearRect(0, 0, 512, 224); (S.key ? CLUSTERS[ctx.bike.cluster] : dead)(gc, sp); texDirty = true; }
   if (inWorld && texDirty) { cluTex.needsUpdate = true; texDirty = false; return true; }
   return false;
 }

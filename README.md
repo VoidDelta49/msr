@@ -62,7 +62,7 @@ Touch:
 - Handlebar: bottom-left (drag around it to steer)
 - Throttle pad (drag down to open, release to close) plus a brake button (CBS on the Click)
 - Raider / CBR650R: clutch pad (drag down to pull), ▲ / ▼ shift buttons (clutch must be pulled to shift, except on the CBR with E-Clutch on)
-- START button. On the Click, hold the brake while pressing it.
+- KEY (ignition) and KILL (engine stop switch) buttons, START (hold to crank). Start sequence: key on, wait ~2 s for the fuel pump, neutral or clutch in (Click: hold the brake), hold START with the throttle closed. Cold engines crank longer and idle high until warm. A crash trips the tip-over sensor: turn the key off and on again.
 - ◀ BACK (hold): walk the bike backwards with your feet (~3 km/h, bikes have no reverse). Only when stopped with the throttle shut; on the Raider, in neutral or with the clutch pulled.
 - Top bar: CAM, GARAGE, RESET, ⚙ (options)
 
@@ -72,7 +72,7 @@ Keyboard:
 - Raider: `E` / `Shift` shift up, `Q` / `Ctrl` shift down, `Space` clutch
 - Click: `Space` is the rear (CBS) brake lever
 - `X` (hold): walk the bike backwards
-- `R`: start engine, `C`: camera, `G`: garage (bike picker is at the top), `O`: options (`Esc` closes), `Esc`: pause menu (also ☰ in the top bar)
+- `K`: ignition key, `T`: kill switch, `R` (hold): starter, `C`: camera, `G`: garage (bike picker is at the top), `O`: options (`Esc` closes), `Esc`: pause menu (also ☰ in the top bar)
 
 ## Project layout
 

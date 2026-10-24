@@ -84,6 +84,7 @@ export function updAudio() {
   st(A.master.gain, on ? (cfg.vol ?? .8) : 0, .05);
   const fp = ctx.camMode === 0 && !ctx.GAR, live = !ctx.paused && !ctx.OPT && !ctx.GAR, v = Math.abs(S.v) || 0;
   // ---- engine ----
+  if (CR && (!S.cranking || ctx.paused)) crank(false);
   const run = S.running, cut = S.lim || S.cutT > 0, dt = Math.min(.1, t - lastT); lastT = t;
   offR = run ? (S.rpm || 0) : Math.max(0, offR - dt * 3500); // switched off: the crank spins down, S.rpm may sit at idle
   st(A.eng.gain, (fp ? 1 : .85) * sd.gain * EXH.gain[x] * .8, .05);
@@ -183,12 +184,33 @@ function rooster() {
 }
 
 // ---- game one-shots ----
+// starter motor: whirr with compression chugs at the crank's firing rate; held while S.cranking (ignition.js calls crank(true) each step)
+let CR = null;
+export function crank(on) {
+  if (!AC || !cfg.sound) return;
+  if (on && !CR) {
+    const t = AC.currentTime, k = ctx.spec?.sound?.starter ?? 1, cyl = Math.max(1, ctx.spec?.sound?.cyl || 1);
+    const out = AC.createGain(), am = AC.createGain(), lp = AC.createBiquadFilter(), lg = AC.createGain(), o1 = AC.createOscillator(), o2 = AC.createOscillator(), lfo = AC.createOscillator();
+    lp.type = 'lowpass'; lp.frequency.value = 1000; lp.Q.value = 2; o1.type = 'sawtooth'; o2.type = 'square';
+    o1.frequency.setValueAtTime(60, t); o1.frequency.linearRampToValueAtTime(95, t + .4); o2.frequency.setValueAtTime(20, t); o2.frequency.linearRampToValueAtTime(31, t + .4);
+    lfo.frequency.value = 230 / 120 * cyl; lg.gain.value = .5; am.gain.value = .6; lfo.connect(lg); lg.connect(am.gain);
+    o1.connect(lp); o2.connect(lp); lp.connect(am); am.connect(out); out.connect(A.sfx);
+    out.gain.setValueAtTime(0, t); out.gain.linearRampToValueAtTime(.14 * k, t + .08);
+    o1.start(t); o2.start(t); lfo.start(t); CR = { out, n: [o1, o2, lfo] };
+  } else if (!on && CR) {
+    const c = CR, t = AC.currentTime; CR = null; c.out.gain.cancelScheduledValues(t); c.out.gain.setValueAtTime(c.out.gain.value, t); c.out.gain.linearRampToValueAtTime(0, t + .06); c.n.forEach(n => n.stop(t + .08));
+  }
+}
 export function blip(type, amt = 1) {
   if (!AC || !cfg.sound) return; const t = AC.currentTime, g = node('gain'); g.connect(A.sfx);
   if (type === 'start') { // starter motor whirr, then the engine voice catches
     const k = ctx.spec?.sound?.starter ?? 1, lp = node('lowpass', 900, 2); chain(lp, g); const o = osc('sawtooth', lp, t, t + .6), o2 = osc('square', lp, t, t + .6);
     o.frequency.setValueAtTime(70, t); o.frequency.linearRampToValueAtTime(150, t + .5); o2.frequency.setValueAtTime(23, t); o2.frequency.linearRampToValueAtTime(38, t + .5);
     g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.12 * k, t + .04); g.gain.linearRampToValueAtTime(0, t + .58); return;
+  }
+  if (type === 'pump') { // fuel pump priming when the key goes on
+    const o = osc('sine', g, t, t + 1.9); o.frequency.setValueAtTime(190, t); o.frequency.linearRampToValueAtTime(230, t + .5);
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.03, t + .1); g.gain.setValueAtTime(.03, t + 1.7); g.gain.linearRampToValueAtTime(0, t + 1.9); return;
   }
   if (type === 'ok') { [660, 880, 1320].forEach((fr, i) => { const gg = node('gain'); gg.connect(A.sfx); osc('sine', gg, t + i * .1, t + i * .1 + .25).frequency.value = fr; gg.gain.setValueAtTime(.12, t + i * .1); gg.gain.exponentialRampToValueAtTime(.001, t + i * .1 + .2); }); return; }
   if (type === 'click') { // gear change: low clunk through the frame + a short metallic tick

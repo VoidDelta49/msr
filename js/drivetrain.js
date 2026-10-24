@@ -82,9 +82,9 @@ const cvt = {
   // runs before the engine is integrated, so a restart's rpm isn't overwritten in the same step
   pre(s, S, dt, b) {
     // Idling Stop: engine off after 3 s stopped at idle, restarts on throttle
-    if (b.iss && S.running && S.v < .1 && S.thr < .05 && S.rpm < s.idle + 400) { S.issT += dt; if (S.issT > 3) { S.running = false; S.issOff = true; } }
+    if (b.iss && S.running && S.warm > .6 && S.v < .1 && S.thr < .05 && S.rpm < s.idle + 400) { S.issT += dt; if (S.issT > 3) { S.running = false; S.issOff = true; } }
     else S.issT = 0;
-    if (S.issOff && !S.running && S.thr > .05 && S.fuel > 0) { S.running = true; S.issOff = false; S.rpm = Math.max(S.rpm, s.idle + 200); }
+    if (S.issOff && !S.running && S.key && !S.kill && S.thr > .05 && S.fuel > 0) { S.running = true; S.issOff = false; S.rpm = Math.max(S.rpm, s.idle + 200); }
     if (!b.iss && S.issOff) S.issOff = false;
   },
   shift() { },

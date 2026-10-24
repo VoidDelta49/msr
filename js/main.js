@@ -22,6 +22,7 @@ import { cullUpdate, autoRes, resScale, jankStart, jankEnd, jankText } from './p
 import { gpuCull } from './gpucull.js';
 import { NET, netFrame, join as netJoin, leave as netLeave } from './net.js';
 import { raceTick } from './race.js';
+import { keySwitch, killSwitch, starter, quickStart } from './ignition.js';
 import { GPU_TYPES } from './world.js';
 
 /* ---------- data ---------- */
@@ -34,7 +35,7 @@ for (const d of await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=$
 const SPAWN = { x: 62, z: 30, psi: Math.PI / 2 };
 function reset() {
   Object.assign(S, {
-    x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: ctx.spec.idle, running: true, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
+    x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: 0, running: false, key: false, kill: false, tip: false, cr: 0, cranking: false, cT: 0, keyT: 0, stT: 0, fi: 0, warm: S.warm || 0, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
     fuel: S.fuel ?? ctx.spec.fuel.cap, wA: 0, cutT: 0, act: 0, shCD: 0, lim: false, padT: 0, hits: S.hits || 0, odo: S.odo || 0,
   });
   ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody();
@@ -65,7 +66,7 @@ function setBike(keepPos) {
   ctx.bike = bike; ctx.bcfg = bikeCfg(bike); ctx.drive = DRIVES[bike.drivetrain];
   buildModel(bike); recompute();
   document.body.classList.toggle('cvt', bike.drivetrain === 'cvt');
-  S.fuel = ctx.spec.fuel.cap; const keep = ctx.GAR || keepPos ? { x: S.x, z: S.z, psi: S.psi } : null; reset(); if (keep) Object.assign(S, keep);
+  S.fuel = ctx.spec.fuel.cap; if (!keepPos) S.warm = 0; const keep = ctx.GAR || keepPos ? { x: S.x, z: S.z, psi: S.psi } : null; reset(); if (keep) Object.assign(S, keep);
   attachCam();
   $('brk').textContent = bike.drivetrain === 'cvt' ? 'BRAKE · CBS' : 'BRAKE';
 }
@@ -77,9 +78,9 @@ stage('Preparing the bike', .85); setBike(); save();
 stage('Compiling shaders', .9); gpuCull(camera); ctx.warmMs = await warm(); stage('Ready', 1);
 
 function startEngine() {
+  // garage stand only (REV button, debug hook): no key / starter ritual there
   if (S.running) return; if (S.fuel <= 0) return say('Out of fuel. Push it to the gas station.');
-  const why = ctx.drive.canStart(ctx.spec, S, ctx.bcfg); if (why) return say(why);
-  S.running = true; S.issOff = false; S.rpm = Math.max(S.rpm, 1700); blip('start'); say('Engine on');
+  quickStart(); blip('start'); say('Engine on');
 }
 
 /* ---------- camera / animation ---------- */
@@ -109,7 +110,7 @@ function visuals(dt, now) {
     camera.lookAt(S.x - bx * 2, 1 + S.zH, S.z - bz * 2);
   }
   dayNight();
-  dom('wg', 'rotate(' + (S.steer * WMAX() * 57.3).toFixed(1) + ')', (e, v) => e.setAttribute('transform', v)); dom('cluFill', (S.cl * 100).toFixed(0) + '%', (e, v) => e.style.height = v); dom('thrg', (S.thr * 36).toFixed(1) + 'px', (e, v) => e.style.backgroundPositionY = v);
+  dom('wg', 'rotate(' + (S.steer * WMAX() * 57.3).toFixed(1) + ')', (e, v) => e.setAttribute('transform', v)); dom('cluFill', (S.cl * 100).toFixed(0) + '%', (e, v) => e.style.height = v); dom('bKey', !!S.key, (e, v) => e.classList.toggle('on', v)); dom('bKill', !!S.kill, (e, v) => e.classList.toggle('on', v)); dom('thrg', (S.thr * 36).toFixed(1) + 'px', (e, v) => e.style.backgroundPositionY = v);
   animMarker(now);
 }
 
@@ -123,7 +124,7 @@ $('bounceB').onclick = () => { if (RP.ok) bounce(); };
 
 /* ---------- wiring ---------- */
 Object.assign(actions, {
-  shift: d => ctx.drive.shift(ctx.spec, S, d, ctx.bcfg), start: startEngine, cam: toggleCam, garage: openGarage,
+  shift: d => ctx.drive.shift(ctx.spec, S, d, ctx.bcfg), start: d => ctx.GAR ? (d && startEngine()) : starter(d), key: keySwitch, kill: killSwitch, cam: toggleCam, garage: openGarage,
   opts: () => ctx.OPT ? closeOpts() : openOpts(), closeOpts,
 });
 O.onPerf = () => updPerf(API);
@@ -137,7 +138,7 @@ export function mpJoin(room, name, url) { netJoin(room, name, url); }
 export function mpLeave() { netLeave(); }
 // quests with a required bike (missions.js): swap right where you stand
 ctx.switchBikeHere = id => {
-  cfg.bike = id; setBike(true); S.hF = S.hR = roadH(S.x, S.z); S.zH = H(S.x, S.z) + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody(); save(); say(ctx.bike.name, 1500);
+  cfg.bike = id; setBike(true); quickStart(); S.hF = S.hR = roadH(S.x, S.z); S.zH = H(S.x, S.z) + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody(); save(); say(ctx.bike.name, 1500);
 };
 export function switchBike(id) { cfg.bike = id; setBike(); save(); say(ctx.bike.name, 1200); }
 
