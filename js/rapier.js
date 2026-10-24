@@ -123,6 +123,7 @@ export function tickR() {
   body.setRotation(qYX(S.psi, S.th), true); body.setAngvel({ x: lx * w, y: S.yaw, z: lz * w }, true);
   stream(); stepWorld();
   // walls. Contacts remove the velocity going into the wall; the bike keeps the rest and gets deflected along it.
+  S.scrape = 0;
   if (S.air) { inC = false; return; }
   const nv = body.linvel(), sp2 = Math.hypot(nv.x, nv.z), dv = Math.abs(S.v) - sp2;
   if (dv < .02) { inC = false; return; }
@@ -134,7 +135,7 @@ export function tickR() {
     const pt = Math.atan2(-nv.x * sg, -nv.z * sg), d = angd(pt, S.psi);
     if (Math.abs(d) < 1.4) S.psi += d * .5;
   }
-  S.v = sg * v; inC = true;
+  S.v = sg * v; inC = true; S.scrape = v; // audio: scraping along a wall
 }
 
 /* ---------- crashes ---------- */

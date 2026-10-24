@@ -70,7 +70,21 @@
   "sound": {
     "lp": 0.8,
     "gain": 0.75,
-    "whine": 0.03
+    "whine": 0.03,
+    "cyl": 1,
+    "pipe": 260,
+    "pq": 3,
+    "body": 120,
+    "bq": 2,
+    "punch": 0.8,
+    "rough": 0.06,
+    "crackle": 0.05,
+    "crackRpm": 7000,
+    "mech": 0.35,
+    "intake": 0.7,
+    "bright": 0.7,
+    "drive": 1.3,
+    "starter": 0.35
   },
   "parts": {
     "rollers": {

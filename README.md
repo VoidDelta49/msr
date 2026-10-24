@@ -63,14 +63,16 @@ js/world.js           the island, roads, town, collision footprints, parking lot
 js/renderer.js        WebGPU/WebGL setup and fallback, quality preset
 js/perf.js            culling, terrain LOD, merging, Lambert materials, auto resolution
 js/gpucull.js         WebGPU compute culling + indirect draws for instanced props
-js/audio.js, controls.js, garage.js, options.js, missions.js, config.js, state.js, util.js
+js/audio.js (+ engine-worklet.js), controls.js, garage.js, options.js, missions.js, config.js, state.js, util.js
 ```
 
 Part options in the bike JSON are applied generically: `pow`, `ie` and `csp` multiply; any other key (`red`, `idle`, `mu`, `roller`, `lo`, `hi`, `eng`, `c`, `snd`) replaces the base value.
 
 ## Renderer
 
-Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on device loss or errors). Options (⚙) has Force WebGL, FPS and renderer readouts, Sound, and touch steering sensitivity.
+Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on device loss or errors). Options (⚙) has Force WebGL, FPS and renderer readouts, Sound, Ambient sounds, Volume, and touch steering sensitivity.
+
+Sound is fully synthesized WebAudio, no samples: an AudioWorklet engine voice builds every combustion pulse (muffler thump, pipe tone, valvetrain tick, intake, afterfire crackle on closed throttle and at the limiter; aftermarket exhausts get louder, brighter and poppier), speed-driven wind with gusts (louder in first person), tyre roar on asphalt vs crunch off-road, squeal past the grip limit, scraping, and island ambience by location: surf toward the sea, the river, cicadas and birds in the countryside, frogs at the rice paddies, town hum with dogs and jeepney horns, a volcano rumble. Ambience ducks as you speed up.
 
 ### Performance (Build 5.3)
 - **Quality** (Options → GRAPHICS, reloads): Low / Medium (default) / High. Sets draw distance (fog end: 550 / 1100 / 1400 m), pixel-ratio cap (1 / 1.5 / 2), shadows (off / 1024 / 2048), texture anisotropy, and on Low swaps the island's PBR materials for cheaper Lambert ones.

@@ -281,4 +281,10 @@ const arrow=new THREE.Mesh(new THREE.ConeGeometry(.35,.8,4).rotateX(PI),new THRE
 export const GPU_TYPES=finishGpuInst(scene);
 marker.visible=arrow.visible=false;liteMaterials(scene);scene.add(marker,arrow);
 
-export { SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP };
+// ambience weights for audio.js (0..1 each) plus direction vectors to the sea (sx, sz) and the nearest river point (rx, rz)
+function zones(x,z,o){const inl=inland(x,z),dx=x-ICX,dz=z-ICZ,l=Math.hypot(dx,dz)||1;o.coast=1-sstep(10,170,inl);o.sx=dx/l;o.sz=dz/l;
+  let bd=1e18,bx=0,bz=0;for(let i=1;i<RIVER.length;i++){const[ax,az]=RIVER[i-1],[cx,cz]=RIVER[i],ex=cx-ax,ez=cz-az,t=clamp(((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez),0,1),px=ax+ex*t,pz=az+ez*t,d=(px-x)**2+(pz-z)**2;if(d<bd){bd=d;bx=px-x;bz=pz-z}}
+  o.river=1-sstep(8,90,Math.sqrt(bd));o.rx=bx;o.rz=bz;o.town=1-sstep(0,130,rectD(x,z,TOWN.x,TOWN.z));
+  o.paddy=1-sstep(0,90,rectD(x,z,(PADDY.x1-PADDY.x0)/2,(PADDY.z1-PADDY.z0)/2,(PADDY.x0+PADDY.x1)/2,(PADDY.z0+PADDY.z1)/2));
+  const dv=Math.hypot(x-VX,z-VZ);o.volc=1-sstep(60,420,dv);o.wild=(1-o.town)*sstep(0,50,inl)*(1-sstep(90,160,200*Math.exp(-Math.pow(dv/150,1.8))));return o}
+export { zones, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP };

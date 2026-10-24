@@ -4,7 +4,8 @@ import { $, clamp } from './util.js';
 import { cfg, save, bikeCfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, camera, sun, GPU, API, FELL, draw, warm } from './renderer.js';
-import { SEA, ICZ, H, roadH, MAP } from './world.js';
+import { SEA, ICZ, H, roadH, MAP, zones, nearRoad } from './world.js';
+ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
 import { B, buildModel, applyLook } from './model.js';

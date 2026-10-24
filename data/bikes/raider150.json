@@ -57,7 +57,21 @@
   "sound": {
     "lp": 1,
     "gain": 1,
-    "whine": 0
+    "whine": 0,
+    "cyl": 1,
+    "pipe": 380,
+    "pq": 5,
+    "body": 95,
+    "bq": 2.5,
+    "punch": 1.1,
+    "rough": 0.1,
+    "crackle": 0.35,
+    "crackRpm": 6000,
+    "mech": 0.6,
+    "intake": 0.4,
+    "bright": 1.1,
+    "drive": 1.8,
+    "starter": 1
   },
   "parts": {
     "exhaust": {
