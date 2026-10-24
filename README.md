@@ -50,7 +50,7 @@ Keyboard:
 - Raider: `E` / `Shift` shift up, `Q` / `Ctrl` shift down, `Space` clutch
 - Click: `Space` is the rear (CBS) brake lever
 - `X` (hold): walk the bike backwards
-- `R`: start engine, `C`: camera, `G`: garage (bike picker is at the top), `P`: parking mission, `O`: options (`Esc` closes)
+- `R`: start engine, `C`: camera, `G`: garage (bike picker is at the top), `P`: parking mission, `O`: options (`Esc` closes), `Esc`: pause menu (also ☰ in the top bar)
 
 ## Project layout
 
@@ -61,7 +61,8 @@ index.html            markup + importmap
 css/style.css
 data/bikes/index.json list of bikes
 data/bikes/*.json     specs: chassis, engine torque curve, drivetrain params, garage parts/sliders/toggles, defaults
-js/main.js            entry: loads data, bike switching, camera/animation, loop
+js/menu.js            page entry: main/pause menu, background download of the engine, loads main.js on PLAY
+js/main.js            game: loads data, bike switching, camera/animation, loop
 js/spec.js            bike data + garage settings -> flat spec the physics reads
 js/drivetrain.js      manual gearbox + CVT (ratio, clutch capacity, variator, Idling Stop)
 js/physics.js         engine, clutch-slip solver, steering/lean, bump-stop helper
@@ -93,7 +94,8 @@ Sound is fully synthesized WebAudio, no samples: an AudioWorklet engine voice bu
 - **Auto resolution** (on by default): drops render resolution in 10% steps (down to 55%) when the game can't hold the screen's refresh rate, and creeps back up when it can.
 - **Culling**: props are static instanced chunks (700 m); off-screen chunks are skipped in the main and shadow pass. Small one-off props hide past 220 / 550 m.
 - **GPU culling** (WebGPU only, on by default, reloads): each prop type is one instanced mesh for the whole island; a compute pass culls every instance against the view and its draw distance each frame and draws the survivors with an indirect draw. Props near the bike are kept for the shadow pass. On WebGL the chunked culling above is used.
-- **Shader warm-up**: while the title screen shows LOADING…, every material's shader is built up front (in parallel where the browser supports it), so switching camera, crashing or riding into a new area doesn't stall on a shader compile.
+- **Instant main menu**: the page opens on a plain-HTML menu (bike picker, options, controls) in a fraction of a second. three.js, Rapier and the game modules download in the background with a progress bar and are only parsed and built when you tap PLAY.
+- **Shader warm-up**: while the loading bar shows "Compiling shaders", every material's shader is built up front (in parallel where the browser supports it), so switching camera, crashing or riding into a new area doesn't stall on a shader compile.
 - **Terrain LOD**: the ground is 5×5 tiles of 280 m, frustum-culled, each at 5 / 10 / 20 m detail by distance, with skirts so seams never show. Physics still uses the full-detail heights.
 - Bike and church meshes are merged per material (fewer draw calls); static objects don't recompute their matrices each frame; the gauge cluster and minimap only redraw when something on them changes.
 - With Show FPS on, the readout also shows draw calls per frame and the current auto-resolution scale.

@@ -1,0 +1,99 @@
+// Page entry: the main menu. Plain DOM + the small settings modules only, so the page is up in a blink.
+// three.js, Rapier and the island (main.js and everything it imports) are fetched in the background once the page has
+// loaded, and only parsed/built when the player taps PLAY. The same menu is the pause menu in game (Esc / ☰).
+import { cfg, save, BUILD } from './config.js';
+import { $ } from './util.js';
+import { ctx } from './state.js';
+import { O, openOpts } from './options.js';
+
+const IM = JSON.parse(document.querySelector('script[type=importmap]').textContent).imports;
+// heavy CDN files with their decompressed sizes (the progress bar counts decompressed stream bytes; versions are pinned)
+const LIBS = [[IM['three/webgpu'], 2284850], [IM['three/webgpu'].replace('three.webgpu.js', 'three.core.js'), 1458113], [IM['three/tsl'], 36854], [IM['@dimforge/rapier3d-compat'], 4340292],
+  [IM['three/addons/'] + 'utils/BufferGeometryUtils.js', 37712], ...(cfg.fxaa ? [[IM['three/addons/'] + 'tsl/display/FXAANode.js', 9450]] : [])];
+// our own modules too (small, not counted in the bar); fetched into the HTTP cache so import() doesn't wait on them
+const OWN = Object.entries(IM).filter(([k]) => k.startsWith('./js/') && !/menu|config|util|state|options/.test(k)).map(([, u]) => [u, 0]);
+const TOTAL = LIBS.reduce((a, l) => a + l[1], 0);
+let got = 0, pre = null, G = null, busy = false;
+
+function prefetch() {
+  return pre || (pre = Promise.all([...LIBS, ...OWN, ['data/map/island.json?v=' + BUILD, 0]].map(async ([url, n]) => {
+    const r = await fetch(url); if (!r.ok) throw new Error(url.split('/').pop() + ': HTTP ' + r.status);
+    let seen = 0; const rd = r.body.getReader();
+    for (;;) { const { done, value } = await rd.read(); if (done) break; const add = Math.max(0, Math.min(value.length, n - seen)); seen += value.length; if (add) { got += add; prog(); } }
+    if (seen < n) { got += n - seen; prog(); }
+  })).catch(e => { pre = null; throw e; }));
+}
+function prog() { const f = got / TOTAL; $('mPre').style.transform = `scaleX(${f})`; if (!$('mLoad').hidden && busy === 'dl') bar(f * .7, 'Downloading the game', Math.round(f * 100) + '% · ' + (got / 1048576).toFixed(1) + ' / ' + (TOTAL / 1048576).toFixed(1) + ' MB'); }
+function bar(f, stage, det = '') { $('mFill').style.transform = `scaleX(${f})`; $('mStage').textContent = stage; $('mDet').textContent = det; }
+// main.js reports its own stages through this while it loads
+window.__cpmLoad = (stage, f) => bar(f, stage);
+const frames = n => new Promise(r => { const f = () => --n ? requestAnimationFrame(f) : r(); requestAnimationFrame(f); });
+
+/* ---------- panes ---------- */
+const PANES = ['mMain', 'mBikes', 'mHelpP', 'mLoad'];
+function show(id) { for (const p of PANES) $(p).hidden = p !== id; }
+$('menu').onclick = e => { if (e.target.closest('[data-back]')) show('mMain'); };
+$('mHelp').onclick = () => show('mHelpP');
+$('mOpt').onclick = () => openOpts();
+$('mFoot').textContent = 'Build ' + BUILD;
+const TIPS = ['Manual bikes: pull the clutch before you shift, and ease it out to launch.', 'The scooter has Idling Stop: hold the brake and press START to wake it.', 'Low on fuel? The station is next to the parking lot, the red dot on the minimap.', 'Graphics too heavy? Options > Quality > Low, or a Retro res cap.', 'Tough Biker mode (Options) makes you crash-proof.', 'The airstrip in the north-west is 910 m of flat concrete for top-speed runs.', 'The GARAGE changes real specs: exhaust, ECU, tyres, suspension, carbon parts.'];
+
+/* ---------- bikes (just JSON, no 3D needed) ---------- */
+let BIKES = [];
+async function loadBikes() {
+  const ids = await (await fetch('data/bikes/index.json?v=' + BUILD)).json();
+  BIKES = await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=${BUILD}`).then(r => r.json())));
+  if (!BIKES.some(b => b.id === cfg.bike)) cfg.bike = BIKES[0].id;
+  cards();
+}
+function cards() {
+  const cur = BIKES.find(b => b.id === cfg.bike); $('mBikeN').textContent = cur ? cur.short : '';
+  $('mCards').innerHTML = BIKES.map(b => `<button class="bc${b.id === cfg.bike ? ' on' : ''}" data-id="${b.id}"><b>${b.short}</b><em>${b.tag}</em><span>${b.engine.peakPS} PS · ${b.blurb.split('. ')[0].replace(/ \(.*\)/, '')}</span></button>`).join('');
+}
+$('mBike').onclick = () => show('mBikes');
+$('mCards').onclick = e => {
+  const c = e.target.closest('.bc'); if (!c) return;
+  if (c.dataset.id !== cfg.bike) { if (G) G.switchBike(c.dataset.id); else { cfg.bike = c.dataset.id; save(); } }
+  cards(); show('mMain');
+};
+loadBikes().catch(e => console.warn('bike list: ' + e.message));
+
+/* ---------- play / pause ---------- */
+function goFS() { const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => { })).catch(() => { }); }
+// the audio context must be created inside the tap; audio.js picks it up when the game has loaded
+function unlockAudio() {
+  if (window.__cpmAC) return window.__cpmAC.resume();
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { }
+  try { window.__cpmAC = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); window.__cpmAC.resume(); } catch (e) { }
+}
+function hideMenu() { $('menu').hidden = true; ctx.MENU = false; document.body.classList.remove('menu'); }
+export function openMenu() {
+  if (!G || ctx.MENU || ctx.OPT || ctx.GAR) return;
+  ctx.MENU = true; ctx.paused = true; document.body.classList.add('menu'); cards(); show('mMain'); $('menu').hidden = false;
+}
+async function play() {
+  goFS(); unlockAudio();
+  if (G) { hideMenu(); G.play(); return; }
+  if (busy) return; busy = 'dl'; show('mLoad'); $('mTip').textContent = TIPS[Math.floor(Math.random() * TIPS.length)];
+  try {
+    prog(); await prefetch().catch(e => console.warn('prefetch: ' + e.message)); // import() below retries anything that failed
+    busy = 'build'; bar(.72, 'Building the island'); await frames(2); // let that paint: the island build blocks the thread
+    G = await import('./main.js');
+    document.body.classList.add('ingame'); $('mPlayT').textContent = 'RESUME'; $('mPre').hidden = true; busy = false;
+    hideMenu(); G.play();
+  } catch (e) {
+    busy = false; console.error(e); bar(0, "Couldn't load the game", e.message || String(e));
+    $('mTip').innerHTML = '<button class="mb sm" id="mRetry">RETRY</button>'; $('mRetry').onclick = () => location.reload();
+  }
+}
+$('mPlay').onclick = play;
+$('bMenu').onclick = openMenu;
+addEventListener('keydown', e => {
+  if (e.code !== 'Escape' || ctx.OPT || ctx.GAR) return; // Esc in options/garage is handled there
+  if (!ctx.MENU) return openMenu();
+  if (!$('mBikes').hidden || !$('mHelpP').hidden) show('mMain'); else if (G) play();
+});
+ctx.MENU = true; document.body.classList.add('menu');
+// start downloading once the menu is up (doesn't block anything: nothing is parsed until PLAY)
+if (document.readyState === 'complete') setTimeout(bg, 100); else addEventListener('load', () => setTimeout(bg, 100));
+function bg() { prefetch().catch(e => console.warn('prefetch: ' + e.message)); }

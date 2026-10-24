@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { $, clamp } from './util.js';
 import { cfg, save, bikeCfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
-import { renderer, scene, camera, sun, GPU, API, FELL, draw, warm } from './renderer.js';
+import { renderer, scene, camera, sun, GPU, API, FELL, draw, warm, setDPR } from './renderer.js';
 import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad } from './world.js';
 ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
@@ -22,6 +22,9 @@ import { gpuCull } from './gpucull.js';
 import { GPU_TYPES } from './world.js';
 
 /* ---------- data ---------- */
+// loaded by menu.js on PLAY; stage() moves its loading bar (fractions continue after the download's 0–70%)
+const stage = window.__cpmLoad || (() => { });
+stage('Loading bikes', .78);
 const ids = await (await fetch('data/bikes/index.json?v=' + BUILD)).json();
 for (const d of await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=${BUILD}`).then(r => r.json())))) ctx.bikes[d.id] = d;
 
@@ -45,10 +48,11 @@ function setBike() {
   $('brk').textContent = bike.drivetrain === 'cvt' ? 'BRAKE · CBS' : 'BRAKE';
 }
 // physics engine first: everything below positions the Rapier body
-if (!await initRapier()) { $('go').disabled = true; $('apiNote').textContent = ''; setTimeout(() => say("Couldn't load the physics engine (" + RP.err + '). Check your connection and reload.', 1e9), 0); }
-setBike(); save();
+stage('Starting physics', .8);
+if (!await initRapier()) throw new Error("Couldn't load the physics engine (" + RP.err + '). Check your connection and try again.');
+stage('Preparing the bike', .85); setBike(); save();
 // build every shader now, behind the title screen (see renderer.js warm())
-{ const go = $('go'), was = go.disabled, txt = go.textContent; go.disabled = true; go.textContent = 'LOADING…'; gpuCull(camera); ctx.warmMs = await warm(); go.disabled = was; go.textContent = txt; }
+stage('Compiling shaders', .9); gpuCull(camera); ctx.warmMs = await warm(); stage('Ready', 1);
 
 function startEngine() {
   if (S.running) return; if (S.fuel <= 0) return say('Out of fuel. Push it to the gas station.');
@@ -104,7 +108,10 @@ O.onPerf = () => updPerf(API);
 $('bGar').onclick = openGarage; $('bCam').onclick = toggleCam; $('bPark').onclick = togglePark; $('bReset').onclick = () => { reset(); say('Back at the lot'); };
 function goFS() { const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => { })).catch(() => { }); }
 addEventListener('pointerdown', () => { if (!ctx.paused && !ctx.GAR && !ctx.OPT) goFS(); });
-$('go').onclick = () => { goFS(); initAudio(); $('intro').hidden = true; ctx.paused = false; say(ctx.bike.hint); };
+// menu.js: PLAY / RESUME (fullscreen was requested there, inside the tap) and the menu's bike picker
+let played = false;
+export function play() { initAudio(); ctx.paused = false; if (!played) { played = true; say(ctx.bike.hint); } }
+export function switchBike(id) { cfg.bike = id; setBike(); save(); say(ctx.bike.name, 1200); }
 
 function water() { if (S.wet) { S.v *= .9; return; } if (H(S.x, S.z) < SEA + .12) { S.wet = true; say('Splash! You rode into the water', 1600); blip('thud', 9); setTimeout(() => { reset(); S.wet = false; say('Towed back to the lot'); }, 1600); } }
 
@@ -145,5 +152,6 @@ function loop(t) {
   const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); jankEnd(t, performance.now() - J0, hudUp);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
-$('apiNote').textContent = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
+O.setDPR = setDPR; O.live = true;
+O.api = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
 window.__cpm = { renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce };

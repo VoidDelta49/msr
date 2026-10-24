@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>CPM Motor Edition</title>
-<link rel="stylesheet" href="css/style.css?v=8.6">
+<link rel="stylesheet" href="css/style.css?v=8.7">
 </head>
 <body>
 <canvas id="gl"></canvas>
@@ -13,7 +13,7 @@
 <div id="perf"></div>
 <canvas id="mini" width="140" height="140"></canvas>
 <div id="mis" hidden><span id="misT"></span><button class="b" id="misNext" hidden>Next</button></div>
-<div id="top"><button class="b" id="bCam">CAM</button><button class="b" id="bPark">PARK</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button><button class="b" id="bOpt" aria-label="Options">⚙</button></div>
+<div id="top"><button class="b" id="bMenu" aria-label="Menu">☰</button><button class="b" id="bCam">CAM</button><button class="b" id="bPark">PARK</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button><button class="b" id="bOpt" aria-label="Options">⚙</button></div>
 
 <div id="tc">
   <div id="lb"><button id="bStart">START</button><button id="bBack">◀ BACK</button><button id="bDn">▼</button><button id="bUp">▲</button></div>
@@ -30,21 +30,62 @@
   <div id="thr"><div id="thrg"></div><small>THROTTLE ↓</small></div>
 </div>
 
-<div id="intro" class="panel"><div class="card">
-  <h1>CPM: <em>Motor Edition</em></h1>
-  <p>Free roam an island town: coastal highway, beaches, a volcano, rice terraces and paddies, a river with bridges, a switchback mountain pass and an airstrip for top-speed runs. Three bikes, switch in the GARAGE: the Suzuki Raider R150 Fi (6-speed manual, wet clutch), the Honda Click 125i (CVT automatic, centrifugal clutch, Idling Stop) and the Honda CBR650R (inline four, E-Clutch). Press PARK for parking challenges; fuel up at the station next to the lot (red dot on the map).</p>
-  <div class="keys">
-    <b>W / S</b><span>Throttle / brake (hold S while stopped to walk the bike back)</span>
-    <b>A / D</b><span>Steer</span>
-    <b>E / Q</b><span>Raider: shift up / down (1-N-2-3-4-5-6), clutch must be pulled</span>
-    <b>Space</b><span>Raider: clutch (hold to pull) · Click: rear brake lever</span>
-    <b>R · C · G · P · O</b><span>Start engine (Click: hold the brake) · camera · garage · parking · options</span>
-    <b>Touch</b><span>Turn the handlebar (bottom left), drag the throttle grip, hold BRAKE. Raider: drag CLUTCH down to pull, ▲▼ to shift</span>
+<div id="menu">
+  <svg id="mBg" viewBox="0 0 1600 900" preserveAspectRatio="xMaxYMax slice" aria-hidden="true">
+    <defs>
+      <linearGradient id="gSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4f93d2"/><stop offset=".62" stop-color="#9cc6e6"/><stop offset=".7" stop-color="#c6dcea"/></linearGradient>
+      <linearGradient id="gSea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4a9cc4"/><stop offset="1" stop-color="#17557c"/></linearGradient>
+    </defs>
+    <rect width="1600" height="900" fill="url(#gSky)"/>
+    <circle cx="1180" cy="170" r="110" fill="#fff6d8" opacity=".25"/><circle cx="1180" cy="170" r="56" fill="#fff4c8"/>
+    <g class="cl" fill="#fff" opacity=".92"><path d="M300 150l40-26 52 4 30 22 42 2 18 18H262z"/><path d="M820 92l34-20 46 6 22 16 30-2 16 14H790z" opacity=".8"/></g>
+    <g class="cl c2" fill="#fff" opacity=".85"><path d="M1380 250l30-18 44 2 26 18 34 4 14 14h-176z"/><path d="M560 300l26-14 36 4 18 12 26 2 10 10H540z" opacity=".7"/></g>
+    <path d="M0 612l120-28 90 10 120-24 70 30 60 12H0z" fill="#8fb3c2"/><path d="M300 612l80-18 60 8 50 10z" fill="#7ea5b6"/>
+    <rect y="610" width="1600" height="290" fill="url(#gSea)"/>
+    <g fill="#fff" opacity=".22"><rect x="40" y="640" width="180" height="4"/><rect x="380" y="668" width="240" height="4"/><rect x="120" y="720" width="300" height="5"/><rect x="520" y="780" width="260" height="6"/><rect x="60" y="840" width="380" height="6"/><rect x="640" y="700" width="140" height="4"/></g>
+    <path d="M640 690l120-40 160-22 170 6 200-18 200 10 110 14v80H640z" fill="#e6d197"/>
+    <path d="M700 676l130-36 150-18 160 8 190-20 170 8 100 10v50l-120-6-150 12-190-6-170 10-160-4z" fill="#4c9a3c"/>
+    <path d="M820 640l90-60 80 20 70-30 90 40 30 40-160 10-170 0z" fill="#3e8833"/><path d="M910 580l80 20 70-30-40 70z" fill="#57a546"/>
+    <path d="M1060 640l160-330h70l170 330z" fill="#5d7d43"/><path d="M1220 310h70l170 330-150 0z" fill="#46663a"/><path d="M1060 640l160-330 30 330z" fill="#6f9150"/>
+    <path d="M1220 310l18-14h34l18 14z" fill="#4a3a30"/><path d="M1240 296c-10-30 20-40 10-70 20 10 30 40 14 70z" fill="#d8dde0" opacity=".55"/>
+    <g fill="none" stroke="#8fc45c" stroke-width="5" opacity=".7"><path d="M1110 560l70-4M1130 520l64-6M1150 480l56-6M1172 440l46-4"/></g>
+    <path d="M1380 640l110-90 110 40v70z" fill="#3e8833"/><path d="M1490 550l110 40v40z" fill="#336f2b"/>
+    <g class="palm"><path d="M760 690l6-90 6 0-2 90z" fill="#7a5a3a"/><path d="M769 600l-60 10 50-22zM769 600l60 12-48-26zM769 600l-40-36 30 26zM769 600l46-34-36 32zM769 600l-4-44 10 42z" fill="#2f7d32"/></g>
+    <g class="palm"><path d="M880 684l-6-110 7 0 8 110z" fill="#6e5034"/><path d="M877 576l-66 4 54-22zM877 576l64 14-52-26zM877 576l-46-40 34 28zM877 576l52-36-40 34zM877 576l2-48 8 46z" fill="#27702b"/></g>
+    <g class="palm"><path d="M1530 690l4-80 6 0-1 80z" fill="#7a5a3a"/><path d="M1537 612l-52 8 44-20zM1537 612l50 12-42-24zM1537 612l-34-32 26 24zM1537 612l40-30-32 28z" fill="#2f7d32"/></g>
+    <path d="M640 700l340-12 300 8 320-10v8l-320 12-300-8-340 10z" fill="#b8b3a6"/>
+  </svg>
+  <div id="mUI">
+    <header><h1>CPM<span>:</span> <em>Motor Edition</em></h1><p>Free-roam island riding</p></header>
+    <nav id="mMain" class="mp">
+      <button class="mb hot" id="mPlay"><span id="mPlayT">PLAY</span><i id="mPre"></i></button>
+      <button class="mb" id="mBike">BIKE<small id="mBikeN"></small></button>
+      <button class="mb" id="mOpt">OPTIONS</button>
+      <button class="mb" id="mHelp">HOW TO RIDE</button>
+    </nav>
+    <section id="mBikes" class="mp" hidden><div id="mCards"></div><button class="mb sm" data-back>◀ BACK</button></section>
+    <section id="mHelpP" class="mp" hidden>
+      <p class="mtxt">Ride an island town: coastal highway, beaches, a volcano, rice terraces, a river with bridges, a switchback mountain pass and an airstrip for top-speed runs. PARK starts parking challenges; fuel up at the station next to the lot (red dot on the map).</p>
+      <div class="keys">
+        <b>W / S</b><span>Throttle / brake (hold S while stopped to walk the bike back)</span>
+        <b>A / D</b><span>Steer</span>
+        <b>E / Q</b><span>Manual bikes: shift up / down (1-N-2-3-4-5-6). Pull the clutch first, unless E-Clutch is on</span>
+        <b>Space</b><span>Manual: clutch (hold to pull) · Scooter: rear brake lever</span>
+        <b>R · C · G · P · O</b><span>Start engine (scooter: hold the brake) · camera · garage · parking · options</span>
+        <b>Esc</b><span>Pause menu</span>
+        <b>Touch</b><span>Turn the handlebar (bottom left), drag the throttle grip, hold BRAKE. Manual: drag CLUTCH down to pull, ▲▼ to shift</span>
+      </div>
+      <button class="mb sm" data-back>◀ BACK</button>
+    </section>
+    <section id="mLoad" class="mp" hidden>
+      <b id="mStage">Downloading</b>
+      <div id="mBar"><i id="mFill"></i></div>
+      <small id="mDet"></small>
+      <p id="mTip" class="mtxt"></p>
+    </section>
+    <footer id="mFoot"></footer>
   </div>
-  <p id="apiNote"></p>
-  <button class="big" id="go">RIDE</button>
-  <button class="b" id="goOpt">OPTIONS</button>
-</div></div>
+</div>
 
 <div id="garage" class="panel" hidden><div class="card">
   <div class="row"><h2>Garage</h2><div class="chips"><button class="b" id="revB">HOLD TO REV</button><button class="b" id="bounceB">BOUNCE</button><button class="b" id="gStock">RESET TO STOCK</button><button class="b" id="gClose">Done</button></div></div><p>Changes apply instantly. Rev it to hear the exhaust, bounce it to feel the suspension.</p>
@@ -62,7 +103,7 @@
   <div class="sec">ERROR LOG</div><pre id="oLog"></pre>
 </div></div>
 
-<script type="importmap">{"imports":{"./js/audio.js":"./js/audio.js?v=8.6","./js/config.js":"./js/config.js?v=8.6","./js/controls.js":"./js/controls.js?v=8.6","./js/drivetrain.js":"./js/drivetrain.js?v=8.6","./js/garage.js":"./js/garage.js?v=8.6","./js/hud.js":"./js/hud.js?v=8.6","./js/main.js":"./js/main.js?v=8.6","./js/missions.js":"./js/missions.js?v=8.6","./js/model.js":"./js/model.js?v=8.6","./js/options.js":"./js/options.js?v=8.6","./js/perf.js":"./js/perf.js?v=8.6","./js/physics.js":"./js/physics.js?v=8.6","./js/rapier.js":"./js/rapier.js?v=8.6","./js/renderer.js":"./js/renderer.js?v=8.6","./js/spec.js":"./js/spec.js?v=8.6","./js/state.js":"./js/state.js?v=8.6","./js/util.js":"./js/util.js?v=8.6","./js/world.js":"./js/world.js?v=8.6","./js/tex.js":"./js/tex.js?v=8.6","./js/gpucull.js":"./js/gpucull.js?v=8.6","@dimforge/rapier3d-compat":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs","three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/webgpu":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/tsl":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.tsl.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
-<script type="module" src="js/main.js?v=8.6"></script>
+<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=8.7","./js/audio.js":"./js/audio.js?v=8.7","./js/config.js":"./js/config.js?v=8.7","./js/controls.js":"./js/controls.js?v=8.7","./js/drivetrain.js":"./js/drivetrain.js?v=8.7","./js/garage.js":"./js/garage.js?v=8.7","./js/hud.js":"./js/hud.js?v=8.7","./js/main.js":"./js/main.js?v=8.7","./js/missions.js":"./js/missions.js?v=8.7","./js/model.js":"./js/model.js?v=8.7","./js/options.js":"./js/options.js?v=8.7","./js/perf.js":"./js/perf.js?v=8.7","./js/physics.js":"./js/physics.js?v=8.7","./js/rapier.js":"./js/rapier.js?v=8.7","./js/renderer.js":"./js/renderer.js?v=8.7","./js/spec.js":"./js/spec.js?v=8.7","./js/state.js":"./js/state.js?v=8.7","./js/util.js":"./js/util.js?v=8.7","./js/world.js":"./js/world.js?v=8.7","./js/tex.js":"./js/tex.js?v=8.7","./js/gpucull.js":"./js/gpucull.js?v=8.7","@dimforge/rapier3d-compat":"https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.21.0/dist/rapier.mjs","three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/webgpu":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.webgpu.js","three/tsl":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.tsl.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+<script type="module" src="js/menu.js?v=8.7"></script>
 </body>
 </html>

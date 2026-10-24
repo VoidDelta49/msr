@@ -24,7 +24,8 @@ const pan = v => { if (!AC.createStereoPanner) return node('gain', 0, 0, 1); con
 export function initAudio() {
   if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
   try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { } // iOS: play with the silent switch on
-  try { AC = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); } catch (e) { return; }
+  try { AC = window.__cpmAC || new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); } catch (e) { return; } // menu.js makes it inside the PLAY tap
+  if (AC.state === 'suspended') AC.resume();
   document.addEventListener('visibilitychange', () => { if (!AC) return; document.hidden ? AC.suspend() : AC.resume(); });
   // master: volume → crash muffle → gentle limiter so engine + wind + ambience never clip phone speakers
   A.master = node('gain', 0, 0, cfg.vol ?? .8); A.mLP = node('lowpass', 20000, .5);
