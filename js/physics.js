@@ -132,7 +132,11 @@ export function step(dt) {
   // rider backing off by half of what braking / drive takes from the corner), so only hard braking, a locked front or wheelspin
   // mid-corner at full lock asks clearly more than the tyres have
   const hb = sstep(3, 8, sv), gc = Math.min(fl, rl), v2 = Math.max(vv * vv, .01);
-  let kk = Math.tan(si * md) / sp.wb * (1 - hb) + si * .9 * (.5 + .5 * gc) * mu * g / v2 * hb; const kl = mu * g * .95 * gc / v2; S.over = Math.abs(kk) / kl; kk = clamp(kk, -kl, kl); // over > 1: asking more grip than the tyres have
+  let kk = Math.tan(si * md) / sp.wb * (1 - hb) + si * .9 * (.5 + .5 * gc) * mu * g / v2 * hb; const kl = mu * g * .95 * gc / v2; S.over = Math.abs(kk) / kl; // over > 1: asking more grip than the tyres have
+  // low-side check. ABS keeps the wheels turning, so braking hard mid-corner makes the bike run wide (kk is still clamped to kl
+  // below) instead of tucking the front: only the grip drive / wheelspin takes from the rear counts against it
+  S.overLS = sp.abs ? Math.abs(kk) * v2 / (mu * g * .95 * (spun ? .5 : Math.sqrt(1 - Math.min(.85, Math.abs(fxr) / Math.max(Pr, 1)) ** 2))) : S.over;
+  kk = clamp(kk, -kl, kl);
   S.ayu = Math.min(.95, vv * vv * Math.abs(kk) / (mu * g * .95)); S.skid = lkF || spun ? Math.min(1, (v + (S.ws || 0)) / 3) : 0; // skid: tyre noise
   const tl = Math.atan(vv * vv * kk / 9.81);
   // lean is a damped roll: the bike swings toward the lean the steering / corner asks for with roll inertia (heavy bikes are slower,
