@@ -161,7 +161,7 @@ ctx.switchBikeHere = id => {
 };
 export function switchBike(id) { cfg.bike = id; setBike(); save(); say(ctx.bike.name, 1200); }
 
-function water() { if (S.wet) { S.v *= .9; return; } if (H(S.x, S.z) < SEA + .12) { S.wet = true; say('Splash! You rode into the water', 1600); blip('thud', 9); setTimeout(() => { reset(); S.wet = false; say('Towed back to the lot'); }, 1600); } }
+function water() { if (S.wet) { S.v *= .9; return; } if (H(S.x, S.z) < SEA + .12) { S.wet = true; say('Splash! You rode into the water', 1600); blip('splash'); blip('thud', 3); setTimeout(() => { reset(); S.wet = false; say('Towed back to the lot'); }, 1600); } }
 
 /* ---------- physics ---------- */
 // Rapier at a fixed 120 Hz (3 bike-solver substeps per tick), drawn interpolated between the last two ticks.

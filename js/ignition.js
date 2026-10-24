@@ -27,13 +27,13 @@ export function startBlock() {
 }
 
 export function keySwitch() {
-  blip('click');
+  blip('key');
   if (S.key) { S.key = false; S.cranking = false; S.cr = 0; if (S.running) halt(); S.issOff = false; say('Ignition OFF', 900); return; }
   S.key = true; S.keyT = 0; S.tip = false; if (!ctx.spec.carb) blip('pump'); say('Ignition ON', 900);
 }
 
 export function killSwitch() {
-  S.kill = !S.kill; blip('click'); if (S.kill && S.running) halt();
+  S.kill = !S.kill; blip('switch'); if (S.kill && S.running) halt();
   say(S.kill ? 'Kill switch: STOP' : 'Kill switch: RUN', 900);
 }
 

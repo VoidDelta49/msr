@@ -72,6 +72,7 @@ export function step(dt) {
   // a wheel that is in the air (wheelie / stoppie) can't lock and only passes what little load it has
   const lkF = rolling && !sp.abs && !offF && (S.lkF ? Fcf > .9 * KS * Pf : Fcf > 1.05 * Pf), lkR = rolling && !sp.abs && !offR && (S.lkR ? Fcr > .9 * KS * Pr : Fcr > 1.05 * Pr);
   S.lkF = lkF; S.lkR = lkR;
+  S.absA = sp.abs && rolling && S.brake > .1 && (Fcf > .97 * Pf || Fcr > .97 * Pr) ? 1 : 0; // ABS is modulating a wheel (audio.js: lever pulsing)
   const Fbf = lkF ? KS * Pf : rolling && (sp.abs || offF) ? Math.min(Fcf, .97 * Pf) : Fcf, Fbr = lkR ? KS * Pr : rolling && (sp.abs || offR) ? Math.min(Fcr, .97 * Pr) : Fcr, Fb = Fbf + Fbr;
   const Fg = -m * 9.81 * Math.sin(Math.atan((S.hF - S.hR) / sp.wb));
   NF.sp = sp; NF.Fg = Fg; NF.Fb = Fb;
