@@ -33,7 +33,9 @@ Click 125i figures are Honda's published specs. Honda doesn't publish the CVT ra
 - **Variator:** the rollers push the drive pulley closed with about m·ω². The center spring and torque cam push back, harder as the belt climbs and harder under load. The ratio moves until those balance, so at full throttle the engine holds roughly 6,700–7,200 rpm while speed rises. Lighter rollers raise that rpm, and a stiffer center spring raises it further.
 - **Idling Stop:** the engine shuts off after 3 s stopped at idle and restarts when you open the throttle.
 
-## Quests (Build 9.4)
+## Quests (Build 9.5)
+
+The hub layout is seeded by the date (Philippine day, UTC+8): everyone gets the same hubs, types and bike locks on the same day, and it all reshuffles at midnight (reload to pick it up).
 
 Quest hubs are coloured beacons in the world and pins on the minimap (pins in view, plus the three nearest at its rim). The parking hub stays in the lot (the only place with bays); 14 delivery hubs (parcel or food, rolled at random each load) sit on random roads all over the island, at least 140 m apart, three of them in town. Ride into one and hold still for a moment to take the job; the pin then becomes the drop-off. ✕ in the panel cancels, and after a job you have to leave the hub before it can trigger again. A finished or failed delivery hub moves somewhere else with a new type; a cancelled one stays.
 

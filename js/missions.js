@@ -1,5 +1,5 @@
 // Quests: parking challenges, parcel delivery, food delivery, plus refuelling at the gas station.
-// Quest hubs (a coloured beacon in the world and a pin on the minimap) are scattered over the island's roads at random; ride into one and hold
+// Quest hubs (changing every day; a coloured beacon in the world and a pin on the minimap) are scattered over the island's roads at random; ride into one and hold
 // still to take the job. Some delivery hubs need a specific bike (red outline on the map): you are switched to it on the spot, harder time limit.
 // A finished or failed hub moves somewhere else. The parking hub stays in the lot (the only place with bays).
 //   parking: park in the green bay.
@@ -58,12 +58,16 @@ function crate(w, h, c, stripe, lid) {
 }
 const ITEM = { parcel: crate(.34, .26, 0xc9965a, 0xe8d9b0), food: crate(.36, .32, 0xff5fa2, 0xffffff, 0xffc2dc) };
 
-let ready = false, roadP = null;
+// the layout is seeded by the date (Philippine day, UTC+8): everyone gets the same hubs on the same day and they change at midnight.
+// A moved hub is seeded by day + slot + how often it moved, so it stays deterministic per player.
+const DAY = Math.floor((Date.now() + 8 * 36e5) / 864e5);
+const mul = a => () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+let rng = mul(DAY * 2654435761), ready = false, roadP = null;
 const bikeName = id => (ctx.bikes[id] && ctx.bikes[id].name) || id, label = h => TYPE[h.id].name + (h.bike ? ' · ' + bikeName(h.bike) + ' only' : '');
 function place(h, town) { // a random road spot, away from the other hubs
   roadP = roadP || ROADS.flatMap(r => r.kind === 'strip' || !r.s ? [] : r.s.filter((_, i) => i % 2 === 0));
   for (let k = 0; k < 300; k++) {
-    const p = roadP[(Math.random() * roadP.length) | 0];
+    const p = roadP[(rng() * roadP.length) | 0];
     if (town && !(Math.abs(p.x) < 200 && Math.abs(p.z) < 100)) continue;
     if (HUBS.some(o => o !== h && o.placed !== false && Math.hypot(o.x - p.x, o.z - p.z) < SEP)) continue;
     h.x = p.x; h.z = p.z; h.y = p.h; h.placed = true; return;
@@ -71,7 +75,7 @@ function place(h, town) { // a random road spot, away from the other hubs
 }
 function setup(h, town) { // roll position, job type and bike requirement
   const ids = Object.keys(ctx.bikes); h.placed = false; place(h, town); if (!h.placed) place(h, false);
-  h.id = Math.random() < .5 ? 'parcel' : 'food'; h.bike = Math.random() < BIKE_P && ids.length > 1 ? ids[(Math.random() * ids.length) | 0] : null;
+  h.id = rng() < .5 ? 'parcel' : 'food'; h.bike = rng() < BIKE_P && ids.length > 1 ? ids[(rng() * ids.length) | 0] : null;
   const g = h.b, t = TYPE[h.id]; Object.assign(h, t); g.position.set(h.x, h.y, h.z); g.children[0].material = BM[h.id].ring; g.children[1].material = BM[h.id].beam; g.children[1].scale.y = h.bike ? 2 : 1; g.children[2].visible = !!h.bike;
 }
 function init() { // needs road samples / ground height, so not at import time
@@ -137,7 +141,7 @@ function endQuest() {
   if (q.item && q.phase === 'on') { dropItem(q.item); say('Job cancelled'); }
   if (q.item && q.phase === 'done') dropItem(q.item);
   marker.visible = arrow.visible = destB.visible = false; pnl.hidden = true; MI.q = null; MI.arm = false;
-  if (q.hub !== HUBS[0] && q.phase !== 'on') setup(q.hub, false); // a finished job's hub moves elsewhere (a cancelled one stays)
+  if (q.hub !== HUBS[0] && q.phase !== 'on') { rng = mul(DAY * 2654435761 + HUBS.indexOf(q.hub) * 40503 + (q.hub.n = (q.hub.n | 0) + 1) * 7919); setup(q.hub, false); } // a finished job's hub moves elsewhere (a cancelled one stays)
   pins(null);
 }
 function fail(msg, sink) {
