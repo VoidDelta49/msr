@@ -19,6 +19,7 @@ const changed = () => ctx.onNet && ctx.onNet();
 export function join(room, name, url) {
   leave(true); want = { room: room.toUpperCase(), name, url: (url || MP_URL).trim() }; NET.err = ''; retry = 0;
   if (!want.url) { NET.err = 'No server address set.'; want = null; changed(); return; }
+  if (navigator.onLine === false) { NET.err = "You're offline: multiplayer needs a connection."; want = null; changed(); return; }
   connect();
 }
 export function leave(quiet) {
@@ -37,8 +38,8 @@ function connect() {
   w.onclose = e => {
     if (ws !== w) return; ws = null; const was = NET.st === 'on'; clearPeers();
     if (e.code >= 4000 && e.code <= 4003) want = null; // version / room full / flood / wrong page: the err message says why
-    if (want && retry < 6) { NET.st = 'retry'; retryTo = setTimeout(() => want && connect(), Math.min(10, 1 + retry++ * 2) * 1000); if (was) say('Connection lost, reconnecting…', 2500); }
-    else { if (want && !NET.err) NET.err = "Can't reach the server."; want = null; NET.st = 'off'; }
+    if (want && retry < 6 && navigator.onLine !== false) { NET.st = 'retry'; retryTo = setTimeout(() => want && connect(), Math.min(10, 1 + retry++ * 2) * 1000); if (was) say('Connection lost, reconnecting…', 2500); }
+    else { if (want && !NET.err) NET.err = navigator.onLine === false ? "You're offline." : "Can't reach the server."; want = null; NET.st = 'off'; }
     changed();
   };
 }

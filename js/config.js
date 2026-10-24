@@ -1,4 +1,4 @@
-export const BUILD = '9.8'; // shown in Options, so a cached old version is easy to spot
+export const BUILD = '9.9'; // shown in Options, so a cached old version is easy to spot
 // Settings: global options + one settings block per bike, stored in localStorage 'cpmme'
 export const GLOBAL_DEF = { bike: 'raider150', sound: true, amb: true, vol: .8, forceGL: false, showFps: true, showApi: true, sens: 10, tough: false, gfx: 'med', autoRes: true, fxaa: true, n64: true, retro: 0, gpuCull: true, fpsCap: 60, tod: 'live', name: '', room: '', mpUrl: '' };
 // multiplayer relay (server/worker.js deployed to Cloudflare); Options > MULTIPLAYER can override it (cfg.mpUrl)

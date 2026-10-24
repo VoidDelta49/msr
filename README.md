@@ -131,9 +131,9 @@ WebGPU has not been verified on real hardware yet. Check the renderer readout on
 
 - Cache busting: `index.html` maps every `./js/*.js` module to `?v=<build>` through the importmap, and the data files use `?v=<BUILD>`. **When you ship a change, bump `BUILD` in `js/config.js` and the `?v=` values in `index.html` together** (a phone can otherwise run a new page with old scripts).
 
-- Three.js is loaded from jsDelivr via an importmap, so an internet connection is needed.
+- Offline: three.js and Rapier are vendored in `vendor/` (importmap points there, no CDN). `sw.js` (registered as `sw.js?v=BUILD` once the downloads finish; off on localhost unless `?sw`) precaches the whole single-player game, building its file list from `index.html` and the modules, so **bumping `BUILD` is all a release needs**. After one online visit the game runs with no connection (the menu footer says "works offline"); the page is fetched fresh when online (4 s timeout), from the cache when not. Multiplayer needs a connection and says so when offline.
 - Settings are stored in `localStorage` key `cpmme`: global options plus a `bikes` block per bike. Older single-bike saves are migrated into `bikes.raider150` automatically. The WebGL fallback flag is in `sessionStorage` key `cpmGL`.
-- Physics runs on [Rapier3D](https://rapier.rs) (`@dimforge/rapier3d-compat` 0.21.0 from jsDelivr, loaded before the start screen; if it can't load, the start screen says so).
+- Physics runs on [Rapier3D](https://rapier.rs) (`@dimforge/rapier3d-compat` 0.21.0, vendored, loaded before the start screen; if it can't load, the start screen says so).
   - The bike is a dynamic Rapier body: Rapier integrates heave, pitch, gravity, airtime and wall contacts. The bike solver in `physics.js` (engine, clutch/CVT, speed along the ground, steering and lean) runs 3 substeps inside each fixed 120 Hz tick (max 4 ticks per frame, drawing is interpolated).
   - Suspension: ground probes at both axles against the drawn surface, spring-dampers (with preload), inelastic bump stops at full travel.
   - Walls take away the speed going into them; a glancing hit deflects the bike along the wall, with scraping friction.

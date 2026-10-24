@@ -73,6 +73,7 @@ ctx.onNet = mpUI;
 mpIn.room.oninput = () => { mpIn.room.value = mpIn.room.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); };
 function mpGo(room) {
   const name = mpIn.name.value.trim().slice(0, 16) || 'Rider', url = mpIn.url.value.trim() || MP_URL;
+  if (navigator.onLine === false) { $('mpSt').textContent = "You're offline: multiplayer needs a connection"; return; }
   if (!/^[A-Z0-9]{6,8}$/.test(room)) { $('mpSt').textContent = 'Room codes are 6-8 letters or numbers'; return; }
   if (!/^(https?|wss?):\/\//.test(url)) { $('mpSt').textContent = MP_URL ? 'Server address must start with https://' : 'Set the server address first (Server, below)'; $('mpUrl').parentElement.open = true; return; }
   Object.assign(cfg, { name, room, mpUrl: mpIn.url.value.trim() === MP_URL ? '' : mpIn.url.value.trim() }); save(); mpIn.room.value = room;
@@ -121,4 +122,12 @@ addEventListener('keydown', e => {
 ctx.MENU = true; document.body.classList.add('menu');
 // start downloading once the menu is up (doesn't block anything: nothing is parsed until PLAY)
 if (document.readyState === 'complete') setTimeout(bg, 100); else addEventListener('load', () => setTimeout(bg, 100));
-function bg() { prefetch().catch(e => console.warn('prefetch: ' + e.message)); }
+function bg() { prefetch().catch(e => console.warn('prefetch: ' + e.message)).finally(offline); }
+// offline support (sw.js): registered once the downloads are done so the two don't compete; off on localhost unless ?sw
+function offline() {
+  if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol) || (/^(localhost|127\.)/.test(location.hostname) && !/[?&]sw\b/.test(location.search))) return;
+  const ok = () => { $('mFoot').textContent = 'Build ' + BUILD + ' · works offline'; };
+  navigator.serviceWorker.addEventListener('message', e => { if (e.data === 'cpm-offline-ready') ok(); });
+  if (navigator.serviceWorker.controller) ok();
+  navigator.serviceWorker.register('sw.js?v=' + BUILD).catch(e => console.warn('sw: ' + e.message));
+}

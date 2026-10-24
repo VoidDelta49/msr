@@ -1,6 +1,6 @@
 # Third-party software and credits
 
-CPM: Motor Edition's own code is under the MIT License (see `LICENSE`). It also uses the libraries below. They are loaded at runtime from the jsDelivr CDN (see the importmap in `index.html`); their code is **not** copied into this repository and is not modified.
+CPM: Motor Edition's own code is under the MIT License (see `LICENSE`). It also uses the libraries below. Unmodified copies are included in `vendor/` (see the importmap in `index.html`) so the game works offline; each folder carries the library's license file.
 
 | Library | Version | License | Source |
 |---|---|---|---|
@@ -15,7 +15,7 @@ Copyright © three.js authors. Released under the MIT License: https://github.co
 
 Copyright © Dimforge. Released under the Apache License, Version 2.0: https://www.apache.org/licenses/LICENSE-2.0
 
-If you ever bundle or self-host Rapier (instead of loading it from the CDN), include a copy of the Apache-2.0 license text and Rapier's `NOTICE` file, if it has one, with the files you distribute, and keep any copyright notices in the files.
+`vendor/rapier/LICENSE` is the Apache-2.0 text; the npm package ships no `NOTICE` file. Copyright notices inside the files are kept.
 
 ## Not third-party
 
