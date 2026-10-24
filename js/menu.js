@@ -8,7 +8,7 @@ import { O, openOpts } from './options.js';
 
 const IM = JSON.parse(document.querySelector('script[type=importmap]').textContent).imports;
 // heavy CDN files with their decompressed sizes (the progress bar counts decompressed stream bytes; versions are pinned)
-const LIBS = [[IM['three/webgpu'], 2284850], [IM['three/webgpu'].replace('three.webgpu.js', 'three.core.js'), 1458113], [IM['three/tsl'], 36854], [IM['@dimforge/rapier3d-compat'], 230847], [IM['@dimforge/rapier3d-compat'].replace('.mjs', '.wasm'), 3082103],
+const LIBS = [[IM['three/webgpu'], 2284850], [IM['three/webgpu'].replace('three.webgpu.js', 'three.core.js'), 1458113], [IM['three/tsl'], 36854], [IM['@dimforge/rapier3d-compat'], 230867], [IM['@dimforge/rapier3d-compat'].replace('.mjs', '.wasm'), 3082103],
   [IM['three/addons/'] + 'utils/BufferGeometryUtils.js', 37712], ...(cfg.fxaa ? [[IM['three/addons/'] + 'tsl/display/FXAANode.js', 9450]] : [])];
 // our own modules too (small, not counted in the bar); fetched into the HTTP cache so import() doesn't wait on them
 const OWN = Object.entries(IM).filter(([k]) => k.startsWith('./js/') && !/menu|config|util|state|options/.test(k)).map(([, u]) => [u, 0]);
@@ -36,7 +36,7 @@ $('menu').onclick = e => { if (e.target.closest('[data-back]')) show('mMain'); }
 $('mHelp').onclick = () => show('mHelpP');
 $('mOpt').onclick = () => openOpts();
 $('mFoot').textContent = 'Build ' + BUILD;
-const TIPS = ['Manual bikes: pull the clutch before you shift, and ease it out to launch.', 'The scooter has Idling Stop: hold the brake and press START to wake it.', 'Low on fuel? The station is next to the parking lot, the red dot on the minimap.', 'Graphics too heavy? Options > Quality > Low, or a Retro res cap.', 'Tough Biker mode (Options) makes you crash-proof.', 'The airstrip in the north-west is 910 m of flat concrete for top-speed runs.', 'The GARAGE changes real specs: exhaust, ECU, tyres, suspension, carbon parts.', 'Quests are scattered around the island: ride into a beacon and hold still. Red-outlined ones need a specific bike and switch you to it.'];
+const TIPS = ['Manual bikes: pull the clutch before you shift, and ease it out to launch.', 'The scooter has Idling Stop: hold the brake and press START to wake it.', 'Low on fuel? The station is next to the parking lot, the red dot on the minimap.', 'Graphics too heavy? Options > Quality > Low, or a Retro res cap.', 'Tough Biker mode (Options) makes you crash-proof.', 'The airstrip in the north-west is 910 m of flat concrete for top-speed runs.', 'The GARAGE is a showroom: swap parts, watch the dyno and stats change, then save builds or export them to a file.', 'Quests are scattered around the island: ride into a beacon and hold still. Red-outlined ones need a specific bike and switch you to it.'];
 
 /* ---------- bikes (just JSON, no 3D needed) ---------- */
 let BIKES = [];

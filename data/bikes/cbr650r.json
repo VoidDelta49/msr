@@ -234,6 +234,72 @@
         }
       ]
     },
+    "intake": {
+      "l": "Air filter",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Sport foam (+3%)", "pow": 1.03 },
+        { "n": "Cold-air intake (+5%)", "pow": 1.05 }
+      ]
+    },
+    "flywheel": {
+      "l": "Flywheel",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Lightened (quicker revs)", "ie": 0.8 },
+        { "n": "Heavy (smoother)", "ie": 1.3 }
+      ]
+    },
+    "brakes": {
+      "l": "Brake pads",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Sintered", "brake": 1.08 },
+        { "n": "Race compound", "brake": 1.17 }
+      ]
+    },
+    "wheelcol": {
+      "l": "Wheel colour",
+      "o": [
+        { "n": "Match paint" },
+        { "n": "Black", "wc": "#16171a" },
+        { "n": "Gold", "wc": "#c9a24a" },
+        { "n": "Silver", "wc": "#b9bdc2" },
+        { "n": "Red", "wc": "#c21d1d" },
+        { "n": "Blue", "wc": "#1f4fbf" },
+        { "n": "White", "wc": "#e9e9e4" }
+      ]
+    },
+    "rimstripe": {
+      "l": "Rim stripe",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Gold", "rim": "#c9a24a" },
+        { "n": "Red", "rim": "#d42a2a" },
+        { "n": "White", "rim": "#f1f1ec" },
+        { "n": "Cyan", "rim": "#16b3cc" }
+      ]
+    },
+    "cover": {
+      "l": "Engine cover",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Black", "ec": "#1b1c1f" },
+        { "n": "Gold", "ec": "#c9a24a" },
+        { "n": "Red", "ec": "#a8161c" },
+        { "n": "Blue", "ec": "#1f44d8" }
+      ]
+    },
+    "decal": {
+      "l": "Decals",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Black", "hd": "#16171a" },
+        { "n": "Gold", "hd": "#c9a24a" },
+        { "n": "Yellow", "hd": "#e6d21a" },
+        { "n": "Red", "hd": "#c21d1d" }
+      ]
+    },
     "cfbody": {
       "l": "Body panels",
       "g": "Carbon fiber",
@@ -384,6 +450,13 @@
     "autoClutch": true,
     "yf": 0,
     "yr": 0,
+    "intake": 0,
+    "flywheel": 0,
+    "brakes": 0,
+    "wheelcol": 0,
+    "rimstripe": 0,
+    "cover": 0,
+    "decal": 0,
     "cfbody": 0,
     "cffender": 0,
     "cfwheel": 0,

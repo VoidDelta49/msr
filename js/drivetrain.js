@@ -48,8 +48,9 @@ const manual = {
     }
   },
   canStart(s, S, b) { if (S.gear && !b.autoClutch && S.cl < .7) return 'Pull the clutch or shift to N'; },
+  top(s) { return Math.min(kph(s, s.prim * s.g[s.nG] * s.final, s.red), topV(s)); },
   stats(s, b) {
-    const f = s.final, top = Math.min(kph(s, s.prim * s.g[s.nG] * f, s.red), topV(s));
+    const f = s.final, top = this.top(s);
     return `Final drive ${f.toFixed(2)} · redline ${s.red} rpm<br>1st tops out ${kph(s, s.prim * s.g[1] * f, s.red).toFixed(0)} km/h · ${s.nG}th gearing ${kph(s, s.prim * s.g[s.nG] * f, s.red).toFixed(0)} km/h<br>Est. top speed ≈ ${top.toFixed(0)} km/h`;
   },
 };
@@ -89,8 +90,9 @@ const cvt = {
   },
   shift() { },
   canStart(s, S) { if (S.brake < .3) return 'Hold the brake to start'; },
+  top(s) { return Math.min(kph(s, s.hi * s.final, s.red), topV(s)); },
   stats(s) {
-    const top = Math.min(kph(s, s.hi * s.final, s.red), topV(s));
+    const top = this.top(s);
     return `Ratio ${s.lo.toFixed(2)}–${s.hi.toFixed(2)} × final ${s.final.toFixed(2)} · redline ${s.red} rpm<br>Clutch bites ${s.e0} rpm, locks ${s.e1} rpm<br>Full-throttle shift rpm ≈ ${Math.round(this.eqRpm(s, 0, 1) / 50) * 50}–${Math.round(this.eqRpm(s, 1, 1) / 50) * 50}<br>Top ratio reaches ${kph(s, s.hi * s.final, s.red).toFixed(0)} km/h at redline · est. top speed ≈ ${top.toFixed(0)} km/h`;
   },
 };

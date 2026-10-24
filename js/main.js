@@ -16,7 +16,8 @@ import { say, drawCluster, drawMini, updPerf, setFps, setPhys, setGfx, setJank }
 import { RP, TICK, initRapier, tickR, syncBody, crashVisual, bounce } from './rapier.js';
 import { actions, input, ptr, TC, WMAX } from './controls.js';
 import { missions, animMarker } from './missions.js';
-import { G as GARAGE, buildGarage } from './garage.js';
+import { G as GARAGE, buildGarage, garageFrame } from './garage.js';
+import { initStudio, enter as studioIn, leave as studioOut, studioFrame } from './studio.js';
 import { O, openOpts, closeOpts } from './options.js';
 import { cullUpdate, autoRes, resScale, jankStart, jankEnd, jankText } from './perf.js';
 import { gpuCull } from './gpucull.js';
@@ -75,7 +76,7 @@ stage('Starting physics', .8);
 if (!await initRapier()) throw new Error("Couldn't load the physics engine (" + RP.err + '). Check your connection and try again.');
 stage('Preparing the bike', .85); setBike(); save();
 // build every shader now, behind the title screen (see renderer.js warm())
-stage('Compiling shaders', .9); gpuCull(camera); ctx.warmMs = await warm(); stage('Ready', 1);
+stage('Compiling shaders', .9); initStudio(); gpuCull(camera); ctx.warmMs = await warm(); stage('Ready', 1);
 
 function startEngine() {
   // garage stand only (REV button, debug hook): no key / starter ritual there
@@ -113,9 +114,9 @@ function visuals(dt, now) {
   const dy = B.rearH.position.y - G.pivotY, dz = G.rearZ - G.pivotZ; B.swing.position.set(G.swingX, G.pivotY + dy / 2, G.pivotZ + dz / 2); B.swing.rotation.x = -Math.atan2(dy, dz); B.swing.scale.z = Math.hypot(dy, dz);
   B.frontW.rotation.x = B.rearW.rotation.x = -S.wA; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3;
   B.cluL.rotation.y = (sp.type === 'cvt' ? S.brake : Math.max(S.cl, ctx.bcfg.autoClutch && S.c < .5 ? 1 : 0)) * .3;
-  const av = Math.abs(S.v), fov = (cfg.fov ?? 72) + Math.min(14, av * .35); if (Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  const av = Math.abs(S.v), fov = (cfg.fov ?? 72) + Math.min(14, av * .35); if (!ctx.GAR && Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); }
   if (LK.id === null && av > 1.5) { const k = Math.exp(-dt * 3); LK.y *= k; LK.p *= k; if (Math.abs(LK.y) < .002) LK.y = 0; if (Math.abs(LK.p) < .002) LK.p = 0; }
-  if (ctx.GAR) { const a = now * .35, R = 3.1; tmp.set(S.x + Math.cos(a) * R, 1.25 + S.zH, S.z + Math.sin(a) * R); camera.position.copy(tmp); camera.lookAt(S.x + Math.sin(a) * 1.3, .65 + S.zH, S.z - Math.cos(a) * 1.3); }
+  if (ctx.GAR) studioFrame(dt, now);
   else if (ctx.camMode === 0) {
     B.cam.rotation.set(-S.th * .4, clamp(S.yaw * .12, -.25, .25), S.lean * .35); camera.rotation.set(-.3 + LK.p, LK.y, 0);
     const vib = S.running ? .0007 * (.4 + S.rpm / 9000) : 0, ph = now * S.rpm / 60 * 2 * Math.PI; camera.position.set(Math.sin(ph * .5) * vib, Math.sin(ph) * vib, 0);
@@ -123,7 +124,7 @@ function visuals(dt, now) {
     const bx = Math.sin(S.psi), bz = Math.cos(S.psi), ox = bx * Math.cos(LK.y) + bz * Math.sin(LK.y), oz = bz * Math.cos(LK.y) - bx * Math.sin(LK.y); tmp.set(S.x + ox * 4.2, 1.9 + S.zH + LK.p * 4, S.z + oz * 4.2); camera.position.lerp(tmp, 1 - Math.exp(-dt * 5)); camera.position.y = Math.max(camera.position.y, H(camera.position.x, camera.position.z) + .6);
     camera.lookAt(S.x - bx * 2, 1 + S.zH, S.z - bz * 2);
   }
-  dayNight();
+  if (!ctx.GAR) dayNight(); // the studio has its own lights
   dom('wg', 'rotate(' + (S.steer * WMAX() * 57.3).toFixed(1) + ')', (e, v) => e.setAttribute('transform', v)); dom('cluFill', (S.cl * 100).toFixed(0) + '%', (e, v) => e.style.height = v); dom('bKey', !!S.key, (e, v) => e.classList.toggle('on', v)); dom('bKill', !!S.kill, (e, v) => e.classList.toggle('on', v)); dom('thrg', (S.thr * 36).toFixed(1) + 'px', (e, v) => e.style.backgroundPositionY = v);
   animMarker(now);
 }
@@ -131,8 +132,8 @@ function visuals(dt, now) {
 /* ---------- garage ---------- */
 GARAGE.onChange = recompute;
 GARAGE.onBike = () => { setBike(); say(ctx.bike.name, 1200); };
-function openGarage() { if (ctx.GAR || ctx.OPT) return; buildGarage(); $('garage').hidden = false; ctx.GAR = true; document.body.classList.add('gar'); scene.add(camera); B.rider.forEach(m => m.visible = false); }
-$('gClose').onclick = () => { $('garage').hidden = true; ctx.GAR = false; TC.rev = 0; document.body.classList.remove('gar'); ctx.camMode ^= 1; toggleCam(); syncBody(); };
+function openGarage() { if (ctx.GAR || ctx.OPT) return; buildGarage(); $('garage').hidden = false; ctx.GAR = true; document.body.classList.add('gar'); scene.add(camera); B.rider.forEach(m => m.visible = false); studioIn(); }
+$('gClose').onclick = () => { studioOut(); $('garage').hidden = true; ctx.GAR = false; TC.rev = 0; document.body.classList.remove('gar'); ctx.camMode ^= 1; toggleCam(); syncBody(); };
 ptr($('revB'), () => { TC.rev = 1; $('revB').classList.add('on'); }, null, () => { TC.rev = 0; $('revB').classList.remove('on'); });
 $('bounceB').onclick = () => { if (RP.ok) bounce(); };
 
@@ -189,7 +190,7 @@ function loop(t) {
   jankStart(t); const J0 = performance.now(); let hudUp = false; const dt = Math.min(.05, (t - last) / 1000); last = t; fN++;
   if (t - fT > 1000) { const fps = Math.round(fN * 1000 / (t - fT)); setFps(fps); setPhys('Physics ' + pms.toFixed(2) + ' ms'); autoRes(fps, !ctx.paused && !ctx.GAR && !ctx.OPT); setGfx(renderer.info.render.drawCalls, resScale()); setJank(jankText()); updPerf(API); fN = 0; fT = t; }
   raceTick(dt);
-  if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); if (RP.ok) tickRapier(dt); }
+  if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); if (RP.ok) tickRapier(dt); garageFrame(); }
   else if (!ctx.paused && !ctx.OPT) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); }
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if (S.crashed && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }

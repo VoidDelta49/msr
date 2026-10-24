@@ -19,6 +19,7 @@ export function computeSpec(bike, b) {
     const o = p.o[b[k]] || p.o[0];
     for (const [kk, v] of Object.entries(o)) { if (kk === 'n') continue; if (MUL.has(kk)) s[kk] *= v; else if (ADD.has(kk)) s[kk] += v; else s[kk] = v; }
   }
+  if (b.cc) s.c = b.cc; if (b.cw) s.wc = b.cw; // custom body / wheel colours from the garage's pickers
   s.m0 = s.m; s.m += s.dm;
   s.kf = b.kf * 1000; s.kr = b.kr * 1000; s.damp = b.damp / 100;
   // preload: spring pre-compressed by pf/pr metres, so the bike sits that much higher (CG too) with more bump travel left

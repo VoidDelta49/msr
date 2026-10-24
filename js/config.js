@@ -1,6 +1,6 @@
-export const BUILD = '10.6'; // shown in Options, so a cached old version is easy to spot
+export const BUILD = '11.1'; // shown in Options, so a cached old version is easy to spot
 // Settings: global options + one settings block per bike, stored in localStorage 'cpmme'
-export const GLOBAL_DEF = { bike: 'raider150', sound: true, amb: true, vol: .8, forceGL: false, showFps: true, showApi: true, sens: 10, fov: 72, ui: 10, lefty: false, tough: false, gfx: 'med', autoRes: true, fxaa: true, n64: true, retro: 0, gpuCull: true, fpsCap: 60, tod: 'live', name: '', room: '', mpUrl: '' };
+export const GLOBAL_DEF = { bike: 'raider150', sound: true, amb: true, vol: .8, forceGL: false, showFps: true, showApi: true, sens: 10, fov: 72, ui: 10, lefty: false, tough: false, gfx: 'med', autoRes: true, fxaa: true, n64: true, retro: 0, gpuCull: true, fpsCap: 60, tod: 'live', name: '', room: '', mpUrl: '', builds: [] };
 // multiplayer relay (server/worker.js deployed to Cloudflare); Options > MULTIPLAYER can override it (cfg.mpUrl)
 export const MP_URL = 'https://cpm-relay.msr49.workers.dev';
 export const cfg = { ...GLOBAL_DEF, bikes: {} };

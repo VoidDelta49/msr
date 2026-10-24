@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no,interactive-widget=resizes-visual">
 <title>CPM Motor Edition</title>
-<link rel="stylesheet" href="css/style.css?v=10.6">
+<link rel="stylesheet" href="css/style.css?v=11.1">
 <!-- start the heavy downloads at HTML parse, not after menu.js runs (same URLs as the importmap, so menu.js's fetches and import() reuse them) -->
 <link rel="modulepreload" href="./vendor/three/build/three.webgpu.js">
 <link rel="modulepreload" href="./vendor/three/build/three.core.js">
@@ -106,10 +106,13 @@
   </div>
 </div>
 
-<div id="garage" class="panel" hidden><div class="card">
-  <div class="row"><h2>Garage</h2><div class="chips"><button class="b" id="revB">HOLD TO REV</button><button class="b" id="bounceB">BOUNCE</button><button class="b" id="gStock">RESET TO STOCK</button><button class="b" id="gClose">Done</button></div></div><p>Changes apply instantly. Rev it to hear the exhaust, bounce it to feel the suspension.</p>
-  <div id="gbody"></div>
-</div></div>
+<div id="garage" hidden>
+  <div id="gTop"><div class="gcard gbrand"><h2>GARAGE</h2><small id="gName"></small></div><div id="gBikes" class="chips gcard"></div><button class="b" id="gClose">DONE</button></div>
+  <div id="gStats" class="gcard"><div class="statbox"></div></div>
+  <aside id="gSide" class="gcard"><nav id="gTabs"></nav><div id="gBody"></div></aside>
+  <div id="gBar"><button class="b" id="revB">HOLD TO REV</button><button class="b" id="bounceB">BOUNCE</button><span id="gRpm" class="gcard"></span><button class="b" id="gStock">RESET TO STOCK</button></div>
+  <input type="file" id="gFile" accept=".json,application/json" hidden>
+</div>
 
 <div id="opts" class="panel" hidden><div class="card">
   <div class="row"><h2>Options</h2><button class="b" id="oClose">Done</button></div>
@@ -122,7 +125,7 @@
   <div class="sec">ERROR LOG</div><pre id="oLog"></pre>
 </div></div>
 
-<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=10.6","./js/audio.js":"./js/audio.js?v=10.6","./js/config.js":"./js/config.js?v=10.6","./js/controls.js":"./js/controls.js?v=10.6","./js/drivetrain.js":"./js/drivetrain.js?v=10.6","./js/garage.js":"./js/garage.js?v=10.6","./js/hud.js":"./js/hud.js?v=10.6","./js/main.js":"./js/main.js?v=10.6","./js/missions.js":"./js/missions.js?v=10.6","./js/model.js":"./js/model.js?v=10.6","./js/options.js":"./js/options.js?v=10.6","./js/perf.js":"./js/perf.js?v=10.6","./js/physics.js":"./js/physics.js?v=10.6","./js/rapier.js":"./js/rapier.js?v=10.6","./js/renderer.js":"./js/renderer.js?v=10.6","./js/spec.js":"./js/spec.js?v=10.6","./js/state.js":"./js/state.js?v=10.6","./js/util.js":"./js/util.js?v=10.6","./js/world.js":"./js/world.js?v=10.6","./js/tex.js":"./js/tex.js?v=10.6","./js/gpucull.js":"./js/gpucull.js?v=10.6","./js/net.js":"./js/net.js?v=10.6","./js/race.js":"./js/race.js?v=10.6","./js/ignition.js":"./js/ignition.js?v=10.6","./js/daynight.js":"./js/daynight.js?v=10.6","./js/lights.js":"./js/lights.js?v=10.6","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
-<script type="module" src="js/menu.js?v=10.6"></script>
+<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.1","./js/audio.js":"./js/audio.js?v=11.1","./js/config.js":"./js/config.js?v=11.1","./js/controls.js":"./js/controls.js?v=11.1","./js/drivetrain.js":"./js/drivetrain.js?v=11.1","./js/garage.js":"./js/garage.js?v=11.1","./js/studio.js":"./js/studio.js?v=11.1","./js/hud.js":"./js/hud.js?v=11.1","./js/main.js":"./js/main.js?v=11.1","./js/missions.js":"./js/missions.js?v=11.1","./js/model.js":"./js/model.js?v=11.1","./js/options.js":"./js/options.js?v=11.1","./js/perf.js":"./js/perf.js?v=11.1","./js/physics.js":"./js/physics.js?v=11.1","./js/rapier.js":"./js/rapier.js?v=11.1","./js/renderer.js":"./js/renderer.js?v=11.1","./js/spec.js":"./js/spec.js?v=11.1","./js/state.js":"./js/state.js?v=11.1","./js/util.js":"./js/util.js?v=11.1","./js/world.js":"./js/world.js?v=11.1","./js/tex.js":"./js/tex.js?v=11.1","./js/gpucull.js":"./js/gpucull.js?v=11.1","./js/net.js":"./js/net.js?v=11.1","./js/race.js":"./js/race.js?v=11.1","./js/ignition.js":"./js/ignition.js?v=11.1","./js/daynight.js":"./js/daynight.js?v=11.1","./js/lights.js":"./js/lights.js?v=11.1","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+<script type="module" src="js/menu.js?v=11.1"></script>
 </body>
 </html>
