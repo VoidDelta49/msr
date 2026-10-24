@@ -4,7 +4,8 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { PI, clamp, sstep, angd, fbm, rand } from './util.js';
 import { scene, ctex, std, aoGeo, ANISO, GPU } from './renderer.js';
-import { cfg } from './config.js';
+import { cfg, Q } from './config.js';
+import { attribute, texture, uv, vec2, vec3, float, select } from 'three/tsl';
 import { gpuInst, finishGpuInst } from './gpucull.js';
 import * as T from './tex.js';
 import { mkTex } from './tex.js';
@@ -89,11 +90,32 @@ const CHUNK=700;
 const GCULL=GPU&&cfg.gpuCull!==false;
 function inst(geo,mat,list,shadow=true,far=FAR.big){
   if(GCULL&&list.length>=8&&!mat.transparent){geo.computeBoundingBox();const b=geo.boundingBox;if(b.max.y-b.min.y>.05){gpuInst(geo,mat,list,shadow,Math.min(far,DRAW));return}}
-  const cells=new Map();
-  for(const o of list){const k=Math.floor(o.x/CHUNK)*1000+Math.floor(o.z/CHUNK);let a=cells.get(k);if(!a)cells.set(k,a=[]);a.push(o)}
-  for(const L of cells.values()){const m=new THREE.InstancedMesh(geo,mat,L.length);
-    L.forEach((o,i)=>{dummy.position.set(o.x,o.y||0,o.z);dummy.rotation.set(0,o.ry||0,0);dummy.scale.set(o.sx||1,o.sy||1,o.sz||1);dummy.updateMatrix();m.setMatrixAt(i,dummy.matrix);if(o.c!==undefined)m.setColorAt(i,new THREE.Color(o.c))});
-    m.castShadow=shadow;m.receiveShadow=true;m.computeBoundingSphere();freeze(m);scene.add(m);cullFar(m,far)}}
+  const mkI=(L,m,cs)=>{const o=new THREE.InstancedMesh(geo,m,L.length);
+    L.forEach((o2,i)=>{dummy.position.set(o2.x,o2.y||0,o2.z);dummy.rotation.set(0,o2.ry||0,0);dummy.scale.set(o2.sx||1,o2.sy||1,o2.sz||1);dummy.updateMatrix();o.setMatrixAt(i,dummy.matrix);if(cs&&o2.c!==undefined)o.setColorAt(i,new THREE.Color(o2.c))});
+    o.computeBoundingSphere();freeze(o);scene.add(o);return o};
+  const cells=(sz)=>{const M=new Map();for(const o of list){const k=Math.floor(o.x/sz)*1000+Math.floor(o.z/sz);let a=M.get(k);if(!a)M.set(k,a=[]);a.push(o)}return M.values()};
+  // Shadows (Build 8.3): a 700 m chunk's bounding sphere always touches the ±28 m shadow camera, so every caster in it
+  // was drawn into the shadow map. Casters get their own 140 m chunks on layer 1 (only the shadow camera sees it, the
+  // same trick as the old bike proxy), so the shadow pass draws only the few chunks around the bike.
+  const sh=shadow&&Q.shadow>0;
+  for(const L of cells(CHUNK)){const m=mkI(L,mat,true);m.castShadow=false;m.receiveShadow=true;cullFar(m,far)}
+  if(sh)for(const L of cells(SHCH)){const m=mkI(L,SHM,false);m.castShadow=true;m.receiveShadow=false;m.layers.set(1)}}
+const SHCH=140,SHM=new THREE.MeshBasicMaterial();
+// Two prop parts placed by the same list (palm trunk + fronds, tree trunk + crown, jeepney body + wheels, nipa hut +
+// roof) become ONE instanced type: merged geometry, and one material that keeps each part's own texture (picked per
+// vertex by 'tsel'), base colour (baked into the vertex colours), roughness and metalness. Halves those types' draws.
+// a/b = {g, m}; b's geometry must already be in a's instance space.
+function pair(a,b){
+  const pre=(o,k)=>{let g=o.g.clone();const n=g.attributes.position.count,c=new Float32Array(n*3),bc=o.m.color,vc=o.m.vertexColors&&g.attributes.color;
+    for(let i=0;i<n;i++){const f=vc?vc.getX(i):1;c[i*3]=bc.r*f;c[i*3+1]=bc.g*(vc?vc.getY(i):1);c[i*3+2]=bc.b*(vc?vc.getZ(i):1)}
+    g.setAttribute('color',new THREE.BufferAttribute(c,3));g.setAttribute('tsel',new THREE.BufferAttribute(new Float32Array(n).fill(k),1));
+    for(const a2 of Object.keys(g.attributes))if(!['position','normal','uv','color','tsel'].includes(a2))g.deleteAttribute(a2);return g};
+  let ga=pre(a,0),gb=pre(b,1);if(!ga.index||!gb.index){if(ga.index)ga=ga.toNonIndexed();if(gb.index)gb=gb.toNonIndexed()}
+  const geo=mergeGeometries([ga,gb]),t=attribute('tsel','float').greaterThan(.5),u=uv();
+  const tx=m=>m.map?texture(m.map,u.mul(vec2(m.map.repeat.x,m.map.repeat.y))).rgb:vec3(1);
+  const mat=Q.lite?new THREE.MeshLambertNodeMaterial({vertexColors:true}):new THREE.MeshStandardNodeMaterial({vertexColors:true});
+  mat.colorNode=select(t,tx(b.m),tx(a.m));if(!Q.lite){mat.roughnessNode=select(t,float(b.m.roughness),float(a.m.roughness));mat.metalnessNode=select(t,float(b.m.metalness),float(a.m.metalness))}
+  return[geo,mat]}
 function prism(w,h,len){const s=new THREE.Shape();s.moveTo(-w/2,0);s.lineTo(w/2,0);s.lineTo(0,h);s.lineTo(-w/2,0);return new THREE.ExtrudeGeometry(s,{depth:len,bevelEnabled:false}).translate(0,0,-len/2)}
 const pastel=()=>new THREE.Color().setHSL(rand(),.35+rand()*.3,.62+rand()*.18);
 const TIN=[0xa8492f,0x2f5f9a,0x3d7a4a,0xb9bcc0,0x8a2f2f,0xc96f2a];
@@ -206,26 +228,29 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   for(let i=0;i<8;i++)for(let j=0;j<2;j++){const x=100+i*5.5,z=-52+j*22;stall.push({x,y:0,z,sx:3.6,sy:1,sz:2.2,c:new THREE.Color().setHSL(rand(),.6,.55)});addOBB(x,z,1.8,1.1)}
   inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.55),vstd(0xffffff,.8),stall,true,FAR.small);
   // jeepneys + tricycles parked along streets
-  const jeep=[],jdark=[],tri=[];
+  const jeep=[],tri=[];
   const jbody=mergeGeometries([new THREE.BoxGeometry(2,1.25,4.6).translate(0,1.1,.4),new THREE.BoxGeometry(1.8,.75,1.4).translate(0,.85,-2.5),new THREE.BoxGeometry(2.15,.12,5.2).translate(0,2.05,.3),new THREE.BoxGeometry(1.6,.3,.25).translate(0,.5,-3.3)]);
   const jd=mergeGeometries([...[[-.95,-2.2],[.95,-2.2],[-.95,1.9],[.95,1.9]].map(([x,z])=>new THREE.CylinderGeometry(.38,.38,.28,12).rotateZ(PI/2).translate(x,.38,z)),new THREE.BoxGeometry(1.7,.6,.05).translate(0,1.55,-1.85)]);
-  for(const[x,z,ry]of[[3.2,-30,0],[3.2,-18,0],[-3.2,52,PI],[-50,3.2,PI/2],[-110,-3.2,-PI/2],[-3.2,-55,PI],[83.2,-20,0],[-123,3.2,PI/2]]){const c=new THREE.Color().setHSL(rand(),.85,.5);jeep.push({x,z,ry,c});jdark.push({x,z,ry});addOBB(x,z,1.05,3.4,ry)}
-  inst(aoGeo(jbody,.6,.3,2.1),vstd(0xffffff,.35,.4,tJeep),jeep,true,FAR.mid);inst(jd,std(0x111111,.8),jdark,true,FAR.mid);
+  for(const[x,z,ry]of[[3.2,-30,0],[3.2,-18,0],[-3.2,52,PI],[-50,3.2,PI/2],[-110,-3.2,-PI/2],[-3.2,-55,PI],[83.2,-20,0],[-123,3.2,PI/2]]){const c=new THREE.Color().setHSL(rand(),.85,.5);jeep.push({x,z,ry,c});addOBB(x,z,1.05,3.4,ry)}
+  inst(...pair({g:aoGeo(jbody,.6,.3,2.1),m:vstd(0xffffff,.35,.4,tJeep)},{g:jd,m:std(0x111111,.8)}),jeep,true,FAR.mid); // dark parts now get the instance tint too (×0.07: still black)
   const trig=mergeGeometries([new THREE.BoxGeometry(1.2,1.2,1.6).translate(.75,.95,0),new THREE.BoxGeometry(1.4,.08,2).translate(.6,1.6,0),new THREE.BoxGeometry(.25,.6,1.4).translate(-.2,.7,0)]);
   for(const[x,z,ry]of[[-3,-10,PI],[-3,-14,PI],[83,40,0],[-77,-40,0],[3,62,0]]){tri.push({x,z,ry,c:new THREE.Color().setHSL(rand(),.7,.45)});addOBB(x+Math.cos(ry)*.4,z,1.2,1.1,ry)}
   inst(aoGeo(trig,.6),vstd(0xffffff,.45,.3),tri,true,FAR.small);
   // houses along the roads outside town: concrete bungalows and nipa huts
-  const hb=[],hr=[],nipa=[],nroof=[];
+  const hb=[],hr=[],nipa=[];
   for(const r of ROADS){if(!r.hwy&&r.w!==6)continue;for(let i=6;i<r.s.length-6;i+=14){const s=r.s[i];for(const sd of[-1,1]){if(rand()>.42)continue;
     const off=r.w/2+8+rand()*5,x=s.x-s.tz*off*sd,z=s.z+s.tx*off*sd;if(rectD(x,z,TOWN.x+10,TOWN.z+10)<1)continue;const q=nearRoad(x,z);if(q&&q.d<r.w/2+5)continue;
     const h=terr(x,z);if(h<SEA+1.2||lastCarve>.05||h>45||rectD(x,z,(PADDY.x1-PADDY.x0)/2,(PADDY.z1-PADDY.z0)/2,(PADDY.x0+PADDY.x1)/2,(PADDY.z0+PADDY.z1)/2)<2)continue;
     const ry=Math.atan2(-s.tz,s.tx)+(sd>0?PI:0);
-    if(rand()<.35){nipa.push({x,y:h,z,ry,sx:4.5,sy:2.6,sz:4.2,c:0xb59a5e});nroof.push({x,y:h+2.6,z,ry,sx:4.4,sy:2.4,sz:4.4});addOBB(x,z,2.3,2.2,ry)}
+    if(rand()<.35){nipa.push({x,y:h,z,ry,sx:4.5,sy:2.6,sz:4.2,c:0xb59a5e});addOBB(x,z,2.3,2.2,ry)}
     else{const w=6+rand()*3,d=6+rand()*2.5;hb.push({x,y:h-.2,z,ry,sx:w,sy:3.3,sz:d,c:pastel()});hr.push({x,y:h+3.1,z,ry,sx:w+.8,sy:1,sz:d+.9,c:TIN[(rand()*TIN.length)|0]});addOBB(x,z,w/2,d/2,ry)}}}}
   inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6),vstd(0xffffff,.85,0,tW[0]),hb,true,FAR.tree);
   inst(prism(1,1.6,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),hr,true,FAR.tree);
-  inst(aoGeo(mergeGeometries([new THREE.BoxGeometry(1,.62,1).translate(0,.69,0),...[[-.42,-.42],[.42,-.42],[-.42,.42],[.42,.42]].map(([a,b])=>new THREE.BoxGeometry(.05,.4,.05).translate(a,.2,b))]),.55),vstd(0xffffff,.9),nipa,true,FAR.tree);
-  inst(new THREE.ConeGeometry(.78,1,4).rotateY(PI/4).translate(0,.5,0),std(0x9c8350,1),nroof,true,FAR.tree);
+  // roof in the hut's instance space (hut scale 4.5/2.6/4.2, roof 4.4/2.4/4.4 sitting 2.6 m up); its colour divided by the
+  // hut's instance tint, which now multiplies it too
+  const NT=new THREE.Color(0xb59a5e),nrm=std(new THREE.Color(0x9c8350).multiply(new THREE.Color(1/NT.r,1/NT.g,1/NT.b)),1);
+  inst(...pair({g:aoGeo(mergeGeometries([new THREE.BoxGeometry(1,.62,1).translate(0,.69,0),...[[-.42,-.42],[.42,-.42],[-.42,.42],[.42,.42]].map(([a,b])=>new THREE.BoxGeometry(.05,.4,.05).translate(a,.2,b))]),.55),m:vstd(0xffffff,.9)},
+    {g:new THREE.ConeGeometry(.78,1,4).rotateY(PI/4).translate(0,.5,0).scale(4.4/4.5,2.4/2.6,4.4/4.2).translate(0,1,0),m:nrm}),nipa,true,FAR.tree);
   // palms on the beaches and lowlands, rainforest on the hills
   const trunk=new THREE.CylinderGeometry(.14,.22,8,6,4).translate(0,4,0);{const p=trunk.attributes.position;for(let i=0;i<p.count;i++){const y=p.getY(i);p.setX(i,p.getX(i)+(y/8)**2*1.3)}}
   const fronds=mergeGeometries(Array.from({length:8},(_,i)=>new THREE.BoxGeometry(.55,.04,3.6).translate(0,0,1.8).rotateX(.45+(i%2)*.25).rotateY(i*PI/4).translate(1.3,8,0)));
@@ -233,12 +258,11 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   for(let i=0;i<2600&&palms.length<520;i++){const th=rand()*2*PI,r=coastR(th)-8-rand()*rand()*160,x=ICX+Math.cos(th)*r,z=ICZ+Math.sin(th)*r,h=terr(x,z);
     if(h<SEA+.4||h>12||lastCarve>.05)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+2.5)continue;if(rectD(x,z,TOWN.x,TOWN.z)<1&&rand()<.85)continue;
     palms.push({x,y:h-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4});addOBB(x,z,.25,.25)}
-  inst(aoGeo(trunk,.55,0,5),vstd(0xd8c8b0,.9,0,tBark),palms,false,FAR.tree);inst(aoGeo(fronds,.7,6.4,8.4),vstd(0xffffff,.8,0,tFrond),palms,false,FAR.tree);
+  inst(...pair({g:aoGeo(trunk,.55,0,5),m:vstd(0xd8c8b0,.9,0,tBark)},{g:aoGeo(fronds,.7,6.4,8.4),m:vstd(0xffffff,.8,0,tFrond)}),palms,false,FAR.tree);
   for(let i=0;i<9000&&trees.length<1900;i++){const x=(rand()-.5)*1300,z=ICZ+(rand()-.5)*1200,h=terr(x,z);if(h<10||h>150||lastCarve>.05)continue;
     if(Math.hypot(x-TERR.x,z-TERR.z)<TERR.r-20)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+3)continue;const s=.7+rand()*.8;
     trees.push({x,y:h-.2,z,sx:s,sy:s*(.8+rand()*.5),sz:s,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)});if(q&&q.d<20)addOBB(x,z,.3,.3)}
-  inst(aoGeo(new THREE.CylinderGeometry(.2,.28,3,5).translate(0,1.5,0),.45),vstd(0x9a7a5a,.9,0,tBark),trees,false,FAR.tree);
-  inst(aoGeo(new THREE.IcosahedronGeometry(2.4,0).translate(0,4.4,0),.45,2.2,6.8,.8),vstd(0xffffff,.9,0,tLeaf),trees,false,FAR.tree);
+  inst(...pair({g:aoGeo(new THREE.CylinderGeometry(.2,.28,3,5).translate(0,1.5,0),.45),m:vstd(0x9a7a5a,.9,0,tBark)},{g:aoGeo(new THREE.IcosahedronGeometry(2.4,0).translate(0,4.4,0),.45,2.2,6.8,.8),m:vstd(0xffffff,.9,0,tLeaf)}),trees,false,FAR.tree);
   // lot + gas station paving
   const tLot=tAsph.clone();tLot.repeat.set(17,17);tLot.needsUpdate=true;
   const lot=new THREE.Mesh(new THREE.PlaneGeometry(70,70).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tLot,roughness:.9}));lot.position.set(40,.015,40);lot.receiveShadow=true;scene.add(freeze(lot));cullFar(lot,FAR.mid);
