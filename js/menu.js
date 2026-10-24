@@ -60,7 +60,7 @@ loadBikes().catch(e => console.warn('bike list: ' + e.message));
 
 /* ---------- multiplayer (net.js does the work once the game has loaded) ---------- */
 const mpIn = { name: $('mpName'), room: $('mpRoom'), url: $('mpUrl') };
-mpIn.name.value = cfg.name; mpIn.room.value = cfg.room; mpIn.url.value = cfg.mpUrl || MP_URL;
+mpIn.name.value = cfg.name; mpIn.room.value = cfg.room; mpIn.url.value = cfg.mpUrl || ''; if (MP_URL) mpIn.url.placeholder = MP_URL; // blank = the built-in server (MP_URL); only needed to point at another relay
 if (!MP_URL && !cfg.mpUrl) $('mpUrl').parentElement.open = true;
 const ST = { off: '', conn: 'Connecting…', retry: 'Reconnecting…' };
 function mpUI() {
@@ -72,10 +72,10 @@ function mpUI() {
 ctx.onNet = mpUI;
 mpIn.room.oninput = () => { mpIn.room.value = mpIn.room.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); };
 function mpGo(room) {
-  const name = mpIn.name.value.trim().slice(0, 16) || 'Rider', url = mpIn.url.value.trim();
+  const name = mpIn.name.value.trim().slice(0, 16) || 'Rider', url = mpIn.url.value.trim() || MP_URL;
   if (!/^[A-Z0-9]{4,8}$/.test(room)) { $('mpSt').textContent = 'Room codes are 4-8 letters or numbers'; return; }
-  if (!/^(https?|wss?):\/\//.test(url)) { $('mpSt').textContent = 'Set the server address first (Server, below)'; $('mpUrl').parentElement.open = true; return; }
-  Object.assign(cfg, { name, room, mpUrl: url === MP_URL ? '' : url }); save(); mpIn.room.value = room;
+  if (!/^(https?|wss?):\/\//.test(url)) { $('mpSt').textContent = MP_URL ? 'Server address must start with https://' : 'Set the server address first (Server, below)'; $('mpUrl').parentElement.open = true; return; }
+  Object.assign(cfg, { name, room, mpUrl: mpIn.url.value.trim() === MP_URL ? '' : mpIn.url.value.trim() }); save(); mpIn.room.value = room;
   if (G) { G.mpJoin(room, name, url); mpUI(); } else { ctx.mpWant = { room, name, url }; mpUI(); play(); }
 }
 $('mMP').onclick = () => { show('mMPP'); mpUI(); };
