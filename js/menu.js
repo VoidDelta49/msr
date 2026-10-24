@@ -65,7 +65,7 @@ if (!MP_URL && !cfg.mpUrl) $('mpUrl').parentElement.open = true;
 const ST = { off: '', conn: 'Connecting…', retry: 'Reconnecting…' };
 function mpUI() {
   const N = ctx.NET, on = N && N.st !== 'off';
-  $('mpSt').textContent = N && N.st === 'on' ? `In room ${N.room} · ${N.peers.size + 1}/${N.max} riders` : on ? ST[N.st] : (N && N.err) || (ctx.mpWant ? 'Joins when the game has loaded' : '');
+  $('mpSt').textContent = N && N.st === 'on' ? `In room ${N.room} · ${N.peers.size + 1}/${N.max} riders` : on ? N.note || ST[N.st] : (N && N.err) || (ctx.mpWant ? 'Joins when the game has loaded' : '');
   $('mpSt').classList.toggle('bad', !on && !!(N && N.err)); $('mpLeave').hidden = !on; $('mpJoin').hidden = $('mpNew').hidden = on;
   $('mMPN').textContent = N && N.st === 'on' ? N.room + ' · ' + (N.peers.size + 1) : '';
 }

@@ -19,7 +19,7 @@ bY.onclick = () => yes && yes(); bX.onclick = () => (no || reset)();
 const name = id => (NET.peers.get(id) || { name: 'Rider' }).name;
 const busy = () => R.st !== 'idle' || MI.q || ctx.GAR || ctx.OPT || ctx.paused || S.crashed;
 
-function reset() { R.st = 'idle'; R.opp = 0; ctx.racing = false; pnl.hidden = true; cd.classList.remove('on'); finB.visible = false; pins(null); }
+function reset() { R.st = 'idle'; R.opp = 0; R.lost = 0; ctx.racing = false; pnl.hidden = true; cd.classList.remove('on'); finB.visible = false; pins(null); }
 
 // tap on a name tag
 NET.on.tap = P => {
@@ -78,6 +78,9 @@ NET.on.race = m => {
     else if (R.st === 'done') { R.oppT = Infinity; result(); }
   }
 };
+// our finish time may have been sent into a dead connection (or the opponent was offline when theirs was): send it again
+function resendFin() { if (R.st === 'done' && R.myT !== null) send({ t: 'race', op: 'fin', to: R.opp, rid: R.rid, time: R.myT }); }
+NET.on.resume = resendFin; NET.on.back = P => { if (P.id === R.opp) resendFin(); };
 NET.on.leave = P => { if (P.id !== R.opp || R.st === 'idle' || R.st === 'res') return; if (R.st === 'go' || R.st === 'done') end(P.name + ' left. You win!', true); else { say(P.name + ' left'); reset(); } };
 function quit() { if (R.st !== 'idle') send({ t: 'race', op: 'quit', to: R.opp, rid: R.rid }); if (R.st === 'go') say('You gave up'); reset(); }
 function end(msg, win) { R.st = 'res'; ctx.racing = false; finB.visible = false; pins(null); cd.classList.remove('on'); if (win) blip('ok'); panel(msg, null, reset); bX.textContent = 'OK'; }
@@ -91,7 +94,8 @@ export function raceTick(dt) {
   const now = performance.now(); if (R.st === 'idle') return; if (R.st !== 'res') bX.textContent = '✕';
   if ((R.st === 'ask' || R.st === 'inv') && now > R.until) { if (R.st === 'inv') send({ t: 'race', op: 'no', to: R.opp, rid: R.rid }); say(R.st === 'ask' ? 'No answer' : 'Race request expired'); return reset(); }
   if (R.st === 'acc' && now > R.until + 5000) return reset();
-  if (NET.st !== 'on' && R.st !== 'res') { say('Disconnected, race over'); return reset(); }
+  // a dropped connection gets 12 s to come back (net.js resumes our player id); the countdown and the race clock keep running
+  if (NET.st !== 'on' && R.st !== 'res') { if (!R.lost) R.lost = now; if (now - R.lost > 12000) { say('Disconnected, race over'); return reset(); } } else R.lost = 0;
   if (R.st === 'count' || R.st === 'go' || R.st === 'done') MI.arm = false; // no quests from hubs mid-race
   if (R.st === 'count') {
     const left = Math.ceil((R.tc - now) / 1000), t = left > 0 ? String(left) : 'GO!';

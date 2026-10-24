@@ -18,7 +18,7 @@ Local test: `npx wrangler dev` (relay on http://127.0.0.1:8787).
 
 ## Protocol
 
-- Connect: `wss://<host>/room/<CODE>?v=<PROTO>&name=<name>` (code 6-8 letters/digits). The page's Origin must be in `ORIGINS` (wrangler.toml) or localhost.
+- Connect: `wss://<host>/room/<CODE>?v=<PROTO>&name=<name>[&id=<N>]` (code 6-8 letters/digits). `id` asks to resume a previous player id after a dropped connection: if that id is still listed from the same IP, the old socket is retired quietly (close 4004) and the new one inherits the id and look, so peers see no leave/join (`join` carries `back: true`). The page's Origin must be in `ORIGINS` (wrangler.toml) or localhost.
 - Server → client text: `hi {id, max, now, peers:[{id,name,look}]}`, `join`, `leave`, `err {code,msg}` (close 4000 = wrong
   version, 4001 = full, 4002 = flooding, 4003 = page not allowed), `pong`, plus forwarded client messages with `from` added.
 - Client → server text (max 1 KB): only `ping`, `look {bike, parts:{key: index}}` (stored for later joiners) and `race`
@@ -29,8 +29,8 @@ Local test: `npx wrangler dev` (relay on http://127.0.0.1:8787).
 
 ## Free plan limits
 
-100,000 requests/day; incoming WebSocket messages count 20:1, outgoing are free. Clients send 10 Hz while moving and
-2 Hz while parked, so a full 8-player room uses about 14k requests per hour of riding (~7 hours/day). Limits reset at
+100,000 requests/day; incoming WebSocket messages count 20:1, outgoing are free. Clients send 10 Hz while moving (5 Hz when the nearest rider is over 160 m away, half again on a slow link),
+1 Hz while parked and nothing at all when alone in the room, so a full 8-player room uses at most about 14k requests per hour of riding (~7 hours/day). Limits reset at
 00:00 UTC (8 AM in the Philippines). Raising `MAX` past 8 should come with interest management (only forward nearby
 players) so each player's bandwidth doesn't grow with room size.
 
@@ -44,3 +44,10 @@ players) so each player's bandwidth doesn't grow with room size.
 - Clients also check everything they receive, rebuild a player's model at most every 3 s, and cache at most 10 models.
 - Not covered: someone opening many connections across many rooms to burn the daily quota. If that ever happens, add a
   rate-limiting rule in the Cloudflare dashboard (Security → WAF → Rate limiting) for `/room/*` per IP.
+
+## Client reliability (js/net.js)
+
+- Reconnects with jittered exponential backoff (about 1 s up to 30 s, 60 s once the server keeps refusing, e.g. quota used up), resumes the same id, wakes up at once on `online` / tab focus, and gives up after 40 tries.
+- A 15 s heartbeat (`ping`) plus a 40 s silence watchdog catch half-open sockets that never fire `close`.
+- A rider who drops stays in the room list for 6 s before their `leave` takes effect; a race gets 12 s to survive a drop and re-sends finish times on resume.
+- Ghosts use an adaptive jitter buffer (110-450 ms), extrapolate up to 400 ms, and slide to corrected positions instead of snapping. There is no rollback: bikes are collision-free ghosts with their own physics, so there is no shared simulation to re-run.

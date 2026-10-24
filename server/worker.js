@@ -8,7 +8,7 @@
 // (100k requests/day), outgoing messages are free, so clients send 10 Hz while moving and 2 Hz while parked.
 //
 // Abuse limits (Build 9.3): Origin allowlist (ORIGINS in wrangler.toml; stops other websites, not scripts), version and
-// origin checked here in the Worker before the room is touched, max 3 connections per IP per room, per-connection
+// origin checked here in the Worker before the room is touched, max 3 connections per IP per room, resume-by-id (&id=N), per-connection
 // token buckets (state 25/s, control 4/s, look 1 per 2 s) and a disconnect for clients that keep flooding (a dropped
 // message has still been counted against the quota; closing the socket is what stops it), packet sanity checks.
 import { DurableObject } from 'cloudflare:workers';
@@ -83,14 +83,21 @@ export class Room extends DurableObject {
     const u = new URL(req.url), ip = req.headers.get('CF-Connecting-IP') || '', [client, server] = Object.values(new WebSocketPair());
     this.ctx.acceptWebSocket(server);
     const bye = (code, why, msg) => { server.send(JSON.stringify({ t: 'err', code: why, msg })); server.close(code, why); return new Response(null, { status: 101, webSocket: client }); };
+    // resume: a client that dropped and reconnects asks for its old id (&id=N). If that socket is still listed (half-open
+    // connections can linger for a minute) and it came from the same IP, retire it quietly so nobody sees a leave/join
+    // and a race in progress survives the blip. The new socket inherits its look.
+    const want = +u.searchParams.get('id'); let keep = null;
+    if (ip && Number.isInteger(want) && want > 0) for (const [w, a] of this.list(server)) if (a.id === want && a.ip === ip) {
+      keep = a; this.lim.delete(w); w.serializeAttachment({ id: 0 }); try { w.close(4004, 'resumed'); } catch (e) { }
+    }
     const peers = this.list(server);
     if (peers.length >= MAX) return bye(4001, 'full', `This room is full (${MAX} players).`);
     if (ip && peers.filter(p => p[1].ip === ip).length >= PER_IP) return bye(4001, 'full', 'Too many connections from your network in this room.');
-    const used = new Set(peers.map(p => p[1].id)); let id = 1; while (used.has(id)) id++;
-    const me = { id, ip, name: clean(u.searchParams.get('name')) || 'Rider ' + id, look: null };
+    const used = new Set(peers.map(p => p[1].id)); let id = keep ? keep.id : 1; while (used.has(id)) id++;
+    const me = { id, ip, name: clean(u.searchParams.get('name')) || 'Rider ' + id, look: keep ? keep.look : null };
     server.serializeAttachment(me);
     server.send(JSON.stringify({ t: 'hi', id, max: MAX, now: Date.now(), peers: peers.map(([, a]) => ({ id: a.id, name: a.name, look: a.look })) }));
-    this.bcast(JSON.stringify({ t: 'join', id, name: me.name }), server);
+    this.bcast(JSON.stringify({ t: 'join', id, name: me.name, back: !!keep }), server);
     return new Response(null, { status: 101, webSocket: client });
   }
   bcast(data, except) { for (const [w] of this.list(except)) try { w.send(data); } catch (e) { } }
