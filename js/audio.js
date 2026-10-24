@@ -52,10 +52,10 @@ export function initAudio() {
   A.bhs = node('gain'); chain(w2, node('bandpass', 4200, .7), A.bhs, A.road);                           // pad/disc hiss under hard braking
   const absAM = node('gain', 0, 0, .5), absO = AC.createOscillator(), absD = node('gain', 0, 0, .5); absO.type = 'square'; absO.frequency.value = 13; absO.connect(absD); absD.connect(absAM.gain); absO.start();
   A.abs = node('gain'); chain(b2, node('bandpass', 300, 1.2), absAM, A.abs, A.road); chain(w1, node('bandpass', 2300, 1.5), absAM);  // ABS: lever pulsing, thrum + tick at ~13 Hz
-  A.lk = node('gain'); chain(w2, node('bandpass', 1900, 5), A.lk, A.road);                              // locked wheel: rubber scrub
+  A.lk = node('gain'); A.lkF = node('bandpass', 1900, 5); chain(w2, A.lkF, A.lk, A.road);                              // locked wheel: rubber scrub
   const spAM = node('gain', 0, 0, .5), spO = AC.createOscillator(), spD = node('gain', 0, 0, .5); spO.type = 'sawtooth'; spO.frequency.value = 27; spO.connect(spD); spD.connect(spAM.gain); spO.start();
   A.wsp = node('gain'); chain(w1, node('bandpass', 1500, 2.5), spAM, A.wsp, A.road);                   // wheelspin: chattering rubber
-  A.chn = node('gain'); chain(w1, node('bandpass', 2900, 1.4), A.chn, A.road);                          // drive chain whirr (chain bikes only)
+  A.chn = node('gain'); A.chnF = node('bandpass', 2900, 1.4); chain(w1, A.chnF, A.chn, A.road);                          // drive chain whirr (chain bikes only)
   A.clr = node('gain'); chain(w2, node('bandpass', 1100, 1.2), A.clr, A.road);                          // clutch plates slipping under power
   A.peg = node('gain'); A.pegF = node('bandpass', 3200, 2); chain(w2, A.pegF, A.peg, A.road);           // peg / fairing grinding in a hard lean
   // CVT belt whine (Click); gain 0 for chain bikes
@@ -143,10 +143,10 @@ export function updAudio() {
   st(A.bhs.gain, br * sstep(8, 25, v) * .022 * pv('hiss'), .06);
   st(A.abs.gain, grounded && S.absA ? .2 * sstep(1, 5, v) : 0, .02);
   // tyres beyond squeal: locked wheel scrub, wheelspin chatter (louder with more slip)
-  st(A.lk.gain, lockd * onRd * Math.min(1, v / 6) * .1, .03); st(A.lk.frequency, 1700 + 500 * vnoise(t * 7, 9), .05);
+  st(A.lk.gain, lockd * onRd * Math.min(1, v / 6) * .1, .03); st(A.lkF.frequency, 1700 + 500 * vnoise(t * 7, 9), .05);
   st(A.wsp.gain, grounded && Math.abs(S.ws || 0) > .4 ? sstep(.4, 6, Math.abs(S.ws)) * onRd * .1 : 0, .03);
   // drivetrain: chain whirr, clutch plates rasping while they slip under power (not the belt bike)
-  st(A.chn.gain, grounded && !belt ? Math.min(1, v / 25) * (.5 + .5 * th) * .012 * pv('chain') : 0, .1); st(A.chn.frequency, pv('chainHz', 2400) + v * 30, .1);
+  st(A.chn.gain, grounded && !belt ? Math.min(1, v / 25) * (.5 + .5 * th) * .012 * pv('chain') : 0, .1); st(A.chnF.frequency, pv('chainHz', 2400) + v * 30, .1);
   const cc = S.c || 0; st(A.clr.gain, grounded && !belt && th > .25 && cc > .08 && cc < .92 ? th * .035 * Math.sin(Math.PI * cc) * pv('clutch') : 0, .04);
   // hard cornering at the limit: peg / fairing scraping the road
   st(A.peg.gain, grounded ? sstep(.72, .95, S.ayu || 0) * sstep(5, 12, v) * .07 * onRd * pv('peg') : 0, .05); st(A.pegF.frequency, 2600 + 900 * vnoise(t * 6, 4.4), .05);
