@@ -80,7 +80,7 @@ Keyboard:
 
 ## Project layout
 
-Everything bike-specific is data. Adding a bike means adding a JSON file, plus a model/cluster builder if it needs a new look.
+Everything bike-specific is data. Adding a bike means adding a JSON file, plus a model/cluster builder if it needs a new look. Give it its own `sound.parts` profile too (brake squeal, chain, suspension thump, key click, body rattle, ...; every key is a level or pitch multiplier, see `pv()` in `js/audio.js`), otherwise it sounds like a neutral default bike.
 
 ```
 index.html            markup + importmap

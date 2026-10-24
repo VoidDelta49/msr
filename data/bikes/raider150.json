@@ -55,6 +55,7 @@
     ]
   },
   "sound": {
+    "parts": {"sq": 1, "sqHz": 1800, "hiss": 1, "chain": 1.1, "chainHz": 2800, "lash": 1.1, "clutch": 1, "thump": 1, "thumpHz": 1.1, "rattle": 0.3, "key": 1, "keyHz": 1, "tink": 1, "tinkHz": 1.1, "peg": 1},
     "lp": 1,
     "gain": 1,
     "whine": 0,

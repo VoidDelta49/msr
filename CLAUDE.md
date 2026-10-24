@@ -1,0 +1,5 @@
+# CPM: Motor Edition: notes for Claude
+
+- **Every new bike needs its own sound profile.** In `data/bikes/<id>.json` add `sound.parts` next to the engine `sound` values. Keys (all optional multipliers, neutral = 1): `sq`/`sqHz`/`hiss` brake squeal level, pitch (Hz, default 1700), pad hiss; `chain`/`chainHz`/`lash` chain whirr and on/off-throttle clunk (use 0 for belt/shaft bikes); `clutch` plate rasp; `thump`/`thumpHz` suspension and road-joint thump (pitch below 1 = heavier); `rattle` loose body panels (0 = none, scooters ~1); `key`/`keyHz` key and switch clicks; `tink`/`tinkHz` exhaust cooling ping; `peg` peg/fairing grind. Base it on the real bike's brakes, drivetrain, weight and body, and compare with the existing four. Read by `pv()` in `js/audio.js`.
+- Also do the usual new-bike steps from README (index.json, model/cluster, garage data).
+- Push to main, never another branch. Bump `BUILD` in `js/config.js` and `?v=` in index.html on release.

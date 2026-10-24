@@ -56,6 +56,7 @@
     "final": ["rs", "fs"]
   },
   "sound": {
+    "parts": {"sq": 0.8, "sqHz": 1300, "hiss": 0.7, "chain": 1.4, "chainHz": 2200, "lash": 1.5, "clutch": 1.2, "thump": 1.2, "thumpHz": 0.9, "rattle": 0.6, "key": 1, "keyHz": 0.9, "tink": 1.2, "tinkHz": 0.85, "peg": 0.8},
     "lp": 0.9,
     "gain": 0.85,
     "whine": 0,

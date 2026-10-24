@@ -10,6 +10,9 @@ let pFf = null, pFr = null, pTh = 0, suspT = 0, lashT = 0, runWas = false, coolT
 const A = {}, Z = { coast: 0, river: 0, town: 0, paddy: 0, volc: 0, wild: 0, sx: 0, sz: 0, rx: 0, rz: 0 };
 const EXH = { gain: [1, 1.35, 1.7], bright: [1, 1.3, 1.6], pq: [1, 1.3, 1.6], crackle: [1, 2.4, 4], drive: [1, 1.15, 1.3], pipe: [1, .92, .85] };
 
+// per-bike part-sound profile: data/bikes/*.json -> sound.parts (level / pitch multipliers, all optional; see CONTEXT "Rules")
+const pv = (k, d = 1) => ctx.spec?.sound?.parts?.[k] ?? d;
+
 // smoothed param set that skips near-identical values (saves automation events every frame)
 function st(p, v, tc) { if (p._v !== undefined && Math.abs(p._v - v) < 1e-4) return; p._v = v; p.setTargetAtTime(v, AC.currentTime, tc); }
 const node = (type, f, q, g) => { const n = type === 'gain' ? AC.createGain() : AC.createBiquadFilter(); if (type === 'gain') n.gain.value = g ?? 0; else { n.type = type; n.frequency.value = f; if (q) n.Q.value = q; } return n; };
@@ -135,18 +138,18 @@ export function updAudio() {
   const br = grounded ? (S.brake || 0) : 0, lockd = grounded && (S.lkF || S.lkR) ? 1 : 0, th = S.thrEff || 0, belt = mm.length > 0;
   // brakes: squeal comes and goes from stop to stop, falls in pitch as the bike slows; hiss at speed; ABS pulses at the lever
   const sqWin = sstep(.4, 1.2, v) * (1 - sstep(7, 11, v)), sqOn = sstep(.35, .55, vnoise(t * 1.7, 11.3));
-  st(A.bsq.gain, br > .3 && !lockd ? sstep(.3, .75, br) * sqWin * sqOn * (sd.squeak ?? 1) * .05 : 0, .04);
-  st(A.bsqF.frequency, 1700 + 150 * Math.min(v, 8) + 240 * vnoise(t * 5, 2.2), .05);
-  st(A.bhs.gain, br * sstep(8, 25, v) * .022, .06);
+  st(A.bsq.gain, br > .3 && !lockd ? sstep(.3, .75, br) * sqWin * sqOn * pv('sq') * .05 : 0, .04);
+  st(A.bsqF.frequency, pv('sqHz', 1700) + 150 * Math.min(v, 8) + 240 * vnoise(t * 5, 2.2), .05);
+  st(A.bhs.gain, br * sstep(8, 25, v) * .022 * pv('hiss'), .06);
   st(A.abs.gain, grounded && S.absA ? .2 * sstep(1, 5, v) : 0, .02);
   // tyres beyond squeal: locked wheel scrub, wheelspin chatter (louder with more slip)
   st(A.lk.gain, lockd * onRd * Math.min(1, v / 6) * .1, .03); st(A.lk.frequency, 1700 + 500 * vnoise(t * 7, 9), .05);
   st(A.wsp.gain, grounded && Math.abs(S.ws || 0) > .4 ? sstep(.4, 6, Math.abs(S.ws)) * onRd * .1 : 0, .03);
   // drivetrain: chain whirr, clutch plates rasping while they slip under power (not the belt bike)
-  st(A.chn.gain, grounded && !belt ? Math.min(1, v / 25) * (.5 + .5 * th) * .012 : 0, .1); st(A.chn.frequency, 2400 + v * 30, .1);
-  const cc = S.c || 0; st(A.clr.gain, grounded && !belt && th > .25 && cc > .08 && cc < .92 ? th * .035 * Math.sin(Math.PI * cc) : 0, .04);
+  st(A.chn.gain, grounded && !belt ? Math.min(1, v / 25) * (.5 + .5 * th) * .012 * pv('chain') : 0, .1); st(A.chn.frequency, pv('chainHz', 2400) + v * 30, .1);
+  const cc = S.c || 0; st(A.clr.gain, grounded && !belt && th > .25 && cc > .08 && cc < .92 ? th * .035 * Math.sin(Math.PI * cc) * pv('clutch') : 0, .04);
   // hard cornering at the limit: peg / fairing scraping the road
-  st(A.peg.gain, grounded ? sstep(.72, .95, S.ayu || 0) * sstep(5, 12, v) * .07 * onRd : 0, .05); st(A.pegF.frequency, 2600 + 900 * vnoise(t * 6, 4.4), .05);
+  st(A.peg.gain, grounded ? sstep(.72, .95, S.ayu || 0) * sstep(5, 12, v) * .07 * onRd * pv('peg') : 0, .05); st(A.pegF.frequency, 2600 + 900 * vnoise(t * 6, 4.4), .05);
   // edge-detected one-shots
   const ff = S.Ff || 0, fr = S.Fr || 0, w = sp.m * 9.81;
   if (live && !S.crashed && pFf !== null && !S.air && t > suspT) { const d = Math.max((ff - pFf) / w, (fr - pFr) / w); if (d > .18) { suspT = t + .12; blip('susp', d); } } // fork / shock hit a bump or bottom out
@@ -322,14 +325,15 @@ function tn(t, f0, f1, dur, g, type = 'sine') {
 }
 const rr = (a, b) => a + Math.random() * (b - a);
 const SFX = {
-  key(t) { nb(t, .015, 'bandpass', 2400, 3, .12); nb(t + .07, .015, 'bandpass', 2600, 3, .1); tn(t + .14, 130, 70, .09, .25); nb(t + .14, .02, 'bandpass', 1600, 1.5, .12); }, // ignition key: ratchet ticks, then the lock clunk
-  switch(t) { nb(t, .012, 'bandpass', 4200, 2, .14); tn(t, 1900, 900, .02, .04, 'square'); tn(t + .06, 1500, 800, .02, .03, 'square'); },                       // kill switch / handlebar switch: small plastic click-clack
-  lash(t, a) { const k = Math.min(1, .4 + a * .6); tn(t, 95, 50, .12, .28 * k); nb(t, .03, 'bandpass', 1800, 1.5, .12 * k); },                                        // chain slack taken up on/off throttle
-  susp(t, a) { const k = Math.min(1, a * 2); tn(t, 110, 55, .16, .3 * k); nb(t, .08, 'lowpass', 500, .7, .35 * k); tn(t + .01, rr(500, 800), 380, .18, .025 * k, 'triangle'); }, // fork / shock hit a bump or bottom out
-  joint(t, v) { const sp = ctx.spec, k = .2 + .8 * Math.min(1, v / 25), d = (sp ? sp.wb : 1.3) / Math.max(v, 3); [0, d].forEach((o, i) => { nb(t + o, .05, 'lowpass', 260, .8, .16 * k * (i ? .8 : 1)); tn(t + o, 70, 45, .07, .18 * k * (i ? .8 : 1)); }); }, // expansion joint: front wheel then rear
+  key(t) { const f = pv('keyHz'), g = pv('key'); nb(t, .015, 'bandpass', 2400 * f, 3, .12 * g); nb(t + .07, .015, 'bandpass', 2600 * f, 3, .1 * g); tn(t + .14, 130 * f, 70 * f, .09, .25 * g); nb(t + .14, .02, 'bandpass', 1600 * f, 1.5, .12 * g); }, // ignition key: ratchet ticks, then the lock clunk
+  switch(t) { const f = pv('keyHz'), g = pv('key'); nb(t, .012, 'bandpass', 4200 * f, 2, .14 * g); tn(t, 1900 * f, 900 * f, .02, .04 * g, 'square'); tn(t + .06, 1500 * f, 800 * f, .02, .03 * g, 'square'); }, // kill switch / handlebar switch: small plastic click-clack
+  lash(t, a) { const k = Math.min(1, .4 + a * .6) * pv('lash'), h = pv('thumpHz'); tn(t, 95 * h, 50 * h, .12, .28 * k); nb(t, .03, 'bandpass', 1800, 1.5, .12 * k); },  // chain slack taken up on/off throttle
+  susp(t, a) { const k = Math.min(1, a * 2) * pv('thump'), h = pv('thumpHz'); tn(t, 110 * h, 55 * h, .16, .3 * k); nb(t, .08, 'lowpass', 500 * h, .7, .35 * k); tn(t + .01, rr(500, 800), 380, .18, .025 * k, 'triangle'); rattle(t, .1 * Math.min(1, a * 2)); }, // fork / shock hit a bump or bottom out
+  joint(t, v) { const sp = ctx.spec, k = (.2 + .8 * Math.min(1, v / 25)) * pv('thump'), h = pv('thumpHz'), d = (sp ? sp.wb : 1.3) / Math.max(v, 3); [0, d].forEach((o, i) => { nb(t + o, .05, 'lowpass', 260 * h, .8, .16 * k * (i ? .8 : 1)); tn(t + o, 70 * h, 45 * h, .07, .18 * k * (i ? .8 : 1)); }); rattle(t, .05 * Math.min(1, v / 25)); }, // expansion joint: front wheel then rear
   pebble(t) { nb(t, rr(.012, .024), 'highpass', rr(2500, 5500), .7, rr(.02, .05)); },
-  tink(t) { const f = rr(2200, 3700); tn(t, f, f * .985, .35, .045); tn(t, f * 2.7, f * 2.65, .2, .015); },                                                             // exhaust / engine cooling ping
+  tink(t) { const f = rr(2200, 3700) * pv('tinkHz'), g = pv('tink'); tn(t, f, f * .985, .35, .045 * g); tn(t, f * 2.7, f * 2.65, .2, .015 * g); }, // exhaust / engine cooling ping
   splash(t) { nb(t, .5, 'bandpass', 900, .6, .5); nb(t, .9, 'lowpass', 500, .6, .4); for (let i = 0; i < 4; i++) { const f = rr(300, 600); tn(t + .1 + i * rr(.05, .12), f, f * 2.2, .1, .06); } }, // into the sea
   clank(t, a) { const f = rr(500, 1400), k = .3 + .7 * a; [1, 2.76, 5.4].forEach((m, i) => tn(t, f * m, f * m * .99, .22 / (i + 1), .08 * k / (i + 1))); nb(t, .05, 'bandpass', 3000, 1, .1 * k); }, // loose metal bouncing on tarmac
   crunch(t, a) { const k = Math.min(1, a / 9); nb(t, .07, 'bandpass', 1500, .8, .35 * k); nb(t + .03, .1, 'bandpass', 3500, 1.2, .2 * k); SFX.clank(t + .02, k); for (let i = 0; i < 4; i++) tn(t + rr(.05, .3), rr(4000, 8000), rr(3000, 6000), .08, .03 * k); },
 };
+function rattle(t, g) { const r = pv('rattle', 0); if (r > 0) { nb(t + .02, .14, 'bandpass', 1700, 1.3, g * r); nb(t + .07, .1, 'bandpass', 2300, 1.5, g * r * .7); } } // loose body panels (scooters) clatter after a hit
