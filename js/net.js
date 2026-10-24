@@ -10,7 +10,7 @@ import { B, twin } from './model.js';
 import { say } from './hud.js';
 import { $ } from './util.js';
 
-export const PROTO = 1; // = PROTO in server/worker.js
+export const PROTO = 2; // = PROTO in server/worker.js
 export const NET = ctx.NET = { st: 'off', id: 0, room: '', max: 8, peers: new Map(), err: '', on: {}, rtt: 0 };
 const DELAY = 140, KEEP = 24, PKT = 44;
 let ws = null, want = null, retry = 0, retryTo = 0;
@@ -36,7 +36,7 @@ function connect() {
   w.onmessage = e => { if (typeof e.data === 'string') { try { text(JSON.parse(e.data)); } catch (er) { console.warn('net: ' + er.message); } } else bin(e.data); };
   w.onclose = e => {
     if (ws !== w) return; ws = null; const was = NET.st === 'on'; clearPeers();
-    if (e.code === 4000 || e.code === 4001) want = null; // version mismatch / room full: the err message says why
+    if (e.code >= 4000 && e.code <= 4003) want = null; // version / room full / flood / wrong page: the err message says why
     if (want && retry < 6) { NET.st = 'retry'; retryTo = setTimeout(() => want && connect(), Math.min(10, 1 + retry++ * 2) * 1000); if (was) say('Connection lost, reconnecting…', 2500); }
     else { if (want && !NET.err) NET.err = "Can't reach the server."; want = null; NET.st = 'off'; }
     changed();
@@ -59,7 +59,7 @@ function ping() { send({ t: 'ping', c: performance.now() }); }
 function addPeer(p) {
   if (NET.peers.has(p.id)) delPeer(NET.peers.get(p.id));
   const tag = document.createElement('button'); tag.className = 'ntag'; tag.hidden = true; tag.innerHTML = '<b></b><i></i>'; tag.firstChild.textContent = p.name;
-  const P = { id: p.id, name: p.name, look: p.look || null, lk: p.look ? JSON.stringify(p.look) : '', key: '', snaps: [], off: null, inst: null, tag, wA: 0, x: 0, z: 0, d: 1e9, fl: 0, seen: 0, tx: -1, ty: -1, ti: '' };
+  const P = { id: p.id, name: p.name, look: p.look || null, lk: p.look ? JSON.stringify(p.look) : '', key: '', lookAt: -1e9, snaps: [], off: null, inst: null, tag, wA: 0, x: 0, z: 0, d: 1e9, fl: 0, seen: 0, tx: -1, ty: -1, ti: '' };
   tag.onclick = e => { e.stopPropagation(); if (NET.on.tap) NET.on.tap(P); };
   $('tags').appendChild(tag); NET.peers.set(p.id, P);
 }
@@ -84,7 +84,9 @@ function pack() {
 function bin(buf) {
   if (buf.byteLength < PKT + 1) return; const d = new DataView(buf), P = NET.peers.get(d.getUint8(0)); if (!P || d.getUint8(1) !== 1) return;
   const g = o => d.getInt16(o + 1, true) / 1e4, q = o => d.getInt16(o + 1, true) / I16, now = performance.now();
-  const s = { t: d.getUint32(5, true), fl: d.getUint8(2), rpm: d.getUint16(3, true), x: d.getFloat32(9, true), y: d.getFloat32(13, true), z: d.getFloat32(17, true),
+  const x = d.getFloat32(9, true), y = d.getFloat32(13, true), z = d.getFloat32(17, true);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || Math.abs(x) > 5000 || Math.abs(z) > 5000 || Math.abs(y) > 2000) return; // junk: the server checks too
+  const s = { t: d.getUint32(5, true), fl: d.getUint8(2), rpm: d.getUint16(3, true), x, y, z,
     qx: q(20), qy: q(22), qz: q(24), qw: q(26), lean: g(28), th: g(30), st: g(32), sl: g(34), rh: g(36), by: g(38), v: d.getInt16(41, true) / 100 };
   const last = P.snaps[P.snaps.length - 1]; if (last && s.t <= last.t) { if (last.t - s.t < 60000) return; P.snaps.length = 0; P.off = null; } // stale, or the sender reloaded
   // clock offset: the smallest (arrival - send time) seen is the least-delayed packet; creep up slowly for clock drift
@@ -102,7 +104,7 @@ export function netFrame(dt, now) {
   // send: 10 Hz while anything moves, 2 Hz parked (incoming messages are what the free plan counts)
   const moving = Math.abs(S.v) > .3 || S.crashed || S.thr > .05;
   if (now - sendT >= (moving ? 100 : 500) && ws && ws.readyState === 1 && ws.bufferedAmount < 4096) { sendT = now; pack(); }
-  if (now - lookT > 1000) { lookT = now; const look = { bike: ctx.bike.id, cfg: ctx.bcfg }, k = JSON.stringify(look); if (k !== lookKey) { lookKey = k; send({ t: 'look', look }); } if (Math.random() < .05) ping(); }
+  if (now - lookT > 1000) { lookT = now; const parts = {}; for (const k in ctx.bike.parts) parts[k] = ctx.bcfg[k] | 0; const look = { bike: ctx.bike.id, parts }, k = JSON.stringify(look); if (k !== lookKey) { lookKey = k; send({ t: 'look', look }); } if (Math.random() < .05) ping(); }
   if (!NET.peers.size) { if (ctx.mpK) { ctx.mpDots = []; ctx.mpK = ''; } return; }
   camera.updateMatrixWorld(); PM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); FR.setFromProjectionMatrix(PM);
   built = false; const dots = ctx.mpDots || (ctx.mpDots = []); dots.length = 0; let mk = '';
@@ -128,10 +130,11 @@ export function netFrame(dt, now) {
   }
   ctx.mpK = mk;
 }
-// build (or swap) a player's model when their bike / paint changes; at most one build per frame (each is a hitch)
+// build (or swap) a player's model when their bike / paint changes; at most one build per frame (each is a hitch),
+// and at most one rebuild per player every 3 s (someone flipping paint, or spamming looks, can't stutter everyone)
 function model(P) {
-  if (!P.look || built || P.lk === P.key) return; const k = P.lk;
-  const tpl = ctx.bikeTemplate && ctx.bikeTemplate(P.look); if (!tpl) return; built = true; P.key = k;
+  if (!P.look || built || P.lk === P.key || (P.inst && performance.now() - P.lookAt < 3000)) return; const k = P.lk;
+  const tpl = ctx.bikeTemplate && ctx.bikeTemplate(P.look); if (!tpl) return; built = true; P.key = k; P.lookAt = performance.now();
   if (P.inst) scene.remove(P.inst.o); P.tpl = tpl; P.inst = twin(tpl); P.inst.o.visible = false; P.fl = -1; scene.add(P.inst.o);
 }
 // name tag above the rider: tap it to challenge them (race.js)

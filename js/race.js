@@ -66,11 +66,12 @@ NET.on.race = m => {
     say(m.op === 'busy' ? name(R.opp) + ' is busy right now' : m.why === 'course' ? 'No course found between you two' : R.st === 'ask' ? name(R.opp) + ' declined' : 'Race cancelled', 2200); reset();
   } else if (m.op === 'go') {
     if (R.st !== 'ask' && R.st !== 'acc') return;
+    if (!Number.isFinite(m.x) || !Number.isFinite(m.z)) { send({ t: 'race', op: 'quit', to: R.opp, rid: R.rid }); return reset(); }
     Object.assign(R, { st: 'count', fx: m.x, fz: m.z, tc: now + 3000, pen: 0, myT: null, oppT: null, d0: Math.hypot(m.x - S.x, m.z - S.z) });
     R.limit = 60 + R.d0 / 6; ctx.racing = true; finB.position.set(m.x, H(m.x, m.z), m.z); finB.visible = true;
     pins([{ x: m.x, z: m.z, c: '#ffb020', g: '' }]); panel('Race vs ' + name(R.opp) + ' · hold still', null, quit);
   } else if (m.op === 'fin') {
-    R.oppT = +m.time; if (R.st === 'go') say(name(R.opp) + ' finished in ' + R.oppT.toFixed(1) + ' s. Keep going!', 2500); else if (R.st === 'done') result();
+    R.oppT = Number.isFinite(m.time) && m.time >= 0 ? m.time : Infinity; if (R.st === 'go') say(name(R.opp) + ' finished in ' + R.oppT.toFixed(1) + ' s. Keep going!', 2500); else if (R.st === 'done') result();
   } else if (m.op === 'quit') {
     if (R.st === 'count') { say(name(R.opp) + ' cancelled the race'); reset(); }
     else if (R.st === 'go') end(name(R.opp) + ' gave up. You win!', true);

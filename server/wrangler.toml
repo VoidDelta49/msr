@@ -2,6 +2,11 @@ name = "cpm-relay"
 main = "worker.js"
 compatibility_date = "2025-09-01"
 
+[vars]
+# pages allowed to connect (comma-separated, exact origin: scheme + host, no path). localhost / 127.0.0.1 always work.
+# Add your custom domain here if the game moves to one.
+ORIGINS = "https://voiddelta49.github.io"
+
 [[durable_objects.bindings]]
 name = "ROOM"
 class_name = "Room"

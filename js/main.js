@@ -43,11 +43,18 @@ function recompute() { ctx.spec = computeSpec(ctx.bike, ctx.bcfg); applyLook(ctx
 function attachCam() { if (!ctx.GAR && ctx.camMode === 0) { B.cam.add(camera); camera.position.set(0, 0, 0); camera.rotation.set(-.3, 0, 0); } B.rider.forEach(m => m.visible = !ctx.GAR && ctx.camMode === 1); }
 // multiplayer (net.js): a remote rider's bike + paint is built into B like ours, snapshotted, then ours is rebuilt.
 // Cached by look, so 8 friends on the same bike and paint cost one build. Not while crashed (the rider is a ragdoll).
-const TPL = new Map();
+// look = { bike, parts: { key: option index } }: only known part keys, indices clamped to the bike's options; everything
+// else (sliders, assists) stays stock, it doesn't change the model. At most TPL_MAX cached; unused ones are disposed.
+const TPL = new Map(), TPL_MAX = 10;
+function evictTpl() {
+  if (TPL.size < TPL_MAX) return; const used = new Set([...NET.peers.values()].map(P => P.tpl));
+  for (const [k, t] of TPL) { if (TPL.size < TPL_MAX) break; if (used.has(t)) continue; TPL.delete(k); t.o.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.skeleton) o.skeleton.dispose(); }); t.dispose(); }
+}
 ctx.bikeTemplate = look => {
   const bike = ctx.bikes[look && look.bike]; if (!bike) return null;
-  const c = { ...bike.defaults }; if (look.cfg) for (const k in bike.defaults) if (typeof look.cfg[k] === typeof bike.defaults[k]) c[k] = look.cfg[k];
-  const key = bike.id + JSON.stringify(c); if (TPL.has(key)) return TPL.get(key); if (S.crashed) return null;
+  const c = { ...bike.defaults }, P = look.parts && typeof look.parts === 'object' ? look.parts : {};
+  for (const k in bike.parts) { const v = P[k]; if (Number.isInteger(v)) c[k] = Math.max(0, Math.min(bike.parts[k].o.length - 1, v)); }
+  const key = bike.id + JSON.stringify(Object.keys(bike.parts).map(k => c[k])); if (TPL.has(key)) return TPL.get(key); if (S.crashed) return null; evictTpl();
   let spec; try { spec = computeSpec(bike, c); } catch (e) { spec = computeSpec(bike, { ...bike.defaults }); }
   buildModel(bike); applyLook(spec); const t = snapshot(); releaseSkin(); buildModel(ctx.bike); recompute(); attachCam();
   TPL.set(key, t); return t;
