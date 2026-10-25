@@ -127,9 +127,40 @@ function smash(g, sp) {
   if (!S.running) { g.fillStyle = '#ff4a3d'; g.fillText('ENGINE OFF', 278, 116); }
   else if (S.lim && (performance.now() / 90 | 0) % 2) { g.fillStyle = '#ff3b2f'; g.fillText('LIMIT', 278, 116); }
 }
+/* tmx: TMX Supremo twin analog dials. Speedo (left, cream face, 0-140) and tacho (right, x1000 r/min, red from 9), green gear
+   number between them, neutral lamp, fuel bar */
+function tmx(g, sp) {
+  g.fillStyle = '#101215'; rr(g, 4, 4, 504, 216, 60); g.fill(); g.strokeStyle = '#3a3f47'; g.lineWidth = 6; g.stroke();
+  const dial = (cx, max, step, lab, val, red) => {
+    const cy = 112, R = 92, a = v => PI * (.75 + 1.5 * v);
+    g.fillStyle = '#ece6d4'; g.beginPath(); g.arc(cx, cy, R, 0, 2 * PI); g.fill(); g.strokeStyle = '#8a8f97'; g.lineWidth = 5; g.stroke();
+    if (red) { g.strokeStyle = '#d42a1e'; g.lineWidth = 9; g.beginPath(); g.arc(cx, cy, R - 10, a(red / max), a(1)); g.stroke(); }
+    g.strokeStyle = g.fillStyle = '#1a1b1e'; g.font = 'bold 16px system-ui'; g.textAlign = 'center';
+    for (let k = 0; k <= max; k += step) {
+      const t = a(k / max), big = k % (step * 2) === 0; g.lineWidth = big ? 4 : 2.5; g.beginPath();
+      g.moveTo(cx + Math.cos(t) * (R - 6), cy + Math.sin(t) * (R - 6)); g.lineTo(cx + Math.cos(t) * (R - (big ? 18 : 12)), cy + Math.sin(t) * (R - (big ? 18 : 12))); g.stroke();
+      if (big) g.fillText(k, cx + Math.cos(t) * (R - 32), cy + Math.sin(t) * (R - 32) + 6);
+    }
+    g.font = 'bold 12px system-ui'; g.fillText(lab, cx, cy + 44);
+    const t = a(Math.min(val, max * 1.03) / max); g.strokeStyle = '#d42a1e'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath();
+    g.moveTo(cx - Math.cos(t) * 12, cy - Math.sin(t) * 12); g.lineTo(cx + Math.cos(t) * (R - 12), cy + Math.sin(t) * (R - 12)); g.stroke(); g.lineCap = 'butt';
+    g.fillStyle = '#2a2c30'; g.beginPath(); g.arc(cx, cy, 11, 0, 2 * PI); g.fill();
+  };
+  dial(110, 140, 10, 'km/h', Math.abs(S.v) * 3.6, 0);
+  dial(402, 10, .5, 'x1000 r/min', dispRpm(sp) / 1000, 9);
+  // gear number + neutral lamp between the dials
+  g.fillStyle = '#05140a'; rr(g, 222, 40, 68, 74, 10); g.fill();
+  g.fillStyle = S.gear ? '#5cff8a' : '#2a4a32'; g.font = 'bold 54px ui-monospace,Menlo,monospace'; g.textAlign = 'center'; g.fillText(S.gear || '-', 256, 98);
+  g.fillStyle = !S.gear ? '#43e07a' : '#1d2a22'; g.beginPath(); g.arc(256, 134, 11, 0, 2 * PI); g.fill();
+  g.fillStyle = !S.gear ? '#0a1a0f' : '#3d4a42'; g.font = 'bold 13px system-ui'; g.fillText('N', 256, 139);
+  // fuel bar
+  const fr = S.fuel / sp.fuel.cap; for (let i = 0; i < 6; i++) { g.fillStyle = i < Math.ceil(fr * 6) ? (fr < .18 ? '#ff4a3d' : '#ffb020') : '#22262c'; g.fillRect(226 + i * 10, 166, 8, 22); }
+  g.fillStyle = '#d0d4da'; g.font = 'bold 11px system-ui'; g.fillText('E        F', 256, 202);
+  if (!S.running) { g.fillStyle = '#ff4a3d'; g.font = 'bold 12px system-ui'; g.fillText('OFF', 256, 160); }
+}
 // key off: the dash is dead
 function dead(g) { g.fillStyle = '#05070a'; rr(g, 4, 4, 504, 216, 26); g.fill(); }
-const CLUSTERS = { sport, scooter, tft, smash };
+const CLUSTERS = { sport, scooter, tft, smash, tmx };
 // Redrawn only when something on it changes; the texture is uploaded to the GPU only while the in-world cluster can
 // be seen (1st person / garage). In 3rd person the same canvas is shown as the on-screen HUD, no upload needed.
 let cluKey = '', texDirty = true;

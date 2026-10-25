@@ -1,0 +1,485 @@
+{
+  "id": "tmx155",
+  "name": "Honda TMX Supremo",
+  "short": "TMX Supremo",
+  "tag": "5-speed manual · tricycle-ready",
+  "blurb": "The Philippine workhorse: 149.2 cc air-cooled SOHC 2-valve carb single (57.3 × 57.8 mm, 9.1:1), 11.1 hp @ 7,500 rpm, 11.6 Nm @ 5,000 rpm. 5-speed return shift with a cable wet clutch, chain drive, drum brakes front and rear, 18\" spoke wheels (80/100-18, 90/90-18), 1,306 mm wheelbase, 127 kg wet, 10.3 L tank. Factory sidecar mounts: fit the tricycle sidecar in Parts.",
+  "model": "tmx",
+  "cluster": "tmx",
+  "drivetrain": "manual",
+  "chassis": {
+    "m": 192,
+    "r": 0.31,
+    "wb": 1.306,
+    "lf": 0.72,
+    "lr": 0.586,
+    "h": 0.62,
+    "I": 40,
+    "drag": 0.25,
+    "roll": 25,
+    "brake": 0.72,
+    "bf": 0.62,
+    "travel": [
+      0.11,
+      0.085
+    ]
+  },
+  "engine": {
+    "Ie": 0.017,
+    "idle": 1400,
+    "red": 9000,
+    "peakPS": 11.3,
+    "tachMax": 10000,
+    "torque": [
+      [
+        0,
+        3
+      ],
+      [
+        1000,
+        5.6
+      ],
+      [
+        2000,
+        8
+      ],
+      [
+        3000,
+        9.8
+      ],
+      [
+        4000,
+        11
+      ],
+      [
+        5000,
+        11.6
+      ],
+      [
+        6000,
+        11.4
+      ],
+      [
+        7000,
+        10.9
+      ],
+      [
+        7500,
+        10.5
+      ],
+      [
+        8000,
+        9.9
+      ],
+      [
+        9000,
+        8.2
+      ],
+      [
+        10000,
+        6
+      ]
+    ],
+    "fric": [
+      0.8,
+      0.00025
+    ],
+    "fuel": {
+      "cap": 10.3,
+      "idle": 0.00017,
+      "k": 0.0028
+    }
+  },
+  "manual": {
+    "prim": 3.35,
+    "gears": [
+      0,
+      2.769,
+      1.882,
+      1.4,
+      1.13,
+      0.96
+    ],
+    "eta": 0.88,
+    "clutchCap": 28,
+    "final": [
+      "rs",
+      "fs"
+    ]
+  },
+  "sound": {
+    "parts": {
+      "sq": 0.6,
+      "sqHz": 1100,
+      "hiss": 0.5,
+      "chain": 1.3,
+      "chainHz": 2000,
+      "lash": 1.4,
+      "clutch": 1.1,
+      "thump": 1.1,
+      "thumpHz": 0.95,
+      "rattle": 0.4,
+      "key": 1,
+      "keyHz": 0.9,
+      "tink": 1.3,
+      "tinkHz": 0.8,
+      "peg": 0.9
+    },
+    "sc": {
+      "rattle": 1.8,
+      "thump": 1.5,
+      "thumpHz": 0.8,
+      "lash": 1.7,
+      "sq": 0.7,
+      "peg": 0
+    },
+    "lp": 0.85,
+    "gain": 0.95,
+    "whine": 0,
+    "cyl": 1,
+    "pipe": 250,
+    "pq": 5,
+    "body": 75,
+    "bq": 2.6,
+    "punch": 1.15,
+    "rough": 0.16,
+    "crackle": 0.08,
+    "crackRpm": 5000,
+    "mech": 0.7,
+    "intake": 0.45,
+    "bright": 0.7,
+    "drive": 1.5,
+    "starter": 0.9
+  },
+  "parts": {
+    "sidecar": {
+      "l": "Sidecar",
+      "o": [
+        {
+          "n": "Solo",
+          "var": 0
+        },
+        {
+          "n": "Tricycle sidecar (+110 kg)",
+          "var": 1,
+          "sc": 1,
+          "scm": 110,
+          "dm": 110,
+          "scW": 0.3,
+          "scX": 0.95,
+          "scD": 1.5,
+          "drag": 0.62,
+          "roll": 42,
+          "brake": 0.95
+        }
+      ]
+    },
+    "exhaust": {
+      "l": "Exhaust",
+      "o": [
+        {
+          "n": "Stock",
+          "pow": 1,
+          "snd": 0
+        },
+        {
+          "n": "Slip-on (+5%)",
+          "pow": 1.05,
+          "snd": 1
+        },
+        {
+          "n": "Open pipe (+9%)",
+          "pow": 1.09,
+          "snd": 2
+        }
+      ]
+    },
+    "tune": {
+      "l": "Engine tune",
+      "o": [
+        {
+          "n": "Stock",
+          "pow": 1
+        },
+        {
+          "n": "Street tune (+4%)",
+          "pow": 1.04,
+          "ie": 0.92
+        },
+        {
+          "n": "Bore-up 165 cc (+11%)",
+          "pow": 1.11,
+          "ie": 0.9,
+          "idle": 1450
+        }
+      ]
+    },
+    "tires": {
+      "l": "Tires",
+      "o": [
+        {
+          "n": "Stock",
+          "mu": 0.85
+        },
+        {
+          "n": "Sport",
+          "mu": 1
+        },
+        {
+          "n": "Racing",
+          "mu": 1.2
+        }
+      ]
+    },
+    "paint": {
+      "l": "Paint",
+      "o": [
+        {
+          "n": "Red",
+          "c": "#c3161d",
+          "lv": "r"
+        },
+        {
+          "n": "Black",
+          "c": "#16171a",
+          "lv": "k"
+        },
+        {
+          "n": "Blue",
+          "c": "#1d3f9e",
+          "lv": "b"
+        }
+      ]
+    },
+    "intake": {
+      "l": "Air filter",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Sport foam (+3%)",
+          "pow": 1.03
+        },
+        {
+          "n": "Cold-air intake (+5%)",
+          "pow": 1.05
+        }
+      ]
+    },
+    "flywheel": {
+      "l": "Flywheel",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Lightened (quicker revs)",
+          "ie": 0.8
+        },
+        {
+          "n": "Heavy (smoother)",
+          "ie": 1.3
+        }
+      ]
+    },
+    "brakes": {
+      "l": "Brake pads",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Sintered",
+          "brake": 1.08
+        },
+        {
+          "n": "Race compound",
+          "brake": 1.17
+        }
+      ]
+    },
+    "wheelcol": {
+      "l": "Wheel colour",
+      "o": [
+        {
+          "n": "Match paint"
+        },
+        {
+          "n": "Black",
+          "wc": "#16171a"
+        },
+        {
+          "n": "Gold",
+          "wc": "#c9a24a"
+        },
+        {
+          "n": "Silver",
+          "wc": "#b9bdc2"
+        },
+        {
+          "n": "Red",
+          "wc": "#c21d1d"
+        },
+        {
+          "n": "Blue",
+          "wc": "#1f4fbf"
+        },
+        {
+          "n": "White",
+          "wc": "#e9e9e4"
+        }
+      ]
+    },
+    "cover": {
+      "l": "Engine cover",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Black",
+          "ec": "#1b1c1f"
+        },
+        {
+          "n": "Gold",
+          "ec": "#c9a24a"
+        },
+        {
+          "n": "Red",
+          "ec": "#a8161c"
+        },
+        {
+          "n": "Blue",
+          "ec": "#1f44d8"
+        }
+      ]
+    },
+    "cffender": {
+      "l": "Fenders",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Carbon (−0.4 kg)",
+          "dm": -0.4,
+          "cff": 1
+        }
+      ]
+    },
+    "cfexh": {
+      "l": "Muffler cover",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Carbon (−0.3 kg)",
+          "dm": -0.3,
+          "cfx": 1
+        }
+      ]
+    }
+  },
+  "sliders": [
+    {
+      "k": "pf",
+      "l": "Fork preload",
+      "min": -20,
+      "max": 20,
+      "u": " mm"
+    },
+    {
+      "k": "pr",
+      "l": "Shock preload",
+      "min": -20,
+      "max": 20,
+      "u": " mm"
+    },
+    {
+      "k": "yf",
+      "l": "Front ride height",
+      "min": -25,
+      "max": 25,
+      "step": 5,
+      "u": " mm"
+    },
+    {
+      "k": "yr",
+      "l": "Rear ride height",
+      "min": -25,
+      "max": 25,
+      "step": 5,
+      "u": " mm"
+    },
+    {
+      "k": "fs",
+      "l": "Front sprocket",
+      "min": 13,
+      "max": 16,
+      "u": "T"
+    },
+    {
+      "k": "rs",
+      "l": "Rear sprocket",
+      "min": 38,
+      "max": 50,
+      "u": "T"
+    },
+    {
+      "k": "kf",
+      "l": "Fork spring",
+      "min": 6,
+      "max": 16,
+      "u": " kN/m"
+    },
+    {
+      "k": "kr",
+      "l": "Shock spring",
+      "min": 10,
+      "max": 30,
+      "u": " kN/m"
+    },
+    {
+      "k": "damp",
+      "l": "Damping",
+      "min": 20,
+      "max": 90,
+      "u": "%"
+    }
+  ],
+  "toggles": [
+    {
+      "k": "autoClutch",
+      "l": "Anti-stall clutch"
+    }
+  ],
+  "hint": "KEY on, hold START in neutral, pull CLUTCH, shift ▼ into 1st (1-N-2-3-4-5) and ease it out. With the sidecar: it pulls toward the sidecar when you accelerate and away when you brake, and the sidecar lifts in fast turns toward it",
+  "defaults": {
+    "sidecar": 0,
+    "exhaust": 0,
+    "tune": 0,
+    "tires": 0,
+    "paint": 0,
+    "intake": 0,
+    "flywheel": 0,
+    "brakes": 0,
+    "wheelcol": 0,
+    "cover": 0,
+    "cffender": 0,
+    "cfexh": 0,
+    "pf": 0,
+    "pr": 0,
+    "yf": 0,
+    "yr": 0,
+    "fs": 15,
+    "rs": 42,
+    "kf": 9,
+    "kr": 16,
+    "damp": 45,
+    "autoClutch": true
+  }
+}

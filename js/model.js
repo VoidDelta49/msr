@@ -152,6 +152,13 @@ function drawLivery(kind, paint, lv = '') {
     poly(K, .54, .5, 1.05, .5, 1.05, 1.2, .58, 1.2);                                           // tail black
     poly(K, -.8, .7, -.52, .84, -.36, .88, -.3, .93, -.3, .7);                                 // cowl lower edge
     poly(O, -.55, .97, -.36, 1.03, -.36, 1.045, -.55, .985);                                   // cowl accent
+  } else if (kind === 'tmx') { // TMX Supremo (reference photos): white arrow stripe along the tank with an accent line, black knee panel
+    const W = '#f1f1ec', Gy = '#9aa0a8', R = '#d42a2a';
+    const ac = lv === 'k' ? R : lv === 'b' ? Gy : K;
+    poly(K, -.34, .8, -.1, .8, -.04, .86, -.26, .86);                                               // dark lower tank edge
+    poly(W, -.33, .875, -.12, .905, .07, .955, .08, .93, -.1, .875, -.3, .845);                      // arrow stripe
+    poly(ac, -.31, .835, -.1, .862, .08, .918, .08, .905, -.1, .85, -.31, .822);                     // accent under it
+    poly(W, -.22, .93, -.05, .965, .0, .985, -.2, .945);                                            // upper flash
   } else if (kind === 'underbone') { // Smash 115 / Fi (reference photos): sweeping stripes along the legshield and side covers
     const W = '#f1f1ec', R = '#d42a2a', N = '#1f2a5c', Au = '#c9a24a', G = '#7d828a';
     const sweep = (c, o, t = .022) => { poly(c, -.52, .76 + o, -.3, .86 + o, -.24, .9 + o, -.24, .9 + o + t, -.3, .86 + o + t, -.52, .76 + o + t);   // legshield
@@ -578,11 +585,121 @@ function underbone(ct, v) {
   };
 }
 
-const MODELS = { sport, scooter, supersport, underbone };
+/* ---------- utility single (Honda TMX Supremo) + PH tricycle sidecar ---------- */
+// 18" spoke wheels (80/100-18, 90/90-18 ≈ 0.31 m radius), 1,306 mm wheelbase, ~27° rake, 782 mm seat. Reference photos:
+// painted teardrop tank with an arrow stripe, black side covers, long flat seat, black rear carrier, upright finned single with
+// silver cases, long chrome muffler with a heat shield, silver front fender, drum hubs both ends, small black headlamp cowl with a
+// chrome-rimmed lamp, amber signals on stalks, round dials. The tank badge is a pseudo-letter decal (MDec).
+// v = 1: the tricycle sidecar on the right (the owner's own rig): stainless body on a diamond-plate floor, rounded nose with a
+// framed windscreen and black band, red vinyl bench, stainless roof on four posts with a signboard (gibberish letters) and a top
+// rail, wire grille on the bike side, spare-wheel cover on the back, stainless fender over its own wheel, chrome bumpers.
+const MSS = std(0xd3d7dc, .34, .55), MDia = std(0xb0b4ba, .55, .5), MGls = std(0x5d6a75, .08, .3), MVin = std(0xc81c1c, .45, .05), MSil = std(0xb3b8bf, .35, .75),
+  MDecY = new THREE.MeshStandardMaterial({ map: DEC, alphaTest: .5, roughness: .4, color: 0xf2b632 });
+function sidecar(ct) {
+  const X0 = .5, X1 = 1.44, XC = (X0 + X1) / 2, W = X1 - X0, ZF = -.62, ZB = .56, NR = W / 2;
+  mk(box(W, .05, ZB - ZF), MDia, ct, XC, .31, (ZF + ZB) / 2);                                                  // diamond-plate floor
+  mk(new THREE.CylinderGeometry(NR, NR, .62, 10, 1, false, PI / 2, PI), MSS, ct, XC, .62, ZF);               // rounded nose
+  mk(new THREE.CircleGeometry(NR, 10, PI, PI).rotateX(-PI / 2), MDia, ct, XC, .315, ZF);                       // nose floor
+  mk(new THREE.CylinderGeometry(NR + .015, NR + .015, .14, 10, 1, true, PI / 2, PI), MK, ct, XC, .86, ZF);    // black band
+  mk(box(.03, .6, ZB - ZF), MSS, ct, X1, .62, (ZF + ZB) / 2);                                                  // outer wall
+  mk(box(.03, .4, ZB - ZF), MSS, ct, X0, .52, (ZF + ZB) / 2);                                                  // bike-side wall
+  mk(box(W, .74, .03), MSS, ct, XC, .69, ZB);                                                                   // back panel
+  mk(cyl(.2, .2, .02, 10), MSil, ct, XC, .74, ZB + .025, PI / 2); mk(cyl(.07, .07, .03, 8), MSS, ct, XC, .74, ZB + .035, PI / 2); // spare-wheel cover
+  // windscreen: frame on the nose, smoked glass, posts up to the roof
+  mk(box(W - .1, .04, .04), MSS, ct, XC, .95, ZF - .02); mk(box(W - .1, .04, .04), MSS, ct, XC, 1.32, ZF + .06);
+  mk(box(W - .14, .36, .01), MGls, ct, XC, 1.135, ZF + .02, -.2);
+  for (const x of [X0 + .02, X1 - .02]) { tube([x, .93, ZF - .02], [x, 1.56, ZF + .14], .018, MSS, ct); tube([x, .9, ZB - .02], [x, 1.56, ZB - .02], .018, MSS, ct); }
+  // roof, signboard, top rail
+  mk(box(W + .12, .04, ZB - ZF + .36), MSS, ct, XC, 1.58, (ZF + ZB) / 2 - .04);
+  mk(box(W - .1, .12, .03), MK, ct, XC, 1.5, ZF + .13); mk(new THREE.PlaneGeometry(.66, .08), MDecY, ct, XC, 1.5, ZF + .113, 0, PI, 0);
+  for (const x of [X0 + .06, X1 - .06]) { tube([x, 1.6, ZF + .1], [x, 1.68, ZF + .2], .01, MSS, ct); tube([x, 1.68, ZF + .2], [x, 1.68, ZB - .1], .01, MSS, ct); tube([x, 1.68, ZB - .1], [x, 1.6, ZB], .01, MSS, ct); }
+  tube([X0 + .06, 1.68, ZB - .1], [X1 - .06, 1.68, ZB - .1], .01, MSS, ct); tube([X0 + .06, 1.68, ZF + .2], [X1 - .06, 1.68, ZF + .2], .01, MSS, ct);
+  // wire grille on the bike side (zig-zag stainless rods)
+  for (let i = 0; i < 6; i++) { const z0 = ZF + .1 + i * .18; tube([X0, .74, z0], [X0, 1.0, z0 + .09], .006, MSS, ct, 4); tube([X0, 1.0, z0 + .09], [X0, .74, z0 + .18], .006, MSS, ct, 4); }
+  tube([X0, 1.0, ZF + .1], [X0, 1.0, ZB - .06], .01, MSS, ct);
+  // bench + backrest, red vinyl
+  mk(box(W - .08, .1, .36), MVin, ct, XC, .52, ZB - .23); mk(box(W - .08, .4, .08), MVin, ct, XC, .8, ZB - .06, -.12);
+  mk(box(W - .08, .16, .3), MSS, ct, XC, .4, ZB - .23);                                                          // bench base
+  // its own wheel under a stainless fender (no brake), and the mounts to the bike's frame
+  const wx = 1.5, wz = .08, wr = .28; mk(new THREE.TorusGeometry(wr - .04, .04, 6, 18), MR, ct, wx, wr, wz, 0, PI / 2); mk(cyl(.07, .07, .1, 8), MAlu, ct, wx, wr, wz, 0, 0, PI / 2);
+  mk(arc(wr + .03, wr + .06, .25, 2.9, .18), MSS, ct, wx, wr, wz);
+  tube([X1, .32, wz], [wx, wr, wz], .025, MK, ct);
+  for (const [a, b] of [[[.1, .32, -.25], [X0, .3, -.25]], [[.11, .34, .4], [X0, .3, .4]], [[.1, .78, .3], [X0, .9, .3]]]) tube(a, b, .022, MK, ct);
+  // chrome bumpers, nose lamps
+  for (const y of [.36, .45]) { tube([X0 + .05, y, ZB + .08], [X1 - .05, y, ZB + .08], .02, MC, ct); }
+  for (const x of [X0 + .1, X1 - .1]) mk(cyl(.03, .03, .02, 8), MAmb, ct, x, .8, ZF - Math.sqrt(NR * NR - (x - XC) ** 2) - .005, PI / 2);
+}
+function tmx(ct, v) {
+  const rw = .31, rake = .47, headY = 1.0, fZ = -.686, fork = (headY - rw) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
+  B.G = { rw, rearZ: .62, fork, rake, pivotY: .37, pivotZ: .1, swingX: 0 }; B.wheelCol = 0xc3c8cd; B.cargo = { y: .97, z: .52 }; B.decal = MDec; B.sc = v ? 1 : 0;
+  const wheel = front => wheelWire(.27, .04, .23, front ? .078 : .082, 0);
+  B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .62); ct.add(B.rearH); B.rearW = wheel(false); B.rearH.add(B.rearW);
+  mk(cyl(.085, .085, .012, 10), MB, B.rearH, -.07, 0, 0, 0, 0, PI / 2);                                       // sprocket
+  // swingarm (tubes) + top chain guard on the left (one mesh, stretched pivot->axle each frame)
+  B.swing = mk(mergeGeometries([box(.03, .045, 1).translate(.1, 0, 0), box(.03, .045, 1).translate(-.1, 0, 0), box(.05, .02, .9).translate(-.075, .06, .02), box(.22, .035, .05).translate(0, 0, -.46)]), MK, ct, 0, .33, .36);
+  for (const s of [-1, 1]) { tube([s * .11, .36, .6], [s * .11, .8, .44], .012, MC, ct); tube([s * .11, .42, .575], [s * .11, .68, .48], .03, MK, ct, 8); } // twin shocks
+  // frame: backbone under the tank, downtube in front of the engine, seat rails
+  tube([0, .93, headZ + .03], [0, .8, .1], .03, MK, ct); tube([0, .88, headZ + .05], [0, .24, -.2], .028, MK, ct); tube([0, .24, -.2], [0, .22, .12], .025, MK, ct);
+  for (const s of [-1, 1]) { tube([s * .08, .8, .1], [s * .08, .8, .7], .015, MK, ct); tube([s * .08, .4, .14], [s * .08, .79, .45], .015, MK, ct); }
+  // engine: silver cases, cylinder leaning forward with deep fins, round clutch cover on the right, kick lever
+  mk(prof([[-.2, .44], [.12, .46], [.18, .34], [.14, .2], [-.06, .17], [-.2, .24]], .26, .02), MSil, ct, 0, 0, 0);
+  mk(prof([[-.2, .44], [-.05, .46], [-.12, .78], [-.28, .76]], .17, .015), MG, ct, 0, 0, 0);
+  for (let i = 0; i < 5; i++) mk(box(.23, .016, .2), MG, ct, 0, .52 + i * .055, -.15 - i * .016, .25);
+  mk(prof([[-.27, .78], [-.11, .8], [-.1, .86], [-.27, .84]], .19, .012), MSil, ct, 0, 0, 0);                    // head cover
+  mk(cyl(.1, .1, .03, 12), MCov, ct, .14, .33, .0, 0, 0, PI / 2); mk(cyl(.065, .065, .02, 8), MSil, ct, -.14, .34, -.02, 0, 0, PI / 2);
+  tube([.16, .33, .14], [.18, .45, .3], .012, MC, ct, 5); mk(box(.03, .02, .08), MB, ct, .18, .45, .34);       // kick starter
+  for (const s of [-1, 1]) { mk(box(.1, .022, .035), MR, ct, s * .18, .3, .12); mk(box(.025, .07, .05), MB, ct, s * .13, .33, .12); } // rubber pegs
+  mk(box(.03, .02, .2), MC, ct, -.18, .3, .0, .1);                                                             // gear pedal
+  tube([-.17, .36, .15], [-.1, .7, .22], .008, MB, ct, 4);                                                      // carb / air box hint
+  mk(box(.16, .14, .16), MK, ct, 0, .62, .08);
+  // bodywork
+  mk(taper(prof([[-.34, .93], [-.24, 1.0], [-.02, .99], [.08, .93], [.07, .82], [-.1, .79], [-.34, .8]], .3, .03), [[-.36, .78], [-.15, 1], [.1, .86]]), MP, ct, 0, 0, 0); // teardrop tank
+  for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.17, .045), MDec, ct, s * .152, .89, -.13, 0, s * PI / 2, -.12 * s);      // tank badge
+  mk(prof([[.04, .82], [.36, .82], [.42, .74], [.36, .55], [.08, .52], [.02, .66]], .25, .015), MK, ct, 0, 0, 0); // side covers
+  mk(prof([[.04, .82], [.1, .875], [.55, .875], [.7, .86], [.69, .815], [.06, .8]], .27, .025, 2), MS, ct, 0, 0, 0); // long flat seat
+  mk(arc(.33, .355, .9, 2.5, .13), MK, B.rearH, 0, 0, 0);                                                     // rear fender
+  mk(prof([[.62, .8], [.86, .78], [.92, .7], [.86, .66], [.66, .74]], .15, .01), MK, ct, 0, 0, 0);             // tail
+  mk(box(.15, .06, .05), MTail, ct, 0, .76, .9, .3); for (const s of [-1, 1]) { tube([s * .1, .74, .86], [s * .2, .74, .88], .007, MB, ct, 4); mk(box(.045, .035, .05), MAmb, ct, s * .22, .74, .88); }
+  mk(box(.18, .1, .008), MPl, ct, 0, .6, .96, .25);
+  // black carrier rack over the back of the seat
+  for (const s of [-1, 1]) { tube([s * .13, .9, .38], [s * .13, .9, .8], .012, MK, ct); tube([s * .13, .9, .4], [s * .1, .8, .35], .012, MK, ct); tube([s * .13, .9, .8], [s * .11, .78, .78], .012, MK, ct); }
+  for (const z of [.55, .68, .8]) tube([-.13, .9, z], [.13, .9, z], .01, MK, ct);
+  // steering: chrome fork, silver fender, small black cowl with the chrome-rimmed lamp, signals on stalks, round dials
+  T0 = [headZ, headY]; RK = rake;
+  const tilt = new THREE.Group(); tilt.position.set(0, headY, headZ); tilt.rotation.x = rake; ct.add(tilt);
+  const st = B.steer = new THREE.Group(); tilt.add(st);
+  for (const s of [-1, 1]) { mk(cyl(.019, .019, .44), MC, st, s * .075, -.22, 0); mk(cyl(.03, .03, .16), MK, st, s * .075, -.06, 0); } // stanchions + upper covers
+  mk(box(.2, .03, .07), MB, st, 0, .03, 0); mk(box(.19, .025, .06), MB, st, 0, -.14, 0);                     // yokes
+  B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
+  for (const s of [-1, 1]) mk(cyl(.028, .026, .3, 8), MAlu, B.slider, s * .075, .15, 0);
+  B.frontW = wheel(true); B.slider.add(B.frontW);
+  mk(arc(.33, .352, 1.0 + rake, 2.45 + rake, .1), MSil, B.slider, 0, 0, 0);                                    // silver front fender
+  mk(profSt([[headZ - .03, 1.12], [headZ - .2, 1.1], [headZ - .27, 1.0], [headZ - .26, .9], [headZ - .1, .9], [headZ - .03, 1.0]], .22, .02), MK, st, 0, 0, 0); // headlamp cowl
+  mk(profSt([[headZ - .04, 1.16], [headZ - .2, 1.15], [headZ - .22, 1.11], [headZ - .04, 1.11]], .16, .01), MK, st, 0, 0, 0); // little top cover
+  mkSt(box(.17, .14, .02), MC, 0, headZ - .275, .985, .2); mkSt(box(.14, .11, .02), MHead, 0, headZ - .282, .985, .2); // lamp + chrome rim
+  for (const s of [-1, 1]) { tube([s * .08, 0, 0], [s * .17, -.03, -.08], .007, MB, st, 4); mkSt(box(.06, .045, .05), MAmb, s * .2, headZ - .21, .97, 0, s * .3); }
+  clusterPlane(st, 0, .19, .02, -1.0, .22);
+  controls(st, .17, .06, .36, .22, [.33, .3, -.02]);
+  rider(ct, [1.17, .27, -.1], [1.54, .22], [.25, 1.25, -.01, -.45, .47], [[.15, .88, .11, -.35, .36, .14], [.17, .575, .035, -.42, .51, .11]]);
+  B.cam = new THREE.Group(); B.cam.position.set(0, 1.44, .18); ct.add(B.cam);
+  if (v) sidecar(ct);
+  B.exh = new THREE.Group(); ct.add(B.exh);
+  // stock: chrome header round the front of the engine into a long chrome muffler with a heat shield; aftermarket: shorter, louder
+  B.buildExh = (s, cf) => {
+    B.exh.clear(); const L = [.62, .44, .36][s], Rr = [.05, .048, .045][s], col = [0xd5dae0, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, s ? .35 : .22, s ? .8 : 1);
+    tube([.05, .55, -.27], [.08, .22, -.24], .02, MC, B.exh); tube([.08, .22, -.24], [.15, .22, .1], .021, MC, B.exh);
+    const an = .16, a = [.16, .23, .12], d = [0, Math.sin(an), Math.cos(an)], at = t => a.map((v, i) => v + d[i] * t), b = at(L);
+    tube(a, b, Rr, m, B.exh, 8); tube(b, at(L + .05), Rr * .75, s ? MB : MC, B.exh, 8);
+    if (s === 0) { const Q = (t, n) => [a[2] + d[2] * t + Math.sin(an) * n, a[1] + d[1] * t - Math.cos(an) * n]; mk(prof([Q(.02, .03), Q(.08, .07), Q(.36, .065), Q(.4, .02), Q(.06, -.01)], .014, .004), MC, B.exh, .163 + Rr, 0, 0); }
+    batchExh();
+  };
+}
+
+const MODELS = { sport, scooter, supersport, underbone, tmx };
 export function buildModel(bike, spec) {
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;
-  B.ct.clear(); B.fenderPaint = false; B.decal = null; PAL.clear(); MODELS[bike.model](B.ct, B.var); B.kind = bike.model; setLiveryUV();
+  B.ct.clear(); B.fenderPaint = false; B.decal = null; B.sc = 0; PAL.clear(); MODELS[bike.model](B.ct, B.var); B.kind = bike.model; setLiveryUV();
   // rider: one mesh per material, still listed in B.rider (camera toggles visibility, crashes move them)
   const rm = new Map(); for (const o of B.rider) { if (!rm.has(o.material)) rm.set(o.material, []); rm.get(o.material).push(o); }
   B.rider = [...rm.values()].map(L => L.length > 1 ? mergeList(L, B.ct) : L[0]);
@@ -624,6 +741,7 @@ const BL = new Set();
 export const blobAdd = e => (BL.add(e), e), blobDel = e => { BL.delete(e); };
 // the player's own bike (studio.js sets ground / off while the garage is open)
 export const BLOB_ME = blobAdd({ b: B.body, p: new THREE.Vector3(), h0: .45, d: 1.3, w: .7, cores: 1, vis: () => !!B.skin, ground: null, off: false });
+blobAdd({ b: B.body, p: new THREE.Vector3(.97, -.15, 0), h0: .45, d: 1.9, w: 1.1, cores: 0, vis: () => !!B.skin && !!B.sc, ground: null, off: false }); // tricycle sidecar
 export function bikeBlob(e, G) { const s = G.sh; if (s) { e.p.set(0, -.15, s.zc); e.d = s.d; e.w = s.w; } return e; } // body-local: ct sits .6 below body
 const bp = new THREE.Vector3(), bf = new THREE.Vector3(), bu = new THREE.Vector3(), bm = new THREE.Matrix4(), bq = new THREE.Quaternion(), be = new THREE.Euler(0, 0, 0, 'YXZ'), bs = new THREE.Vector3();
 const sd = new THREE.Vector3();

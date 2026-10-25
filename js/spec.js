@@ -26,7 +26,9 @@ export function computeSpec(bike, b) {
   s.pf = (b.pf || 0) / 1000; s.pr = (b.pr || 0) / 1000; s.h += (s.pf + s.pr) / 2;
   // ride height (fork tubes slid in the clamps / shock length): chassis sits yf/yr higher, same travel and sag
   s.yf = (b.yf || 0) / 1000; s.yr = (b.yr || 0) / 1000; s.h += (s.yf + s.yr) / 2;
-  s.sag = (s.m * s.lr / s.wb * 9.81 / s.kf + s.m * s.lf / s.wb * 9.81 / s.kr) / 2;
+  // a sidecar's own wheel carries scW of the rig, the bike's springs only the rest
+  s.ms = s.sc ? s.m * (1 - s.scW) : s.m;
+  s.sag = (s.ms * s.lr / s.wb * 9.81 / s.kf + s.ms * s.lf / s.wb * 9.81 / s.kr) / 2;
   s.tqMax = Math.max(...s.TQ.map(p => p[1]));
   DRIVES[bike.drivetrain].spec(s, bike, b);
   return s;

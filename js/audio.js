@@ -11,7 +11,8 @@ const A = {}, Z = { coast: 0, river: 0, town: 0, paddy: 0, volc: 0, wild: 0, sx:
 const EXH = { gain: [1, 1.35, 1.7], bright: [1, 1.3, 1.6], pq: [1, 1.3, 1.6], crackle: [1, 2.4, 4], drive: [1, 1.15, 1.3], pipe: [1, .92, .85] };
 
 // per-bike part-sound profile: data/bikes/*.json -> sound.parts (level / pitch multipliers, all optional; see CONTEXT "Rules")
-const pv = (k, d = 1) => ctx.spec?.sound?.parts?.[k] ?? d;
+// with a sidecar fitted (spec.sc), sound.sc overrides those keys (steel box rattle, heavier thumps)
+const pv = (k, d = 1) => (ctx.spec?.sc && ctx.spec.sound?.sc?.[k]) ?? ctx.spec?.sound?.parts?.[k] ?? d;
 
 // smoothed param set that skips near-identical values (saves automation events every frame)
 function st(p, v, tc) { if (p._v !== undefined && Math.abs(p._v - v) < 1e-4) return; p._v = v; p.setTargetAtTime(v, AC.currentTime, tc); }

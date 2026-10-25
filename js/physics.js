@@ -7,6 +7,7 @@ import { say } from './hud.js';
 import { igPre, igPost } from './ignition.js';
 import { KP, KS, MUX, BRK, tyreF } from './tyre.js';
 import { cfg } from './config.js';
+import { blip } from './audio.js';
 
 // Wheelie / stoppie: the bike pitches as a rigid body about the contact patch of the wheel still on the ground (rear for a wheelie,
 // front for a stoppie). Net longitudinal acceleration a acts at the CG height h, gravity pulls it back; wp is the angle off the ground
@@ -27,6 +28,32 @@ function pitchUp(sp, a, dt) {
   let q = q0 + qv * dt;
   if (q <= 0) { S.wpHit = Math.max(0, -qv); q = qv = 0; } else if (q > WMAX) { q = WMAX; qv = Math.min(qv, 0); }
   S.wp = sg * q; S.wpv = sg * qv;
+}
+
+// Tricycle (sidecar on the right, sc = 1; -1 = left). No lean: the bars set the curvature directly, the rig rolls only a little on
+// its springs. All drive and braking acts along the bike's wheels, but the rig's mass centre sits yc toward the sidecar (sidecar
+// mass scm at scX from the bike's centre line), so accelerating yaws it toward the sidecar and braking (bike brakes only) away from it.
+// Turning toward the sidecar lifts it off the ground ("flying the chair") once the cornering force at the CG height h outweighs
+// gravity's lever yc: the rig rolls about the bike's two wheels. Turning hard the other way it rolls about the sidecar wheel
+// (scD out) and the bike side lifts; that pivot line runs to the front wheel, so the lever (d2) is shorter than the full width.
+// chair: roll angle, + = sidecar up, - = bike up (main.js moves the pivot); past the tipping point rapier.js rolls it over.
+function rollUp(q, qv, ay, arm, h, dt) { // q >= 0 about one pivot line; returns [q, qv, impact on landing]
+  const c = Math.cos(q), sn = Math.sin(q);
+  qv += ((ay * (h * c + arm * sn) - 9.81 * (arm * c - h * sn)) / (h * h + arm * arm + .2) - 2.5 * qv) * dt; q += qv * dt;
+  if (q <= 0) return [0, 0, -qv]; return [q, qv, 0];
+}
+function trike(sp, kk, vv, sv, a, dt) {
+  const s = sp.sc, h = sp.h, yc = sp.scm * sp.scX / sp.m, d2 = Math.max(.2, (sp.scD - yc) * .55), v2 = vv * vv;
+  const k = kk + s * .6 * a * yc / Math.max(v2, 4) * sstep(.3, 2, sv); // pull from the offset mass under drive / braking
+  const ay = v2 * k * s; // + = turning toward the sidecar
+  let q = S.chair || 0, qv = S.chairV || 0, r = null;
+  if (q > 0 || q === 0 && ay * h > 9.81 * yc) r = rollUp(q, qv, ay, yc, h, dt);
+  else if (q < 0 || q === 0 && -ay * h > 9.81 * d2) { r = rollUp(-q, -qv, -ay, d2, h, dt); r[0] = -r[0]; r[1] = -r[1]; }
+  if (r) { q = r[0]; qv = r[1]; if (r[2] > .3) blip('susp', Math.min(1, r[2])); }
+  if (Math.abs(q) > .15 && !S.chairW) { S.chairW = true; say(q > 0 ? 'Sidecar lifting! Steer out' : 'Bike side lifting! Steer out', 1200); } else if (!q) S.chairW = false;
+  S.chair = q; S.chairV = qv;
+  S.lean = -s * q - .01 * v2 * k; S.leanV = 0; // chair roll + a little body roll toward the outside
+  S.delta = Math.atan(k * sp.wb); S.yaw = -vv * k;
 }
 
 // net force along the ground for drive force Fd at speed vv (module-level instead of a closure: no allocation per substep)
@@ -63,12 +90,12 @@ export function step(dt) {
   const R = ctx.stand ? 0 : D.ratio(sp, S);
   // tyres. Axle loads = static split + load transfer under accel/braking; peak tyre force = grip (bike x surface) x load.
   // Load transfer is not capped: past a = g lr / h the front is unloaded (wheelie, wp > 0), past -g lf / h the rear is (stoppie, wp < 0).
-  const g = 9.81, mu = sp.mu * (S.surf || 1), mt = mu * MUX, mw = (sp.Iw || .6) / (r * r), wp = S.wp || 0, offF = wp > .04, offR = wp < -.04;
-  const Nr = offF ? .97 * m * g : offR ? .03 * m * g : clamp(m * g * sp.lf / sp.wb + clamp(m * (S.a || 0) * sp.h / sp.wb, -m * g, m * g), .03 * m * g, .97 * m * g), Pr = mt * Nr, Pf = mt * (m * g - Nr);
+  const g = 9.81, mb = sp.sc ? m * (1 - sp.scW) : m, mu = sp.mu * (S.surf || 1), mt = mu * MUX, mw = (sp.Iw || .6) / (r * r), wp = S.wp || 0, offF = wp > .04, offR = wp < -.04;
+  const Nr = offF ? .97 * mb * g : offR ? .03 * mb * g : clamp(mb * g * sp.lf / sp.wb + clamp(mb * (S.a || 0) * sp.h / sp.wb, -mb * g, mb * g), .03 * mb * g, .97 * mb * g), Pr = mt * Nr, Pf = mt * (mb * g - Nr);
   const ayu = S.ayu || 0, Pxr = Pr * Math.sqrt(1 - ayu * ayu); // rear force left once cornering has taken its share (friction circle)
   // brakes: lever force split front/rear (bf). Past a tyre's peak the wheel locks and only slides (KS x peak) until the
   // brake is eased well off; ABS bikes hold each wheel at its peak instead. Standing still nothing locks.
-  const Fc = S.brake * sl * sp.brake * sp.mu * BRK * m * g, Fcf = Fc * (sp.bf ?? .85), Fcr = Fc - Fcf, rolling = av > .8 && !S.air;
+  const Fc = S.brake * sl * sp.brake * sp.mu * BRK * mb * g, Fcf = Fc * (sp.bf ?? .85), Fcr = Fc - Fcf, rolling = av > .8 && !S.air;
   // a wheel that is in the air (wheelie / stoppie) can't lock and only passes what little load it has
   const lkF = rolling && !sp.abs && !offF && (S.lkF ? Fcf > .9 * KS * Pf : Fcf > 1.05 * Pf), lkR = rolling && !sp.abs && !offR && (S.lkR ? Fcr > .9 * KS * Pr : Fcr > 1.05 * Pr);
   S.lkF = lkF; S.lkR = lkR;
@@ -132,20 +159,25 @@ export function step(dt) {
   // asked curvature: steering geometry at walking pace; at speed the bar asks for a share of the grip (full lock = 90% of it, the
   // rider backing off by half of what braking / drive takes from the corner), so only hard braking, a locked front or wheelspin
   // mid-corner at full lock asks clearly more than the tyres have
+  // (a tricycle rider asks less of the grip: full lock at speed just lifts the chair)
   const hb = sstep(3, 8, sv), gc = Math.min(fl, rl), v2 = Math.max(vv * vv, .01);
-  let kk = Math.tan(si * md) / sp.wb * (1 - hb) + si * .9 * (.5 + .5 * gc) * mu * g / v2 * hb; const kl = mu * g * .95 * gc / v2; S.over = Math.abs(kk) / kl; // over > 1: asking more grip than the tyres have
+  let kk = Math.tan(si * md) / sp.wb * (1 - hb) + si * (sp.sc ? .7 : .9) * (.5 + .5 * gc) * mu * g / v2 * hb; const kl = mu * g * .95 * gc / v2; S.over = Math.abs(kk) / kl; // over > 1: asking more grip than the tyres have
   // low-side check. ABS keeps the wheels turning, so braking hard mid-corner makes the bike run wide (kk is still clamped to kl
   // below) instead of tucking the front: only the grip drive / wheelspin takes from the rear counts against it
   S.overLS = sp.abs ? Math.abs(kk) * v2 / (mu * g * .95 * (spun ? .5 : Math.sqrt(1 - Math.min(.85, Math.abs(fxr) / Math.max(Pr, 1)) ** 2))) : S.over;
+  if (sp.sc) S.overLS = Math.min(S.overLS, 1.3); // three wheels: running wide or sliding, never a low-side
   kk = clamp(kk, -kl, kl);
   S.ayu = Math.min(.95, vv * vv * Math.abs(kk) / (mu * g * .95)); S.skid = lkF || spun ? Math.min(1, (v + (S.ws || 0)) / 3) : 0; // skid: tyre noise
-  const tl = Math.atan(vv * vv * kk / 9.81);
-  // lean is a damped roll: the bike swings toward the lean the steering / corner asks for with roll inertia (heavy bikes are slower,
-  // a bit of overshoot when flicked), and the faster it goes the stiffer and more damped it gets (gyro effect). Roll rate is capped.
-  const wn = 6.5 / (1 + sv * .02) * clamp(Math.sqrt(40 / sp.I), .7, 1.2), zt = .75 + Math.min(.35, sv * .012);
-  S.leanV = clamp((S.leanV || 0) + (wn * wn * (tl - S.lean) - 2 * zt * wn * (S.leanV || 0)) * dt, -2.2, 2.2); S.lean += S.leanV * dt;
-  const kd = 9.81 * Math.tan(S.lean) / Math.max(vv * vv, .01), bl = sstep(2, 6, sv), k = kk * (1 - bl) + kd * bl; S.delta = Math.atan(k * sp.wb);
-  S.yaw = -vv * k; if (spun) S.yaw -= Math.sign(S.lean) * .5 * Math.min(1, Math.abs(S.lean) * 4) * sstep(2, 8, sv); // rear steps out into the turn
+  if (sp.sc) trike(sp, kk, vv, sv, a, dt);
+  else {
+    const tl = Math.atan(vv * vv * kk / 9.81);
+    // lean is a damped roll: the bike swings toward the lean the steering / corner asks for with roll inertia (heavy bikes are slower,
+    // a bit of overshoot when flicked), and the faster it goes the stiffer and more damped it gets (gyro effect). Roll rate is capped.
+    const wn = 6.5 / (1 + sv * .02) * clamp(Math.sqrt(40 / sp.I), .7, 1.2), zt = .75 + Math.min(.35, sv * .012);
+    S.leanV = clamp((S.leanV || 0) + (wn * wn * (tl - S.lean) - 2 * zt * wn * (S.leanV || 0)) * dt, -2.2, 2.2); S.lean += S.leanV * dt;
+    const kd = 9.81 * Math.tan(S.lean) / Math.max(vv * vv, .01), bl = sstep(2, 6, sv), k = kk * (1 - bl) + kd * bl; S.delta = Math.atan(k * sp.wb);
+    S.yaw = -vv * k; if (spun) S.yaw -= Math.sign(S.lean) * .5 * Math.min(1, Math.abs(S.lean) * 4) * sstep(2, 8, sv); // rear steps out into the turn
+  }
   S.psi += S.yaw * dt;
   const fx = -Math.sin(S.psi), fz = -Math.cos(S.psi); S.x += fx * vv * dt; S.z += fz * vv * dt; S.wA += (lkF ? 0 : vv / r) * dt; S.wAR = (S.wAR || 0) + (lkR ? 0 : (vv + (S.ws || 0)) / r) * dt;
 }

@@ -24,7 +24,7 @@ export const RP = { ok: false, err: '' };
 const Y0 = .6;                           // body origin above the chassis reference height S.zH
 // collision groups: high 16 bits = membership, low 16 = what it collides with
 const G_STATIC = 0x0002ffff, G_BIKE = 0x00010002, G_GROUND = 0x0004ffff, G_CRASH = 0x00010006;
-export let world, body; let R, cap, box, loading, inC = false, wasAir = false, surfT = 0, surfTgt = 1;
+export let world, body; let R, cap, box, scap, sbox, loading, inC = false, wasAir = false, surfT = 0, surfTgt = 1;
 // Static boxes are streamed: Rapier's step cost grows with every collider in the world (~0.2 ms for all 1,240), so only
 // the ones in the 3 x 3 block of 25 m cells around the bike (at least 25 m in every direction) exist. Boxes are footprints only (world.js has no heights): they are made
 // tall, from below the ground to well above.
@@ -62,6 +62,9 @@ export function initRapier() {
       cap = world.createCollider(R.ColliderDesc.capsule(.75, .3).setRotation({ x: Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2 }).setDensity(0).setFriction(0).setCollisionGroups(G_BIKE), body);
       // while crashed the bike is a rounded box (a capsule on its side would roll like a log; sharp edges catch and flip it),
       // metal/plastic-on-asphalt friction, touching the ground patch too
+      // sidecar: a second capsule beside the bike, and a box for it while crashed (both placed and switched in syncBody / crash)
+      scap = world.createCollider(R.ColliderDesc.capsule(.6, .45).setRotation({ x: Math.SQRT1_2, y: 0, z: 0, w: Math.SQRT1_2 }).setDensity(0).setFriction(0).setCollisionGroups(G_BIKE), body); scap.setEnabled(false);
+      sbox = world.createCollider(R.ColliderDesc.roundCuboid(.45, .45, .95, .06).setDensity(0).setFriction(.35).setRestitution(0).setCollisionGroups(G_CRASH), body); sbox.setEnabled(false);
       box = world.createCollider(R.ColliderDesc.roundCuboid(.14, .37, .87, .08).setTranslation(0, -.15, 0).setDensity(0).setFriction(.35).setRestitution(0).setCollisionGroups(G_CRASH), body); box.setEnabled(false);
       RP.ok = true; syncBody();
     } catch (e) { RP.err = String(e && e.message || e); console.warn('Rapier failed to load', e); }
@@ -73,6 +76,7 @@ export function initRapier() {
 export function syncBody() {
   if (!RP.ok || !ctx.spec) return; const sp = ctx.spec; if (S.crashed) endCrash();
   body.setAdditionalMassProperties(sp.m, { x: 0, y: 0, z: 0 }, { x: sp.I, y: sp.I * 1.2, z: sp.I * .4 }, { x: 0, y: 0, z: 0, w: 1 }, true);
+  S.chair = S.chairV = 0; const sx = (sp.sc || 0) * .95; scap.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); sbox.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); scap.setEnabled(!!sp.sc); sbox.setEnabled(false);
   stream(true); body.setTranslation({ x: S.x, y: S.zH + Y0, z: S.z }, true); body.setRotation(qYX(S.psi, S.th || 0), true);
   S.hF = H(S.x - Math.sin(S.psi) * sp.lf, S.z - Math.cos(S.psi) * sp.lf); S.hR = H(S.x + Math.sin(S.psi) * sp.lr, S.z + Math.cos(S.psi) * sp.lr);
   body.setLinvel({ x: -Math.sin(S.psi) * S.v, y: 0, z: -Math.cos(S.psi) * S.v }, true); body.setAngvel({ x: 0, y: 0, z: 0 }, true);
@@ -99,7 +103,7 @@ export function tickR() {
   if (st[0] !== S.zH || st[1] !== th) { S.zH = st[0]; S.th = st[1]; vy = st[2]; w = st[3]; body.setTranslation({ x: S.x, y: S.zH + Y0, z: S.z }, true); }
   // springs measure from static sag, so add the static load; a wheel can push but never pull
   const cF = hF + sp.yf - (S.zH + lf * S.th), cR = hR + sp.yr - (S.zH - lr * S.th), vF = dhF - (vy + lf * w), vR = dhR - (vy - lr * w);
-  const mF = m * lr / sp.wb, mR = m * lf / sp.wb;
+  const mF = sp.ms * lr / sp.wb, mR = sp.ms * lf / sp.wb; // sprung load on the bike's wheels (a sidecar carries its own share)
   const Ff = Math.max(0, mF * g + sp.kf * (cF + sp.pf) + sp.damp * 2 * Math.sqrt(sp.kf * mF) * vF), Fr = Math.max(0, mR * g + sp.kr * (cR + sp.pr) + sp.damp * 2 * Math.sqrt(sp.kr * mR) * vR);
   S.cF = cF; S.cR = cR; S.Ff = Ff; S.Fr = Fr; S.air = Ff <= 0 && Fr <= 0;
   // drivetrain + steering. In the air the wheel is unloaded: engine free-revs, speed and heading carry on.
@@ -111,6 +115,8 @@ export function tickR() {
   for (let i = 0; i < 3; i++) step(TICK / 3);
   ctx.stand = stand; if (S.air) { S.v = v0; S.psi = p0; S.yaw = 0; }
   if (!cfg.tough && (S.wp > 1.1 || S.wp < -.95)) return crash(S.wp > 0 ? 'loop' : 'flip');
+  // tricycle past its tipping point (physics.js trike): rolls over. Tough Biker: it just hangs there and drops back
+  if (sp.sc && (S.chair > .8 || S.chair < -.6)) { if (!cfg.tough) return crash('roll'); S.chair = clamp(S.chair, -.4, .5); S.chairV = 0; }
   if (!cfg.tough) {
     // landing hard or nose/tail first
     if (wasAir && !S.air && (vy < -6.5 || Math.abs(S.th) > .5)) { wasAir = false; return crash('landing'); }
@@ -158,10 +164,10 @@ function makeGround(cx, cz) { // 64 x 64 m trimesh of the drawn ground, 1 m grid
 }
 function crash(kind, imp = 0) {
   S.crashed = true; S.tip = true; S.wp = S.wpv = 0; S.cranking = false; crashT = 0; S.running = false; S.lim = false; S.issOff = false; inC = false; S.slideT = 0;
-  blip('thud', 9); say(kind === 'wall' ? 'CRASH!' : kind === 'landing' ? 'Bad landing!' : kind === 'loop' ? 'Looped out!' : kind === 'flip' ? 'Over the bars!' : 'Lost the front! Low-side', 1600); S.hits++;
+  blip('thud', 9); say(kind === 'wall' ? 'CRASH!' : kind === 'landing' ? 'Bad landing!' : kind === 'loop' ? 'Looped out!' : kind === 'flip' ? 'Over the bars!' : kind === 'roll' ? 'Rolled the tricycle!' : 'Lost the front! Low-side', 1600); S.hits++;
   const fx = -Math.sin(S.psi), fz = -Math.cos(S.psi), lx = Math.cos(S.psi), lz = -Math.sin(S.psi), zx = -fx, zz = -fz, v = S.v, lv = body.linvel();
   makeGround(S.x + fx * v * .7, S.z + fz * v * .7);
-  cap.setEnabled(false); box.setEnabled(true);
+  cap.setEnabled(false); box.setEnabled(true); scap.setEnabled(false); sbox.setEnabled(!!ctx.spec.sc); B.lean.position.set(0, 0, 0);
   // hand the bike over with its current lean, and set it falling/tumbling the way this kind of crash goes
   body.setRotation(qmul(qYX(S.psi, S.th), qZ(-S.lean)), true);
   const sl = Math.sign(S.lean) || (Math.random() < .5 ? -1 : 1);
@@ -193,9 +199,9 @@ function endCrash() {
   S.crashed = false; if (ground) { world.removeCollider(ground, false); ground = null; }
   if (rider) { world.removeRigidBody(rider); rider = null; }
   if (kept) { for (const k of kept) { k.p.add(k.m); k.m.position.copy(k.pos); k.m.quaternion.copy(k.q); k.m.scale.copy(k.s); } kept = null; scene.remove(RG); }
-  box.setEnabled(false); cap.setEnabled(true); wasAir = false;
+  box.setEnabled(false); cap.setEnabled(true); sbox.setEnabled(false); scap.setEnabled(!!(ctx.spec && ctx.spec.sc)); S.chair = S.chairV = 0; wasAir = false;
   // back on the bike: every node the crash pose touched goes back upright (main.js redraws the heading next frame)
-  B.root.quaternion.identity(); B.root.rotation.set(0, S.psi, 0); B.lean.rotation.set(0, 0, 0); B.body.rotation.set(0, 0, 0);
+  B.root.quaternion.identity(); B.root.rotation.set(0, S.psi, 0); B.lean.rotation.set(0, 0, 0); B.lean.position.set(0, 0, 0); B.body.rotation.set(0, 0, 0);
   RP.onUp && RP.onUp();
 }
 // drawing while crashed: the whole bike follows the tumbling body, the rider follows his own

@@ -110,7 +110,10 @@ addEventListener('wheel', e => { if (e.target.id !== 'gl' || ctx.GAR || ctx.OPT)
 const DOMC = {}; function dom(id, v, set) { const c = DOMC[id] || (DOMC[id] = { e: $(id), v: null }); if (c.v !== v) { c.v = v; set(c.e, v); } }
 function visuals(dt, now) {
   const G = B.G, sp = ctx.spec;
-  B.root.position.set(S.x, S.zH, S.z); B.root.rotation.set(0, S.psi, 0); B.lean.rotation.z = -S.lean; B.body.position.y = .6 + (.075 - sp.sag); B.body.rotation.x = S.th; // lean pivots at the ground, not world y=0
+  B.root.position.set(S.x, S.zH, S.z); B.root.rotation.set(0, S.psi, 0); B.lean.rotation.z = -S.lean;
+  // tricycle rolling up onto its sidecar wheel (chair < 0): pivot on that wheel's line instead of the bike's
+  if (sp.sc && S.chair < 0) { const cx = sp.sc * sp.scD, th = -S.lean; B.lean.position.set(cx * (1 - Math.cos(th)), -cx * Math.sin(th), 0); } else B.lean.position.set(0, 0, 0);
+  B.body.position.y = .6 + (.075 - sp.sag); B.body.rotation.x = S.th; // lean pivots at the ground, not world y=0
   B.body.position.z = 0; if (S.wp) { // wheelie / stoppie: also turn about the contact patch of the wheel on the ground (rear +z, front -z)
     const c = Math.cos(S.wp), sn = Math.sin(S.wp), pz = S.wp > 0 ? sp.lr : -sp.lf, y0 = B.body.position.y; B.body.rotation.x += S.wp; B.body.position.y = y0 * c + pz * sn; B.body.position.z = pz + y0 * sn - pz * c;
   }
