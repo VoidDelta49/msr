@@ -19,8 +19,8 @@ import { missions, animMarker } from './missions.js';
 import { G as GARAGE, buildGarage, garageFrame } from './garage.js';
 import { initStudio, enter as studioIn, leave as studioOut, studioFrame } from './studio.js';
 import { O, openOpts, closeOpts } from './options.js';
-import { cullUpdate, autoRes, resScale, jankStart, jankEnd, jankText } from './perf.js';
-import { gpuCull } from './gpucull.js';
+import { autoRes, resScale, jankStart, jankEnd, jankText } from './perf.js';
+import { cull } from './gpucull.js';
 import { NET, netFrame, join as netJoin, leave as netLeave } from './net.js';
 import { raceTick } from './race.js';
 import { rideInit, rideFrame } from './ride.js';
@@ -79,7 +79,7 @@ stage('Starting physics', .8);
 if (!await initRapier()) throw new Error("Couldn't load the physics engine (" + RP.err + '). Check your connection and try again.');
 stage('Preparing the bike', .85); setBike(); save(); rideInit();
 // build every shader now, behind the title screen (see renderer.js warm())
-stage('Compiling shaders', .9); initStudio(); gpuCull(camera); ctx.warmMs = await warm(); stage('Ready', 1);
+stage('Compiling shaders', .9); initStudio(); cull(camera); ctx.warmMs = await warm(); stage('Ready', 1);
 
 function startEngine() {
   // garage stand only (REV button, debug hook): no key / starter ritual there
@@ -206,7 +206,7 @@ function loop(t) {
   else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } const D0 = performance.now(); cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } const D0 = performance.now(); renderer.info.reset(); cull(camera); draw(); const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.live = true;
