@@ -75,6 +75,11 @@ body.ingame #menu{background:rgba(6,9,13,.55)}body.ingame #mBg{display:none}
 .bc.on{border-color:var(--hot);box-shadow:inset 4px 0 0 var(--hot)}
 #mHelpP{width:min(560px,100%);background:rgba(12,16,21,.88);padding:14px;border-radius:12px}
 .mtxt{color:#c9d2da;font-size:13px}
+#mNewsP{width:min(560px,100%);background:rgba(12,16,21,.88);padding:14px;border-radius:12px;max-height:70vh}
+#mLog{overflow-y:auto;display:flex;flex-direction:column;gap:12px;font-size:13px;color:#c9d2da}
+#mLog h3{margin:0 0 4px;font:900 15px system-ui;color:var(--ink)}#mLog h3 small{font-weight:500;color:var(--dim);margin-left:8px}
+#mLog ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
+#mNewsN:not(:empty),#mUpdN:not(:empty){margin-left:8px;color:var(--hot)}
 #mLoad{gap:10px;background:rgba(12,16,21,.85);padding:14px 16px;border-radius:12px}
 #mStage{font:italic 900 18px system-ui}
 #mBar{position:relative;height:12px;border-radius:6px;background:#0a0e12;border:1px solid #2a3138;overflow:hidden}

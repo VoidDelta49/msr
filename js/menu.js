@@ -30,12 +30,47 @@ window.__cpmLoad = (stage, f) => bar(f, stage);
 const frames = n => new Promise(r => { const f = () => --n ? requestAnimationFrame(f) : r(); requestAnimationFrame(f); });
 
 /* ---------- panes ---------- */
-const PANES = ['mMain', 'mBikes', 'mMPP', 'mHelpP', 'mLoad'];
+const PANES = ['mMain', 'mBikes', 'mMPP', 'mHelpP', 'mNewsP', 'mLoad'];
 function show(id) { for (const p of PANES) $(p).hidden = p !== id; }
 $('menu').onclick = e => { if (e.target.closest('[data-back]')) show('mMain'); };
 $('mHelp').onclick = () => show('mHelpP');
 $('mOpt').onclick = () => openOpts();
 $('mFoot').textContent = 'Build ' + BUILD;
+
+/* ---------- patch notes + update check ---------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let seen = ''; try { seen = localStorage.getItem('cpm-seen') || ''; } catch (e) {}
+if (seen !== BUILD) $('mNewsN').textContent = 'NEW';
+let logP = null;
+function news() {
+  return logP || (logP = fetch('data/changelog.json?v=' + BUILD).then(r => r.json()).then(L => {
+    $('mLog').innerHTML = L.map(e => `<div><h3>${esc(e.v)}${e.d ? `<small>${esc(e.d)}</small>` : ''}</h3><ul>${e.t.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`).join('');
+  }).catch(e => { logP = null; $('mLog').textContent = "Couldn't load the patch notes (offline?)."; }));
+}
+$('mNews').onclick = () => {
+  show('mNewsP'); news(); $('mNewsN').textContent = '';
+  try { localStorage.setItem('cpm-seen', BUILD); } catch (e) {}
+};
+// update check: reads BUILD out of a fresh js/config.js (no-store; ?chk keeps an old service worker's cache out of it)
+let newer = '', lastChk = 0;
+async function checkUpdate() {
+  if (Date.now() - lastChk < 60000 || !navigator.onLine) return; lastChk = Date.now();
+  try {
+    const r = await fetch('js/config.js?chk=' + Date.now(), { cache: 'no-store' }); if (!r.ok) return;
+    const m = (await r.text()).match(/BUILD\s*=\s*'([^']+)'/);
+    if (m && m[1] !== BUILD) { newer = m[1]; $('mUpd').hidden = false; $('mUpdN').textContent = newer; }
+  } catch (e) { /* offline: try again later */ }
+}
+$('mUpd').onclick = async () => {
+  $('mUpd').disabled = true; $('mUpd').firstChild.textContent = 'UPDATING...';
+  try {
+    for (const g of await navigator.serviceWorker.getRegistrations()) await g.unregister();
+    for (const k of await caches.keys()) if (k.startsWith('cpm-')) await caches.delete(k);
+    await Promise.all(['index.html', './'].map(u => fetch(u, { cache: 'reload' }))); // refresh the HTTP-cached page so the reload gets the new ?v=
+  } catch (e) { console.warn('update: ' + e.message); }
+  location.reload();
+};
+addEventListener('visibilitychange', () => { if (!document.hidden) checkUpdate(); });
 const TIPS = ['Manual bikes: pull the clutch before you shift, and ease it out to launch.', 'The scooter has Idling Stop: hold the brake and press START to wake it.', 'Low on fuel? The station is next to the parking lot, the red dot on the minimap.', 'Graphics too heavy? Options > Quality > Low, or a Retro res cap.', 'Tough Biker mode (Options) makes you crash-proof.', 'The airstrip in the north-west is 910 m of flat concrete for top-speed runs.', 'The GARAGE is a showroom: swap parts, watch the dyno and stats change, then save builds or export them to a file.', 'Quests are scattered around the island: ride into a beacon and hold still. Red-outlined ones need a specific bike and switch you to it.'];
 
 /* ---------- bikes (just JSON, no 3D needed) ---------- */
@@ -95,7 +130,7 @@ function unlockAudio() {
 function hideMenu() { $('menu').hidden = true; ctx.MENU = false; document.body.classList.remove('menu'); }
 export function openMenu() {
   if (!G || ctx.MENU || ctx.OPT || ctx.GAR) return;
-  ctx.MENU = true; ctx.paused = true; document.body.classList.add('menu'); cards(); show('mMain'); $('menu').hidden = false;
+  ctx.MENU = true; ctx.paused = true; document.body.classList.add('menu'); cards(); show('mMain'); $('menu').hidden = false; checkUpdate();
 }
 async function play() {
   goFS(); unlockAudio();
@@ -117,12 +152,12 @@ $('bMenu').onclick = openMenu;
 addEventListener('keydown', e => {
   if (e.code !== 'Escape' || ctx.OPT || ctx.GAR) return; // Esc in options/garage is handled there
   if (!ctx.MENU) return openMenu();
-  if (!$('mBikes').hidden || !$('mHelpP').hidden || !$('mMPP').hidden) show('mMain'); else if (G) play();
+  if (!$('mBikes').hidden || !$('mHelpP').hidden || !$('mMPP').hidden || !$('mNewsP').hidden) show('mMain'); else if (G) play();
 });
 ctx.MENU = true; document.body.classList.add('menu');
 // start downloading once the menu is up (doesn't block anything: nothing is parsed until PLAY)
 if (document.readyState === 'complete') setTimeout(bg, 100); else addEventListener('load', () => setTimeout(bg, 100));
-function bg() { prefetch().catch(e => console.warn('prefetch: ' + e.message)).finally(offline); }
+function bg() { checkUpdate(); prefetch().catch(e => console.warn('prefetch: ' + e.message)).finally(offline); }
 // offline support (sw.js): registered once the downloads are done so the two don't compete; off on localhost unless ?sw
 function offline() {
   if (!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol) || (/^(localhost|127\.)/.test(location.hostname) && !/[?&]sw\b/.test(location.search))) return;

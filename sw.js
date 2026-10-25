@@ -17,6 +17,7 @@ async function files() {
   urls.add(abs('js/engine-worklet.js?v=' + V));
   if (map['@dimforge/rapier3d-compat']) urls.add(abs(map['@dimforge/rapier3d-compat'].replace('.mjs', '.wasm'))); // fetched by rapier.mjs at init
   urls.add(abs('data/map/island.json?v=' + V));
+  urls.add(abs('data/changelog.json?v=' + V));
   const ix = abs('data/bikes/index.json?v=' + V); urls.add(ix);
   for (const id of await (await fetch(ix)).json()) urls.add(abs(`data/bikes/${id}.json?v=${V}`));
   // files reached through a prefix entry ("three/addons/": ...) aren't listed in the importmap: find them in our own modules
@@ -47,7 +48,8 @@ self.addEventListener('activate', e => e.waitUntil((async () => {
 
 self.addEventListener('fetch', e => {
   const q = e.request;
-  if (q.method !== 'GET' || new URL(q.url).origin !== self.location.origin) return;
+  const qu = new URL(q.url);
+  if (q.method !== 'GET' || qu.origin !== self.location.origin || qu.searchParams.has('chk')) return; // ?chk = the update check: always straight to the network
   e.respondWith((async () => {
     const c = await caches.open(CACHE);
     if (q.mode === 'navigate') { // page: newest when online (4 s), the cached copy when not

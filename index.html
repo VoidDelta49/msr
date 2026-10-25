@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no,interactive-widget=resizes-visual">
 <title>CPM Motor Edition</title>
-<link rel="stylesheet" href="css/style.css?v=11.23">
+<link rel="stylesheet" href="css/style.css?v=11.24">
 <!-- start the heavy downloads at HTML parse, not after menu.js runs (same URLs as the importmap, so menu.js's fetches and import() reuse them) -->
 <link rel="modulepreload" href="./vendor/three/build/three.webgpu.js">
 <link rel="modulepreload" href="./vendor/three/build/three.core.js">
@@ -73,7 +73,10 @@
       <button class="mb" id="mBike">BIKE<small id="mBikeN"></small></button>
       <button class="mb" id="mOpt">OPTIONS</button>
       <button class="mb" id="mHelp">HOW TO RIDE</button>
+      <button class="mb" id="mNews">WHAT'S NEW<small id="mNewsN"></small></button>
+      <button class="mb hot" id="mUpd" hidden>UPDATE<small id="mUpdN"></small></button>
     </nav>
+    <section id="mNewsP" class="mp" hidden><div id="mLog"></div><button class="mb sm" data-back>◀ BACK</button></section>
     <section id="mBikes" class="mp" hidden><div id="mCards"></div><button class="mb sm" data-back>◀ BACK</button></section>
     <section id="mMPP" class="mp" hidden>
       <div class="mpf"><label>Your name<input id="mpName" maxlength="16" autocomplete="off" placeholder="Rider"></label>
@@ -126,7 +129,7 @@
   <div class="sec">ERROR LOG</div><pre id="oLog"></pre>
 </div></div>
 
-<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.23","./js/audio.js":"./js/audio.js?v=11.23","./js/config.js":"./js/config.js?v=11.23","./js/controls.js":"./js/controls.js?v=11.23","./js/drivetrain.js":"./js/drivetrain.js?v=11.23","./js/garage.js":"./js/garage.js?v=11.23","./js/studio.js":"./js/studio.js?v=11.23","./js/hud.js":"./js/hud.js?v=11.23","./js/main.js":"./js/main.js?v=11.23","./js/missions.js":"./js/missions.js?v=11.23","./js/model.js":"./js/model.js?v=11.23","./js/options.js":"./js/options.js?v=11.23","./js/perf.js":"./js/perf.js?v=11.23","./js/physics.js":"./js/physics.js?v=11.23","./js/tyre.js":"./js/tyre.js?v=11.23","./js/rapier.js":"./js/rapier.js?v=11.23","./js/renderer.js":"./js/renderer.js?v=11.23","./js/spec.js":"./js/spec.js?v=11.23","./js/state.js":"./js/state.js?v=11.23","./js/util.js":"./js/util.js?v=11.23","./js/world.js":"./js/world.js?v=11.23","./js/tex.js":"./js/tex.js?v=11.23","./js/gpucull.js":"./js/gpucull.js?v=11.23","./js/net.js":"./js/net.js?v=11.23","./js/race.js":"./js/race.js?v=11.23","./js/ride.js":"./js/ride.js?v=11.23","./js/ignition.js":"./js/ignition.js?v=11.23","./js/daynight.js":"./js/daynight.js?v=11.23","./js/lights.js":"./js/lights.js?v=11.23","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
-<script type="module" src="js/menu.js?v=11.23"></script>
+<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.24","./js/audio.js":"./js/audio.js?v=11.24","./js/config.js":"./js/config.js?v=11.24","./js/controls.js":"./js/controls.js?v=11.24","./js/drivetrain.js":"./js/drivetrain.js?v=11.24","./js/garage.js":"./js/garage.js?v=11.24","./js/studio.js":"./js/studio.js?v=11.24","./js/hud.js":"./js/hud.js?v=11.24","./js/main.js":"./js/main.js?v=11.24","./js/missions.js":"./js/missions.js?v=11.24","./js/model.js":"./js/model.js?v=11.24","./js/options.js":"./js/options.js?v=11.24","./js/perf.js":"./js/perf.js?v=11.24","./js/physics.js":"./js/physics.js?v=11.24","./js/tyre.js":"./js/tyre.js?v=11.24","./js/rapier.js":"./js/rapier.js?v=11.24","./js/renderer.js":"./js/renderer.js?v=11.24","./js/spec.js":"./js/spec.js?v=11.24","./js/state.js":"./js/state.js?v=11.24","./js/util.js":"./js/util.js?v=11.24","./js/world.js":"./js/world.js?v=11.24","./js/tex.js":"./js/tex.js?v=11.24","./js/gpucull.js":"./js/gpucull.js?v=11.24","./js/net.js":"./js/net.js?v=11.24","./js/race.js":"./js/race.js?v=11.24","./js/ride.js":"./js/ride.js?v=11.24","./js/ignition.js":"./js/ignition.js?v=11.24","./js/daynight.js":"./js/daynight.js?v=11.24","./js/lights.js":"./js/lights.js?v=11.24","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+<script type="module" src="js/menu.js?v=11.24"></script>
 </body>
 </html>

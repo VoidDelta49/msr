@@ -1,0 +1,25 @@
+[
+  { "v": "11.24", "d": "2026-10-25", "t": [
+    "New: WHAT'S NEW on the title screen shows these patch notes.",
+    "New: the game now checks for updates. When a newer build is out, an UPDATE button appears on the title screen and in the pause menu; one tap reloads into the new version (works with offline mode)."
+  ] },
+  { "v": "11.23", "d": "", "t": [
+    "Tricycle rides: tap a trike's name tag (within 9 m, both stopped) to ask for a ride. Up to 2 passengers per trike, and each adds weight to the driver's physics.",
+    "Crashes fling passengers and the driver cartoon-style.",
+    "Sidecar windscreen is now transparent.",
+    "Multiplayer relay protocol update: ride messages need the relay redeployed."
+  ] },
+  { "v": "11.22", "d": "", "t": [
+    "New bike: TMX Supremo. 149 cc carb, 5-speed manual, drum brakes, 18\" spoked wheels, twin-dial cluster.",
+    "Optional tricycle sidecar (Parts > Sidecar) with its own physics: no lean, pulls toward the sidecar on throttle, chair lift and rollover."
+  ] },
+  { "v": "11.21", "d": "", "t": [
+    "Fixed a frozen sound loop in the part sounds."
+  ] },
+  { "v": "11.18 - 11.20", "d": "", "t": [
+    "Part sounds: brake squeal, chain whirr and clunk, clutch rasp, suspension thump, body rattle, key clicks, exhaust ping, peg grind. Every bike has its own profile."
+  ] },
+  { "v": "11.8 - 11.10", "d": "", "t": [
+    "Grip-limited steering, wheelie control, smoother camera, regrip fix. Analog brake (11.4 - 11.6). Tyre model (11.2)."
+  ] }
+]
