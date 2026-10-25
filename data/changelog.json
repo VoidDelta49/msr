@@ -1,4 +1,8 @@
 [
+  { "v": "11.33", "d": "2026-10-25", "t": [
+    "The main menu now has the garage look: dark frosted-glass panels, flat amber-highlight buttons and spaced amber headings. The island scene behind it is dimmed to match.",
+    "Fixed: the UPDATE button's version number was amber on amber and couldn't be read."
+  ] },
   { "v": "11.32", "d": "2026-10-25", "t": [
     "Fixed: the game didn't load in Firefox (\"three\" was not remapped)."
   ] },
