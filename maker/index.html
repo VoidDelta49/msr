@@ -458,6 +458,10 @@ function dupSel(){const{k,i}=sel,o=clone(objOf(sel));snap();const off=p=>{p[0]=r
   else if(k==='isl'){o.id=nid('i');o.pts.forEach(off);doc.islands.push(o);sel={k,i:doc.islands.length-1}}
   else{off(o);arr(k).push(o);sel={k,i:arr(k).length-1}}changed();panel()}
 /* building brush, land lasso, multi-select tools */
+let mergeHint=null;
+function splitAtJunction(){const{r,o,e}=mergeHint;mergeHint=null;const oi=doc.roads.indexOf(o),ri=doc.roads.indexOf(r);if(oi<0||ri<0)return;snap();
+  const[,i]=dSeg(e[0],e[1],o.pts,!!o.closed);o.pts.splice(i,0,[r1(e[0]),r1(e[1])]);if(o.closed){o.pts=o.pts.slice(i).concat(o.pts.slice(0,i+1));delete o.closed}else{const n={...clone(o),id:nid('r'),pts:o.pts.slice(i).map(p=>p.slice())};o.pts=o.pts.slice(0,i+1);doc.roads.splice(oi+1,0,n)}
+  multi=[{k:'road',i:doc.roads.indexOf(r)}];changed(false);panel();toast('Split. Now Shift-tap the half you want to join, then Merge roads.')}
 let lastB=null;const SPC={house:12,nipa:9,shop:10};
 function nearRoadPt(x,z){let best=null,bd=70;for(const r of doc.roads){if(r.kind==='strip')continue;for(const p of crSample(r.pts,r.closed,4)){const d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;best=p}}}return best}
 function brushAt(x,z,first){if(first)lastB=null;
@@ -482,12 +486,41 @@ function delMulti(){snap();const by={};for(const m of multi)(by[m.k]??=[]).push(
   for(const k in by){const L=listOf(k);if(!L)continue;for(const i of by[k].sort((a,b)=>b-a)){if(k==='bld'&&L[i][0]==='lot'&&doc.buildings.filter(b=>b[0]==='lot').length<2){kept++;continue}L.splice(i,1)}}
   multi=[];changed();panel();if(kept)toast('Kept the parking lot (the map needs one)')}
 const dd=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
-// join the selected roads end to end into one (nearest ends first, reversing pieces as needed); keeps the first road's settings
-function mergeRoads(){const rs=multi.filter(m=>m.k==='road').map(m=>doc.roads[m.i]);if(rs.length<2)return;snap();const base=rs[0];let ch=base.pts.map(p=>p.slice());const rest=rs.slice(1);
-  while(rest.length){let best=null;rest.forEach((r,k)=>{const P=r.pts,A=ch[0],B=ch[ch.length-1],a=P[0],b=P[P.length-1];for(const[c,rev,front]of[[dd(B,a),0,0],[dd(B,b),1,0],[dd(A,b),0,1],[dd(A,a),1,1]])if(!best||c<best.c)best={c,k,rev,front}});
-    const P=rest[best.k].pts.map(p=>p.slice());if(best.rev)P.reverse();
-    if(best.front){if(dd(P[P.length-1],ch[0])<3)P.pop();ch=P.concat(ch)}else{if(dd(ch[ch.length-1],P[0])<3)P.shift();ch=ch.concat(P)}rest.splice(best.k,1)}
-  base.pts=ch;delete base.closed;const drop=new Set(rs.slice(1));doc.roads=doc.roads.filter(r=>!drop.has(r));sel={k:'road',i:doc.roads.indexOf(base)};multi=[];changed(false);panel();toast('Merged '+rs.length+' roads into one')}
+// Merge: join the selected roads end to end into one, chained from a free end. Each road keeps its own points (segments away
+// from a joint are unchanged); at a joint that turns, guide points along both segments keep the merged spline on what the
+// separate roads looked like (only next to long segments, where the spline would bulge), so a corner stays a corner. Refuses (with the reason) loops, T-junctions,
+// three roads meeting at one point and ends too far apart to bridge.
+function jointGuides(P,J){const out=[],steps=l=>{const D=[];for(let d=Math.min(7,l/4);d<l/2;d*=2.5)D.push(d);return D}; // guide spacing grows ≤2.5× so the uniform spline can't overshoot
+  for(let i=0;i<P.length;i++){const b=P[i];if(!J.has(i)||i===0||i===P.length-1){out.push(b);continue}
+    const a=P[i-1],c=P[i+1],l1=dd(a,b),l2=dd(b,c),u=[(b[0]-a[0])/l1,(b[1]-a[1])/l1],v=[(c[0]-b[0])/l2,(c[1]-b[1])/l2],turn=Math.acos(clamp(u[0]*v[0]+u[1]*v[1],-1,1));
+    if(!(turn>.15&&(l1>25||l2>25))){out.push(b);continue}
+    const D1=l1>25?steps(l1):[],D2=l2>25?steps(l2):[];for(const d of D1.slice().reverse())out.push([b[0]-u[0]*d,b[1]-u[1]*d]);
+    if(D1.length&&D2.length&&turn>.5){const g1=[b[0]-u[0]*D1[0],b[1]-u[1]*D1[0]],g2=[b[0]+v[0]*D2[0],b[1]+v[1]*D2[0]],m=[(g1[0]+g2[0])/2,(g1[1]+g2[1])/2];out.push([b[0]+(m[0]-b[0])*.45,b[1]+(m[1]-b[1])*.45])}else out.push(b);
+    for(const d of D2)out.push([b[0]+v[0]*d,b[1]+v[1]*d])}
+  return out}
+function mergeRoads(){const rs=multi.filter(m=>m.k==='road').map(m=>doc.roads[m.i]);if(rs.length<2)return;
+  const no=t=>{toast(t);return false},name=r=>(r.kind==='strip'?'the airstrip':r.hwy?'highway '+r.id:'road '+r.id);
+  const loop=rs.find(r=>r.closed);if(loop)return no(`Can't merge: ${name(loop)} is a closed loop. Split it at a point first.`);
+  const E=r=>[r.pts[0],r.pts[r.pts.length-1]],tol=(a,b)=>Math.max(a.w,b.w)/2+4;
+  // T-junction: an end of one road lies on another selected road away from that road's ends
+  for(const r of rs)for(const e of E(r))for(const o of rs){if(o===r)continue;const S=crSample(o.pts,false,3),[d]=dSeg(e[0],e[1],S,false);
+    if(d<tol(r,o)&&Math.min(...E(o).map(q=>dd(q,e)))>tol(r,o)*2){mergeHint={r,o,e:e.slice()};panel();return no(`${name(r)} meets ${name(o)} in the middle, so they can't join end to end. Use "Split at the junction" in the panel.`)}}
+  // three or more ends at one point = a junction, not a chain
+  for(const r of rs)for(const e of E(r)){let n=0;for(const o of rs)if(o!==r)for(const q of E(o))if(dd(e,q)<tol(r,o))n++;if(n>1)return no("Can't merge: three or more of these roads meet at one point. Select only the roads that form one line.")}
+  // start from the road whose end is farthest from every other end, then walk nearest ends
+  let start=null,sd=-1;for(const r of rs)E(r).forEach((e,k)=>{let m=1e9;for(const o of rs)if(o!==r)for(const q of E(o))m=Math.min(m,dd(e,q));if(m>sd){sd=m;start={r,rev:k===1}}});
+  const seq=[start],rest=rs.filter(r=>r!==start.r),tail=x=>x.rev?x.r.pts[0]:x.r.pts[x.r.pts.length-1];let gapMax=0;
+  while(rest.length){const t=tail(seq[seq.length-1]);let best=null;rest.forEach((r,k)=>E(r).forEach((q,j)=>{const d=dd(t,q);if(!best||d<best.d)best={d,k,rev:j===1}}));
+    if(best.d>60)return no(`Can't merge: two of these roads are ${Math.round(best.d)} m apart. Drag one end onto the other first.`);
+    gapMax=Math.max(gapMax,best.d);seq.push({r:rest[best.k],rev:best.rev});rest.splice(best.k,1)}
+  // geometry: each road's own points, joined (a joint closer than 1.5 m becomes one point)
+  let P=[];const J=new Set();for(const x of seq){const Q=x.r.pts.map(p=>[p[0],p[1]]);if(x.rev)Q.reverse();if(P.length){if(dd(P[P.length-1],Q[0])<1.5)Q.shift();else J.add(P.length);J.add(P.length-1)}P=P.concat(Q)}
+  const first=rs[0];P=jointGuides(P,J).map(p=>[r1(p[0]),r1(p[1])]);
+  snap();const closes=dd(P[0],P[P.length-1])<Math.max(first.w,4);if(closes)P.pop();
+  first.pts=P;if(closes)first.closed=true;else delete first.closed;
+  const drop=new Set(rs.slice(1));doc.roads=doc.roads.filter(r=>!drop.has(r));sel={k:'road',i:doc.roads.indexOf(first)};multi=[];changed(false);panel();
+  const diff=rs.some(r=>r.w!==first.w||!!r.hwy!==!!first.hwy);
+  toast(`Merged ${rs.length} roads`+(closes?' into a loop':'')+(gapMax>tol(first,first)?`, bridged a ${Math.round(gapMax)} m gap`:'')+(diff?`, using ${name(first)}'s width and type`:''));return true}
 function splitRoad(){const o=objOf(sel),j=sel.j,P=o.pts;snap();
   if(o.closed){o.pts=P.slice(j).concat(P.slice(0,j+1));delete o.closed;sel.j=null;toast('Loop opened at this point')}
   else{const n={...clone(o),id:nid('r'),pts:P.slice(j).map(p=>p.slice())};o.pts=P.slice(0,j+1);doc.roads.splice(sel.i+1,0,n);sel.j=null;toast('Road split in two')}changed(false);panel()}
@@ -503,6 +536,7 @@ function panel(){const B=$('sBody');fields=[];let h='',title='Map',tag='';
   if(multi.length){title=multi.length+' selected';const cnt={};multi.forEach(m=>cnt[m.k]=(cnt[m.k]||0)+1);const rd2=multi.filter(m=>m.k==='road'),R0=rd2[0]&&doc.roads[rd2[0].i];
     h=`<div class="sec">Keep only</div><div class="chips">${Object.entries(cnt).map(([k,n])=>`<span class="chip on" data-only="${k}">${n} ${KN[k]||k}</span>`).join('')}</div>`;
     if(R0)fields=[{sec:'Roads'},F('Width',()=>R0.w,v=>rd2.forEach(m=>doc.roads[m.i].w=v),{step:.5,min:3,noT:1}),F('Highway',()=>!!R0.hwy,v=>rd2.forEach(m=>v?doc.roads[m.i].hwy=true:delete doc.roads[m.i].hwy),{t:'chk',noT:1})];
+    if(mergeHint&&rd2.some(m=>doc.roads[m.i]===mergeHint.r)&&rd2.some(m=>doc.roads[m.i]===mergeHint.o))h+=`<div class="note" style="color:var(--ac2)">These roads meet at a T, not end to end.</div><div class="row"><button class="btn pri" data-mop="tsplit">Split at the junction</button></div>`;else mergeHint=null;
     h+=`<div class="row">${rd2.length>1?'<button class="btn pri" data-mop="merge">Merge roads</button>':''}<button class="btn del" data-mop="del">Delete all</button><button class="btn" data-mop="clear">Clear</button></div><div class="note">Drag any selected item to move them together. ${rd2.length>1?'Merge joins the roads end to end into one (nearest ends first).':''}</div>`}
   else if(tool==='build'){title='Building brush';h=`<div class="sec">Type</div><div class="chips">${['house','nipa','shop','church','plaza','market','gas'].map(t=>`<span class="chip${bType===t&&!erase?' on':''}" data-bt="${t}">${BT[t]}</span>`).join('')}<span class="chip${erase?' on':''}" data-bt="erase" style="color:var(--bad)">Eraser</span></div>
     <div class="f"><label>Face the nearest road</label><input type="checkbox" id="iFace"${faceRoad?' checked':''}></div>
@@ -552,7 +586,7 @@ function panel(){const B=$('sBody');fields=[];let h='',title='Map',tag='';
     el.addEventListener(f.t==='chk'||f.t==='sel'?'change':'input',apply);el.addEventListener('blur',()=>{pre=null;f._pushed=0})});
   B.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>({split:splitRoad,addpt:addPtAfter,delpt:delSel,del:()=>{sel.j=null;delSel()},dup:dupSel,rev:()=>{snap();objOf(sel).pts.reverse();sel.j=null;changed(terrK(sel));panel()}})[b.dataset.op]());
   B.querySelectorAll('[data-side]').forEach(c=>c.onclick=()=>{const o=objOf(sel),s=c.dataset.side;snap();o[4]=(o[4]||'').includes(s)?o[4].replace(s,''):(o[4]||'')+s;changed(false);panel()});
-  B.querySelectorAll('[data-mop]').forEach(b=>b.onclick=()=>({merge:mergeRoads,del:delMulti,clear:()=>{multi=[];panel();draw()}})[b.dataset.mop]());
+  B.querySelectorAll('[data-mop]').forEach(b=>b.onclick=()=>({tsplit:splitAtJunction,merge:mergeRoads,del:delMulti,clear:()=>{multi=[];panel();draw()}})[b.dataset.mop]());
   B.querySelectorAll('[data-only]').forEach(c=>c.onclick=()=>{multi=multi.filter(m=>m.k===c.dataset.only);panel();draw()});
   B.querySelectorAll('[data-bt]').forEach(c=>c.onclick=()=>{if(c.dataset.bt==='erase')erase=!erase;else{bType=c.dataset.bt;erase=false}panel();draw()});
   if($('iFace'))$('iFace').onchange=e=>faceRoad=e.target.checked;
@@ -643,7 +677,7 @@ try{const s=localStorage.getItem(LS);if(s){doc=JSON.parse(s);if(!doc.buildings){
 if(!doc)doc=fresh(official);
 T=mkTerr(doc);if(innerWidth<=760){$('side').classList.add('min');$('sCaret').textContent='▴'}resize();fit();setTool('select');
 if(!localStorage.getItem('cpm.maker.seen')){localStorage.setItem('cpm.maker.seen',1);$('mHelp').classList.add('open')}
-window.__maker={get doc(){return doc},merge3,mkTerr,fit};
+window.__maker={get doc(){return doc},merge3,mkTerr,fit,mergeRoads,pick:l=>{multi=l;sel=null;panel();draw()},view:(x,z,s)=>{cam.x=x;cam.z=z;cam.s=s;draw()}};
 </script>
 </body>
 </html>
