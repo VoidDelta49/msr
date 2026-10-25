@@ -1,6 +1,7 @@
 // Page entry: the main menu. Plain DOM + the small settings modules only, so the page is up in a blink.
 // three.js, Rapier and the island (main.js and everything it imports) are fetched in the background once the page has
 // loaded, and only parsed/built when the player taps PLAY. The same menu is the pause menu in game (Esc / ☰).
+import { bikeCard } from './bikecard.js';
 import { cfg, save, BUILD, MP_URL } from './config.js';
 import { $ } from './util.js';
 import { ctx } from './state.js';
@@ -83,9 +84,9 @@ async function loadBikes() {
 }
 function cards() {
   const cur = BIKES.find(b => b.id === cfg.bike); $('mBikeN').textContent = cur ? cur.short : '';
-  $('mCards').innerHTML = BIKES.map(b => `<button class="bc${b.id === cfg.bike ? ' on' : ''}" data-id="${b.id}"><b>${b.short}</b><em>${b.tag}</em><span>${b.engine.peakPS} PS · ${b.blurb.split('. ')[0].replace(/ \(.*\)/, '')}</span></button>`).join('');
+  $('mCards').innerHTML = BIKES.map(b => bikeCard(b, b.id === cfg.bike, 'data-id')).join('');
 }
-$('mBike').onclick = () => show('mBikes');
+$('mBike').onclick = () => { show('mBikes'); const on = $('mCards').querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest' }); };
 $('mCards').onclick = e => {
   const c = e.target.closest('.bc'); if (!c) return;
   if (c.dataset.id !== cfg.bike) { if (G) G.switchBike(c.dataset.id); else { cfg.bike = c.dataset.id; save(); } }

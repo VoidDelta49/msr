@@ -8,7 +8,8 @@ import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
 import { say } from './hud.js';
 import { TC } from './controls.js';
-import { view, accent, pulse } from './studio.js';
+import { view, accent, pulse, reframe } from './studio.js';
+import { bikeCard } from './bikecard.js';
 
 export const G = { onBike: null, onChange: null };   // set by main.js
 const GAME = 'cpm-motor-edition', $$ = s => document.querySelectorAll(s), esc = s => String(s).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
@@ -98,20 +99,25 @@ function body(keep) {
   $('gBody').innerHTML = h; if (!keep) $('gBody').scrollTop = 0; if (tab === 'stats') { sHtml = ''; stats(); }
 }
 function tabs() { $('gTabs').innerHTML = TABS.filter(t => has(t[0])).map(t => `<button class="gt gt-${t[0]}${t[0] === tab ? ' on' : ''}" data-tab=${t[0]}>${t[1]}</button>`).join(''); }
-function setTab(t) { tab = t; view(TABS.find(x => x[0] === t)[2]); tabs(); body(); }
+function setTab(t) { tab = t; tabs(); body(); reframe(); view(TABS.find(x => x[0] === t)[2]); }
 
 export function buildGarage() {
   if (!has(tab)) tab = 'engine';
-  $('gBikes').innerHTML = Object.values(ctx.bikes).map(k => `<button class="chip${k.id === ctx.bike.id ? ' on' : ''}" data-bike=${k.id}>${k.short}</button>`).join('');
-  $('gName').textContent = ctx.bike.tag; accent(ctx.spec.c); setTab(tab); stats();
+  $('gBikes').innerHTML = Object.values(ctx.bikes).map(k => bikeCard(k, k.id === ctx.bike.id, 'data-bike')).join('');
+  $('gCurN').textContent = ctx.bike.short; $('gName').textContent = ctx.bike.tag; list(false); reframe(); accent(ctx.spec.c); setTab(tab); stats();
 }
 // stock / colour-only: keys that belong to a tab (parts, sliders, assists, custom colours)
 const tabKeys = t => [...Object.keys(ctx.bike.parts), ...ctx.bike.sliders.map(s => s.k), ...ctx.bike.toggles.map(s => s.k)].filter(k => where(k) === t).concat(t === 'look' ? ['cc'] : t === 'wheels' ? ['cw'] : []);
-function changed(p = true) { save(); G.onChange(); accent(ctx.spec.c); if (p) pulse(); stats(); }
+function changed(p = true) { save(); G.onChange(); reframe(); accent(ctx.spec.c); if (p) pulse(); stats(); }
 
+// bike picker: ‹ › step through the list, the name opens a grid of cards (tap outside or the name again to close)
+function list(v) { $('gList').hidden = !v; $('gCur').classList.toggle('on', v); if (v) { const on = $('gBikes').querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest' }); } }
+function pick(id) { list(false); if (id !== ctx.bike.id) { cfg.bike = id; save(); G.onBike(); buildGarage(); } }
 $('garage').onclick = e => {
-  const el = e.target.closest('button'); if (!el) return; const d = el.dataset, b = ctx.bcfg;
-  if (d.bike) { if (d.bike !== ctx.bike.id) { cfg.bike = d.bike; save(); G.onBike(); buildGarage(); } }
+  const el = e.target.closest('button'); if (!$('gList').hidden && !e.target.closest('#gList,#gCur')) list(false); if (!el) return; const d = el.dataset, b = ctx.bcfg;
+  if (el.id === 'gCur') list($('gList').hidden);
+  else if (d.step) { const L = Object.keys(ctx.bikes), i = L.indexOf(ctx.bike.id); pick(L[(i + +d.step + L.length) % L.length]); }
+  else if (d.bike) pick(d.bike);
   else if (d.tab) setTab(d.tab);
   else if (d.k) { b[d.k] = +d.i; changed(); body(1); }
   else if (d.t) { b[d.t] = !b[d.t]; el.classList.toggle('on', b[d.t]); changed(false); }
@@ -175,7 +181,9 @@ $('gFile').onchange = async e => {
   } catch (err) { say("That isn't a build file", 1600); }
 };
 
+addEventListener('pointerdown', e => { if (ctx.GAR && e.target.id === 'gl' && !$('gList').hidden) list(false); });
+
 /* ---------- keys: hold Space / W / ↑ to rev, B to bounce, Esc to leave ---------- */
 const REV = new Set(['Space', 'KeyW', 'ArrowUp']), rev = v => { TC.rev = v; $('revB').classList.toggle('on', !!v); };
-addEventListener('keydown', e => { if (!ctx.GAR || e.repeat || e.target.type === 'text') return; if (e.code === 'Escape') $('gClose').click(); else if (REV.has(e.code)) rev(1); else if (e.code === 'KeyB') $('bounceB').click(); });
+addEventListener('keydown', e => { if (!ctx.GAR || e.repeat || e.target.type === 'text') return; if (e.code === 'Escape') { if (!$('gList').hidden) list(false); else $('gClose').click(); } else if (REV.has(e.code)) rev(1); else if (e.code === 'KeyB') $('bounceB').click(); });
 addEventListener('keyup', e => { if (ctx.GAR && REV.has(e.code)) rev(0); });

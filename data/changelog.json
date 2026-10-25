@@ -1,4 +1,8 @@
 [
+  { "v": "11.29", "d": "2026-10-25", "t": [
+    "Garage: the camera now frames the bike in the space the panels leave free (beside the panel in landscape, above it in portrait) and zooms to fit each bike's size, so the CBR, the scooters and the TMX with its tricycle sidecar are never cut off. Close-ups scale with the screen too; pinch / wheel zoom is relative.",
+    "Bike selection: the garage has a compact picker (‹ name ›, tap the name for a grid of all bikes) instead of rows of buttons. The title-screen bike list is a grid of cards with class, drivetrain, a power bar and weight."
+  ] },
   { "v": "11.28", "d": "2026-10-25", "t": [
     "Perf: the sun's shadow map is only redrawn when the light actually moves (it now follows the bike in ~3 m steps). Parked: no shadow pass at all; riding: a fraction of the frames. Shadows look the same."
   ] },
