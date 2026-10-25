@@ -17,7 +17,11 @@ const tAsph=mkTex(T.asphalt()),tCon=mkTex(T.concrete());
 // The island layout (coast, terrain features, river, roads, town blocks, parked vehicles, prop counts) lives in
 // data/map/island.json, so a map editor only has to edit that file. This module turns it into terrain, roads and props.
 // Landmarks with hand-placed detail (parking lot, gas station, plaza, church, market) are still code below.
-export const MD=await (await fetch('data/map/island.json?v='+BUILD)).json();
+// Map source: ?map=local = the map maker's test map (localStorage, maker/ "Test ride"); ?map=<name> = data/map/<name>.json;
+// default island.json. Multiplayer players should be on the same map (ghosts are placed by coordinates).
+const MQ=new URLSearchParams(location.search).get('map')||'',MLOC=MQ==='local'&&(()=>{try{return localStorage.getItem('cpm.map.test')}catch(e){return null}})();
+export const MAPSRC=MLOC?'local':/^[\w-]+$/.test(MQ)?MQ:'island';
+export const MD=MLOC?JSON.parse(MLOC):await (await fetch(`data/map/${MAPSRC}.json?v=`+BUILD)).json();
 const SEA=MD.sea,ICX=MD.island.cx,ICZ=MD.island.cz,CR=MD.island.coast,CN=CR.length;
 // shoreline radius: periodic Catmull-Rom through the coast samples (sample 0 at +x, turning towards +z)
 function coastR(th){const f=(((th/(2*PI))%1)+1)%1*CN,i=Math.floor(f),t=f-i,g=k=>CR[((k%CN)+CN)%CN],a=g(i-1),b=g(i),c=g(i+1),d=g(i+2);
@@ -55,7 +59,7 @@ function terr(x,z){const h=terrBase(x,z);lastCarve=riverAmt(x,z);return h+(SEA-1
 
 /* roads: Catmull-Rom splines, heights smoothed from the terrain and grade-limited.
    island.json road = {pts, w, hwy?, closed?, kind?}; kind 'strip' = airstrip (concrete, runway markings, no poles/houses) */
-const ROADS=MD.roads.map(r=>({pts:r.pts,w:r.w,closed:!!r.closed,hwy:!!r.hwy,kind:r.kind||''})),SEGG=new Map(),BUMPS=[];
+const ROADS=MD.roads.map(r=>({pts:r.pts,w:r.w,closed:!!r.closed,hwy:!!r.hwy,kind:r.kind||'',grade:r.grade})),SEGG=new Map(),BUMPS=[];
 function crSample(r){const P=r.pts,n=P.length,out=[];const get=i=>r.closed?P[(i+n)%n]:P[clamp(i,0,n-1)];
   for(let i=0;i<(r.closed?n:n-1);i++){const p0=get(i-1),p1=get(i),p2=get(i+1),p3=get(i+2),L=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]),k=Math.max(1,Math.round(L/2));
     for(let j=0;j<k;j++){const t=j/k,t2=t*t,t3=t2*t,f=(a,b,c,d)=>.5*(2*b+(-a+c)*t+(2*a-5*b+4*c-d)*t2+(-a+3*b-3*c+d)*t3);out.push([f(p0[0],p1[0],p2[0],p3[0]),f(p0[1],p1[1],p2[1],p3[1])])}}

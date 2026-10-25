@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Map Maker · CPM Motor Edition</title>
+<style>
+:root{--bg:#11161c;--pn:#1a222b;--pn2:#222c37;--ln:#2e3a47;--tx:#e6ecf2;--mu:#8b9aab;--ac:#ffb02e;--ac2:#ff7a45;--ok:#5fd38d;--bad:#ff5d6c;--r:10px;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--tx);font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+button,input,select{font:inherit;color:inherit}
+#cv{position:fixed;inset:0;width:100%;height:100%;cursor:crosshair;display:block}
+.bar{position:fixed;left:0;right:0;top:0;height:calc(48px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 10px 0;display:flex;align-items:center;gap:6px;background:linear-gradient(#11161cf2,#11161cd9);border-bottom:1px solid var(--ln);backdrop-filter:blur(8px);z-index:5}
+.logo{font-weight:800;letter-spacing:.02em;margin-right:6px;white-space:nowrap}.logo b{color:var(--ac)}.logo small{color:var(--mu);font-weight:500;margin-left:6px}
+.sp{flex:1}
+.btn{height:34px;padding:0 12px;border-radius:8px;border:1px solid var(--ln);background:var(--pn2);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:#4a5a6b}.btn.pri{background:var(--ac);color:#1b1305;border-color:var(--ac);font-weight:700}.btn.ic{width:34px;padding:0;justify-content:center}
+.btn:disabled{opacity:.4;cursor:default}.btn svg{width:18px;height:18px}
+.rail{position:fixed;left:10px;top:calc(60px + env(safe-area-inset-top));display:flex;flex-direction:column;gap:4px;padding:5px;background:var(--pn);border:1px solid var(--ln);border-radius:12px;z-index:4;box-shadow:0 8px 30px #0006}
+.tool{width:42px;height:42px;border-radius:8px;border:0;background:none;cursor:pointer;display:grid;place-items:center;color:var(--mu);position:relative}
+.tool svg{width:22px;height:22px}.tool:hover{background:var(--pn2);color:var(--tx)}.tool.on{background:var(--ac);color:#1b1305}
+.tool[data-k]::after{content:attr(data-k);position:absolute;right:3px;bottom:2px;font-size:9px;opacity:.6}
+.rail hr{border:0;border-top:1px solid var(--ln);margin:2px 4px}
+.pal{position:fixed;left:64px;display:none;flex-direction:column;gap:2px;padding:6px;background:var(--pn);border:1px solid var(--ln);border-radius:12px;z-index:6;box-shadow:0 8px 30px #0008;min-width:170px}
+.pal.open{display:flex}.pal button{display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;border-radius:7px;background:none;cursor:pointer;text-align:left}
+.pal button:hover{background:var(--pn2)}.pal i{width:12px;height:12px;border-radius:3px;flex:none}
+.side{position:fixed;right:10px;top:calc(60px + env(safe-area-inset-top));bottom:44px;width:290px;display:flex;flex-direction:column;background:var(--pn);border:1px solid var(--ln);border-radius:12px;z-index:4;box-shadow:0 8px 30px #0006;overflow:hidden}
+.side.min .body{display:none}.side.min{bottom:auto}
+.sh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--ln);cursor:pointer}
+.sh h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;flex:1}.sh .tag{font:11px var(--mono);color:var(--mu)}
+.body{overflow:auto;padding:6px 12px 14px;flex:1;-webkit-user-select:text;user-select:text}
+.sec{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.08em;margin:14px 0 6px}
+.f{display:grid;grid-template-columns:1fr 112px;align-items:center;gap:8px;margin:5px 0}
+.f label{color:#c3cfdb}.f label small{display:block;color:var(--mu);font-size:11px}
+.f input[type=number],.f input[type=text],.f select{width:100%;height:30px;padding:0 8px;border-radius:7px;border:1px solid var(--ln);background:var(--bg);font-family:var(--mono);font-size:13px}
+.f input:focus,.f select:focus{outline:2px solid var(--ac);outline-offset:-1px}
+.f input[type=checkbox]{justify-self:end;width:20px;height:20px;accent-color:var(--ac)}
+.row{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}.row .btn{height:30px;font-size:13px}
+.btn.del{color:var(--bad)}
+.note{color:var(--mu);font-size:12px;margin-top:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}.chip{padding:4px 9px;border-radius:99px;border:1px solid var(--ln);cursor:pointer;font-size:12px;color:var(--mu)}.chip.on{color:var(--tx);border-color:var(--ac);background:#ffb02e1f}
+.stat{position:fixed;left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom));height:28px;display:flex;align-items:center;gap:14px;padding:0 12px;font:12px var(--mono);color:var(--mu);background:#1a222be6;border:1px solid var(--ln);border-radius:8px;z-index:3;pointer-events:none}
+.stat b{color:var(--tx);font-weight:500}.stat .hint{margin-left:auto;font-family:system-ui;color:#b5c2cf}
+.toast{position:fixed;left:50%;top:70px;transform:translate(-50%,-20px);opacity:0;padding:9px 16px;border-radius:99px;background:var(--pn2);border:1px solid var(--ln);z-index:20;transition:.25s;pointer-events:none;box-shadow:0 8px 30px #0008}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.modal{position:fixed;inset:0;background:#05080bb3;display:none;place-items:center;z-index:30;padding:16px}.modal.open{display:grid}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:14px;width:min(560px,100%);max-height:88vh;overflow:auto;padding:20px;box-shadow:0 20px 60px #000a;-webkit-user-select:text;user-select:text}
+.card h3{font-size:18px;margin-bottom:8px}.card p,.card li{color:#c3cfdb;margin:6px 0}.card ul{padding-left:18px}.card kbd{font:12px var(--mono);padding:1px 6px;border:1px solid var(--ln);border-radius:5px;background:var(--bg)}
+.drop{border:2px dashed var(--ln);border-radius:12px;padding:22px;text-align:center;color:var(--mu);cursor:pointer;margin:12px 0}.drop:hover,.drop.hot{border-color:var(--ac);color:var(--tx)}
+.mf{border:1px solid var(--ln);border-radius:10px;padding:10px 12px;margin:8px 0;background:var(--pn2)}
+.mf .t{display:flex;gap:8px;align-items:center}.mf .t b{flex:1}.mf .n{font:12px var(--mono);color:var(--mu)}
+.cf{display:flex;gap:8px;align-items:center;font-size:13px;padding:6px 0;border-top:1px solid var(--ln)}.cf span{flex:1;color:var(--ac2)}
+.menu{position:fixed;top:calc(52px + env(safe-area-inset-top));right:10px;display:none;flex-direction:column;padding:6px;background:var(--pn);border:1px solid var(--ln);border-radius:12px;z-index:25;min-width:240px;box-shadow:0 12px 40px #000a}
+.menu.open{display:flex}.menu button{display:flex;gap:10px;align-items:center;padding:9px 10px;border:0;background:none;border-radius:7px;cursor:pointer;text-align:left}
+.menu button:hover{background:var(--pn2)}.menu small{display:block;color:var(--mu);font-size:11px}.menu hr{border:0;border-top:1px solid var(--ln);margin:4px}
+.draw{position:fixed;left:50%;bottom:calc(46px + env(safe-area-inset-bottom));transform:translateX(-50%);display:none;gap:6px;padding:6px;background:var(--pn);border:1px solid var(--ac);border-radius:12px;z-index:6;align-items:center}
+.draw.on{display:flex}.draw span{padding:0 8px;color:var(--mu);font-size:13px}
+@media (max-width:760px){
+  .logo small,.wide{display:none}
+  .side{left:10px;right:10px;width:auto;top:auto;bottom:calc(42px + env(safe-area-inset-bottom));max-height:46vh}
+  .side.min{top:auto}
+  .rail{flex-direction:row;flex-wrap:wrap;max-width:calc(100vw - 20px)}.rail hr{border-top:0;border-left:1px solid var(--ln);margin:4px 2px}
+  .pal{left:10px!important;top:calc(112px + env(safe-area-inset-top))!important}
+  .stat .hint{display:none}
+}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+
+<div class="bar">
+  <div class="logo">MAP <b>MAKER</b><small>CPM: Motor Edition</small></div>
+  <button class="btn ic" id="bUndo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
+  <button class="btn ic" id="bRedo" title="Redo (Ctrl+Shift+Z)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
+  <div class="sp"></div>
+  <button class="btn ic" id="bHelp" title="Help (?)">?</button>
+  <button class="btn" id="bMerge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="6" cy="5" r="2"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 7v10M6 9c0 3 4 3 10 3"/></svg><span class="wide">Merge</span></button>
+  <button class="btn pri" id="bTest"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg><span class="wide">Test ride</span></button>
+  <button class="btn ic" id="bMenu" title="File"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+</div>
+
+<div class="menu" id="menu">
+  <button data-a="save">💾<div>Save project<small>.cpmmap.json — share this, it can be merged</small></div></button>
+  <button data-a="open">📂<div>Open project / map<small>.cpmmap.json or a game map .json</small></div></button>
+  <hr>
+  <button data-a="export">📦<div>Export for game<small>island.json for data/map/</small></div></button>
+  <button data-a="copy">📋<div>Copy game JSON<small>to paste into GitHub's editor</small></div></button>
+  <hr>
+  <button data-a="official">🏝️<div>Start from the official map<small>replaces your current work (undoable)</small></div></button>
+</div>
+
+<div class="rail" id="rail">
+  <button class="tool on" data-t="select" data-k="V" title="Select & move (V)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l14 8-6 2 4 7-3 1.5-4-7-5 4z"/></svg></button>
+  <button class="tool" data-t="road" data-k="R" title="Draw road (R)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 21 11 3M16 21 13 3"/><path d="M12 8v2M12 14v3" stroke-width="1.6"/></svg></button>
+  <button class="tool" data-t="coast" data-k="C" title="Shape coast (C)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 15c3-3 5 2 8-1s4-7 8-5 2 8-2 10-11 2-14-4z"/></svg></button>
+  <hr>
+  <button class="tool" data-p="pTerr" title="Add terrain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2 20 9 7l4 6 3-4 6 11z"/></svg></button>
+  <button class="tool" data-p="pThing" title="Add things"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="7" width="18" height="10" rx="2"/><circle cx="7.5" cy="17.5" r="1.8" fill="currentColor"/><circle cx="16.5" cy="17.5" r="1.8" fill="currentColor"/></svg></button>
+  <hr>
+  <button class="tool" id="bFit" title="Fit island (F)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg></button>
+</div>
+<div class="pal" id="pTerr">
+  <button data-add="volcano"><i style="background:#c0714d"></i>Volcano</button>
+  <button data-add="terraces"><i style="background:#9cc45a"></i>Rice terraces</button>
+  <button data-add="ridge"><i style="background:#8d6e52"></i>Mountain ridge<small style="margin-left:auto;color:var(--mu)">draw</small></button>
+  <button data-add="flat"><i style="background:#d7c79a"></i>Flat area<small style="margin-left:auto;color:var(--mu)">drag</small></button>
+</div>
+<div class="pal" id="pThing">
+  <button data-add="block"><i style="background:#c9a77c"></i>Town block<small style="margin-left:auto;color:var(--mu)">drag</small></button>
+  <button data-add="jeep"><i style="background:#ffcf33"></i>Jeepney</button>
+  <button data-add="trike"><i style="background:#39b3e8"></i>Tricycle</button>
+  <button data-add="hangar"><i style="background:#c4c8cc"></i>Hangar</button>
+  <button data-add="bump"><i style="background:#ffe066"></i>Speed bump</button>
+</div>
+
+<div class="side" id="side">
+  <div class="sh" id="sideH"><h2 id="sTitle">Map</h2><span class="tag" id="sTag"></span><span id="sCaret">▾</span></div>
+  <div class="body" id="sBody"></div>
+</div>
+
+<div class="draw" id="drawBar"><span id="drawTxt">Tap to add points</span><button class="btn" id="dUndo">Undo point</button><button class="btn pri" id="dDone">Done</button><button class="btn" id="dCancel">Cancel</button></div>
+<div class="stat"><span>x <b id="sx">0</b></span><span>z <b id="sz">0</b></span><span>h <b id="sh">0</b> m</span><span><b id="sm">0</b> m/px</span><span class="hint" id="hint"></span></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="fOpen" accept=".json,application/json" hidden>
+<input type="file" id="fMerge" accept=".json,application/json" multiple hidden>
+
+<div class="modal" id="mHelp"><div class="card">
+  <h3>Map Maker</h3>
+  <p>Edits <code>data/map/island.json</code>, the file the game builds the island from. Your work autosaves in this browser.</p>
+  <ul>
+    <li><b>Select</b> <kbd>V</kbd>: tap anything to edit it on the right. Drag handles to reshape; drag a <i>selected</i> object to move it. Empty drag pans, wheel/pinch zooms.</li>
+    <li><b>Road</b> <kbd>R</kbd>: tap points, <kbd>Enter</kbd> or Done to finish. Ends snap onto other roads so junctions blend.</li>
+    <li><b>Coast</b> <kbd>C</kbd>: drag the shoreline in or out. Brush size and coast detail are in the panel.</li>
+    <li><kbd>Del</kbd> deletes the selected point (or object), <kbd>Ctrl Z</kbd> / <kbd>Ctrl Shift Z</kbd> undo/redo, <kbd>F</kbd> fits the island, <kbd>Esc</kbd> deselects.</li>
+  </ul>
+  <h3 style="margin-top:14px">Working together</h3>
+  <ul>
+    <li>Everyone starts from the official map, edits, then <b>☰ → Save project</b> and sends the <code>.cpmmap.json</code> file.</li>
+    <li><b>Merge</b> takes any number of project files and applies each person's changes onto your map (added, moved and deleted roads, features, vehicles, coast). If two people changed the same thing, yours stays and you can pick theirs.</li>
+    <li><b>Test ride</b> opens the game on your map (only in this browser). <b>Export for game</b> gives the <code>island.json</code> to commit, or save it as <code>data/map/&lt;name&gt;.json</code> and play it with <code>?map=&lt;name&gt;</code>.</li>
+  </ul>
+  <p class="note">The plaza, church, market, gas station and parking lot are built in code inside the town; keep the town where it is or they'll stay behind. Bigger coasts mean a bigger terrain grid (slower loading on phones).</p>
+  <div class="row"><button class="btn pri" data-close>Got it</button></div>
+</div></div>
+
+<div class="modal" id="mMerge"><div class="card">
+  <h3>Merge maps</h3>
+  <p>Drop project files from other people. Their changes are applied onto your current map.</p>
+  <div class="drop" id="drop">Tap to pick files or drop them here<br><small>.cpmmap.json (plain maps are compared against the official map)</small></div>
+  <div id="mList"></div>
+  <div class="row"><button class="btn" data-close>Close</button></div>
+</div></div>
+
+<script type="module">
+import { fbm, sstep, clamp } from '../js/util.js';
+const $=id=>document.getElementById(id),PI=Math.PI,r1=v=>Math.round(v*10)/10,J=JSON.stringify,clone=o=>JSON.parse(J(o)),eq=(a,b)=>J(a)===J(b);
+const LS='cpm.maker.doc',OFFICIAL='../data/map/island.json?chk=1';
+
+/* ---------- terrain: same math as js/world.js terrBase/terr (keep in sync) ---------- */
+function mkTerr(M){
+  const SEA=M.sea,ICX=M.island.cx,ICZ=M.island.cz,CR=M.island.coast,CN=CR.length,HL=M.hills,FEAT=M.features;
+  const coastR=th=>{const f=(((th/(2*PI))%1)+1)%1*CN,i=Math.floor(f),t=f-i,g=k=>CR[((k%CN)+CN)%CN],a=g(i-1),b=g(i),c=g(i+1),d=g(i+2);return .5*(2*b+(-a+c)*t+(2*a-5*b+4*c-d)*t*t+(-a+3*b-3*c+d)*t*t*t)};
+  const inland=(x,z)=>coastR(Math.atan2(z-ICZ,x-ICX))-Math.hypot(x-ICX,z-ICZ);
+  const rd=(x,z,r)=>Math.hypot(Math.max(Math.abs(x-(r.x0+r.x1)/2)-Math.abs(r.x1-r.x0)/2,0),Math.max(Math.abs(z-(r.z0+r.z1)/2)-Math.abs(r.z1-r.z0)/2,0));
+  const BB=FEAT.map(f=>{if(f.type!=='ridge'||!f.pts.length)return null;const p=f.pts;return[Math.min(...p.map(q=>q[0]))-3*f.w,Math.max(...p.map(q=>q[0]))+3*f.w,Math.min(...p.map(q=>q[1]))-3*f.w,Math.max(...p.map(q=>q[1]))+3*f.w]});
+  const PD={d:0,h:0};
+  function polyD(x,z,P){let bd=1e18,bh=0;for(let i=1;i<P.length;i++){const[ax,az,ah=0]=P[i-1],[bx,bz,bh2=0]=P[i],ex=bx-ax,ez=bz-az,t=clamp(((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez||1),0,1),dx=ax+ex*t-x,dz=az+ez*t-z,d=dx*dx+dz*dz;if(d<bd){bd=d;bh=ah+(bh2-ah)*t}}PD.d=Math.sqrt(bd);PD.h=bh;return PD}
+  function terrBase(x,z){const inl=inland(x,z);let h=inl>0?SEA+.2+Math.min(inl,60)*.045:Math.max(-10,SEA-.2+inl*.06);
+    const hl=sstep(HL.inl0,HL.inl1,inl);h+=(fbm(x*HL.scale+7,z*HL.scale)*HL.amp+HL.off)*hl;if(inl>60)h=Math.max(h,SEA+3);
+    for(let k=0;k<FEAT.length;k++){const f=FEAT[k],t=f.type;
+      if(t==='volcano'){const dv=Math.hypot(x-f.x,z-f.z);h+=f.h*Math.exp(-Math.pow(dv/f.r,1.8))-f.crater*Math.exp(-((dv/f.craterR)**2))}
+      else if(t==='terraces'){const dt=Math.hypot(x-f.x,z-f.z);if(dt<f.r+260){h+=f.h*Math.exp(-((dt/100)**2));const w=1-sstep(f.r-40,f.r,dt),q=h/f.step,fr=q-Math.floor(q);h+=((Math.floor(q)+sstep(.7,1,fr))*f.step-h)*w*.85}}
+      else if(t==='ridge'){const b=BB[k];if(b&&x>b[0]&&x<b[1]&&z>b[2]&&z<b[3]){const p=polyD(x,z,f.pts);h+=p.h*Math.exp(-((p.d/f.w)**2))*sstep(0,80,inl)*(1+.18*(fbm(x*.02+3,z*.02)-.5))}}
+      else if(t==='flat'){const w=1-sstep(0,f.blend,rd(x,z,f));if(w>0)h+=(f.h-h)*w}}
+    return h}
+  const RV=M.river.pts,RW0=M.river.w0,RW1=M.river.w1,RL=[0];for(let i=1;i<RV.length;i++)RL.push(RL[i-1]+Math.hypot(RV[i][0]-RV[i-1][0],RV[i][1]-RV[i-1][1]));
+  const RB=RV.length>1?[Math.min(...RV.map(p=>p[0]))-RW1-12,Math.max(...RV.map(p=>p[0]))+RW1+12,Math.min(...RV.map(p=>p[1]))-RW1-12,Math.max(...RV.map(p=>p[1]))+RW1+12]:[0,0,0,0];
+  function riverAmt(x,z){if(x<RB[0]||x>RB[1]||z<RB[2]||z>RB[3])return 0;let bd=1e9,bs=0;for(let i=1;i<RV.length;i++){const[ax,az]=RV[i-1],[bx,bz]=RV[i],ex=bx-ax,ez=bz-az,l2=ex*ex+ez*ez||1,t=clamp(((x-ax)*ex+(z-az)*ez)/l2,0,1),dx=ax+ex*t-x,dz=az+ez*t-z,d=dx*dx+dz*dz;if(d<bd){bd=d;bs=(RL[i-1]+t*Math.sqrt(l2))/RL[RL.length-1]}}
+    return(1-sstep(RW0,RW1,Math.sqrt(bd)))*sstep(0,.15,bs)}
+  const T={carve:0,SEA,coastR,inland,rd,terr(x,z){const h=terrBase(x,z);T.carve=riverAmt(x,z);return h+(SEA-1.4-h)*T.carve}};return T}
+// Catmull-Rom like world.js crSample (for drawing roads as the game will)
+function crSample(P,closed,step){const n=P.length,out=[];if(n<2)return P.slice();const get=i=>closed?P[(i+n)%n]:P[clamp(i,0,n-1)];
+  for(let i=0;i<(closed?n:n-1);i++){const p0=get(i-1),p1=get(i),p2=get(i+1),p3=get(i+2),L=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]),k=Math.max(1,Math.round(L/step));
+    for(let j=0;j<k;j++){const t=j/k,t2=t*t,t3=t2*t,f=(a,b,c,d)=>.5*(2*b+(-a+c)*t+(2*a-5*b+4*c-d)*t2+(-a+3*b-3*c+d)*t3);out.push([f(p0[0],p1[0],p2[0],p3[0]),f(p0[1],p1[1],p2[1],p3[1])])}}
+  out.push(closed?out[0]:P[n-1]);return out}
+
+/* ---------- document, undo, autosave ---------- */
+let doc=null,official=null,U=[],R=[],dirtyT=true,T=null;
+const nid=p=>p+Math.random().toString(36).slice(2,8);
+function ensureIds(m){m.roads.forEach((r,i)=>r.id??=('r'+i));m.features.forEach((f,i)=>f.id??=('f'+i));m.hangars??=[];m.bumps??=[];return m}
+function gameJSON(m=doc){const o=clone(m);delete o.meta;return o}
+function snap(){U.push(J(doc));if(U.length>150)U.shift();R=[];ui()}
+function undo(){if(!U.length)return;R.push(J(doc));doc=JSON.parse(U.pop());after()}
+function redo(){if(!R.length)return;U.push(J(doc));doc=JSON.parse(R.pop());after()}
+function after(){if(sel&&!objOf(sel))sel=null;dirtyT=true;save();panel();draw()}
+let svT=0;function save(){clearTimeout(svT);svT=setTimeout(()=>{try{localStorage.setItem(LS,J(doc))}catch(e){}},300)}
+function changed(terrain=true){if(terrain)dirtyT=true;save();draw()}
+const tsig=()=>J([doc.sea,doc.island,doc.hills,doc.features,doc.river]);let lastSig='';
+
+/* ---------- view ---------- */
+const cv=$('cv'),g=cv.getContext('2d');let W=0,H=0,DPR=1;const cam={x:0,z:-100,s:.5};
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*DPR;cv.height=H*DPR;draw()}
+const sx=x=>(x-cam.x)*cam.s+W/2,sy=z=>(z-cam.z)*cam.s+H/2,wx=X=>(X-W/2)/cam.s+cam.x,wz=Y=>(Y-H/2)/cam.s+cam.z;
+function fit(){const c=doc.island,M=Math.max(...c.coast)+60,side=W>760?320:0,top=60,bot=W>760?50:$('side').classList.contains('min')?60:H*.48;cam.s=Math.min((W-side-80)/(2*M),(H-top-bot)/(2*M));
+  cam.x=c.cx+(side/2)/cam.s;cam.z=c.cz-((top-bot)/2)/cam.s;draw()}
+
+/* ---------- terrain image (cartographic: tint ramp + hillshade + 20 m contours), built in slices ---------- */
+const TC=document.createElement('canvas'),tg=TC.getContext('2d');let TX={x0:0,z0:0,s:1,n:0},gen=0,tbusy=false;
+const ramp=[[0,[127,178,79]],[25,[96,150,62]],[60,[104,128,74]],[110,[139,125,108]],[180,[186,176,164]],[260,[232,228,222]]];
+function rampC(h){if(h<=ramp[0][0])return ramp[0][1];for(let i=1;i<ramp.length;i++)if(h<ramp[i][0]){const[a,ca]=ramp[i-1],[b,cb]=ramp[i],t=(h-a)/(b-a);return ca.map((v,k)=>v+(cb[k]-v)*t)}return ramp[ramp.length-1][1]}
+function buildTerrain(n){const my=++gen;T=mkTerr(doc);const c=doc.island,M=Math.max(...c.coast)+160,x0=c.cx-M,z0=c.cz-M,s=2*M/n,hs=new Float32Array(n*n),cw=new Uint8Array(n*n);let j=0;tbusy=true;
+  const town=doc.town,pad=doc.paddy;
+  const step=()=>{if(my!==gen)return;const t0=performance.now();
+    for(;j<n&&performance.now()-t0<12;j++)for(let i=0;i<n;i++){const k=j*n+i;hs[k]=T.terr(x0+(i+.5)*s,z0+(j+.5)*s);cw[k]=T.carve>.4?1:0}
+    if(j<n){requestAnimationFrame(step);return}
+    TC.width=TC.height=n;const img=tg.createImageData(n,n),D=img.data,SEA=doc.sea;
+    for(let jj=0;jj<n;jj++)for(let i=0;i<n;i++){const k=jj*n+i,h=hs[k],x=x0+(i+.5)*s,z=z0+(jj+.5)*s;let c;
+      if(cw[k]||h<SEA){const d=clamp((SEA-h)/9,0,1);c=cw[k]?[52,140,178]:[72-40*d,158-80*d,186-66*d]}
+      else{const hl=hs[k-1]??h,hr=hs[k+1]??h,hu=hs[k-n]??h,hd=hs[k+n]??h,nx=(hl-hr)/(2*s),nz=(hu-hd)/(2*s),sh=clamp(.78+(nx*.55+nz*.75)*1.6,.45,1.25);
+        c=h<SEA+1.3?[226,212,165]:rampC(h-SEA);
+        if(T.rd(x,z,town)<1)c=[c[0]*.55+188*.45,c[1]*.55+176*.45,c[2]*.55+152*.45];
+        else if(T.rd(x,z,pad)<1)c=(Math.floor(z/9)&1)?[150,196,92]:[132,182,80];
+        c=c.map(v=>v*sh);
+        const b=Math.floor((h-SEA)/20);if(h-SEA>3&&(Math.floor((hr-SEA)/20)!==b||Math.floor((hd-SEA)/20)!==b))c=c.map(v=>v*.82)}
+      D[k*4]=c[0];D[k*4+1]=c[1];D[k*4+2]=c[2];D[k*4+3]=255}
+    tg.putImageData(img,0,0);TX={x0,z0,s,n};tbusy=false;draw();if(n<560&&!drag)requestAnimationFrame(()=>{if(my===gen)buildTerrain(Math.min(1024,Math.round(Math.max(W,H)*DPR*.7)))})};
+  step()}
+
+/* ---------- objects: everything pickable, with handles and inspector fields ---------- */
+const A=a=>a*180/PI,Rd=d=>d*PI/180;
+const KIND={jeep:['town','jeeps',4.6,2,'#ffcf33'],trike:['town','trikes',2.2,1.6,'#39b3e8'],hangar:[null,'hangars',22,26,'#c4c8cc']};
+function arr(k){const[a,b]=KIND[k];return a?doc[a][b]:doc[b]}
+function objOf(s){if(!s)return null;const{k,i}=s;
+  if(k==='road')return doc.roads[i];if(k==='feat')return doc.features[i];if(k==='river')return doc.river;if(k==='block')return doc.town.blocks[i];
+  if(KIND[k])return arr(k)[i];if(k==='bump')return doc.bumps[i];if(k==='area')return doc[i];if(k==='coast')return doc.island;return null}
+function dSeg(x,z,P,closed){let bd=1e18,bi=0;const n=P.length;for(let i=1;i<n+(closed?1:0);i++){const[a,b]=[P[i-1],P[i%n]],ex=b[0]-a[0],ez=b[1]-a[1],t=clamp(((x-a[0])*ex+(z-a[1])*ez)/(ex*ex+ez*ez||1),0,1),d=Math.hypot(a[0]+ex*t-x,a[1]+ez*t-z);if(d<bd){bd=d;bi=i}}return[bd,bi]}
+function rectOf(o){return Array.isArray(o)?{x0:o[0],z0:o[1],x1:o[2],z1:o[3]}:o}
+function dRect(x,z,r){const dx=Math.max(Math.min(r.x0,r.x1)-x,0,x-Math.max(r.x0,r.x1)),dz=Math.max(Math.min(r.z0,r.z1)-z,0,z-Math.max(r.z0,r.z1));return Math.hypot(dx,dz)}
+function pick(X,Y){const x=wx(X),z=wz(Y),m=1/cam.s;let best=null,bs=14;const cand=(s,dm,pri)=>{const sc=dm/m+pri;if(dm/m<=14&&sc<bs){bs=sc;best=s}};
+  for(const k in KIND)arr(k).forEach((v,i)=>cand({k,i},Math.max(0,Math.hypot(v[0]-x,v[1]-z)-(k==='hangar'?12:2)),0));
+  doc.bumps.forEach((b,i)=>cand({k:'bump',i},Math.hypot(b[0]-x,b[1]-z),0));
+  if(layers.roads)doc.roads.forEach((r,i)=>cand({k:'road',i},Math.max(0,dSeg(x,z,crSample(r.pts,r.closed,6),false)[0]-r.w/2),2));
+  cand({k:'river',i:0},Math.max(0,dSeg(x,z,doc.river.pts,false)[0]-doc.river.w1/2),3);
+  doc.features.forEach((f,i)=>{if(f.type==='ridge')cand({k:'feat',i},dSeg(x,z,f.pts,false)[0],3);
+    else if(f.type==='flat')cand({k:'feat',i},dRect(x,z,f),8);
+    else{const d=Math.hypot(f.x-x,f.z-z);cand({k:'feat',i},Math.min(d,Math.abs(d-f.r)),4)}});
+  doc.town.blocks.forEach((b,i)=>cand({k:'block',i},dRect(x,z,rectOf(b)),6));
+  for(const a of['town','paddy'])cand({k:'area',i:a},dRect(x,z,doc[a]),10);
+  return best}
+// handles of the selected object: {x,z,set(x,z), j?}
+function handles(s){const o=objOf(s);if(!o)return[];const H=[];
+  const pts=(P,k3)=>P.forEach((p,j)=>H.push({x:p[0],z:p[1],j,set:(x,z)=>{p[0]=x;p[1]=z}}));
+  const rect=r=>{for(const[a,b]of[['x0','z0'],['x1','z0'],['x1','z1'],['x0','z1']])H.push({x:r[a],z:r[b],set:(x,z)=>{r[a]=x;r[b]=z}})};
+  switch(s.k){
+    case'road':case'river':pts(o.pts);break;
+    case'feat':if(o.type==='ridge')pts(o.pts);else if(o.type==='flat')rect(o);else{H.push({x:o.x,z:o.z,set:(x,z)=>{o.x=x;o.z=z}});H.push({x:o.x+o.r,z:o.z,set:(x,z)=>{o.r=Math.max(10,Math.hypot(x-o.x,z-o.z))}})}break;
+    case'block':{const b=o,r={x0:b[0],z0:b[1],x1:b[2],z1:b[3]};[['x0','z0',0,1],['x1','z0',2,1],['x1','z1',2,3],['x0','z1',0,3]].forEach(([,,a,c])=>H.push({x:b[a],z:b[c],set:(x,z)=>{b[a]=x;b[c]=z}}));break}
+    case'area':rect(o);break;
+    case'bump':break;
+    default:{const L=KIND[s.k][2]*.5+5,hang=s.k==='hangar',dx=hang?Math.sin(o[2]):-Math.sin(o[2]),dz=hang?Math.cos(o[2]):-Math.cos(o[2]);
+      H.push({x:o[0]+dx*L,z:o[1]+dz*L,rot:1,set:(x,z)=>{o[2]=+(hang?Math.atan2(x-o[0],z-o[1]):Math.atan2(-(x-o[0]),-(z-o[1]))).toFixed(4)}})}}
+  return H}
+const r1x=(v,d)=>+v.toFixed(d);
+function moveObj(s,dx,dz){const o=objOf(s),mv=p=>{p[0]=r1(p[0]+dx);p[1]=r1(p[1]+dz)};
+  switch(s.k){case'road':case'river':o.pts.forEach(mv);break;
+    case'feat':if(o.type==='ridge')o.pts.forEach(mv);else if(o.type==='flat'){o.x0=r1(o.x0+dx);o.x1=r1(o.x1+dx);o.z0=r1(o.z0+dz);o.z1=r1(o.z1+dz)}else{o.x=r1(o.x+dx);o.z=r1(o.z+dz)}break;
+    case'block':o[0]=r1(o[0]+dx);o[2]=r1(o[2]+dx);o[1]=r1(o[1]+dz);o[3]=r1(o[3]+dz);break;
+    case'area':o.x0=r1(o.x0+dx);o.x1=r1(o.x1+dx);o.z0=r1(o.z0+dz);o.z1=r1(o.z1+dz);break;
+    default:mv(o)}}
+const terrK=s=>s&&(s.k==='feat'||s.k==='river'||s.k==='coast'||s.k==='area');
+// a flat named town/paddy follows (and is followed by) the matching area rect when they started equal
+function linked(s){const o=objOf(s);if(s.k==='feat'&&o.type==='flat'&&doc[o.name]&&['town','paddy'].includes(o.name)){const a=doc[o.name];if(a.x0===o.x0&&a.x1===o.x1&&a.z0===o.z0&&a.z1===o.z1)return a}
+  if(s.k==='area'){const f=doc.features.find(f=>f.type==='flat'&&f.name===s.i);if(f&&f.x0===o.x0&&f.x1===o.x1&&f.z0===o.z0&&f.z1===o.z1)return f}return null}
+const syncRect=(a,b)=>{if(b){b.x0=a.x0;b.x1=a.x1;b.z0=a.z0;b.z1=a.z1}};
+
+/* ---------- drawing ---------- */
+const layers={terrain:true,roads:true,features:true,town:true,vehicles:true,grid:true};
+let tool='select',sel=null,drawing=null,hover=null,brush=2,ptr={x:0,y:0};
+function draw(){if(drawQ)return;drawQ=requestAnimationFrame(render)}let drawQ=0;
+function render(){drawQ=0;if(!doc)return;const sig=tsig();if(sig!==lastSig||dirtyT){lastSig=sig;dirtyT=false;clearTimeout(render.t);if(drag)buildTerrain(180);else render.t=setTimeout(()=>buildTerrain(360),40)}
+  g.setTransform(DPR,0,0,DPR,0,0);g.fillStyle='#204e78';g.fillRect(0,0,W,H);
+  if(layers.terrain&&TX.n){g.imageSmoothingEnabled=true;g.drawImage(TC,sx(TX.x0),sy(TX.z0),TX.n*TX.s*cam.s,TX.n*TX.s*cam.s)}
+  else if(T){g.fillStyle='#2a5b45';g.beginPath();coastPath();g.fill()}
+  if(layers.grid)grid();
+  const s=cam.s,lw=v=>Math.max(1.2,v*s),isSel=(k,i)=>sel&&sel.k===k&&sel.i===i;
+  // coastline
+  if(T){g.strokeStyle='#ffffff55';g.lineWidth=1.2;g.beginPath();coastPath();g.stroke()}
+  // areas + flats
+  if(layers.features){for(const a of['town','paddy']){const r=doc[a];dash(r,isSel('area',a)?'#ffb02e':'#ffffff50',[2,4]);if(!doc.features.some(f=>f.type==='flat'&&f.name===a))label(a.toUpperCase(),(r.x0+r.x1)/2,Math.min(r.z0,r.z1),'#ffffffb0',10)}
+    doc.features.forEach((f,i)=>{const on=isSel('feat',i);g.lineWidth=on?2.5:1.4;
+      if(f.type==='flat'){dash(f,on?'#ffb02e':'#f3e2b5cc',[6,4]);g.globalAlpha=.25;dash({x0:Math.min(f.x0,f.x1)-f.blend,x1:Math.max(f.x0,f.x1)+f.blend,z0:Math.min(f.z0,f.z1)-f.blend,z1:Math.max(f.z0,f.z1)+f.blend},'#f3e2b5',[2,6]);g.globalAlpha=1;label((f.name||'flat')+'  '+f.h+' m',(f.x0+f.x1)/2,(f.z0+f.z1)/2,on?'#ffb02e':'#fff8e3',11)}
+      else if(f.type==='ridge'){g.strokeStyle=on?'#ffb02e':'#5b4330';g.setLineDash([10,6]);g.lineWidth=on?4:3;poly(f.pts);g.stroke();g.setLineDash([]);if(on||s>.4)f.pts.forEach(p=>label('▲'+Math.round(p[2]),p[0],p[1]-12/s,'#fff1d6',10))}
+      else{const c=f.type==='volcano'?'#c0714d':'#9cc45a';g.strokeStyle=on?'#ffb02e':c;g.beginPath();g.arc(sx(f.x),sy(f.z),f.r*s,0,2*PI);g.stroke();
+        if(f.type==='volcano'){g.setLineDash([3,3]);g.beginPath();g.arc(sx(f.x),sy(f.z),f.craterR*s,0,2*PI);g.stroke();g.setLineDash([])}
+        label((f.type==='volcano'?'▲ volcano ':'≋ terraces ')+f.h+' m',f.x,f.z+f.r+10/s,on?'#ffb02e':'#fff',11)}})}
+  // river
+  {const rv=doc.river,on=isSel('river',0);g.lineCap=g.lineJoin='round';g.strokeStyle=on?'#ffb02e':'#3aa2d0';g.lineWidth=lw((rv.w0+rv.w1)/2)+(on?3:0);poly(rv.pts);g.stroke()}
+  // roads
+  if(layers.roads)doc.roads.forEach((r,i)=>{const P=crSample(r.pts,r.closed,Math.max(2,4/s)),on=isSel('road',i);g.lineCap=g.lineJoin='round';
+    if(on){g.strokeStyle='#ffb02e';g.lineWidth=lw(r.w)+6;poly(P);g.stroke()}
+    g.strokeStyle='#1f2328';g.lineWidth=lw(r.w)+2;poly(P);g.stroke();
+    g.strokeStyle=r.kind==='strip'?'#c9c6bd':r.hwy?'#5a5f66':'#6d7279';g.lineWidth=lw(r.w);poly(P);g.stroke();
+    if(r.w*s>5){g.setLineDash([3*s,5*s]);g.strokeStyle=r.kind==='strip'?'#fff':'#f2d04b';g.lineWidth=Math.max(1,.18*s);poly(P);g.stroke();g.setLineDash([])}});
+  // town blocks + things
+  if(layers.town)doc.town.blocks.forEach((b,i)=>{const r=rectOf(b),on=isSel('block',i);g.fillStyle=on?'#ffb02e55':'#c9a77c66';g.strokeStyle=on?'#ffb02e':'#8a6f4f';g.lineWidth=1.2;
+    const X=sx(Math.min(r.x0,r.x1)),Y=sy(Math.min(r.z0,r.z1)),w=Math.abs(r.x1-r.x0)*s,h=Math.abs(r.z1-r.z0)*s;g.fillRect(X,Y,w,h);g.strokeRect(X,Y,w,h);
+    g.strokeStyle='#5a3f22';g.lineWidth=3;const sd=b[4]||'';g.beginPath();if(sd.includes('n')){g.moveTo(X,Y);g.lineTo(X+w,Y)}if(sd.includes('s')){g.moveTo(X,Y+h);g.lineTo(X+w,Y+h)}if(sd.includes('w')){g.moveTo(X,Y);g.lineTo(X,Y+h)}if(sd.includes('e')){g.moveTo(X+w,Y);g.lineTo(X+w,Y+h)}g.stroke()});
+  if(layers.vehicles){for(const k in KIND)arr(k).forEach((v,i)=>{const[,,L,Wd,c]=KIND[k],on=isSel(k,i),hang=k==='hangar';g.save();g.translate(sx(v[0]),sy(v[1]));g.rotate(-v[2]+(hang?PI:0));
+      const l=Math.max(L*s,8),w=Math.max(Wd*s,5);g.fillStyle=c;g.strokeStyle=on?'#ffb02e':'#000a';g.lineWidth=on?2.5:1;g.beginPath();g.roundRect(-w/2,-l/2,w,l,Math.min(3,w/3));g.fill();g.stroke();
+      g.fillStyle='#000a';g.beginPath();g.moveTo(0,-l/2-4);g.lineTo(-3,-l/2+1);g.lineTo(3,-l/2+1);g.fill();g.restore()});
+    doc.bumps.forEach((b,i)=>{const on=isSel('bump',i),L=Math.max(3.6*s,5);g.strokeStyle=on?'#ffb02e':'#ffe066';g.lineWidth=on?4:3;g.beginPath();
+      if(b[2]==='z'){g.moveTo(sx(b[0])-L,sy(b[1]));g.lineTo(sx(b[0])+L,sy(b[1]))}else{g.moveTo(sx(b[0]),sy(b[1])-L);g.lineTo(sx(b[0]),sy(b[1])+L)}g.stroke()})}
+  // coast handles
+  if(tool==='coast'||sel?.k==='coast'){const c=doc.island,N=c.coast.length;for(let i=0;i<N;i++){const th=i/N*2*PI,x=c.cx+Math.cos(th)*c.coast[i],z=c.cz+Math.sin(th)*c.coast[i];dot(x,z,sel?.k==='coast'&&sel.j===i?5:3,'#fff','#0008')}
+    dot(c.cx,c.cz,5,'#ffb02e','#000');
+    if(tool==='coast'&&hover==null){const th=Math.atan2(wz(ptr.y)-c.cz,wx(ptr.x)-c.cx);g.strokeStyle='#ffb02e66';g.setLineDash([4,4]);g.beginPath();g.moveTo(sx(c.cx),sy(c.cz));g.lineTo(sx(c.cx+Math.cos(th)*T.coastR(th)*1.15),sy(c.cz+Math.sin(th)*T.coastR(th)*1.15));g.stroke();g.setLineDash([])}}
+  // selection handles
+  if(sel&&sel.k!=='coast')for(const h of handles(sel))dot(h.x,h.z,h.rot?5:(sel.j===h.j&&h.j!=null?6:4.5),h.rot?'#39b3e8':sel.j===h.j&&h.j!=null?'#ffb02e':'#fff','#111');
+  // in-progress drawing
+  if(drawing){g.strokeStyle='#ffb02e';g.lineWidth=2;g.setLineDash([6,4]);const P=drawing.pts;if(drawing.rect){const r=drawing.rect;dash(r,'#ffb02e',[6,4])}else if(P.length){poly([...P,[wx(ptr.x),wz(ptr.y)]]);g.stroke();P.forEach(p=>dot(p[0],p[1],4,'#ffb02e','#000'))}g.setLineDash([])}
+}
+function coastPath(){const c=doc.island;for(let i=0;i<=180;i++){const th=i/180*2*PI,r=T.coastR(th),X=sx(c.cx+Math.cos(th)*r),Y=sy(c.cz+Math.sin(th)*r);i?g.lineTo(X,Y):g.moveTo(X,Y)}g.closePath()}
+function poly(P){g.beginPath();P.forEach((p,i)=>i?g.lineTo(sx(p[0]),sy(p[1])):g.moveTo(sx(p[0]),sy(p[1])))}
+function dash(r,c,d){g.strokeStyle=c;g.setLineDash(d);g.strokeRect(sx(Math.min(r.x0,r.x1)),sy(Math.min(r.z0,r.z1)),Math.abs(r.x1-r.x0)*cam.s,Math.abs(r.z1-r.z0)*cam.s);g.setLineDash([])}
+function dot(x,z,r,f,s){g.fillStyle=f;g.strokeStyle=s;g.lineWidth=1.5;g.beginPath();g.arc(sx(x),sy(z),r,0,2*PI);g.fill();g.stroke()}
+function label(t,x,z,c,sz){g.font=`600 ${sz}px system-ui`;g.textAlign='center';g.textBaseline='middle';g.lineWidth=3;g.strokeStyle='#0009';g.strokeText(t,sx(x),sy(z));g.fillStyle=c;g.fillText(t,sx(x),sy(z))}
+function grid(){const st=[50,100,250,500,1000].find(v=>v*cam.s>70)||1000;g.strokeStyle='#ffffff14';g.lineWidth=1;g.beginPath();
+  for(let x=Math.ceil(wx(0)/st)*st;x<wx(W);x+=st){g.moveTo(sx(x),0);g.lineTo(sx(x),H)}for(let z=Math.ceil(wz(0)/st)*st;z<wz(H);z+=st){g.moveTo(0,sy(z));g.lineTo(W,sy(z))}g.stroke();
+  g.fillStyle='#ffffff60';g.font='10px ui-monospace,monospace';g.textAlign='left';g.textBaseline='top';for(let x=Math.ceil(wx(0)/st)*st;x<wx(W);x+=st)g.fillText(x,sx(x)+3,54);}
+
+/* ---------- pointer input ---------- */
+const P=new Map();let drag=null,pinch=null;
+cv.addEventListener('pointerdown',e=>{cv.setPointerCapture(e.pointerId);P.set(e.pointerId,{x:e.clientX,y:e.clientY});closePals();
+  if(P.size===2){const[a,b]=[...P.values()];pinch={d:Math.hypot(a.x-b.x,a.y-b.y),s:cam.s,cx:(a.x+b.x)/2,cy:(a.y+b.y)/2,wx:wx((a.x+b.x)/2),wz:wz((a.y+b.y)/2)};if(drag?.snapped&&!drag.moved)U.pop();drag=null;return}
+  const X=e.clientX,Y=e.clientY,x=wx(X),z=wz(Y),m=1/cam.s;
+  if(e.button===1||e.button===2){drag={pan:1,X,Y,cx:cam.x,cz:cam.z};return}
+  if(drawing){if(drawing.rect!==undefined){drawing.rect={x0:snapV(x),z0:snapV(z),x1:snapV(x),z1:snapV(z)};drag={rect:1}}else{addDrawPt(x,z)}return}
+  if(tool==='coast'){const c=doc.island,N=c.coast.length,th=Math.atan2(z-c.cz,x-c.cx),i=Math.round(((th/(2*PI))%1+1)%1*N)%N;snap();drag={coast:1,i,c0:c.coast.slice(),r0:Math.hypot(x-c.cx,z-c.cz)};sel={k:'coast',i:0,j:i};panel();return}
+  if(sel)for(const h of handles(sel))if(Math.hypot(sx(h.x)-X,sy(h.z)-Y)<14){snap();drag={h,link:linked(sel),snapped:1};if(h.j!=null){sel.j=h.j;panel()}return}
+  const p=pick(X,Y);
+  if(p&&sel&&p.k===sel.k&&p.i===sel.i){snap();drag={move:1,x,z,link:linked(sel),snapped:1};return}
+  if(p){sel=p;panel();draw()}else{if(sel){sel=null;panel();draw()}}
+  drag={pan:1,X,Y,cx:cam.x,cz:cam.z}});
+cv.addEventListener('pointermove',e=>{ptr={x:e.clientX,y:e.clientY};if(P.has(e.pointerId))P.set(e.pointerId,{x:e.clientX,y:e.clientY});const x=wx(ptr.x),z=wz(ptr.y);
+  status(x,z);
+  if(pinch&&P.size>=2){const[a,b]=[...P.values()],d=Math.hypot(a.x-b.x,a.y-b.y);cam.s=clamp(pinch.s*d/pinch.d,.03,20);const cx=(a.x+b.x)/2,cy=(a.y+b.y)/2;cam.x=pinch.wx-(cx-W/2)/cam.s;cam.z=pinch.wz-(cy-H/2)/cam.s;draw();return}
+  if(!drag){if(tool==='coast'||drawing)draw();return}
+  if(drag.pan){cam.x=drag.cx-(e.clientX-drag.X)/cam.s;cam.z=drag.cz-(e.clientY-drag.Y)/cam.s;draw();return}
+  if(drag.rect){drawing.rect.x1=snapV(x);drawing.rect.z1=snapV(z);draw();return}
+  if(drag.coast){const c=doc.island,N=c.coast.length,dl=Math.hypot(x-c.cx,z-c.cz)-drag.r0;for(let k=-brush;k<=brush;k++){const w=brush?.5+.5*Math.cos(PI*k/(brush+1)):1,ii=((drag.i+k)%N+N)%N;c.coast[ii]=Math.max(60,Math.round(drag.c0[ii]+dl*w))}drag.moved=1;changed();return}
+  if(drag.h){let X=snapV(x),Z=snapV(z);if(!drag.h.rot&&(sel.k==='road')&&(drag.h.j===0||drag.h.j===objOf(sel).pts.length-1)){const sn=snapRoad(x,z,sel.i);if(sn){X=sn[0];Z=sn[1]}}
+    drag.h.set(r1(X),r1(Z));if(drag.link)syncRect(objOf(sel),drag.link);drag.moved=1;changed(terrK(sel));panelVals();return}
+  if(drag.move){const dx=snapV(x-drag.x),dz=snapV(z-drag.z);if(dx||dz){moveObj(sel,dx,dz);if(drag.link)syncRect(objOf(sel),drag.link);drag.x+=dx;drag.z+=dz;drag.moved=1;changed(terrK(sel));panelVals()}}});
+const up=e=>{P.delete(e.pointerId);if(P.size<2)pinch=null;if(!drag)return;
+  if(drag.rect){const r=drawing.rect;if(Math.abs(r.x1-r.x0)>4&&Math.abs(r.z1-r.z0)>4)finishRect();else{drawing.rect=null}}
+  if(drag.snapped&&!drag.moved)U.pop();
+  const wasT=drag.moved;drag=null;if(wasT){dirtyT=true;draw()}ui()};
+cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('wheel',e=>{e.preventDefault();const x=wx(e.clientX),z=wz(e.clientY);cam.s=clamp(cam.s*Math.exp(-e.deltaY*.0015),.03,20);cam.x=x-(e.clientX-W/2)/cam.s;cam.z=z-(e.clientY-H/2)/cam.s;draw()},{passive:false});
+cv.addEventListener('dblclick',e=>{if(drawing&&!drawing.rect){finishDraw();return}if(sel&&['road','river'].includes(sel.k)||sel?.k==='feat'&&objOf(sel).type==='ridge')insertAt(wx(e.clientX),wz(e.clientY))});
+let snapGrid=false;const snapV=v=>snapGrid?Math.round(v/5)*5:v;
+function status(x,z){$('sx').textContent=x.toFixed(1);$('sz').textContent=z.toFixed(1);$('sh').textContent=T?T.terr(x,z).toFixed(1):'-';$('sm').textContent=(1/cam.s).toFixed(2)}
+function snapRoad(x,z,skip){let best=null,bd=12/cam.s;doc.roads.forEach((r,i)=>{if(i===skip)return;const S=crSample(r.pts,r.closed,2);for(const p of S){const d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;best=p}}});return best&&[r1(best[0]),r1(best[1])]}
+
+/* ---------- drawing roads / ridges / rects, adding things ---------- */
+function startDraw(kind){closePals();drawing={kind,pts:[],rect:(kind==='flat'||kind==='block')?null:undefined};sel=null;panel();
+  $('drawBar').classList.add('on');$('dUndo').style.display=drawing.rect===undefined?'':'none';$('dDone').style.display=drawing.rect===undefined?'':'none';
+  $('drawTxt').textContent=kind==='road'?'Tap to add road points':kind==='ridge'?'Tap along the ridge crest':'Drag a rectangle';draw()}
+function addDrawPt(x,z){let p=[r1(snapV(x)),r1(snapV(z))];if(drawing.kind==='road'){const sn=snapRoad(x,z,-1);if(sn&&(!drawing.pts.length||true))p=sn}if(drawing.kind==='ridge')p.push(60);drawing.pts.push(p);draw()}
+function finishDraw(){const d=drawing;stopDraw();if(!d||d.pts.length<2){toast('Need at least 2 points');return}snap();
+  if(d.kind==='road'){doc.roads.push({id:nid('r'),pts:d.pts,w:7});sel={k:'road',i:doc.roads.length-1}}
+  else{d.pts[0][2]=20;d.pts[d.pts.length-1][2]=20;doc.features.push({id:nid('f'),type:'ridge',name:'ridge',pts:d.pts,w:70});sel={k:'feat',i:doc.features.length-1}}
+  changed();panel();setTool('select')}
+function finishRect(){const d=drawing,r=d.rect,n={x0:r1(Math.min(r.x0,r.x1)),z0:r1(Math.min(r.z0,r.z1)),x1:r1(Math.max(r.x0,r.x1)),z1:r1(Math.max(r.z0,r.z1))};stopDraw();snap();
+  if(d.kind==='flat'){doc.features.push({id:nid('f'),type:'flat',name:'flat',...n,h:Math.round(T?T.terr((n.x0+n.x1)/2,(n.z0+n.z1)/2):2),blend:60});sel={k:'feat',i:doc.features.length-1}}
+  else{doc.town.blocks.push([n.x0,n.z0,n.x1,n.z1,'nsew']);sel={k:'block',i:doc.town.blocks.length-1}}changed();panel();setTool('select')}
+function stopDraw(){drawing=null;$('drawBar').classList.remove('on');draw()}
+function addThing(k){closePals();const x=r1(cam.x-(W>760?160:0)/cam.s),z=r1(cam.z);snap();
+  if(k==='volcano'){doc.features.push({id:nid('f'),type:'volcano',x,z,h:120,r:120,crater:15,craterR:18});sel={k:'feat',i:doc.features.length-1}}
+  else if(k==='terraces'){doc.features.push({id:nid('f'),type:'terraces',x,z,r:100,h:28,step:2.4});sel={k:'feat',i:doc.features.length-1}}
+  else if(k==='bump'){doc.bumps.push([x,z,'z']);sel={k:'bump',i:doc.bumps.length-1}}
+  else{arr(k).push([x,z,0]);sel={k,i:arr(k).length-1}}
+  changed();panel();toast('Added at the centre of the view, drag it into place')}
+function insertAt(x,z){const o=objOf(sel),P=o.pts,[,i]=dSeg(x,z,P,!!o.closed);snap();const p=[r1(x),r1(z)];if(P[0].length>2)p.push(r1((P[i-1][2]+P[i%P.length][2])/2));P.splice(i,0,p);sel.j=i;changed(terrK(sel));panel()}
+function addPtAfter(){const o=objOf(sel),P=o.pts,j=sel.j??P.length-1,a=P[j],b=P[j+1]||(o.closed?P[0]:null);snap();let p;
+  if(b)p=a.map((v,k)=>r1((v+b[k])/2));else{const q=P[j-1]||a,dx=a[0]-q[0],dz=a[1]-q[1],l=Math.hypot(dx,dz)||1;p=[r1(a[0]+dx/l*40),r1(a[1]+dz/l*40),...a.slice(2)]}
+  P.splice(j+1,0,p);sel.j=j+1;changed(terrK(sel));panel()}
+function delSel(){if(!sel)return;const o=objOf(sel);
+  if(sel.j!=null&&o.pts&&o.pts.length>2){snap();o.pts.splice(sel.j,1);sel.j=null;changed(terrK(sel));panel();return}
+  if(sel.k==='river'||sel.k==='area'||sel.k==='coast'){toast("That one can't be deleted, only reshaped");return}
+  snap();const{k,i}=sel;if(k==='road')doc.roads.splice(i,1);else if(k==='feat')doc.features.splice(i,1);else if(k==='block')doc.town.blocks.splice(i,1);else if(k==='bump')doc.bumps.splice(i,1);else arr(k).splice(i,1);
+  sel=null;changed(true);panel()}
+function dupSel(){const{k,i}=sel,o=clone(objOf(sel));snap();const off=p=>{p[0]=r1(p[0]+20);p[1]=r1(p[1]+20)};
+  if(k==='road'){o.id=nid('r');o.pts.forEach(off);doc.roads.push(o);sel={k,i:doc.roads.length-1}}
+  else if(k==='feat'){o.id=nid('f');if(o.pts)o.pts.forEach(off);else if(o.type==='flat'){o.x0+=20;o.x1+=20;o.z0+=20;o.z1+=20}else{o.x+=20;o.z+=20}doc.features.push(o);sel={k,i:doc.features.length-1}}
+  else if(k==='block'){o[0]+=20;o[2]+=20;o[1]+=20;o[3]+=20;doc.town.blocks.push(o);sel={k,i:doc.town.blocks.length-1}}
+  else if(k==='bump'){off(o);doc.bumps.push(o);sel={k,i:doc.bumps.length-1}}else{off(o);arr(k).push(o);sel={k,i:arr(k).length-1}}changed();panel()}
+
+/* ---------- inspector ---------- */
+const NAMES={road:'Road',river:'River',block:'Town block',jeep:'Jeepney',trike:'Tricycle',hangar:'Hangar',bump:'Speed bump',area:'Area',coast:'Coast',volcano:'Volcano',terraces:'Rice terraces',ridge:'Mountain ridge',flat:'Flat area'};
+let fields=[];
+const F=(label,get,set,o={})=>({label,get,set,...o});
+function num(obj,key,label,o={}){return F(label,()=>obj[key],v=>obj[key]=v,o)}
+function idx(a,i,label,o={}){return F(label,()=>a[i],v=>a[i]=v,o)}
+function panel(){const B=$('sBody');fields=[];let h='',title='Map',tag='';
+  if(!sel){title=doc.meta?.name||'Map';tag='';
+    const m=doc.meta||={};
+    fields=[F('Map name',()=>m.name||'',v=>m.name=v,{t:'text',noT:1}),F('Your name',()=>m.author||'',v=>m.author=v,{t:'text',noT:1}),
+      num(doc,'sea','Sea level',{step:.1,hint:'metres'}),num(doc.island,'cx','Island centre x',{step:10}),num(doc.island,'cz','Island centre z',{step:10}),
+      {sec:'Hills'},num(doc.hills,'amp','Hill height',{step:1}),num(doc.hills,'off','Offset',{step:1}),num(doc.hills,'scale','Feature size',{step:.001,hint:'smaller = wider hills'}),num(doc.hills,'inl0','Start inland',{step:10,hint:'m from coast'}),num(doc.hills,'inl1','Full height at',{step:10}),
+      {sec:'River'},num(doc.river,'w0','Width (narrow)',{step:1}),num(doc.river,'w1','Width (bank)',{step:1}),
+      {sec:'Props'},num(doc.props.palms,'max','Palms',{step:10,noT:1}),num(doc.props.palms,'band','Palm beach band',{step:10,noT:1}),num(doc.props.trees,'max','Trees',{step:100,noT:1}),num(doc.props.houses,'every','House spacing',{step:1,hint:'m along roads',noT:1}),num(doc.props.houses,'chance','House chance',{step:.05,noT:1})];
+    h=`<div class="note">${doc.roads.length} roads · ${doc.features.length} terrain features · ${doc.town.jeeps.length+doc.town.trikes.length} parked vehicles</div>`}
+  else{const o=objOf(sel),k=sel.k;
+    if(k==='road'){title='Road';tag=o.id;fields=[num(o,'w','Width',{step:.5,min:3,hint:'m (7 street, 8 highway)'}),F('Highway',()=>!!o.hwy,v=>v?o.hwy=true:delete o.hwy,{t:'chk',hint:'lamp poles, wider look'}),F('Closed loop',()=>!!o.closed,v=>v?o.closed=true:delete o.closed,{t:'chk'}),
+      F('Surface',()=>o.kind||'',v=>v?o.kind=v:delete o.kind,{t:'sel',opts:[['','Asphalt road'],['strip','Airstrip concrete']]}),F('Max grade',()=>o.grade??.13,v=>o.grade=v,{step:.01,hint:'0.13 = 13%'})]}
+    else if(k==='river'){title='River';fields=[num(o,'w0','Width (narrow)'),num(o,'w1','Width (bank)')]}
+    else if(k==='feat'){title=NAMES[o.type];tag=o.id;const t=o.type;
+      if(t==='volcano')fields=['x','z','h','r','crater','craterR'].map(q=>num(o,q,{x:'x',z:'z',h:'Height',r:'Radius',crater:'Crater depth',craterR:'Crater radius'}[q]));
+      if(t==='terraces')fields=[num(o,'x','x'),num(o,'z','z'),num(o,'r','Radius'),num(o,'h','Hill height'),num(o,'step','Step height',{step:.1})];
+      if(t==='ridge'){fields=[F('Name',()=>o.name||'',v=>o.name=v,{t:'text'}),num(o,'w','Half width',{hint:'m, wider = gentler slopes'})];if(sel.j!=null)fields.push({sec:'Point '+(sel.j+1)},idx(o.pts[sel.j],2,'Crest height'))}
+      if(t==='flat'){const L=linked(sel);fields=[F('Name',()=>o.name||'',v=>o.name=v,{t:'text'}),num(o,'h','Ground height'),num(o,'blend','Blend distance',{hint:'m back to the hills'}),num(o,'x0','x min'),num(o,'z0','z min'),num(o,'x1','x max'),num(o,'z1','z max')];if(L)h+=`<div class="note">Moves together with the ${o.name} bounds.</div>`}}
+    else if(k==='block'){title='Town block';fields=[idx(o,0,'x min'),idx(o,1,'z min'),idx(o,2,'x max'),idx(o,3,'z max')];h=`<div class="sec">Shophouse sides</div><div class="chips">${'nsew'.split('').map(c=>`<span class="chip${(o[4]||'').includes(c)?' on':''}" data-side="${c}">${{n:'North',s:'South',e:'East',w:'West'}[c]}</span>`).join('')}</div>`}
+    else if(KIND[k]){title=NAMES[k];fields=[idx(o,0,'x'),idx(o,1,'z'),F('Heading',()=>Math.round(A(o[2])),v=>o[2]=+Rd(v).toFixed(4),{step:15,hint:'degrees'})]}
+    else if(k==='bump'){title='Speed bump';fields=[idx(o,0,'x'),idx(o,1,'z'),F('Runs along',()=>o[2],v=>o[2]=v,{t:'sel',opts:[['z','North–south road'],['x','East–west road']]})]}
+    else if(k==='area'){title=sel.i==='town'?'Town bounds':'Paddy fields';h=`<div class="note">${sel.i==='town'?'Town ground colour, no houses or trees inside.':'Paddy texture and flat ground.'}</div>`;fields=[num(o,'x0','x min'),num(o,'z0','z min'),num(o,'x1','x max'),num(o,'z1','z max')]}
+    else if(k==='coast'){title='Coast';tag=o.coast.length+' samples';fields=[];if(sel.j!=null)fields.push(idx(o.coast,sel.j,'Radius #'+sel.j,{step:5}))}}
+  if(tool==='coast'){title='Coast';tag=doc.island.coast.length+' samples'}
+  $('sTitle').textContent=title;$('sTag').textContent=tag;
+  let H2=fields.map((f,i)=>f.sec?`<div class="sec">${f.sec}</div>`:`<div class="f"><label>${f.label}${f.hint?`<small>${f.hint}</small>`:''}</label>${f.t==='chk'?`<input type="checkbox" data-i="${i}">`:f.t==='sel'?`<select data-i="${i}">${f.opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>`:`<input type="${f.t==='text'?'text':'number'}" step="${f.step??1}" data-i="${i}">`}</div>`).join('')+h;
+  if(tool==='coast'){H2+=`<div class="sec">Brush</div><div class="f"><label>Brush size<small>neighbouring samples moved</small></label><input type="number" min="0" max="8" value="${brush}" id="iBrush"></div>
+    <div class="f"><label>Coast detail<small>samples around the island</small></label><input type="number" min="24" max="360" step="6" value="${doc.island.coast.length}" id="iRes"></div><div class="row"><button class="btn" id="bRes">Apply detail</button><button class="btn" id="bGrow">Grow +25 m</button><button class="btn" id="bShrink">Shrink 25 m</button></div>
+    <div class="note">Drag anywhere to push the shore in or out along that direction.</div>`}
+  if(sel&&sel.k!=='coast'){const o=objOf(sel),hasP=!!o.pts;H2+=`<div class="row">${hasP?`<button class="btn" data-op="addpt">+ Point</button>${sel.j!=null?'<button class="btn" data-op="delpt">− Point</button>':''}<button class="btn" data-op="rev">Reverse</button>`:''}${['river','area'].includes(sel.k)?'':'<button class="btn" data-op="dup">Duplicate</button><button class="btn del" data-op="del">Delete</button>'}</div>${hasP?'<div class="note">Double-click a line to insert a point there. Selected point: tap its handle.</div>':''}`}
+  if(!sel&&tool!=='coast')H2+=`<div class="sec">Layers</div><div class="chips">${Object.keys(layers).map(l=>`<span class="chip${layers[l]?' on':''}" data-layer="${l}">${l}</span>`).join('')}<span class="chip${snapGrid?' on':''}" id="cSnap">snap 5 m</span></div>`;
+  B.innerHTML=H2;panelVals();
+  B.querySelectorAll('[data-i]').forEach(el=>{const f=fields[+el.dataset.i];let pre=null;
+    el.addEventListener('focus',()=>pre=J(doc));
+    const apply=()=>{if(pre===null)pre=J(doc);const v=f.t==='chk'?el.checked:f.t==='sel'||f.t==='text'?el.value:parseFloat(el.value);if(!f.t&&!isFinite(v))return;if(pre&&!f._pushed){U.push(pre);R=[];f._pushed=1}const L=sel&&objOf(sel)&&linked(sel);f.set(v);if(L)syncRect(objOf(sel),L);changed(!f.noT);if(f.t==='text'&&!sel)$('sTitle').textContent=doc.meta.name||'Map';ui()};
+    el.addEventListener(f.t==='chk'||f.t==='sel'?'change':'input',apply);el.addEventListener('blur',()=>{pre=null;f._pushed=0})});
+  B.querySelectorAll('[data-op]').forEach(b=>b.onclick=()=>({addpt:addPtAfter,delpt:delSel,del:()=>{sel.j=null;delSel()},dup:dupSel,rev:()=>{snap();objOf(sel).pts.reverse();sel.j=null;changed(terrK(sel));panel()}})[b.dataset.op]());
+  B.querySelectorAll('[data-side]').forEach(c=>c.onclick=()=>{const o=objOf(sel),s=c.dataset.side;snap();o[4]=(o[4]||'').includes(s)?o[4].replace(s,''):(o[4]||'')+s;changed(false);panel()});
+  B.querySelectorAll('[data-layer]').forEach(c=>c.onclick=()=>{layers[c.dataset.layer]^=1;panel();draw()});
+  if($('cSnap'))$('cSnap').onclick=()=>{snapGrid=!snapGrid;panel()};
+  if($('iBrush'))$('iBrush').oninput=e=>brush=clamp(+e.target.value|0,0,8);
+  if($('bRes'))$('bRes').onclick=()=>{const n=clamp(+$('iRes').value|0,24,360);snap();const t=mkTerr(doc);doc.island.coast=Array.from({length:n},(_,i)=>Math.round(t.coastR(i/n*2*PI)));sel=null;changed();panel()};
+  for(const[id,d]of[['bGrow',25],['bShrink',-25]])if($(id))$(id).onclick=()=>{snap();doc.island.coast=doc.island.coast.map(r=>Math.max(60,r+d));changed()};
+  ui()}
+function panelVals(){$('sBody').querySelectorAll('[data-i]').forEach(el=>{if(document.activeElement===el)return;const v=fields[+el.dataset.i].get();if(el.type==='checkbox')el.checked=!!v;else el.value=typeof v==='number'?r1x(v,4):v})}
+$('sideH').onclick=()=>{$('side').classList.toggle('min');$('sCaret').textContent=$('side').classList.contains('min')?'▴':'▾'};
+
+/* ---------- 3-way merge: their changes (vs their base) onto the current map ---------- */
+const IDS=new Set(['roads','features']),SETS=new Set(['town.blocks','town.jeeps','town.trikes','hangars','bumps']),IDX=new Set(['island.coast']);
+function lab(path,v){if(path==='roads')return`Road ${v.id} (${v.pts?.length} pts)`;if(path==='features')return`${NAMES[v.type]||v.type} ${v.name||v.id}`;return path}
+function merge3(base,th,cur){const out={add:0,chg:0,del:0,conf:[]};
+  function at(par,key,b,t,path){if(path==='meta'||path==='version'||path==='note')return;if(eq(b,t))return;const c=par[key];
+    if(c===undefined&&b!==undefined){out.conf.push({label:path+' (you removed it, they changed it)',apply:()=>par[key]=clone(t)});return}
+    if(IDS.has(path)&&Array.isArray(b)&&Array.isArray(t)&&Array.isArray(c))return byId(c,b,t,path);
+    if(SETS.has(path)&&Array.isArray(c)){const bk=new Set(b.map(J)),tk=new Set(t.map(J));for(const v of b)if(!tk.has(J(v))){const i=c.findIndex(x=>eq(x,v));if(i>=0){c.splice(i,1);out.del++}}
+      for(const v of t)if(!bk.has(J(v))&&!c.some(x=>eq(x,v))){c.push(clone(v));out.add++}return}
+    if(IDX.has(path)&&b.length===t.length&&c.length===b.length){for(let i=0;i<b.length;i++)if(b[i]!==t[i]){if(c[i]===b[i]){c[i]=t[i];out.chg++}else if(c[i]!==t[i])out.conf.push({label:`coast #${i}`,apply:()=>c[i]=t[i]})}return}
+    if(b&&t&&c&&typeof b==='object'&&!Array.isArray(b)&&typeof t==='object'&&typeof c==='object'&&!Array.isArray(c)){for(const k of new Set([...Object.keys(b),...Object.keys(t)]))at(c,k,b[k],t[k],path+'.'+k);return}
+    if(eq(c,b)){par[key]=clone(t);out.chg++;return}if(eq(c,t))return;
+    out.conf.push({label:path,apply:()=>par[key]=clone(t)})}
+  function byId(c,b,t,path){const B=new Map(b.map(v=>[v.id,v])),T=new Map(t.map(v=>[v.id,v])),ix=id=>c.findIndex(v=>v.id===id);
+    for(const v of t){const bv=B.get(v.id),i=ix(v.id);
+      if(!bv){if(i<0){c.push(clone(v));out.add++}else if(!eq(c[i],v))out.conf.push({label:lab(path,v)+' (same id, both added)',apply:()=>{const j=ix(v.id);c[j]=clone(v)}});continue}
+      if(eq(bv,v))continue;
+      if(i<0){out.conf.push({label:lab(path,v)+' (you deleted, they edited)',apply:()=>c.push(clone(v))});continue}
+      if(eq(c[i],bv)){c[i]=clone(v);out.chg++}else if(!eq(c[i],v))out.conf.push({label:lab(path,v)+' (both edited)',apply:()=>{const j=ix(v.id);if(j>=0)c[j]=clone(v)}})}
+    for(const bv of b)if(!T.has(bv.id)){const i=ix(bv.id);if(i<0)continue;if(eq(c[i],bv)){c.splice(i,1);out.del++}else out.conf.push({label:lab(path,bv)+' (they deleted, you edited)',apply:()=>{const j=ix(bv.id);if(j>=0)c.splice(j,1)}})}}
+  for(const k of new Set([...Object.keys(base),...Object.keys(th)]))at(cur,k,base[k],th[k],k);return out}
+async function mergeFiles(files){for(const f of files){let m;try{m=JSON.parse(await f.text())}catch(e){toast(f.name+': not JSON');continue}
+  if(!m.roads||!m.island){toast(f.name+': not a map');continue}
+  const base=ensureIds(clone(m.meta?.base||official)),th=ensureIds(gameJSON(m));snap();const o=merge3(base,th,doc);ensureIds(doc);
+  const el=document.createElement('div');el.className='mf';const who=m.meta?.author||f.name;
+  el.innerHTML=`<div class="t"><b>${esc(who)}</b><span class="n">+${o.add} ~${o.chg} −${o.del}</span></div>${m.meta?.base?'':'<div class="note">No base in this file: compared against the official map.</div>'}${o.conf.length?`<div class="note" style="color:var(--ac2)">${o.conf.length} conflict(s): your version was kept.</div>`:''}`;
+  o.conf.forEach(c=>{const r=document.createElement('div');r.className='cf';r.innerHTML=`<span>${esc(c.label)}</span>`;const b=document.createElement('button');b.className='btn';b.textContent='Use theirs';b.onclick=()=>{snap();c.apply();b.disabled=true;b.textContent='Applied';after()};r.append(b);el.append(r)});
+  $('mList').append(el)}after();toast('Merged')}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- files ---------- */
+function download(name,text){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:'application/json'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),2000)}
+const slug=()=>(doc.meta?.name||'island').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'island';
+function act(a){$('menu').classList.remove('open');
+  if(a==='save'){doc.meta.saved=new Date().toISOString();download(slug()+(doc.meta.author?'-'+doc.meta.author.toLowerCase().replace(/[^a-z0-9]+/g,''):'')+'.cpmmap.json',J(doc));toast('Project saved')}
+  if(a==='export'){download('island.json',J(gameJSON()));toast('island.json downloaded')}
+  if(a==='copy'){navigator.clipboard.writeText(J(gameJSON())).then(()=>toast('Game JSON copied'),()=>toast('Clipboard blocked, use Export'))}
+  if(a==='open')$('fOpen').click();
+  if(a==='official'){snap();doc=fresh(official);sel=null;after();fit();toast('Official map loaded')}}
+function fresh(m){const d=ensureIds(clone(m));d.meta={name:'Island',author:doc?.meta?.author||'',base:clone(m)};return d}
+$('fOpen').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const m=JSON.parse(await f.text());if(!m.roads||!m.island)throw 0;snap();
+  doc=ensureIds(m);doc.meta??={name:f.name.replace(/\..*$/,''),author:'',base:clone(official)};doc.meta.base??=clone(official);sel=null;after();fit();toast('Opened '+f.name)}catch(err){toast("That file isn't a map")}};
+document.querySelectorAll('#menu [data-a]').forEach(b=>b.onclick=()=>act(b.dataset.a));
+$('bMenu').onclick=e=>{e.stopPropagation();$('menu').classList.toggle('open')};
+$('bTest').onclick=()=>{try{localStorage.setItem('cpm.map.test',J(gameJSON()));open('../index.html?map=local','_blank')}catch(e){toast('Could not store the test map')}};
+$('bMerge').onclick=()=>{$('mList').innerHTML='';$('mMerge').classList.add('open')};
+$('bHelp').onclick=()=>$('mHelp').classList.add('open');
+document.querySelectorAll('.modal').forEach(m=>m.addEventListener('click',e=>{if(e.target===m||e.target.hasAttribute('data-close'))m.classList.remove('open')}));
+const drop=$('drop');drop.onclick=()=>$('fMerge').click();$('fMerge').onchange=e=>{mergeFiles([...e.target.files]);e.target.value=''};
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('hot')};drop.ondragleave=()=>drop.classList.remove('hot');drop.ondrop=e=>{e.preventDefault();drop.classList.remove('hot');mergeFiles([...e.dataTransfer.files])};
+addEventListener('dragover',e=>e.preventDefault());addEventListener('drop',e=>{if(!$('mMerge').classList.contains('open')){e.preventDefault();$('bMerge').click();mergeFiles([...e.dataTransfer.files])}});
+
+/* ---------- tools, keys, chrome ---------- */
+function setTool(t){tool=t;if(drawing)stopDraw();document.querySelectorAll('.tool[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===t));if(t==='road')startDraw('road');if(t!=='select'&&t!=='road')sel=null;
+  $('hint').textContent={select:'Tap to select · drag selected to move · drag empty to pan',road:'Tap points · Enter to finish · ends snap to roads',coast:'Drag to push the shore in or out'}[t];panel();draw()}
+document.querySelectorAll('.tool[data-t]').forEach(b=>b.onclick=()=>setTool(b.dataset.t));
+function closePals(){document.querySelectorAll('.pal').forEach(p=>p.classList.remove('open'))}
+document.querySelectorAll('.tool[data-p]').forEach(b=>b.onclick=e=>{e.stopPropagation();const p=$(b.dataset.p),o=p.classList.contains('open');closePals();if(!o){p.style.top=b.getBoundingClientRect().top+'px';p.classList.add('open')}});
+document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const k=b.dataset.add;setTool('select');if(['ridge','flat','block'].includes(k))startDraw(k);else addThing(k)});
+$('dDone').onclick=finishDraw;$('dCancel').onclick=()=>{stopDraw();if(tool==='road')setTool('select')};$('dUndo').onclick=()=>{drawing?.pts.pop();draw()};
+$('bFit').onclick=fit;$('bUndo').onclick=undo;$('bRedo').onclick=redo;
+addEventListener('click',e=>{if(!e.target.closest('#menu,#bMenu'))$('menu').classList.remove('open');if(!e.target.closest('.pal,.tool[data-p]'))closePals()});
+addEventListener('keydown',e=>{if(e.target.matches('input,select'))return;const k=e.key.toLowerCase(),c=e.ctrlKey||e.metaKey;
+  if(c&&k==='z'){e.preventDefault();e.shiftKey?redo():undo();return}if(c&&k==='y'){e.preventDefault();redo();return}if(c&&k==='s'){e.preventDefault();act('save');return}if(c&&k==='d'&&sel){e.preventDefault();dupSel();return}
+  if(drawing){if(k==='enter')finishDraw();if(k==='escape'){stopDraw();setTool('select')}if(k==='backspace'){drawing.pts.pop();draw()}return}
+  if(k==='v')setTool('select');if(k==='r')setTool('road');if(k==='c')setTool('coast');if(k==='f')fit();if(k==='?'||k==='h')$('bHelp').click();
+  if(k==='escape'){if(sel?.j!=null){sel.j=null}else sel=null;panel();draw()}if((k==='delete'||k==='backspace')&&sel){e.preventDefault();delSel()}});
+function ui(){$('bUndo').disabled=!U.length;$('bRedo').disabled=!R.length}
+let tt=0;function toast(t){const el=$('toast');el.textContent=t;el.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>el.classList.remove('on'),2200)}
+addEventListener('resize',resize);
+
+/* ---------- start ---------- */
+official=ensureIds(await (await fetch(OFFICIAL)).json());
+try{const s=localStorage.getItem(LS);if(s){doc=JSON.parse(s);ensureIds(doc);doc.meta??={};doc.meta.base??=clone(official)}}catch(e){}
+if(!doc)doc=fresh(official);
+T=mkTerr(doc);if(innerWidth<=760){$('side').classList.add('min');$('sCaret').textContent='▴'}resize();fit();setTool('select');
+if(!localStorage.getItem('cpm.maker.seen')){localStorage.setItem('cpm.maker.seen',1);$('mHelp').classList.add('open')}
+window.__maker={get doc(){return doc},merge3,mkTerr,fit};
+</script>
+</body>
+</html>
