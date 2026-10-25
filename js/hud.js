@@ -184,7 +184,7 @@ export function drawMini(MAP, V) { // V = world.js MAPV {cx, cz, w metres, n px}
   const px = x => ((x - V.cx) / V.w + .5) * V.n, pz = z => ((z - V.cz) / V.w + .5) * V.n, u = px(S.x), v = pz(S.z), Z = 2.6;
   mm.translate(70, 70); mm.rotate(S.psi); mm.scale(Z, Z); mm.translate(-u, -v); mm.drawImage(MAP, 0, 0);
   const dot = (x, z, c, r) => { mm.fillStyle = c; mm.beginPath(); mm.arc(px(x), pz(z), r / Z, 0, 7); mm.fill(); };
-  dot(-40, 40, '#ff4a3d', 4); mm.restore();
+  for (const [gx, gz] of V.gas || [[-40, 40]]) dot(gx, gz, '#ff4a3d', 4); mm.restore();
   // quest pins (missions.js): in view = icon; out of view = the 3 nearest stick to the rim; red outline = needs a specific bike
   const ca = Math.cos(S.psi), sa = Math.sin(S.psi), L = []; mm.textAlign = 'center'; mm.textBaseline = 'middle'; mm.font = 'bold 8px system-ui';
   for (const p of (MI0 && MI0.pins) || []) { const dx = (px(p.x) - u) * Z, dz = (pz(p.z) - v) * Z, X = dx * ca - dz * sa, Y = dx * sa + dz * ca; L.push({ p, X, Y, d: Math.hypot(X, Y) }); }

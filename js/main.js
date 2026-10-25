@@ -4,7 +4,7 @@ import { $, clamp } from './util.js';
 import { cfg, save, bikeCfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, camera, sun, GPU, API, FELL, draw, warm, setDPR } from './renderer.js';
-import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad } from './world.js';
+import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad, LMF } from './world.js';
 ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
@@ -34,7 +34,7 @@ stage('Loading bikes', .78);
 const ids = await (await fetch('data/bikes/index.json?v=' + BUILD)).json();
 for (const d of await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=${BUILD}`).then(r => r.json())))) ctx.bikes[d.id] = d;
 
-const SPAWN = { x: 62, z: 30, psi: Math.PI / 2 };
+const SPAWN = (F => ({ ...F.W(62, 30), psi: Math.PI / 2 - F.ry }))(LMF.lot[0]); // in the parking lot, wherever the map puts it
 function reset() {
   Object.assign(S, {
     x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: 0, running: false, key: false, kill: false, tip: false, cr: 0, cranking: false, cT: 0, keyT: 0, stT: 0, fi: 0, warm: S.warm || 0, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, leanV: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,

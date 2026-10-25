@@ -9,7 +9,7 @@ import * as THREE from 'three';
 import { $ } from './util.js';
 import { S, ctx } from './state.js';
 import { scene } from './renderer.js';
-import { freeBays, marker, arrow, ROADS, H } from './world.js';
+import { freeBays, marker, arrow, ROADS, H, atGas, LMF } from './world.js';
 import { B } from './model.js';
 import { say } from './hud.js';
 import { blip } from './audio.js';
@@ -20,7 +20,7 @@ const TYPE = {
   food: { c: 0xff5fa2, css: '#ff5fa2', g: 'F', name: 'Food delivery' },
 };
 const NHUB = 14, TOWN_HUBS = 3, SEP = 140, SEE = 800, HARD = .85, BIKE_P = .35; // delivery hubs, how many start in town, min spacing (m), beacon draw range, time factor of bike-locked jobs, share of them
-const HUBS = [{ id: 'park', x: 28, z: 29, y: 0 }];
+const HUBS = [{ id: 'park', ...LMF.lot[0].W(28, 29), y: LMF.lot[0].y }];
 for (let i = 0; i < NHUB; i++) HUBS.push({ id: 'parcel', x: 0, z: 0, y: 0, placed: false });
 const HR = 5, DR = 6;   // hub / drop-off radius (m)
 // food spoilage tuning: loss in % per second = (measure - threshold) * k, each measure capped
@@ -124,7 +124,7 @@ function start(h) {
   if (h.bike && ctx.bike.id !== h.bike && ctx.switchBikeHere) ctx.switchBikeHere(h.bike); // bike-locked job: swap bikes right here
   const q = MI.q = { type: id, phase: 'on', t: 0, hold: 0, h0: S.hits, hub: h };
   if (id === 'park') {
-    const b = q.bay = freeBays[(Math.random() * freeBays.length) | 0]; marker.position.set(b.x, .03, b.z); arrow.position.set(b.x, 2.2, b.z); MI.ay = 0;
+    const b = q.bay = freeBays[(Math.random() * freeBays.length) | 0]; const by = LMF.lot[0].y; marker.position.set(b.x, by + .03, b.z); marker.rotation.y = b.ry || 0; arrow.position.set(b.x, by + 2.2, b.z); MI.ay = by;
     marker.material.color.set(0x43e07a); arrow.material.color.set(0x43e07a); marker.visible = arrow.visible = true; destB.visible = false;
     pins([{ x: b.x, z: b.z, c: '#43e07a', g: '' }]); say('Park in the green bay'); return;
   }
@@ -184,7 +184,7 @@ function idle(dt) {
 }
 function parkTick(q, dt) {
   if (q.phase !== 'on') return panel(MI.res, true, 'OK');
-  q.t += dt; const b = q.bay, hits = S.hits - q.h0, ok = Math.abs(S.x - b.x) < .4 && Math.abs(S.z - b.z) < .8 && Math.abs(Math.cos(S.psi)) > .94 && Math.abs(S.v) < .15;
+  q.t += dt; const b = q.bay, hits = S.hits - q.h0, bc = Math.cos(b.ry || 0), bs = Math.sin(b.ry || 0), ba = (S.x - b.x) * bc - (S.z - b.z) * bs, bd = (S.x - b.x) * bs + (S.z - b.z) * bc, ok = Math.abs(ba) < .4 && Math.abs(bd) < .8 && Math.abs(Math.cos(S.psi + (b.ry || 0))) > .94 && Math.abs(S.v) < .15;
   q.hold = ok ? q.hold + dt : 0; marker.material.color.set(ok ? 0xffd23f : 0x43e07a);
   panel(`PARK · ${q.t.toFixed(1)}s · hits ${hits} · ${Math.hypot(S.x - b.x, S.z - b.z).toFixed(0)}m`, false, '✕');
   if (q.hold > 1.2) {
@@ -216,7 +216,7 @@ function deliveryTick(q, dt) {
 }
 export function missions(dt) {
   const fuelCap = ctx.spec.fuel.cap;
-  if (Math.abs(S.x + 40) < 6 && Math.abs(S.z - 40) < 3.5 && Math.abs(S.v) < .2 && S.fuel < fuelCap) { S.fuel = Math.min(fuelCap, S.fuel + .5 * dt); say('Refueling... ' + (S.fuel / fuelCap * 100 | 0) + '%', 400); }
+  if (atGas(S.x, S.z) && Math.abs(S.v) < .2 && S.fuel < fuelCap) { S.fuel = Math.min(fuelCap, S.fuel + .5 * dt); say('Refueling... ' + (S.fuel / fuelCap * 100 | 0) + '%', 400); }
   fallTick(dt); const q = MI.q;
   if (!q) idle(dt); else if (q.type === 'park') parkTick(q, dt); else deliveryTick(q, dt);
 }

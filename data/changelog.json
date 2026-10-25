@@ -1,4 +1,8 @@
 [
+  { "v": "11.31", "d": "2026-10-25", "t": [
+    "Maps can now have extra islands, and every building is part of the map: roadside houses, nipa huts and shophouses are placed one by one, and the church, plaza, market, gas station and parking lot can be moved (the ground under them is levelled). Refuelling, parking quests and the spawn follow them.",
+    "The island's trees and palms were re-scattered once by this change."
+  ] },
   { "v": "11.30", "d": "2026-10-25", "t": [
     "The island is now loaded from swappable map files, ready for community-made map changes. Roads keep their own max grade when set."
   ] },
