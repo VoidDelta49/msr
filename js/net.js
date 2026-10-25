@@ -91,6 +91,7 @@ function text(m) {
     wake = true; const P = NET.peers.get(m.id);
     if (P && P.name === m.name) { if (P.lv) { clearTimeout(P.lv); P.lv = 0; } P.seen = performance.now(); if (NET.on.back) NET.on.back(P); } // same rider came back
     else { addPeer(m); say(m.name + ' joined', 2000); }
+    if (NET.on.join) NET.on.join(NET.peers.get(m.id));
     changed();
   }
   else if (m.t === 'leave') { // keep the rider for a few seconds: a network blip shouldn't end their race
@@ -98,6 +99,7 @@ function text(m) {
   }
   else if (m.t === 'look') { const p = NET.peers.get(m.from); if (p) { p.look = m.look; p.lk = JSON.stringify(m.look); } }
   else if (m.t === 'race') { if (NET.on.race) NET.on.race(m); }
+  else if (m.t === 'ride') { if (NET.on.ride) NET.on.ride(m); } // tricycle passengers (ride.js)
   else if (m.t === 'pong') { const r = performance.now() - m.c; NET.rtt = NET.rtt ? NET.rtt * .6 + r * .4 : r; if (NET.rtt > 900) slowUntil = performance.now() + 10000; }
   else if (m.t === 'err') { NET.err = m.msg || m.code; changed(); }
 }
@@ -116,13 +118,13 @@ function clearPeers() { for (const P of [...NET.peers.values()]) delPeer(P); ctx
 
 /* ---------- bike state packets ---------- */
 // u8 type, u8 flags, u16 rpm, u32 t(ms), f32 x y z, i16 quat xyzw, i16 lean th steer slider rearH bodyY (1e-4), i16 v (cm/s), u8 thr, i8 gear
-// flags: 1 engine on, 2 crashed, 4 braking, 8 paused / in the garage, 16 racing
+// flags: 1 engine on, 2 crashed, 4 braking, 8 paused / in the garage, 16 racing, 32 riding in someone's sidecar (bike put away)
 const OUT = new DataView(new ArrayBuffer(PKT)), I16 = 32767;
 const GP = new THREE.Vector3(), GQ = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
 function pack() {
   // in the garage the drawn bike sits on the studio pedestal (900 m up): send where it really is on the island instead
   const d = OUT, r = ctx.GAR ? GP.set(S.x, S.zH, S.z) : B.root.position, q = ctx.GAR ? GQ.setFromAxisAngle(UP, S.psi) : B.root.quaternion;
-  d.setUint8(0, 1); d.setUint8(1, (S.running ? 1 : 0) | (S.crashed ? 2 : 0) | (S.brake > .1 ? 4 : 0) | (ctx.paused || ctx.GAR ? 8 : 0) | (ctx.racing ? 16 : 0));
+  d.setUint8(0, 1); d.setUint8(1, (S.running ? 1 : 0) | (S.crashed ? 2 : 0) | (S.brake > .1 ? 4 : 0) | (ctx.paused || ctx.GAR ? 8 : 0) | (ctx.racing ? 16 : 0) | (ctx.ride ? 32 : 0));
   d.setUint16(2, Math.max(0, Math.min(65535, S.rpm | 0)), true); d.setUint32(4, performance.now() >>> 0, true);
   d.setFloat32(8, r.x, true); d.setFloat32(12, r.y, true); d.setFloat32(16, r.z, true);
   d.setInt16(20, q.x * I16, true); d.setInt16(22, q.y * I16, true); d.setInt16(24, q.z * I16, true); d.setInt16(26, q.w * I16, true);
@@ -190,7 +192,7 @@ export function netFrame(dt, now) {
     const crashed = !!(b.fl & 2); if (P.fl !== b.fl) { P.fl = b.fl; for (const r of h.rider) r.visible = !crashed; P.tag.classList.toggle('idle', !!(b.fl & 8)); P.tag.classList.toggle('race', !!(b.fl & 16)); }
     // cull: far bikes off, and frustum (the skinned mesh skips three's own culling)
     P.x = o.position.x; P.z = o.position.z; P.d = Math.hypot(P.x - S.x, P.z - S.z);
-    SPH.center.copy(o.position); o.visible = !ctx.GAR && P.d < 350 && FR.intersectsSphere(SPH); // the studio is private: no one else in it
+    SPH.center.copy(o.position); o.visible = !ctx.GAR && P.d < 350 && !(b.fl & 32) && FR.intersectsSphere(SPH); // the studio is private: no one else in it
     dots.push(P); mk += (P.x / 3 | 0) + ',' + (P.z / 3 | 0) + ';';
     tag(P, now);
   }
@@ -210,6 +212,6 @@ function tag(P, now) {
   v3.copy(P.inst.o.position); v3.y += 1.95; v3.project(camera); if (v3.z > 1) { e.hidden = true; return; }
   const x = Math.round((v3.x * .5 + .5) * W), y = Math.round((.5 - v3.y * .5) * Hh); e.hidden = false;
   if (x !== P.tx || y !== P.ty) { P.tx = x; P.ty = y; e.style.transform = `translate(${x}px,${y}px) translate(-50%,-100%)`; }
-  const away = now - P.seen > 8000, info = away ? 'away' : P.d < 90 ? Math.round(P.d) + ' m · 🏁' : Math.round(P.d / 10) * 10 + ' m';
+  const away = now - P.seen > 8000, info = away ? 'away' : P.d < 90 ? Math.round(P.d) + ' m · ' + ((ctx.rideIcon && ctx.rideIcon(P)) || '🏁') : Math.round(P.d / 10) * 10 + ' m';
   if (info !== P.ti) { P.ti = info; e.lastChild.textContent = info; }
 }

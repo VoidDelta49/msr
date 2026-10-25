@@ -593,7 +593,7 @@ function underbone(ct, v) {
 // v = 1: the tricycle sidecar on the right (the owner's own rig): stainless body on a diamond-plate floor, rounded nose with a
 // framed windscreen and black band, red vinyl bench, stainless roof on four posts with a signboard (gibberish letters) and a top
 // rail, wire grille on the bike side, spare-wheel cover on the back, stainless fender over its own wheel, chrome bumpers.
-const MSS = std(0xd3d7dc, .34, .55), MDia = std(0xb0b4ba, .55, .5), MGls = std(0x5d6a75, .08, .3), MVin = std(0xc81c1c, .45, .05), MSil = std(0xb3b8bf, .35, .75),
+const MSS = std(0xd3d7dc, .34, .55), MDia = std(0xb0b4ba, .55, .5), MGls = new THREE.MeshStandardMaterial({ color: 0x9fb4c4, roughness: .05, metalness: .2, transparent: true, opacity: .28, depthWrite: false }), MVin = std(0xc81c1c, .45, .05), MSil = std(0xb3b8bf, .35, .75),
   MDecY = new THREE.MeshStandardMaterial({ map: DEC, alphaTest: .5, roughness: .4, color: 0xf2b632 });
 function sidecar(ct) {
   const X0 = .5, X1 = 1.44, XC = (X0 + X1) / 2, W = X1 - X0, ZF = -.62, ZB = .56, NR = W / 2;

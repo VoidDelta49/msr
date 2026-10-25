@@ -23,6 +23,7 @@ import { cullUpdate, autoRes, resScale, jankStart, jankEnd, jankText } from './p
 import { gpuCull } from './gpucull.js';
 import { NET, netFrame, join as netJoin, leave as netLeave } from './net.js';
 import { raceTick } from './race.js';
+import { rideInit, rideFrame } from './ride.js';
 import { keySwitch, killSwitch, starter, quickStart } from './ignition.js';
 import { GPU_TYPES } from './world.js';
 
@@ -64,6 +65,7 @@ ctx.bikeTemplate = look => {
   TPL.set(key, t); return t;
 };
 function setBike(keepPos) {
+  if (ctx.rideExit) ctx.rideExit(); // riding in someone's sidecar: get off first
   const bike = ctx.bikes[cfg.bike] || ctx.bikes[ids[0]]; cfg.bike = bike.id;
   ctx.bike = bike; ctx.bcfg = bikeCfg(bike); ctx.drive = DRIVES[bike.drivetrain];
   buildModel(bike, computeSpec(bike, ctx.bcfg)); recompute();
@@ -75,7 +77,7 @@ function setBike(keepPos) {
 // physics engine first: everything below positions the Rapier body
 stage('Starting physics', .8);
 if (!await initRapier()) throw new Error("Couldn't load the physics engine (" + RP.err + '). Check your connection and try again.');
-stage('Preparing the bike', .85); setBike(); save();
+stage('Preparing the bike', .85); setBike(); save(); rideInit();
 // build every shader now, behind the title screen (see renderer.js warm())
 stage('Compiling shaders', .9); initStudio(); gpuCull(camera); ctx.warmMs = await warm(); stage('Ready', 1);
 
@@ -139,7 +141,7 @@ function visuals(dt, now) {
 /* ---------- garage ---------- */
 GARAGE.onChange = recompute;
 GARAGE.onBike = () => { setBike(); say(ctx.bike.name, 1200); };
-function openGarage() { if (ctx.GAR || ctx.OPT) return; buildGarage(); $('garage').hidden = false; ctx.GAR = true; document.body.classList.add('gar'); scene.add(camera); B.rider.forEach(m => m.visible = false); studioIn(); }
+function openGarage() { if (ctx.GAR || ctx.OPT) return; if (ctx.ride) return say('Get off the tricycle first'); buildGarage(); $('garage').hidden = false; ctx.GAR = true; document.body.classList.add('gar'); scene.add(camera); B.rider.forEach(m => m.visible = false); studioIn(); }
 $('gClose').onclick = () => { studioOut(); $('garage').hidden = true; ctx.GAR = false; TC.rev = 0; document.body.classList.remove('gar'); ctx.camMode ^= 1; toggleCam(); syncBody(); };
 ptr($('revB'), () => { TC.rev = 1; $('revB').classList.add('on'); }, null, () => { TC.rev = 0; $('revB').classList.remove('on'); });
 $('bounceB').onclick = () => { if (RP.ok) bounce(); };
@@ -150,7 +152,7 @@ Object.assign(actions, {
   opts: () => ctx.OPT ? closeOpts() : openOpts(), closeOpts,
 });
 O.onPerf = () => updPerf(API);
-$('bGar').onclick = openGarage; $('bCam').onclick = toggleCam; $('bReset').onclick = () => { reset(); say('Back at the lot'); };
+$('bGar').onclick = openGarage; $('bCam').onclick = toggleCam; $('bReset').onclick = () => { if (ctx.rideExit) ctx.rideExit(); reset(); say('Back at the lot'); };
 function goFS() { const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => { })).catch(() => { }); }
 addEventListener('pointerdown', () => { if (!ctx.paused && !ctx.GAR && !ctx.OPT) goFS(); });
 // menu.js: PLAY / RESUME (fullscreen was requested there, inside the tap) and the menu's bike picker
@@ -201,10 +203,10 @@ function loop(t) {
   if (t - fT > 1000) { const fps = Math.round(fN * 1000 / (t - fT)); setFps(fps); setPhys('Physics ' + pms.toFixed(2) + ' ms'); autoRes(fps, !ctx.paused && !ctx.GAR && !ctx.OPT); setGfx(renderer.info.render.drawCalls, resScale()); setJank(jankText()); updPerf(API); fN = 0; fT = t; }
   raceTick(dt);
   if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); if (RP.ok) tickRapier(dt); garageFrame(); }
-  else if (!ctx.paused && !ctx.OPT) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); }
+  else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
-  if (S.crashed && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); jankEnd(t, performance.now() - J0, hudUp);
+  if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); jankEnd(t, performance.now() - J0, hudUp);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.live = true;

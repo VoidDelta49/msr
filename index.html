@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no,interactive-widget=resizes-visual">
 <title>CPM Motor Edition</title>
-<link rel="stylesheet" href="css/style.css?v=11.22">
+<link rel="stylesheet" href="css/style.css?v=11.23">
 <!-- start the heavy downloads at HTML parse, not after menu.js runs (same URLs as the importmap, so menu.js's fetches and import() reuse them) -->
 <link rel="modulepreload" href="./vendor/three/build/three.webgpu.js">
 <link rel="modulepreload" href="./vendor/three/build/three.core.js">
@@ -19,6 +19,7 @@
 <canvas id="mini" width="140" height="140"></canvas>
 <div id="tags"></div>
 <div id="race" hidden><span id="raceT"></span><button class="b hot" id="raceY">SPRINT</button><button class="b" id="raceP" hidden>📦 PARCEL</button><button class="b" id="raceF" hidden>🍔 FOOD</button><button class="b" id="raceX">✕</button></div>
+<div id="ride" hidden><span id="rideT"></span><button class="b hot" id="rideY">RIDE</button><button class="b" id="rideB" hidden>RACE</button><button class="b" id="rideX">✕</button></div>
 <div id="rcd"></div>
 <div id="mis" hidden><span id="misT"></span><button class="b" id="misNext" hidden>Next</button><button class="b" id="misX">✕</button></div>
 <div id="top"><button class="b" id="bMenu" aria-label="Menu">☰</button><button class="b" id="bCam">CAM</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button><button class="b" id="bOpt" aria-label="Options">⚙</button></div>
@@ -125,7 +126,7 @@
   <div class="sec">ERROR LOG</div><pre id="oLog"></pre>
 </div></div>
 
-<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.22","./js/audio.js":"./js/audio.js?v=11.22","./js/config.js":"./js/config.js?v=11.22","./js/controls.js":"./js/controls.js?v=11.22","./js/drivetrain.js":"./js/drivetrain.js?v=11.22","./js/garage.js":"./js/garage.js?v=11.22","./js/studio.js":"./js/studio.js?v=11.22","./js/hud.js":"./js/hud.js?v=11.22","./js/main.js":"./js/main.js?v=11.22","./js/missions.js":"./js/missions.js?v=11.22","./js/model.js":"./js/model.js?v=11.22","./js/options.js":"./js/options.js?v=11.22","./js/perf.js":"./js/perf.js?v=11.22","./js/physics.js":"./js/physics.js?v=11.22","./js/tyre.js":"./js/tyre.js?v=11.22","./js/rapier.js":"./js/rapier.js?v=11.22","./js/renderer.js":"./js/renderer.js?v=11.22","./js/spec.js":"./js/spec.js?v=11.22","./js/state.js":"./js/state.js?v=11.22","./js/util.js":"./js/util.js?v=11.22","./js/world.js":"./js/world.js?v=11.22","./js/tex.js":"./js/tex.js?v=11.22","./js/gpucull.js":"./js/gpucull.js?v=11.22","./js/net.js":"./js/net.js?v=11.22","./js/race.js":"./js/race.js?v=11.22","./js/ignition.js":"./js/ignition.js?v=11.22","./js/daynight.js":"./js/daynight.js?v=11.22","./js/lights.js":"./js/lights.js?v=11.22","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
-<script type="module" src="js/menu.js?v=11.22"></script>
+<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.23","./js/audio.js":"./js/audio.js?v=11.23","./js/config.js":"./js/config.js?v=11.23","./js/controls.js":"./js/controls.js?v=11.23","./js/drivetrain.js":"./js/drivetrain.js?v=11.23","./js/garage.js":"./js/garage.js?v=11.23","./js/studio.js":"./js/studio.js?v=11.23","./js/hud.js":"./js/hud.js?v=11.23","./js/main.js":"./js/main.js?v=11.23","./js/missions.js":"./js/missions.js?v=11.23","./js/model.js":"./js/model.js?v=11.23","./js/options.js":"./js/options.js?v=11.23","./js/perf.js":"./js/perf.js?v=11.23","./js/physics.js":"./js/physics.js?v=11.23","./js/tyre.js":"./js/tyre.js?v=11.23","./js/rapier.js":"./js/rapier.js?v=11.23","./js/renderer.js":"./js/renderer.js?v=11.23","./js/spec.js":"./js/spec.js?v=11.23","./js/state.js":"./js/state.js?v=11.23","./js/util.js":"./js/util.js?v=11.23","./js/world.js":"./js/world.js?v=11.23","./js/tex.js":"./js/tex.js?v=11.23","./js/gpucull.js":"./js/gpucull.js?v=11.23","./js/net.js":"./js/net.js?v=11.23","./js/race.js":"./js/race.js?v=11.23","./js/ride.js":"./js/ride.js?v=11.23","./js/ignition.js":"./js/ignition.js?v=11.23","./js/daynight.js":"./js/daynight.js?v=11.23","./js/lights.js":"./js/lights.js?v=11.23","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+<script type="module" src="js/menu.js?v=11.23"></script>
 </body>
 </html>

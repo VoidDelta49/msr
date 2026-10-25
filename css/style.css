@@ -96,7 +96,7 @@ body.menu #tc,body.menu #top,body.menu #mis,body.menu #gauge,body.menu #mini,bod
 #race .hot{background:var(--hot);color:#1a1000;border-color:var(--hot)}
 #rcd{position:fixed;top:30%;left:0;right:0;text-align:center;font:italic 900 72px system-ui;color:var(--hot);text-shadow:4px 4px 0 #0b1118;opacity:0;pointer-events:none;transition:opacity .15s;z-index:6}
 #rcd.on{opacity:1}
-body.gar #race,body.gar #tags,body.menu #race,body.menu #tags,body.menu #rcd,body.opt #tags{display:none}
+body.gar #race,body.gar #ride,body.gar #tags,body.menu #ride,body.menu #race,body.menu #tags,body.menu #rcd,body.opt #tags{display:none}
 #mMPP{width:min(400px,100%);background:rgba(12,16,21,.88);padding:14px;border-radius:12px}
 .mpf{display:flex;gap:8px;flex-wrap:wrap}.mpf label{flex:1 1 140px;display:grid;gap:3px;font:700 11px system-ui;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
 #mMPP input{width:100%;font:700 16px system-ui;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.22);background:#0a0e12;color:var(--ink);user-select:text;-webkit-user-select:text;touch-action:manipulation;text-transform:none}
@@ -116,8 +116,9 @@ body{--k:1;--el:calc(12px + env(safe-area-inset-left));--er:calc(12px + env(safe
 #top .b{min-width:44px;min-height:44px}
 body.touch .b{min-height:44px}
 #perf{position:fixed;top:calc(58px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));font:700 11px ui-monospace,monospace;color:rgba(255,255,255,.75);text-shadow:0 1px 2px #000;pointer-events:none;text-align:right}
-#mis,#race{position:fixed;top:calc(58px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--glass);padding:8px 12px;border-radius:10px;display:flex;gap:10px;align-items:center;z-index:5;max-width:calc(100vw - 2 * var(--mini) - 40px)}
+#mis,#race,#ride{position:fixed;top:calc(58px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--glass);padding:8px 12px;border-radius:10px;display:flex;gap:10px;align-items:center;z-index:5;max-width:calc(100vw - 2 * var(--mini) - 40px)}
 #race{z-index:6;border:1px solid rgba(255,176,32,.5);white-space:nowrap}
+#ride{z-index:7;border:1px solid rgba(58,215,255,.6);white-space:nowrap}#ride .hot{background:#3ad7ff;color:#04141a;border-color:#3ad7ff}
 #misT{min-width:0}
 #gauge{position:fixed;left:calc(var(--el) + var(--w) + 16px);bottom:var(--eb);width:min(210px,24vw);height:auto;border-radius:12px;pointer-events:none}
 #wheel{position:fixed;left:var(--el);bottom:var(--eb);width:var(--w);height:var(--w);touch-action:none}
@@ -164,7 +165,7 @@ body.lefty #gauge{left:auto;right:calc(var(--er) + var(--w) + 16px)}
   body{--w:calc(clamp(104px,40vw,172px) * var(--k));--tw:calc(clamp(88px,26vw,120px) * var(--k));--th:calc(clamp(112px,17vh,150px) * var(--k));--cw:calc(clamp(72px,21vw,112px) * var(--k));--mini:min(104px,27vw)}
   #top{flex-direction:column;align-items:flex-end}
   #perf{top:calc(var(--et) + var(--mini) + 4px);left:calc(8px + env(safe-area-inset-left));right:auto;text-align:left}
-  #mis,#race{left:calc(8px + env(safe-area-inset-left));transform:none;top:calc(var(--et) + var(--mini) + 22px);max-width:calc(100vw - 110px);flex-wrap:wrap;white-space:normal}
+  #mis,#race,#ride{left:calc(8px + env(safe-area-inset-left));transform:none;top:calc(var(--et) + var(--mini) + 22px);max-width:calc(100vw - 110px);flex-wrap:wrap;white-space:normal}
   #gauge{left:var(--el);bottom:calc(var(--eb) + var(--w) + 72px);width:min(200px,44vw)}
   body.lefty #gauge{left:auto;right:var(--er)}
   #lb{gap:6px}#lb button{min-width:48px;padding:0 8px}#lb #bStart{min-width:72px}

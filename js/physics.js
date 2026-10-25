@@ -43,7 +43,8 @@ function rollUp(q, qv, ay, arm, h, dt) { // q >= 0 about one pivot line; returns
   if (q <= 0) return [0, 0, -qv]; return [q, qv, 0];
 }
 function trike(sp, kk, vv, sv, a, dt) {
-  const s = sp.sc, h = sp.h, yc = sp.scm * sp.scX / sp.m, d2 = Math.max(.2, (sp.scD - yc) * .55), v2 = vv * vv;
+  const pm = S.paxM || 0, s = sp.sc, h = sp.h, yc = (sp.scm + pm) * sp.scX / (sp.m + pm), // passengers (ride.js) sit in the sidecar
+    d2 = Math.max(.2, (sp.scD - yc) * .55), v2 = vv * vv;
   const k = kk + s * .6 * a * yc / Math.max(v2, 4) * sstep(.3, 2, sv); // pull from the offset mass under drive / braking
   const ay = v2 * k * s; // + = turning toward the sidecar
   let q = S.chair || 0, qv = S.chairV || 0, r = null;
@@ -61,7 +62,7 @@ const NF = { sp: null, Fg: 0, Fb: 0 };
 function netF(Fd, vv) { const sp = NF.sp, Fb = NF.Fb; let F = Fd + NF.Fg - (sp.drag * vv * vv + (vv > .02 ? sp.roll : 0)); if (vv > .02) F -= Fb; else F = F > 0 ? Math.max(0, F - Fb - sp.roll) : 0; return F; }
 // Engine, drivetrain, speed along the ground and steering. Rapier (rapier.js) owns position, heave and pitch.
 export function step(dt) {
-  const sp = ctx.spec, D = ctx.drive, b = ctx.bcfg, m = sp.m, r = sp.r, v = S.v, av = Math.abs(v);
+  const sp = ctx.spec, D = ctx.drive, b = ctx.bcfg, m = sp.m + (sp.sc ? S.paxM || 0 : 0), r = sp.r, v = S.v, av = Math.abs(v);
   D.pre(sp, S, dt, b); igPre(dt);
   // engine
   if (S.running && S.lim && S.rpm < sp.red - 150) S.lim = false; if (S.rpm >= sp.red) S.lim = true;

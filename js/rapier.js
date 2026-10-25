@@ -175,7 +175,8 @@ function crash(kind, imp = 0) {
   else { body.setLinvel({ x: fx * v + lx * sl * 1.5, y: lv.y, z: fz * v + lz * sl * 1.5 }, true); body.setAngvel({ x: -zx * sl * 1.5, y: 0, z: -zz * sl * 1.5 }, true); }
   // rider: thrown off at the bike's speed (over the bars into a wall)
   const rv = kind === 'wall' ? Math.max(imp, Math.abs(v)) * Math.sign(v || 1) : v * .85;
-  rider = world.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(S.x, S.zH + 1.15, S.z).setRotation(qYX(S.psi, 0)).setLinvel(fx * rv, kind === 'wall' ? 2.5 : 1.2, fz * rv).setAngvel({ x: lx * 4, y: 0, z: lz * 4 }));
+  const toon = ctx.spec.sc ? 1 : 0; // tricycle: cartoon launch, like the passengers (ride.js)
+  rider = world.createRigidBody(R.RigidBodyDesc.dynamic().setTranslation(S.x, S.zH + 1.15, S.z).setRotation(qYX(S.psi, 0)).setLinvel(fx * rv, toon ? 7.5 : kind === 'wall' ? 2.5 : 1.2, fz * rv).setAngvel({ x: lx * (toon ? 11 : 4), y: toon ? 6 : 0, z: lz * (toon ? 11 : 4) }));
   world.createCollider(R.ColliderDesc.roundCuboid(.18, .35, .08, .07).setMass(70).setFriction(.6).setCollisionGroups(G_CRASH), rider);
   // move the rider meshes onto their own body
   B.root.position.set(S.x, S.zH, S.z); B.root.rotation.set(0, S.psi, 0); B.lean.rotation.z = -S.lean; B.body.rotation.x = S.th; // pose as drawn, now

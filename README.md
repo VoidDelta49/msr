@@ -57,6 +57,8 @@ Main menu > MULTIPLAYER: type a name, then JOIN a room code or make a NEW ROOM a
 
 The relay is a small Cloudflare Worker in `server/` (deploy steps in `server/README.md`).
 
+
+**Tricycle rides (11.23):** stop next to a friend's TMX with the sidecar fitted and tap their name tag (it shows 🛺): RIDE asks, the driver gets OK / ✕. Two passengers fit on the bench; each adds 65 kg to the sidecar in the driver's physics. Your own bike is put away while you ride and comes back beside the tricycle when you tap GET OFF. If the tricycle crashes, everybody aboard is flung out cartoon-style (on every phone that sees it) and lands next to their bike. Needs the 11.23 relay (`server/worker.js`, `ride` messages): redeploy it with `npx wrangler deploy`.
 ## Controls
 
 Touch:
@@ -104,6 +106,7 @@ js/perf.js            culling, terrain LOD, merging, Lambert materials, auto res
 js/gpucull.js         WebGPU compute culling + indirect draws for instanced props
 js/net.js             multiplayer: relay connection, state packets, interpolated ghost bikes, name tags
 js/race.js            tap-to-race between two riders
+js/ride.js            tricycle passengers: hop into a friend's sidecar, cartoon ejections on a crash
 server/               Cloudflare Worker + Durable Object relay (one room per code)
 js/audio.js (+ engine-worklet.js), controls.js, garage.js, options.js, missions.js, config.js, state.js, util.js
 ```
