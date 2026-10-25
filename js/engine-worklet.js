@@ -34,6 +34,15 @@ class Engine extends AudioWorkletProcessor {
   process(_, outs, P) {
     const o = outs[0] && outs[0][0]; if (!o) return true;
     const c = this.c, sr = sampleRate, n = o.length, on = P.on[0] > .5, cut = P.cut[0] > .5, vol = P.vol[0], rpmT = P.rpm[0];
+    // engine off and the crank has stopped (or sound off): nothing to synthesize. Settle once, then just output silence instead of
+    // running the resonators on zeros for every block while the bike sits parked
+    if (!on && rpmT < 1 && this.r < 20 || vol <= 0) {
+      if (!this.rest && vol > 0) { this.rest = 1; this.r = this.ex = this.nb = this.pop = this.tk = this.sub = this.lp = this.hx = this.hy = this.tx = 0; for (const f of [this.body, this.pipe, this.pipe2, this.rasp, this.intk]) f.y1 = f.y2 = 0; }
+      if (vol <= 0) this.r = rpmT; // muted: keep the crank speed current so unmuting doesn't rev up from zero
+      for (let ch = 0; ch < outs[0].length; ch++) outs[0][ch].fill(0);
+      return true;
+    }
+    this.rest = 0;
     this.ld += (P.load[0] - this.ld) * .25;
     const ld = this.ld, r0 = this.r;
     this.body.set(c.body * (1 + .2 * ld), c.bq, sr); this.pipe2.set(c.pipe * 2.35 * (1 + .06 * ld), c.pq * 1.6, sr); this.rasp.set(2300 + r0 * .15, 1.8, sr); this.pipe.set(c.pipe * (1 + .08 * ld + r0 / 60000), c.pq, sr); this.intk.set(250 + r0 * .07, 2.2, sr);

@@ -6,7 +6,7 @@ import { S, ctx } from './state.js';
 import { clamp, sstep, vnoise } from './util.js';
 
 let AC = null, E = null, lastSpec = null, ambT = 0, crashWas = false, airWas = false, offR = 0, lastT = 0;
-let pFf = null, pFr = null, pTh = 0, suspT = 0, lashT = 0, runWas = false, coolT = 0, coolEnd = 0; // part-sound edge detectors (suspension hits, chain lash, exhaust cooling)
+let rdT = -1, onRdC = 0, pFf = null, pFr = null, pTh = 0, suspT = 0, lashT = 0, runWas = false, coolT = 0, coolEnd = 0; // part-sound edge detectors (suspension hits, chain lash, exhaust cooling)
 const A = {}, Z = { coast: 0, river: 0, town: 0, paddy: 0, volc: 0, wild: 0, sx: 0, sz: 0, rx: 0, rz: 0 };
 const EXH = { gain: [1, 1.35, 1.7], bright: [1, 1.3, 1.6], pq: [1, 1.3, 1.6], crackle: [1, 2.4, 4], drive: [1, 1.15, 1.3], pipe: [1, .92, .85] };
 
@@ -16,6 +16,17 @@ const pv = (k, d = 1) => (ctx.spec?.sc && ctx.spec.sound?.sc?.[k]) ?? ctx.spec?.
 
 // smoothed param set that skips near-identical values (saves automation events every frame)
 function st(p, v, tc) { if (p._v !== undefined && Math.abs(p._v - v) < 1e-4) return; p._v = v; p.setTargetAtTime(v, AC.currentTime, tc); }
+// Silent-voice gating. Every continuous layer (wind, tyres, brake/chain parts, ambience beds) is a looping noise source through its
+// own filters, and the audio thread runs all of them every block even at gain 0: ~30 biquads at 48 kHz, most of them silent at any
+// moment. A voice's feed (source -> first filter) is cut once its gain has sat at 0 long enough to have faded out; the filters then
+// see silence and the browser stops processing them. It is plugged back in the moment the gain rises (the gain ramps up from 0, so
+// no click). feed() registers the edges on the voice's gain node, sg() replaces st(gain, ...) for those voices.
+function feed(g, ...e) { g._e = e; g._on = true; g._off = 0; return g; }
+function sg(g, v, tc) {
+  st(g.gain, v, tc); const e = g._e; if (!e) return;
+  if (v > 1e-5) { g._off = 0; if (!g._on) { for (const [a, b] of e) a.connect(b); g._on = true; } }
+  else if (g._on) { const t = AC.currentTime; if (!g._off) g._off = t + tc * 7 + .05; else if (t > g._off) { for (const [a, b] of e) a.disconnect(b); g._on = false; } }
+}
 const node = (type, f, q, g) => { const n = type === 'gain' ? AC.createGain() : AC.createBiquadFilter(); if (type === 'gain') n.gain.value = g ?? 0; else { n.type = type; n.frequency.value = f; if (q) n.Q.value = q; } return n; };
 const chain = (...n) => { for (let i = 1; i < n.length; i++) n[i - 1].connect(n[i]); return n[n.length - 1]; };
 function noiseBuf(brown) {
@@ -42,39 +53,39 @@ export function initAudio() {
   // ---- road layers ----
   A.road = node('gain', 0, 0, 1); A.road.connect(A.master);
   A.wPan = pan(0); A.wPan.connect(A.road);
-  A.wLoF = node('lowpass', 200, .7); A.wLo = node('gain'); chain(b1, A.wLoF, A.wLo, A.wPan);          // wind rumble / buffeting
-  A.wHiF = node('bandpass', 900, .7); A.wHi = node('gain'); chain(w1, A.wHiF, A.wHi, A.wPan);         // wind rush past the helmet
-  A.tAF = node('lowpass', 300, .8); A.tA = node('gain'); chain(b2, A.tAF, A.tA, A.road);              // tyre roar on asphalt
-  A.tDF = node('bandpass', 1600, .9); A.tD = node('gain'); chain(w2, A.tDF, A.tD, A.road);            // gravel/grass crunch
-  A.skF = node('bandpass', 1150, 7); A.sk = node('gain'); chain(w1, A.skF, A.sk, A.road);             // tyre squeal
-  A.scF = node('bandpass', 2800, 1.6); A.sc = node('gain'); chain(w2, A.scF, A.sc, A.road);           // metal/plastic scraping
+  A.wLoF = node('lowpass', 200, .7); A.wLo = feed(node('gain'), [b1, A.wLoF]); chain(b1, A.wLoF, A.wLo, A.wPan);          // wind rumble / buffeting
+  A.wHiF = node('bandpass', 900, .7); A.wHi = feed(node('gain'), [w1, A.wHiF]); chain(w1, A.wHiF, A.wHi, A.wPan);         // wind rush past the helmet
+  A.tAF = node('lowpass', 300, .8); A.tA = feed(node('gain'), [b2, A.tAF]); chain(b2, A.tAF, A.tA, A.road);              // tyre roar on asphalt
+  A.tDF = node('bandpass', 1600, .9); A.tD = feed(node('gain'), [w2, A.tDF]); chain(w2, A.tDF, A.tD, A.road);            // gravel/grass crunch
+  A.skF = node('bandpass', 1150, 7); A.sk = feed(node('gain'), [w1, A.skF]); chain(w1, A.skF, A.sk, A.road);             // tyre squeal
+  A.scF = node('bandpass', 2800, 1.6); A.sc = feed(node('gain'), [w2, A.scF]); chain(w2, A.scF, A.sc, A.road);           // metal/plastic scraping
   // ---- bike parts (all continuous layers share the noise loops above; gains are driven in updAudio) ----
-  A.bsqF = node('bandpass', 2000, 22); A.bsq = node('gain'); chain(w1, A.bsqF, A.bsq, A.road);        // disc-brake squeal as the bike rolls to a stop
-  A.bhs = node('gain'); chain(w2, node('bandpass', 4200, .7), A.bhs, A.road);                           // pad/disc hiss under hard braking
+  A.bsqF = node('bandpass', 2000, 22); A.bsq = feed(node('gain'), [w1, A.bsqF]); chain(w1, A.bsqF, A.bsq, A.road);        // disc-brake squeal as the bike rolls to a stop
+  const bhF = node('bandpass', 4200, .7); A.bhs = feed(node('gain'), [w2, bhF]); chain(w2, bhF, A.bhs, A.road);                           // pad/disc hiss under hard braking
   const absAM = node('gain', 0, 0, .5), absO = AC.createOscillator(), absD = node('gain', 0, 0, .5); absO.type = 'square'; absO.frequency.value = 13; absO.connect(absD); absD.connect(absAM.gain); absO.start();
-  A.abs = node('gain'); chain(b2, node('bandpass', 300, 1.2), absAM, A.abs, A.road); chain(w1, node('bandpass', 2300, 1.5), absAM);  // ABS: lever pulsing, thrum + tick at ~13 Hz
-  A.lk = node('gain'); A.lkF = node('bandpass', 1900, 5); chain(w2, A.lkF, A.lk, A.road);                              // locked wheel: rubber scrub
+  const abF1 = node('bandpass', 300, 1.2), abF2 = node('bandpass', 2300, 1.5); A.abs = feed(node('gain'), [b2, abF1], [w1, abF2]); chain(b2, abF1, absAM, A.abs, A.road); chain(w1, abF2, absAM);  // ABS: lever pulsing, thrum + tick at ~13 Hz
+  A.lkF = node('bandpass', 1900, 5); A.lk = feed(node('gain'), [w2, A.lkF]); chain(w2, A.lkF, A.lk, A.road);                              // locked wheel: rubber scrub
   const spAM = node('gain', 0, 0, .5), spO = AC.createOscillator(), spD = node('gain', 0, 0, .5); spO.type = 'sawtooth'; spO.frequency.value = 27; spO.connect(spD); spD.connect(spAM.gain); spO.start();
-  A.wsp = node('gain'); chain(w1, node('bandpass', 1500, 2.5), spAM, A.wsp, A.road);                   // wheelspin: chattering rubber
-  A.chn = node('gain'); A.chnF = node('bandpass', 2900, 1.4); chain(w1, A.chnF, A.chn, A.road);                          // drive chain whirr (chain bikes only)
-  A.clr = node('gain'); chain(w2, node('bandpass', 1100, 1.2), A.clr, A.road);                          // clutch plates slipping under power
-  A.peg = node('gain'); A.pegF = node('bandpass', 3200, 2); chain(w2, A.pegF, A.peg, A.road);           // peg / fairing grinding in a hard lean
+  const wsF = node('bandpass', 1500, 2.5); A.wsp = feed(node('gain'), [w1, wsF]); chain(w1, wsF, spAM, A.wsp, A.road);                   // wheelspin: chattering rubber
+  A.chnF = node('bandpass', 2900, 1.4); A.chn = feed(node('gain'), [w1, A.chnF]); chain(w1, A.chnF, A.chn, A.road);                          // drive chain whirr (chain bikes only)
+  const clF = node('bandpass', 1100, 1.2); A.clr = feed(node('gain'), [w2, clF]); chain(w2, clF, A.clr, A.road);                          // clutch plates slipping under power
+  A.pegF = node('bandpass', 3200, 2); A.peg = feed(node('gain'), [w2, A.pegF]); chain(w2, A.pegF, A.peg, A.road);           // peg / fairing grinding in a hard lean
   // CVT belt whine (Click); gain 0 for chain bikes
   // reduction-gear whine (Click): one sine per gear mesh, pitch = wheel rev/s × the bike's `sound.mesh` multipliers
-  A.bwg = node('gain'); A.bwg.connect(A.eng); A.mesh = [0, 1].map(i => { const o = AC.createOscillator(), g = node('gain', 0, 0, i ? .5 : 1); chain(o, g, A.bwg); o.start(); return o; });
+  A.bwg = node('gain'); A.bwg.connect(A.eng); const me = []; A.mesh = [0, 1].map(i => { const o = AC.createOscillator(), g = node('gain', 0, 0, i ? .5 : 1); chain(o, g, A.bwg); o.start(); me.push([o, g]); return o; }); feed(A.bwg, ...me);
   // ---- ambience ----
   A.amb = node('gain', 0, 0, 0); A.ambLP = node('lowpass', 20000, .5); chain(A.amb, A.ambLP, A.master);
-  A.surfP = pan(0); A.surfP.connect(A.amb); A.surf = node('gain'); chain(b1, node('lowpass', 650, .5), A.surf, A.surfP);
-  A.rivP = pan(0); A.rivP.connect(A.amb); A.riv = node('gain'); chain(w2, node('bandpass', 1400, .5), node('peaking', 600, 1), A.riv, A.rivP);
+  A.surfP = pan(0); A.surfP.connect(A.amb); const suF = node('lowpass', 650, .5); A.surf = feed(node('gain'), [b1, suF]); chain(b1, suF, A.surf, A.surfP);
+  A.rivP = pan(0); A.rivP.connect(A.amb); const rvF = node('bandpass', 1400, .5); A.riv = feed(node('gain'), [w2, rvF]); chain(w2, rvF, node('peaking', 600, 1), A.riv, A.rivP);
   // cicadas: narrow high band, chopped ~45 Hz by an oscillator on the gain
   A.cic = node('gain'); const cAM = node('gain', 0, 0, .5), cO = AC.createOscillator(), cD = node('gain', 0, 0, .5); cO.frequency.value = 46; cO.connect(cD); cD.connect(cAM.gain); cO.start();
-  chain(w1, node('bandpass', 5200, 6), cAM, A.cic, A.amb);
-  A.hum = node('gain'); chain(b2, node('lowpass', 260, .7), A.hum, A.amb);                             // town hum
-  A.vol = node('gain'); chain(b1, node('lowpass', 90, .7), A.vol, A.amb);                              // volcano rumble
-  A.rus = node('gain'); A.rusF = node('bandpass', 1800, .8); chain(w1, A.rusF, A.rus, A.amb);          // wind in leaves / palms
+  const ciF = node('bandpass', 5200, 6); feed(A.cic, [w1, ciF]); chain(w1, ciF, cAM, A.cic, A.amb);
+  const huF = node('lowpass', 260, .7); A.hum = feed(node('gain'), [b2, huF]); chain(b2, huF, A.hum, A.amb);                             // town hum
+  const voF = node('lowpass', 90, .7); A.vol = feed(node('gain'), [b1, voF]); chain(b1, voF, A.vol, A.amb);                              // volcano rumble
+  A.rusF = node('bandpass', 1800, .8); A.rus = feed(node('gain'), [w1, A.rusF]); chain(w1, A.rusF, A.rus, A.amb);          // wind in leaves / palms
   A.crk = node('gain'); const kAM = node('gain', 0, 0, .5), kO = AC.createOscillator(), kD = node('gain', 0, 0, .5); kO.frequency.value = 5.2; kO.type = 'square'; kO.connect(kD); kD.connect(kAM.gain); kO.start();
-  chain(w2, node('bandpass', 4300, 14), kAM, A.crk, A.amb);                                             // night crickets: pulsed narrow band
-  A.trf = node('gain'); chain(b2, node('lowpass', 420, .7), A.trf, A.amb);                              // distant traffic wash in town
+  const ckF = node('bandpass', 4300, 14); feed(A.crk, [w2, ckF]); chain(w2, ckF, kAM, A.crk, A.amb);                                             // night crickets: pulsed narrow band
+  const tfF = node('lowpass', 420, .7); A.trf = feed(node('gain'), [b2, tfF]); chain(b2, tfF, A.trf, A.amb);                              // distant traffic wash in town
   // ---- engine voice ----
   const ok = () => { A.wk = true; };
   if (AC.audioWorklet) AC.audioWorklet.addModule(new URL('./engine-worklet.js?v=' + BUILD, import.meta.url).href).then(() => {
@@ -110,7 +121,7 @@ export function updAudio() {
   st(A.eng.gain, (fp ? 1 : .85) * sd.gain * EXH.gain[x] * 1.35, .05);
   if (E) {
     if (sp !== lastSpec) { lastSpec = sp; engineCfg(sp); }
-    const P = E.parameters; P.get('rpm').value = offR; P.get('load').value = S.thrEff || 0; P.get('on').value = run ? 1 : 0; P.get('cut').value = cut ? 1 : 0; P.get('vol').value = 1;
+    const P = E.parameters; P.get('rpm').value = offR; P.get('load').value = S.thrEff || 0; P.get('on').value = run ? 1 : 0; P.get('cut').value = cut ? 1 : 0; P.get('vol').value = on ? 1 : 0;
   } else if (A.o) {
     const f = Math.max(1, offR / 120); st(A.o.frequency, f, .015); st(A.o2.frequency, f / 2, .015);
     st(A.lp.frequency, (250 + S.rpm * .11 + S.thrEff * 1200) * [1, 1.35, 1.8][x] * sd.lp, .03); st(A.lp.Q, [3, 5, 8][x], .1);
@@ -118,39 +129,42 @@ export function updAudio() {
     if (run && x && S.thr < .05 && S.rpm > 5500 && Math.random() < .06 * x) blip('pop');
   }
   const wHz = v / (2 * Math.PI * sp.r), mm = sd.mesh || []; A.mesh.forEach((o, i) => st(o.frequency, Math.max(20, wHz * (mm[i] || 0)), .05));
-  st(A.bwg.gain, sd.whine && mm.length ? sd.whine * .8 * Math.min(1, v / 15) * (.4 + .6 * (S.thrEff || 0)) * (S.c || 0) : 0, .1); // faint belt whir under drive, not a tone over the engine
+  sg(A.bwg, sd.whine && mm.length ? sd.whine * .8 * Math.min(1, v / 15) * (.4 + .6 * (S.thrEff || 0)) * (S.c || 0) : 0, .1); // faint belt whir under drive, not a tone over the engine
   // ---- wind: rumble grows with v², the rush brightens with speed and gusts; louder with the head out in 1st person ----
   const gust = .8 + .4 * vnoise(t * .6, 3.1), wk = live ? (fp ? 1 : .3) * (1 - .35 * (S.thrEff || 0)) : 0, ws = Math.min(1, v * v / 1600); // engine stays on top: wind backs off on throttle
-  st(A.wLo.gain, wk * ws * .25 * gust, .08); st(A.wLoF.frequency, 120 + v * 9, .1);
-  st(A.wHi.gain, wk * ws * .07 * (.5 + .5 * gust), .08); st(A.wHiF.frequency, 500 + v * 55 * (.8 + .4 * gust), .1);
+  sg(A.wLo, wk * ws * .25 * gust, .08); st(A.wLoF.frequency, 120 + v * 9, .1);
+  sg(A.wHi, wk * ws * .07 * (.5 + .5 * gust), .08); st(A.wHiF.frequency, 500 + v * 55 * (.8 + .4 * gust), .1);
   if (A.wPan.pan) st(A.wPan.pan, clamp(-(S.lean || 0) * .9, -.4, .4), .1);
   // ---- tyres: asphalt roar vs dirt crunch; squeal past the grip limit; scraping on walls and in crashes ----
-  const grounded = live && !S.air && !S.crashed, nr = ctx.nearRoad ? ctx.nearRoad(S.x, S.z) : null, onRd = Math.max(nr ? clamp(1.3 - nr.d / (nr.w / 2 + .5), 0, 1) : 0, sstep(.85, 1, Z.town)); // town and lot are paved
+  const grounded = live && !S.air && !S.crashed;
+  // paved or not: the road search is one of the dearer lookups, and the layers it blends are smoothed over 30-100 ms anyway, so 20 Hz
+  if (t - rdT > .05 || t < rdT) { rdT = t; const nr = ctx.nearRoad ? ctx.nearRoad(S.x, S.z) : null; onRdC = Math.max(nr ? clamp(1.3 - nr.d / (nr.w / 2 + .5), 0, 1) : 0, sstep(.85, 1, Z.town)); } // town and lot are paved
+  const onRd = onRdC;
   const roll = grounded ? Math.min(1, v / 20) : 0, grit = .6 + .8 * vnoise(t * 9, 1.7);
-  st(A.tA.gain, roll * (.08 + .15 * onRd) * (fp ? 1 : .7), .05); st(A.tAF.frequency, 140 + v * 9, .1);
+  sg(A.tA, roll * (.08 + .15 * onRd) * (fp ? 1 : .7), .05); st(A.tAF.frequency, 140 + v * 9, .1);
   // squeal = low-side warning: follows the same overload the crash check uses (ABS braking doesn't count), full and highest-pitched
   // at 1.4 where the half-second crash timer starts
   const slip = grounded ? Math.max(sstep(.95, 1.4, S.overLS ?? S.over ?? 0) * Math.min(1, v / 6), S.skid || 0) : 0;
-  st(A.sk.gain, slip * .22 * onRd, .03); st(A.skF.frequency, 1000 + 300 * slip + 160 * vnoise(t * 3, 5), .05); // crunch is white noise in the band ears (and phone speakers) are most sensitive to, so it sits far below the asphalt roar's gain
-  st(A.tD.gain, roll * (1 - onRd) * .045 * grit + slip * (1 - onRd) * .08, .03);
+  sg(A.sk, slip * .22 * onRd, .03); st(A.skF.frequency, 1000 + 300 * slip + 160 * vnoise(t * 3, 5), .05); // crunch is white noise in the band ears (and phone speakers) are most sensitive to, so it sits far below the asphalt roar's gain
+  sg(A.tD, roll * (1 - onRd) * .045 * grit + slip * (1 - onRd) * .08, .03);
   const scr = live ? (S.crashed ? (S.v || 0) : (S.scrape || 0)) : 0;
-  st(A.sc.gain, Math.min(.35, scr * .035) * grit, .03);
+  sg(A.sc, Math.min(.35, scr * .035) * grit, .03);
   // ---- bike parts ----
   const br = grounded ? (S.brake || 0) : 0, lockd = grounded && (S.lkF || S.lkR) ? 1 : 0, th = S.thrEff || 0, belt = mm.length > 0;
   // brakes: squeal comes and goes from stop to stop, falls in pitch as the bike slows; hiss at speed; ABS pulses at the lever
   const sqWin = sstep(.4, 1.2, v) * (1 - sstep(7, 11, v)), sqOn = sstep(.35, .55, vnoise(t * 1.7, 11.3));
-  st(A.bsq.gain, br > .3 && !lockd ? sstep(.3, .75, br) * sqWin * sqOn * pv('sq') * .05 : 0, .04);
+  sg(A.bsq, br > .3 && !lockd ? sstep(.3, .75, br) * sqWin * sqOn * pv('sq') * .05 : 0, .04);
   st(A.bsqF.frequency, pv('sqHz', 1700) + 150 * Math.min(v, 8) + 240 * vnoise(t * 5, 2.2), .05);
-  st(A.bhs.gain, br * sstep(8, 25, v) * .022 * pv('hiss'), .06);
-  st(A.abs.gain, grounded && S.absA ? .2 * sstep(1, 5, v) : 0, .02);
+  sg(A.bhs, br * sstep(8, 25, v) * .022 * pv('hiss'), .06);
+  sg(A.abs, grounded && S.absA ? .2 * sstep(1, 5, v) : 0, .02);
   // tyres beyond squeal: locked wheel scrub, wheelspin chatter (louder with more slip)
-  st(A.lk.gain, lockd * onRd * Math.min(1, v / 6) * .1, .03); st(A.lkF.frequency, 1700 + 500 * vnoise(t * 7, 9), .05);
-  st(A.wsp.gain, grounded && Math.abs(S.ws || 0) > .4 ? sstep(.4, 6, Math.abs(S.ws)) * onRd * .1 : 0, .03);
+  sg(A.lk, lockd * onRd * Math.min(1, v / 6) * .1, .03); st(A.lkF.frequency, 1700 + 500 * vnoise(t * 7, 9), .05);
+  sg(A.wsp, grounded && Math.abs(S.ws || 0) > .4 ? sstep(.4, 6, Math.abs(S.ws)) * onRd * .1 : 0, .03);
   // drivetrain: chain whirr, clutch plates rasping while they slip under power (not the belt bike)
-  st(A.chn.gain, grounded && !belt ? Math.min(1, v / 25) * (.5 + .5 * th) * .012 * pv('chain') : 0, .1); st(A.chnF.frequency, pv('chainHz', 2400) + v * 30, .1);
-  const cc = S.c || 0; st(A.clr.gain, grounded && !belt && th > .25 && cc > .08 && cc < .92 ? th * .035 * Math.sin(Math.PI * cc) * pv('clutch') : 0, .04);
+  sg(A.chn, grounded && !belt ? Math.min(1, v / 25) * (.5 + .5 * th) * .012 * pv('chain') : 0, .1); st(A.chnF.frequency, pv('chainHz', 2400) + v * 30, .1);
+  const cc = S.c || 0; sg(A.clr, grounded && !belt && th > .25 && cc > .08 && cc < .92 ? th * .035 * Math.sin(Math.PI * cc) * pv('clutch') : 0, .04);
   // hard cornering at the limit: peg / fairing scraping the road
-  st(A.peg.gain, grounded ? sstep(.72, .95, S.ayu || 0) * sstep(5, 12, v) * .07 * onRd * pv('peg') : 0, .05); st(A.pegF.frequency, 2600 + 900 * vnoise(t * 6, 4.4), .05);
+  sg(A.peg, grounded ? sstep(.72, .95, S.ayu || 0) * sstep(5, 12, v) * .07 * onRd * pv('peg') : 0, .05); st(A.pegF.frequency, 2600 + 900 * vnoise(t * 6, 4.4), .05);
   // edge-detected one-shots
   const ff = S.Ff || 0, fr = S.Fr || 0, w = sp.m * 9.81;
   if (live && !S.crashed && pFf !== null && !S.air && t > suspT) { const d = Math.max((ff - pFf) / w, (fr - pFr) / w); if (d > .18) { suspT = t + .12; blip('susp', d); } } // fork / shock hit a bump or bottom out
@@ -180,13 +194,13 @@ function ambience(t, v, live) {
   // ears: right vector of the bike's heading, for panning toward the sea and the river
   const rx = Math.cos(S.psi || 0), rz = -Math.sin(S.psi || 0), pdir = (dx, dz) => { const l = Math.hypot(dx, dz) || 1; return clamp((dx * rx + dz * rz) / l * .7, -.7, .7); };
   const swell = .55 + .45 * Math.pow(Math.sin(t * .85 + Math.sin(t * .31) * 2), 2);
-  st(A.surf.gain, z.coast * .5 * swell, .25); if (A.surfP.pan) st(A.surfP.pan, pdir(z.sx, z.sz), .5);
-  st(A.riv.gain, z.river * .22, .3); if (A.rivP.pan) st(A.rivP.pan, pdir(z.rx, z.rz), .5);
+  sg(A.surf, z.coast * .5 * swell, .25); if (A.surfP.pan) st(A.surfP.pan, pdir(z.sx, z.sz), .5);
+  sg(A.riv, z.river * .22, .3); if (A.rivP.pan) st(A.rivP.pan, pdir(z.rx, z.rz), .5);
   const nt = ctx.night || 0, day = 1 - nt, cic = (z.wild + z.paddy * .6 * nt) * (.5 + .5 * Math.sin(t * .45) * Math.sin(t * .17 + 1)); // night: insects louder and in the paddies, town quieter
   const breeze = .5 + .5 * vnoise(t * .25, 8.3);
-  st(A.rus.gain, (z.wild * .9 + z.paddy * .5 + z.coast * .2) * .07 * breeze * (1 - .4 * nt), .5); st(A.rusF.frequency, 1300 + 900 * breeze, .5);
-  st(A.crk.gain, (z.wild * .6 + z.paddy) * nt * .035 * (.6 + .4 * Math.sin(t * .31)), .5); st(A.trf.gain, z.town * .06 * (1 - .5 * nt), .5);
-  st(A.cic.gain, cic * .05 * (1 + .8 * nt), .4); st(A.hum.gain, z.town * .05 * (1 - .6 * nt), .4); st(A.vol.gain, z.volc * .35, .5);
+  sg(A.rus, (z.wild * .9 + z.paddy * .5 + z.coast * .2) * .07 * breeze * (1 - .4 * nt), .5); st(A.rusF.frequency, 1300 + 900 * breeze, .5);
+  sg(A.crk, (z.wild * .6 + z.paddy) * nt * .035 * (.6 + .4 * Math.sin(t * .31)), .5); sg(A.trf, z.town * .06 * (1 - .5 * nt), .5);
+  sg(A.cic, cic * .05 * (1 + .8 * nt), .4); sg(A.hum, z.town * .05 * (1 - .6 * nt), .4); sg(A.vol, z.volc * .35, .5);
   if (!on || ctx.paused) return;
   // one-shots, chance per 0.1 s tick
   const r = Math.random;

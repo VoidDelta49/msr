@@ -88,21 +88,23 @@ export function autoRes(fps, playing) {
 /* ---------- jank meter (Options > Show FPS) ---------- */
 // Tells hitches apart on a real device. A frame whose interval is clearly longer than usual counts as a hitch and is filed
 // under what the PREVIOUS frame (the one that made it long) was doing: gc = the JS heap dropped by > 0.5 MB, hud = the
-// dashboard texture was uploaded, js = our callback itself took over half the interval, gpu = the callback was quick, so
+// dashboard texture was uploaded, js = our game code (physics, audio, HUD...) took over half the interval, draw = handing the frame to
+// three took over half of it (scene traversal + command encoding, and on WebGPU also waiting for a free swap-chain image when the
+// GPU is behind, so a slow GPU shows up here too), gpu = the callback was quick, so
 // the wait was GPU / vsync / system (thermal throttling, other apps). Chrome only (performance.memory); gc is blank elsewhere.
-const JK = { base: 16.7, lastT: 0, n: 0, js: 0, jsMax: 0, c: { gc: 0, hud: 0, js: 0, gpu: 0 }, t0: 0, text: '', pJs: 0, pHud: false, pGc: false, h: 0, skip: 120 };
+const JK = { base: 16.7, lastT: 0, n: 0, js: 0, dr: 0, jsMax: 0, c: { gc: 0, hud: 0, js: 0, draw: 0, gpu: 0 }, t0: 0, text: '', pJs: 0, pDr: 0, pHud: false, pGc: false, h: 0, skip: 120 };
 const MEM = performance.memory;
 export function jankStart(t) { // first thing in the frame callback
   const raw = t - JK.lastT; JK.lastT = t; if (JK.skip > 0) { JK.skip--; return; }
   if (raw <= 0 || raw > 250 || document.hidden) return; // tab was away
-  if (raw > JK.base * 1.5 + 1.5) { const k = JK.pGc ? 'gc' : JK.pHud ? 'hud' : JK.pJs > raw * .5 ? 'js' : 'gpu'; JK.c[k]++; } else JK.base += (raw - JK.base) * .05;
+  if (raw > JK.base * 1.5 + 1.5) { const k = JK.pGc ? 'gc' : JK.pHud ? 'hud' : JK.pJs - JK.pDr > raw * .5 ? 'js' : JK.pJs > raw * .5 ? 'draw' : 'gpu'; JK.c[k]++; } else JK.base += (raw - JK.base) * .05;
 }
-export function jankEnd(t, jsMs, hud) { // after draw(): jsMs = this callback's own time
-  if (JK.skip > 0) return; JK.n++; JK.js += jsMs; if (jsMs > JK.jsMax) JK.jsMax = jsMs; JK.pJs = jsMs; JK.pHud = hud;
+export function jankEnd(t, jsMs, hud, drMs = 0) { // after draw(): jsMs = this callback's own time, drMs = the part spent in culling + draw()
+  if (JK.skip > 0) return; JK.n++; JK.js += jsMs; JK.dr += drMs; if (jsMs > JK.jsMax) JK.jsMax = jsMs; JK.pJs = jsMs; JK.pDr = drMs; JK.pHud = hud;
   if (MEM) { const h = MEM.usedJSHeapSize; JK.pGc = JK.h - h > 524288; JK.h = h; }
   if (t - JK.t0 > 10000) {
-    if (JK.t0) { const c = JK.c, n = c.gc + c.hud + c.js + c.gpu; JK.text = 'cpu ' + (JK.js / JK.n).toFixed(1) + '/' + JK.jsMax.toFixed(0) + ' ms · ' + (n ? n + ' hitches/10s (gc' + c.gc + ' hud' + c.hud + ' js' + c.js + ' gpu' + c.gpu + ')' : 'no hitches'); }
-    JK.t0 = t; JK.n = JK.js = JK.jsMax = 0; JK.c = { gc: 0, hud: 0, js: 0, gpu: 0 };
+    if (JK.t0) { const c = JK.c, n = c.gc + c.hud + c.js + c.draw + c.gpu; JK.text = 'cpu ' + ((JK.js - JK.dr) / JK.n).toFixed(1) + '+' + (JK.dr / JK.n).toFixed(1) + '/' + JK.jsMax.toFixed(0) + ' ms · ' + (n ? n + ' hitches/10s (gc' + c.gc + ' hud' + c.hud + ' js' + c.js + ' draw' + c.draw + ' gpu' + c.gpu + ')' : 'no hitches'); }
+    JK.t0 = t; JK.n = JK.js = JK.dr = JK.jsMax = 0; JK.c = { gc: 0, hud: 0, js: 0, draw: 0, gpu: 0 };
   }
 }
 export const jankText = () => JK.text;

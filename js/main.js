@@ -206,7 +206,7 @@ function loop(t) {
   else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); jankEnd(t, performance.now() - J0, hudUp);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } const D0 = performance.now(); cullUpdate(camera); renderer.info.reset(); gpuCull(camera); draw(); const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.live = true;

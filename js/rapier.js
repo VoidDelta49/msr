@@ -101,6 +101,16 @@ export function tickR() {
   // bump stops first (position + velocity), so the springs below never see more than full travel
   const st = bumpStop(sp, S.zH, th, vy, w, hF, hR, dhF, dhR);
   if (st[0] !== S.zH || st[1] !== th) { S.zH = st[0]; S.th = st[1]; vy = st[2]; w = st[3]; body.setTranslation({ x: S.x, y: S.zH + Y0, z: S.z }, true); }
+  // top-out: with the other wheel on the ground, a wheel can only hang its static sag (+3 cm) below the chassis. Without this a stoppie
+  // (or wheelie) the springs can't hold pitched the chassis about the loaded axle with no limit: the bike stood on its nose for as
+  // long as the brake was held. Lifting a wheel off the road is pitchUp's job (S.wp) in physics.js
+  if (!S.air) {
+    const wb = sp.wb, ex = (c, p, mw, k) => -(c + p + mw * g / k + .03); // how far past top-out (m): the spring is unloaded at c = -(p + mw g / k)
+    let e = ex(hR + sp.yr - (S.zH - lr * S.th), sp.pr, sp.ms * lf / wb, sp.kr);
+    if (e > 0 && (S.Ff || 0) > 0) { S.zH -= e * lf / wb; S.th += e / wb; const r = (vy - lr * w) - dhR; if (r > 0) { vy -= r * lf / wb; w += r / wb; } body.setTranslation({ x: S.x, y: S.zH + Y0, z: S.z }, true); }
+    e = ex(hF + sp.yf - (S.zH + lf * S.th), sp.pf, sp.ms * lr / wb, sp.kf);
+    if (e > 0 && (S.Fr || 0) > 0) { S.zH -= e * lr / wb; S.th -= e / wb; const r = (vy + lf * w) - dhF; if (r > 0) { vy -= r * lr / wb; w -= r / wb; } body.setTranslation({ x: S.x, y: S.zH + Y0, z: S.z }, true); }
+  }
   // springs measure from static sag, so add the static load; a wheel can push but never pull
   const cF = hF + sp.yf - (S.zH + lf * S.th), cR = hR + sp.yr - (S.zH - lr * S.th), vF = dhF - (vy + lf * w), vR = dhR - (vy - lr * w);
   const mF = sp.ms * lr / sp.wb, mR = sp.ms * lf / sp.wb; // sprung load on the bike's wheels (a sidecar carries its own share)
@@ -129,7 +139,11 @@ export function tickR() {
   wasAir = S.air;
   fx = -Math.sin(S.psi); fz = -Math.cos(S.psi); lx = Math.cos(S.psi); lz = -Math.sin(S.psi);
   // forces: suspension lift, pitch from the springs plus load transfer under accel/braking
-  const tau = Ff * lf - Fr * lr + (S.air ? 0 : m * S.a * sp.h);
+  // load transfer only up to the point where it lifts a wheel (a = g lr / h, or -g lf / h). Past that the chassis would keep pitching
+  // about the other axle with nothing to stop it (hard braking stood the bike on its nose and kept it there while the brake was held);
+  // lifting a wheel further is the wheelie / stoppie model's job (physics.js pitchUp, S.wp), which has the angle limit and crash checks
+  const aLT = clamp(S.a || 0, -g * lf / sp.h, g * lr / sp.h);
+  const tau = Ff * lf - Fr * lr + (S.air ? 0 : m * aLT * sp.h);
   // applied straight to the velocities we set anyway (same as a force over one tick, 4 fewer calls into WASM)
   vy += (Ff + Fr) / m * TICK; w += tau / sp.I * TICK;
   // velocity: on the ground the tyres set horizontal speed along the heading (no side slip); vertical stays Rapier's
