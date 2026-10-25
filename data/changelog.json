@@ -1,4 +1,10 @@
 [
+  { "v": "11.25", "d": "2026-10-25", "t": [
+    "New bike: Yamaha Aerox 155. 155 cc liquid-cooled VVA, 15.4 PS, CVT (2.300–0.724), 14\" wheels, twin rear shocks, Stop & Start System.",
+    "New bike: Kawasaki Rouser NS125 Fi. 124 cc FI single, 12 PS, 5-speed, front disc / rear drum, 17\" alloys, split seat.",
+    "New bike: Rusi Macho 125. 125 cc carb single, 9.7 hp, 5-speed, drum/drum, 17\" spokes. Takes the tricycle sidecar in Parts.",
+    "Each new bike has its own sound profile (brakes, chain or belt, body rattle, starter)."
+  ] },
   { "v": "11.24", "d": "2026-10-25", "t": [
     "New: WHAT'S NEW on the title screen shows these patch notes.",
     "New: the game now checks for updates. When a newer build is out, an UPDATE button appears on the title screen and in the pause menu; one tap reloads into the new version (works with offline mode)."

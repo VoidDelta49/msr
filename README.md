@@ -96,7 +96,7 @@ js/drivetrain.js      manual gearbox + CVT (ratio, clutch capacity, variator, Id
 js/physics.js         engine, clutch-slip solver, steering/lean, bump-stop helper
 js/tyre.js            tyre slip->force curve and surface grip (asphalt / dirt shoulder / grass / paddy)
 js/rapier.js          Rapier3D chassis: dynamic bike body, suspension probes, streamed static colliders (fixed 120 Hz tick)
-js/model.js           3D models (Raider R150 underbone, Click 125i scooter, Smash 115 step-through, CBR650R supersport, TMX Supremo + tricycle sidecar), low-poly extruded panels
+js/model.js           3D models (Raider R150 underbone, Click 125i scooter, Smash 115 step-through, CBR650R supersport, TMX Supremo + tricycle sidecar, Aerox 155 maxi-scooter, Rouser NS125 street bike, Macho 125 on the TMX builder), low-poly extruded panels
 js/tex.js             N64-style procedural textures (tiny, dithered, bilinear) + sky
 js/hud.js             gauge clusters (sport / scooter LCD / CBR TFT), messages, minimap
 js/world.js           builds the island from data/map/island.json: terrain, roads, town, props, collision footprints, parking lot

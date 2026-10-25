@@ -1,0 +1,532 @@
+{
+  "id": "ns125",
+  "name": "Kawasaki Rouser NS125 Fi",
+  "short": "Rouser NS125",
+  "tag": "5-speed manual · fuel injected",
+  "blurb": "124 cc air-cooled single with fuel injection, 12 PS @ 8,500 rpm, peak torque (≈10.8 Nm) @ 6,500 rpm. 5-speed return shift with a wet multi-plate clutch, chain drive, 240 mm front disc, 130 mm rear drum, 17\" alloys (80/100-17, 100/90-17), twin gas rear shocks, split seat, 10.5 L tank, about 140 kg. Built by Bajaj and sold by Kawasaki in the Philippines.",
+  "model": "rouser",
+  "cluster": "sport",
+  "drivetrain": "manual",
+  "chassis": {
+    "m": 205,
+    "r": 0.3,
+    "wb": 1.32,
+    "lf": 0.69,
+    "lr": 0.63,
+    "h": 0.62,
+    "I": 42,
+    "drag": 0.24,
+    "roll": 24,
+    "brake": 0.86,
+    "bf": 0.68,
+    "travel": [
+      0.12,
+      0.1
+    ]
+  },
+  "engine": {
+    "Ie": 0.015,
+    "idle": 1400,
+    "red": 10000,
+    "peakPS": 12,
+    "tachMax": 12000,
+    "torque": [
+      [
+        0,
+        3
+      ],
+      [
+        1000,
+        5.5
+      ],
+      [
+        2000,
+        7.6
+      ],
+      [
+        3000,
+        9
+      ],
+      [
+        4000,
+        9.9
+      ],
+      [
+        5000,
+        10.4
+      ],
+      [
+        6000,
+        10.75
+      ],
+      [
+        6500,
+        10.8
+      ],
+      [
+        7000,
+        10.7
+      ],
+      [
+        8000,
+        10.3
+      ],
+      [
+        8500,
+        9.9
+      ],
+      [
+        9000,
+        9.3
+      ],
+      [
+        10000,
+        7.8
+      ],
+      [
+        11000,
+        6
+      ]
+    ],
+    "fric": [
+      0.8,
+      0.00026
+    ],
+    "fuel": {
+      "cap": 10.5,
+      "idle": 0.00016,
+      "k": 0.0026
+    }
+  },
+  "manual": {
+    "prim": 3.35,
+    "gears": [
+      0,
+      2.92,
+      1.875,
+      1.368,
+      1.12,
+      0.96
+    ],
+    "eta": 0.89,
+    "clutchCap": 26,
+    "final": [
+      "rs",
+      "fs"
+    ]
+  },
+  "sound": {
+    "parts": {
+      "sq": 1,
+      "sqHz": 1700,
+      "hiss": 0.9,
+      "chain": 1.1,
+      "chainHz": 2500,
+      "lash": 1.2,
+      "clutch": 1,
+      "thump": 1,
+      "thumpHz": 1,
+      "rattle": 0.5,
+      "key": 1,
+      "keyHz": 1,
+      "tink": 1.1,
+      "tinkHz": 1,
+      "peg": 1
+    },
+    "lp": 0.95,
+    "gain": 0.95,
+    "whine": 0,
+    "cyl": 1,
+    "pipe": 320,
+    "pq": 5,
+    "body": 85,
+    "bq": 2.4,
+    "punch": 1.05,
+    "rough": 0.12,
+    "crackle": 0.2,
+    "crackRpm": 6000,
+    "mech": 0.65,
+    "intake": 0.45,
+    "bright": 0.95,
+    "drive": 1.6,
+    "starter": 0.9
+  },
+  "parts": {
+    "exhaust": {
+      "l": "Exhaust",
+      "o": [
+        {
+          "n": "Stock",
+          "pow": 1,
+          "snd": 0
+        },
+        {
+          "n": "Slip-on (+6%)",
+          "pow": 1.06,
+          "snd": 1
+        },
+        {
+          "n": "Full system (+11%)",
+          "pow": 1.11,
+          "snd": 2
+        }
+      ]
+    },
+    "ecu": {
+      "l": "ECU map",
+      "o": [
+        {
+          "n": "Stock",
+          "pow": 1,
+          "red": 10000,
+          "ie": 1,
+          "idle": 1400
+        },
+        {
+          "n": "Street tune",
+          "pow": 1.05,
+          "red": 10500,
+          "ie": 0.9,
+          "idle": 1400
+        },
+        {
+          "n": "Race map",
+          "pow": 1.1,
+          "red": 11000,
+          "ie": 0.8,
+          "idle": 1500
+        }
+      ]
+    },
+    "tires": {
+      "l": "Tires",
+      "o": [
+        {
+          "n": "Stock",
+          "mu": 0.85
+        },
+        {
+          "n": "Sport",
+          "mu": 1
+        },
+        {
+          "n": "Racing",
+          "mu": 1.2
+        }
+      ]
+    },
+    "paint": {
+      "l": "Paint",
+      "o": [
+        {
+          "n": "Yellow",
+          "c": "#e8b414",
+          "lv": "y",
+          "rim": "#e8b414"
+        },
+        {
+          "n": "Grey",
+          "c": "#7b8086",
+          "lv": "g",
+          "rough": 0.6,
+          "rim": "#c9cdd2"
+        },
+        {
+          "n": "Black",
+          "c": "#17191c",
+          "lv": "k",
+          "rim": "#d42a2a"
+        }
+      ]
+    },
+    "intake": {
+      "l": "Air filter",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Sport foam (+3%)",
+          "pow": 1.03
+        },
+        {
+          "n": "Cold-air intake (+5%)",
+          "pow": 1.05
+        }
+      ]
+    },
+    "flywheel": {
+      "l": "Flywheel",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Lightened (quicker revs)",
+          "ie": 0.8
+        },
+        {
+          "n": "Heavy (smoother)",
+          "ie": 1.3
+        }
+      ]
+    },
+    "brakes": {
+      "l": "Brake pads",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Sintered",
+          "brake": 1.08
+        },
+        {
+          "n": "Race compound",
+          "brake": 1.17
+        }
+      ]
+    },
+    "wheelcol": {
+      "l": "Wheel colour",
+      "o": [
+        {
+          "n": "Match paint"
+        },
+        {
+          "n": "Black",
+          "wc": "#16171a"
+        },
+        {
+          "n": "Gold",
+          "wc": "#c9a24a"
+        },
+        {
+          "n": "Silver",
+          "wc": "#b9bdc2"
+        },
+        {
+          "n": "Red",
+          "wc": "#c21d1d"
+        },
+        {
+          "n": "Blue",
+          "wc": "#1f4fbf"
+        },
+        {
+          "n": "White",
+          "wc": "#e9e9e4"
+        }
+      ]
+    },
+    "rimstripe": {
+      "l": "Rim stripe",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Gold",
+          "rim": "#c9a24a"
+        },
+        {
+          "n": "Red",
+          "rim": "#d42a2a"
+        },
+        {
+          "n": "White",
+          "rim": "#f1f1ec"
+        },
+        {
+          "n": "Cyan",
+          "rim": "#16b3cc"
+        }
+      ]
+    },
+    "cover": {
+      "l": "Engine cover",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Black",
+          "ec": "#1b1c1f"
+        },
+        {
+          "n": "Gold",
+          "ec": "#c9a24a"
+        },
+        {
+          "n": "Red",
+          "ec": "#a8161c"
+        },
+        {
+          "n": "Blue",
+          "ec": "#1f44d8"
+        }
+      ]
+    },
+    "cfbody": {
+      "l": "Body panels",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock (painted)"
+        },
+        {
+          "n": "Carbon (−2.4 kg)",
+          "dm": -2.4,
+          "cfb": 1
+        },
+        {
+          "n": "Tinted carbon (−2.4 kg)",
+          "dm": -2.4,
+          "cfb": 2
+        }
+      ]
+    },
+    "cffender": {
+      "l": "Fenders",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Carbon (−0.5 kg)",
+          "dm": -0.5,
+          "cff": 1
+        }
+      ]
+    },
+    "cfwheel": {
+      "l": "Wheels",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock alloy"
+        },
+        {
+          "n": "Carbon (−2.6 kg)",
+          "dm": -2.6,
+          "cfw": 1
+        }
+      ]
+    },
+    "cfexh": {
+      "l": "Muffler cover",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Carbon (−0.4 kg)",
+          "dm": -0.4,
+          "cfx": 1
+        }
+      ]
+    }
+  },
+  "sliders": [
+    {
+      "k": "pf",
+      "l": "Fork preload",
+      "min": -20,
+      "max": 20,
+      "u": " mm"
+    },
+    {
+      "k": "pr",
+      "l": "Shock preload",
+      "min": -20,
+      "max": 20,
+      "u": " mm"
+    },
+    {
+      "k": "yf",
+      "l": "Front ride height",
+      "min": -25,
+      "max": 25,
+      "step": 5,
+      "u": " mm"
+    },
+    {
+      "k": "yr",
+      "l": "Rear ride height",
+      "min": -25,
+      "max": 25,
+      "step": 5,
+      "u": " mm"
+    },
+    {
+      "k": "fs",
+      "l": "Front sprocket",
+      "min": 13,
+      "max": 16,
+      "u": "T"
+    },
+    {
+      "k": "rs",
+      "l": "Rear sprocket",
+      "min": 38,
+      "max": 48,
+      "u": "T"
+    },
+    {
+      "k": "kf",
+      "l": "Fork spring",
+      "min": 7,
+      "max": 18,
+      "u": " kN/m"
+    },
+    {
+      "k": "kr",
+      "l": "Shock spring",
+      "min": 10,
+      "max": 26,
+      "u": " kN/m"
+    },
+    {
+      "k": "damp",
+      "l": "Damping",
+      "min": 20,
+      "max": 90,
+      "u": "%"
+    }
+  ],
+  "toggles": [
+    {
+      "k": "autoClutch",
+      "l": "Anti-stall clutch"
+    }
+  ],
+  "defaults": {
+    "pf": 0,
+    "pr": 0,
+    "exhaust": 0,
+    "ecu": 0,
+    "tires": 0,
+    "paint": 0,
+    "fs": 14,
+    "rs": 43,
+    "kf": 10,
+    "kr": 17,
+    "damp": 45,
+    "autoClutch": true,
+    "yf": 0,
+    "yr": 0,
+    "intake": 0,
+    "flywheel": 0,
+    "brakes": 0,
+    "wheelcol": 0,
+    "rimstripe": 0,
+    "cover": 0,
+    "cfbody": 0,
+    "cffender": 0,
+    "cfwheel": 0,
+    "cfexh": 0
+  },
+  "hint": "KEY on, hold START in neutral, pull CLUTCH, shift ▼ into 1st (1-N-2-3-4-5) and ease it out"
+}

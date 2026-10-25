@@ -1,0 +1,613 @@
+{
+  "id": "aerox155",
+  "name": "Yamaha Aerox 155",
+  "short": "Aerox 155",
+  "tag": "CVT automatic · VVA · maxi-sport",
+  "blurb": "155.09 cc liquid-cooled SOHC 4-valve single with VVA (58.0 × 58.7 mm, 11.6:1), 15.4 PS @ 8,000 rpm, 13.9 Nm @ 6,500 rpm. V-belt CVT (2.300–0.724) with a dry centrifugal clutch, 230 mm front disc (ABS on the S), 130 mm rear drum, 14\" alloys (110/80-14, 140/70-14), twin rear shocks, 1,350 mm wheelbase, 126 kg wet, 5.5 L tank, Stop & Start System.",
+  "model": "aerox",
+  "cluster": "scooter",
+  "drivetrain": "cvt",
+  "chassis": {
+    "m": 191,
+    "r": 0.272,
+    "wb": 1.35,
+    "lf": 0.75,
+    "lr": 0.6,
+    "h": 0.58,
+    "I": 36,
+    "drag": 0.26,
+    "roll": 23,
+    "brake": 0.8,
+    "bf": 0.7,
+    "travel": [
+      0.1,
+      0.09
+    ]
+  },
+  "engine": {
+    "Ie": 0.013,
+    "idle": 1600,
+    "red": 9500,
+    "peakPS": 15.4,
+    "tachMax": 10000,
+    "torque": [
+      [
+        0,
+        4
+      ],
+      [
+        1000,
+        6.5
+      ],
+      [
+        2000,
+        9
+      ],
+      [
+        3000,
+        11
+      ],
+      [
+        4000,
+        12.4
+      ],
+      [
+        5000,
+        13.3
+      ],
+      [
+        6000,
+        13.8
+      ],
+      [
+        6500,
+        13.9
+      ],
+      [
+        7000,
+        13.8
+      ],
+      [
+        7500,
+        13.7
+      ],
+      [
+        8000,
+        13.5
+      ],
+      [
+        8500,
+        12.8
+      ],
+      [
+        9000,
+        11.8
+      ],
+      [
+        9500,
+        10.4
+      ],
+      [
+        10500,
+        7.5
+      ]
+    ],
+    "fric": [
+      0.75,
+      0.00025
+    ],
+    "fuel": {
+      "cap": 5.5,
+      "idle": 0.0002,
+      "k": 0.0036
+    }
+  },
+  "cvt": {
+    "lo": 2.3,
+    "hi": 0.724,
+    "final": 10.208,
+    "eta": 0.84,
+    "clutch": {
+      "e0": 3300,
+      "e1": 5000,
+      "cap": 30
+    },
+    "variator": {
+      "base": 6300,
+      "preload": 0.5,
+      "rise": 0.25,
+      "load": 0.95,
+      "rate": 1.6,
+      "roller": 12
+    }
+  },
+  "sound": {
+    "parts": {
+      "sq": 0.9,
+      "sqHz": 1600,
+      "hiss": 0.8,
+      "chain": 0,
+      "lash": 0,
+      "clutch": 0,
+      "thump": 0.95,
+      "thumpHz": 1.05,
+      "rattle": 0.75,
+      "key": 1.1,
+      "keyHz": 1.2,
+      "tink": 0.7,
+      "tinkHz": 1.15,
+      "peg": 0.7
+    },
+    "lp": 0.85,
+    "gain": 0.82,
+    "whine": 0.035,
+    "mesh": [
+      188,
+      46
+    ],
+    "cyl": 1,
+    "pipe": 235,
+    "pq": 3.5,
+    "body": 105,
+    "bq": 2.1,
+    "punch": 0.95,
+    "rough": 0.07,
+    "crackle": 0.08,
+    "crackRpm": 7000,
+    "mech": 0.4,
+    "intake": 0.8,
+    "bright": 0.85,
+    "drive": 1.4,
+    "starter": 0.15
+  },
+  "parts": {
+    "rollers": {
+      "l": "Rollers (bola)",
+      "o": [
+        {
+          "n": "10 g",
+          "roller": 10
+        },
+        {
+          "n": "11 g",
+          "roller": 11
+        },
+        {
+          "n": "12 g (stock)",
+          "roller": 12
+        },
+        {
+          "n": "14 g",
+          "roller": 14
+        }
+      ]
+    },
+    "cspring": {
+      "l": "Center spring",
+      "o": [
+        {
+          "n": "Stock",
+          "csp": 1
+        },
+        {
+          "n": "1000 rpm",
+          "csp": 1.18
+        },
+        {
+          "n": "1500 rpm",
+          "csp": 1.3
+        }
+      ]
+    },
+    "clspring": {
+      "l": "Clutch springs",
+      "o": [
+        {
+          "n": "Stock",
+          "eng": 0
+        },
+        {
+          "n": "1000 rpm",
+          "eng": 500
+        },
+        {
+          "n": "1500 rpm",
+          "eng": 800
+        }
+      ]
+    },
+    "pulley": {
+      "l": "Pulley set",
+      "o": [
+        {
+          "n": "Stock",
+          "lo": 2.3,
+          "hi": 0.724
+        },
+        {
+          "n": "Racing pulley",
+          "lo": 2.35,
+          "hi": 0.68
+        }
+      ]
+    },
+    "exhaust": {
+      "l": "Exhaust",
+      "o": [
+        {
+          "n": "Stock",
+          "pow": 1,
+          "snd": 0
+        },
+        {
+          "n": "Slip-on (+6%)",
+          "pow": 1.06,
+          "snd": 1
+        },
+        {
+          "n": "Full system (+12%)",
+          "pow": 1.12,
+          "snd": 2
+        }
+      ]
+    },
+    "ecu": {
+      "l": "ECU map",
+      "o": [
+        {
+          "n": "Stock",
+          "pow": 1,
+          "red": 9500,
+          "ie": 1,
+          "idle": 1600
+        },
+        {
+          "n": "Street tune",
+          "pow": 1.05,
+          "red": 10000,
+          "ie": 0.9,
+          "idle": 1600
+        },
+        {
+          "n": "Race map",
+          "pow": 1.1,
+          "red": 10500,
+          "ie": 0.8,
+          "idle": 1700
+        }
+      ]
+    },
+    "tires": {
+      "l": "Tires",
+      "o": [
+        {
+          "n": "Stock",
+          "mu": 0.85
+        },
+        {
+          "n": "Sport",
+          "mu": 1
+        },
+        {
+          "n": "Racing",
+          "mu": 1.2
+        }
+      ]
+    },
+    "paint": {
+      "l": "Paint",
+      "o": [
+        {
+          "n": "Matte Black / Cyan",
+          "c": "#1c1d20",
+          "lv": "c",
+          "rough": 0.7,
+          "wc": "#16171a",
+          "rim": "#16b3cc"
+        },
+        {
+          "n": "Icon Blue",
+          "c": "#1d4fc8",
+          "lv": "k",
+          "wc": "#1d4fc8"
+        },
+        {
+          "n": "Matte Gray / Cyan",
+          "c": "#5c6168",
+          "lv": "c",
+          "rough": 0.7,
+          "wc": "#16b3cc"
+        },
+        {
+          "n": "White / Red",
+          "c": "#ecece8",
+          "lv": "r",
+          "wc": "#d0331f"
+        },
+        {
+          "n": "Black / Red",
+          "c": "#1c1d20",
+          "lv": "r",
+          "wc": "#d0331f"
+        }
+      ]
+    },
+    "intake": {
+      "l": "Air filter",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Sport foam (+3%)",
+          "pow": 1.03
+        },
+        {
+          "n": "Cold-air intake (+5%)",
+          "pow": 1.05
+        }
+      ]
+    },
+    "flywheel": {
+      "l": "Flywheel",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Lightened (quicker revs)",
+          "ie": 0.8
+        },
+        {
+          "n": "Heavy (smoother)",
+          "ie": 1.3
+        }
+      ]
+    },
+    "brakes": {
+      "l": "Brake pads",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Sintered",
+          "brake": 1.08
+        },
+        {
+          "n": "Race compound",
+          "brake": 1.17
+        }
+      ]
+    },
+    "wheelcol": {
+      "l": "Wheel colour",
+      "o": [
+        {
+          "n": "Match paint"
+        },
+        {
+          "n": "Black",
+          "wc": "#16171a"
+        },
+        {
+          "n": "Gold",
+          "wc": "#c9a24a"
+        },
+        {
+          "n": "Silver",
+          "wc": "#b9bdc2"
+        },
+        {
+          "n": "Red",
+          "wc": "#c21d1d"
+        },
+        {
+          "n": "Blue",
+          "wc": "#1f4fbf"
+        },
+        {
+          "n": "White",
+          "wc": "#e9e9e4"
+        }
+      ]
+    },
+    "rimstripe": {
+      "l": "Rim stripe",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Gold",
+          "rim": "#c9a24a"
+        },
+        {
+          "n": "Red",
+          "rim": "#d42a2a"
+        },
+        {
+          "n": "White",
+          "rim": "#f1f1ec"
+        },
+        {
+          "n": "Cyan",
+          "rim": "#16b3cc"
+        }
+      ]
+    },
+    "cover": {
+      "l": "Engine cover",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Black",
+          "ec": "#1b1c1f"
+        },
+        {
+          "n": "Gold",
+          "ec": "#c9a24a"
+        },
+        {
+          "n": "Red",
+          "ec": "#a8161c"
+        },
+        {
+          "n": "Blue",
+          "ec": "#1f44d8"
+        }
+      ]
+    },
+    "cfbody": {
+      "l": "Body panels",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock (painted)"
+        },
+        {
+          "n": "Carbon (−3.0 kg)",
+          "dm": -3.0,
+          "cfb": 1
+        },
+        {
+          "n": "Tinted carbon (−3.0 kg)",
+          "dm": -3.0,
+          "cfb": 2
+        }
+      ]
+    },
+    "cffender": {
+      "l": "Fenders",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Carbon (−0.4 kg)",
+          "dm": -0.4,
+          "cff": 1
+        }
+      ]
+    },
+    "cfwheel": {
+      "l": "Wheels",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock alloy"
+        },
+        {
+          "n": "Carbon (−2.4 kg)",
+          "dm": -2.4,
+          "cfw": 1
+        }
+      ]
+    },
+    "cfexh": {
+      "l": "Muffler cover",
+      "g": "Carbon fiber",
+      "o": [
+        {
+          "n": "Stock"
+        },
+        {
+          "n": "Carbon (−0.3 kg)",
+          "dm": -0.3,
+          "cfx": 1
+        }
+      ]
+    }
+  },
+  "sliders": [
+    {
+      "k": "pf",
+      "l": "Fork preload",
+      "min": -20,
+      "max": 20,
+      "u": " mm"
+    },
+    {
+      "k": "pr",
+      "l": "Shock preload",
+      "min": -20,
+      "max": 20,
+      "u": " mm"
+    },
+    {
+      "k": "yf",
+      "l": "Front ride height",
+      "min": -25,
+      "max": 25,
+      "step": 5,
+      "u": " mm"
+    },
+    {
+      "k": "yr",
+      "l": "Rear ride height",
+      "min": -25,
+      "max": 25,
+      "step": 5,
+      "u": " mm"
+    },
+    {
+      "k": "kf",
+      "l": "Fork spring",
+      "min": 5,
+      "max": 14,
+      "u": " kN/m"
+    },
+    {
+      "k": "kr",
+      "l": "Shock spring",
+      "min": 8,
+      "max": 26,
+      "u": " kN/m"
+    },
+    {
+      "k": "damp",
+      "l": "Damping",
+      "min": 20,
+      "max": 90,
+      "u": "%"
+    }
+  ],
+  "toggles": [
+    {
+      "k": "iss",
+      "l": "Stop & Start System"
+    }
+  ],
+  "defaults": {
+    "pf": 0,
+    "pr": 0,
+    "rollers": 2,
+    "cspring": 0,
+    "clspring": 0,
+    "pulley": 0,
+    "exhaust": 0,
+    "ecu": 0,
+    "tires": 0,
+    "paint": 0,
+    "kf": 9,
+    "kr": 17,
+    "damp": 50,
+    "iss": true,
+    "yf": 0,
+    "yr": 0,
+    "intake": 0,
+    "flywheel": 0,
+    "brakes": 0,
+    "wheelcol": 0,
+    "rimstripe": 0,
+    "cover": 0,
+    "cfbody": 0,
+    "cffender": 0,
+    "cfwheel": 0,
+    "cfexh": 0
+  },
+  "hint": "KEY on, hold BRAKE and press START, then twist the throttle. Stop & Start shuts the engine off at a standstill; twist to restart"
+}
