@@ -62,7 +62,7 @@ export function view(p) {
 export function enter() {
   if (!ST.children.length) initStudio(); on = true; ST.visible = true;
   bikeShadow(sun.castShadow); BLOB_ME.off = sun.castShadow; BLOB_ME.ground = () => O.y + PED; // showroom: the real shadow (Low: the blob, on the plate)
-  const c = sun.shadow.camera; c.left = c.bottom = -5; c.right = c.top = 5; c.far = 90; c.updateProjectionMatrix();
+  const c = sun.shadow.camera; c.left = c.bottom = -5; c.right = c.top = 5; c.far = 90; c.updateProjectionMatrix(); sun.shadow.autoUpdate = true; // the bike turns on the pedestal and casts here
   const s = Math.sin(S.psi), co = Math.cos(S.psi), at = (x, y, z) => [O.x + x * co + z * s, O.y + y, O.z - x * s + z * co]; // bike-relative → world
   hemi.color.set(0x9fb4d2); hemi.groundColor.set(0x161b24); hemi.intensity = .8;
   sun.color.set(0xfff0dc); sun.intensity = 3.2; sun.target.position.set(...at(0, .6, 0)); sun.position.set(...at(-14, 26, 20));
@@ -75,7 +75,7 @@ export function enter() {
 export function leave() {
   if (!on) return; on = false; ST.visible = false; PT.clear();
   bikeShadow(false); BLOB_ME.off = false; BLOB_ME.ground = null;
-  const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.far = 160; c.updateProjectionMatrix();
+  const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.far = 160; c.updateProjectionMatrix(); sun.shadow.autoUpdate = false; sun.userData.shDirty = true; // island: on demand again (daynight.js)
   head.angle = .42; head.penumbra = .5; head.distance = 75; // daynight.js sets the rest every frame
 }
 

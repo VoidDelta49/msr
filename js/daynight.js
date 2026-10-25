@@ -4,7 +4,7 @@
 // cfg.tod: 'live' (default) or a fixed Philippine hour (Options) for players who want daylight.
 import * as THREE from 'three';
 import { clamp, sstep } from './util.js';
-import { gameMs } from './config.js';
+import { gameMs, Q } from './config.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, sun, hemi, head, SKYU, GRADE, IBL, ENVG, bakeEnv } from './renderer.js';
 import { setLamps } from './lights.js';
@@ -61,6 +61,7 @@ function key(el, i, out) {
   return a[i] + (b[i] - a[i]) * t;
 }
 
+const SHK = new Float64Array(6).fill(NaN); sun.shadow.autoUpdate = false;
 let last = -1e9, gate = 0, bakeEl = 1e9, bakeT = 0;
 export function dayNight() {
   const ms = gameMs();
@@ -81,7 +82,13 @@ export function dayNight() {
   if (useMoon) { tv.copy(MOON.y > .05 ? MOON : tv.set(.3, 1, .2).normalize()); sun.color.setHex(0x9fb2ff); sun.intensity = .55 * (.15 + .85 * SKY.phase) * moonUp * sstep(-6, -10, el); }
   else { tv.copy(SUN); key(el, 5, sun.color); sun.intensity = key(el, 6) * sstep(-1, 2, el); }
   if (tv.y < .3) { tv.y = 0; tv.normalize().multiplyScalar(.954); tv.y = .3; } // light never below ~17°: grazing light gives shadow acne over the whole ground
-  sun.target.position.set(S.x, 0, S.z); sun.position.set(S.x + tv.x * 90, S.zH + tv.y * 90, S.z + tv.z * 90);
+  // Shadow map on demand: nothing moving casts into it (bikes and riders use contact blobs, model.js), so it only changes when the
+  // light moves. The light follows the bike in whole steps of ~3 m (a multiple of a shadow texel, so the static shadows don't
+  // shimmer when it steps) and the shadow pass is redrawn only on a step or a sun/moon move (every 2 s of game time at most).
+  // Parked: no shadow pass at all; at 200 km/h ~18 a second instead of every frame. Before, it re-rendered every frame.
+  const ms0 = Q.shadow || 1024, tx = 56 / ms0, st = tx * Math.round(3 / tx), cx = Math.round(S.x / st) * st, cz = Math.round(S.z / st) * st, cy = Math.round((S.zH || 0) / 4) * 4;
+  sun.target.position.set(cx, cy, cz); sun.position.set(cx + tv.x * 90, cy + tv.y * 90, cz + tv.z * 90);
+  const K = SHK; if (K[0] !== cx || K[1] !== cz || K[2] !== cy || K[3] !== tv.x || K[4] !== tv.y || K[5] !== tv.z || sun.userData.shDirty) { K[0] = cx; K[1] = cz; K[2] = cy; K[3] = tv.x; K[4] = tv.y; K[5] = tv.z; sun.userData.shDirty = false; sun.shadow.needsUpdate = true; }
   setLamps(sstep(3, -3, el)); // street lamps, lit windows and signs come on around sunset (el 3° .. −3°)
   renderer.toneMappingExposure = 1 + .5 * night;                                     // a bit of "eye adaptation" so night stays playable
   // headlight: on with the engine from dusk to dawn (real bikes have it always on, but in daylight it adds nothing)

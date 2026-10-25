@@ -1,4 +1,7 @@
 [
+  { "v": "11.28", "d": "2026-10-25", "t": [
+    "Perf: the sun's shadow map is only redrawn when the light actually moves (it now follows the bike in ~3 m steps). Parked: no shadow pass at all; riding: a fraction of the frames. Shadows look the same."
+  ] },
   { "v": "11.27", "d": "2026-10-25", "t": [
     "Perf: GPU culling of the island props (trees, houses, posts...) is now one compute pass for all prop types instead of one per type, and is skipped entirely while the camera stands still.",
     "Perf: all culling (distance, terrain detail, GPU props) now runs from one place each frame."
