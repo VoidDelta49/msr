@@ -61,5 +61,6 @@ else {
   for (const k of Object.keys(old)) if (!(k in flat)) problems.push(`DRIFT ${k}: metric disappeared (was ${old[k]})`);
 }
 const shown = problems.slice(0, 25); for (const p of shown) console.log('FAIL  ' + p); if (problems.length > shown.length) console.log(`...and ${problems.length - shown.length} more (node tools/sim.mjs <bike> <scenario> to look closer)`);
-console.log(problems.length ? `test: ${problems.length} problem(s)` : `test: ok (${bikeIds.length} bikes x ${SCENARIOS.length} scenarios${update ? ', baseline updated' : ', matches baseline; determinism + fuzz ok${process.argv.includes('--full') ? '; garage sweep ok' : ''}'})`);
+const how = update ? ', baseline updated' : `, matches baseline; determinism + fuzz ok${process.argv.includes('--full') ? '; garage sweep ok' : ''}`;
+console.log(problems.length ? `test: ${problems.length} problem(s)` : `test: ok (${bikeIds.length} bikes x ${SCENARIOS.length} scenarios${how})`);
 process.exit(problems.length ? 1 : 0);
