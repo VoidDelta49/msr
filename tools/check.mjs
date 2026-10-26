@@ -113,6 +113,7 @@ const bikes = {};
       if (!(Array.isArray(D.final) && D.final.length === 2 && D.final.every(k => k in (b.defaults || {})))) err(A, 'manual.final must name two keys present in defaults (e.g. ["rs","fs"])');
       if (b.drivetrain === 'rotary' && !(Array.isArray(D.cent) && D.cent.length === 2 && D.cent[0] < D.cent[1])) err(A, 'rotary needs manual.cent [bite, lock] rpm');
     }
+    { const todo = []; JSON.stringify(b, (k, v) => { if (typeof v === 'string' && /TODO/.test(v)) todo.push(k); return v; }); if (todo.length) err(A, `unfinished: TODO left in ${todo.join(', ')}`); }
     // sound
     const so = b.sound || {}, pr = so.parts;
     if (!pr || typeof pr !== 'object') err(A, 'sound.parts missing: every bike needs its own sound profile (CLAUDE.md)');
@@ -158,6 +159,48 @@ const bikes = {};
     }
   }
   ok(`spec (${n} variants)`);
+}
+
+/* ---------- new-bike wiring (everything a bike needs outside its own JSON) ---------- */
+{
+  const model = rd('js/model.js'), hud = rd('js/hud.js'), garage = rd('js/garage.js'), worker = rd('server/worker.js');
+  const keys = (src, name) => { const m = new RegExp(`const ${name}\\s*=\\s*\\{([^}]*(?:\\{[^}]*\\}[^}]*)*)\\}`).exec(src); return m ? [...m[1].matchAll(/(?:^|,)\s*(\w+)\s*(?::|(?=,|$))/g)].map(x => x[1]).filter(x => x.length > 1) : null; };
+  const MODELS = keys(model, 'MODELS'), CLUSTERS = keys(hud, 'CLUSTERS');
+  if (!MODELS) warn('wiring', "can't parse MODELS from js/model.js (check.mjs needs updating)"); if (!CLUSTERS) warn('wiring', "can't parse CLUSTERS from js/hud.js (check.mjs needs updating)");
+  const WHERE = new Set([...(/const WHERE\s*=\s*\{([\s\S]*?)\};/.exec(garage)?.[1] || '').matchAll(/(\w+)\s*:/g)].map(m => m[1]));
+  const legal = rd('LEGAL.md'), readme = rd('README.md'), used = {};
+  for (const b of Object.values(bikes)) for (const k of [...Object.keys(b.parts || {}), ...(b.sliders || []).map(x => x.k), ...(b.toggles || []).map(x => x.k)]) (used[k] ||= new Set()).add(b.id);
+  // identifiers the js reads off a spec / bike: a part option or chassis key nobody reads is almost always a typo
+  const readKeys = new Set(); for (const f of jsFiles) for (const m of rd('js/' + f).matchAll(/\b(?:sp|s|spec|ctx\.spec|sp2)\.(\w+)/g)) readKeys.add(m[1]);
+  const SPEC_EXTRA = new Set(['n', 'sc', 'scm', 'scX', 'scD', 'scW', 'var', 'carb', 'abs', 'bf', 'cent', 'slipper', 'eclutch', 'roller', 'lo', 'hi']);
+  for (const [id, b] of Object.entries(bikes)) {
+    const A = `wiring/${id}`;
+    if (!/^[a-z0-9_-]{1,24}$/.test(id)) err(A, `id "${id}" is rejected by the multiplayer relay (server/worker.js: ^[a-z0-9_-]{1,24}$)`);
+    const pk = Object.keys(b.parts || {});
+    if (pk.length > 24) err(A, `${pk.length} part keys: the relay keeps only 24 (server/worker.js cleanLook), the rest would never show on other phones`);
+    for (const k of pk) { if (!/^[a-zA-Z0-9_]{1,16}$/.test(k)) err(A, `part key "${k}" is rejected by the relay (letters/digits/_ only, max 16)`); if (b.parts[k].o.length >= 32) err(A, `parts.${k} has ${b.parts[k].o.length} options: the relay only passes indices < 32`); }
+    if (MODELS && !MODELS.includes(b.model)) err(A, `model "${b.model}" is not in MODELS (js/model.js: ${MODELS.join(', ')})`);
+    if (CLUSTERS && !CLUSTERS.includes(b.cluster)) err(A, `cluster "${b.cluster}" is not in CLUSTERS (js/hud.js: ${CLUSTERS.join(', ')})`);
+    for (const k of [...pk, ...(b.sliders || []).map(x => x.k), ...(b.toggles || []).map(x => x.k)]) if (!WHERE.has(k) && !k.startsWith('cf') && used[k].size === 1) warn(A, `key "${k}" is new and not in garage.js WHERE: it will show up on the PAINT tab`);
+    for (const [k, p] of Object.entries(b.parts || {})) for (const o of p.o) for (const kk of Object.keys(o)) if (!readKeys.has(kk) && !SPEC_EXTRA.has(kk)) warn(A, `parts.${k} option key "${kk}" is never read by any js (typo?)`);
+    for (const k of Object.keys(b.chassis || {})) if (!readKeys.has(k) && !SPEC_EXTRA.has(k)) warn(A, `chassis.${k} is never read by any js (typo?)`);
+    if (b.chassis?.sc && !b.sound?.sc) warn(A, 'sidecar bike without sound.sc overrides (sidecar thump/rattle use the plain-bike values)');
+    if (b.chassis?.sc) for (const k of ['scm', 'scX', 'scD', 'scW']) if (!isNum(b.chassis[k]) && !isNum(b.parts && 0)) { /* sc fields may live in a part option */ }
+    const nm = b.name.replace(/\s*\/.*$/, '');
+    if (!new RegExp(nm.split(/\s+/).slice(0, 3).join('\\s+').replace(/[()]/g, ''), 'i').test(legal)) warn(A, `"${nm}" does not appear in LEGAL.md (add a row: trademark use, body-shape / paint-name review)`);
+    if (!readme.includes(b.short) && !readme.includes(nm.split(' ').slice(-2).join(' '))) warn(A, `README.md does not mention "${b.short}" (bike table / model list)`);
+  }
+  ok('wiring');
+}
+
+/* ---------- DOM ids: every $('x') in js exists in the markup (catches UI features that lost their element) ---------- */
+{
+  const html = rd('index.html'), defined = new Set([...html.matchAll(/\bid=["']?([\w-]+)/g)].map(m => m[1]));
+  for (const f of [...jsFiles.map(f => 'js/' + f), 'maker/index.html']) { const src = rd(f); for (const m of src.matchAll(/\bid=["']?([\w-]+)/g)) defined.add(m[1]); for (const m of src.matchAll(/\.id\s*=\s*['"`]([\w-]+)/g)) defined.add(m[1]); for (const m of src.matchAll(/createElement[\s\S]{0,60}?id:\s*['"]([\w-]+)/g)) defined.add(m[1]); }
+  const missing = {};
+  for (const f of jsFiles) for (const m of rd('js/' + f).matchAll(/(?:\$|getElementById)\(\s*['"]([\w-]+)['"]\s*\)/g)) if (!defined.has(m[1])) (missing[m[1]] ||= new Set()).add(f);
+  for (const [id, fs] of Object.entries(missing)) err('dom', `$('${id}') in ${[...fs].join(', ')} but no element with that id in index.html or any template string`);
+  ok('dom');
 }
 
 /* ---------- data ---------- */
