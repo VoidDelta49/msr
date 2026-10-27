@@ -21,6 +21,7 @@ import { initStudio, enter as studioIn, leave as studioOut, studioFrame } from '
 import { O, openOpts, closeOpts } from './options.js';
 import { autoRes, resScale, jankStart, jankEnd, jankText } from './perf.js';
 import { cull } from './gpucull.js';
+import './layout.js'; // HUD + touch-control layout (after controls.js: needs body.touch)
 import { NET, netFrame, join as netJoin, leave as netLeave } from './net.js';
 import { raceTick } from './race.js';
 import { rideInit, rideFrame } from './ride.js';

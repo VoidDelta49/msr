@@ -100,6 +100,8 @@ js/tyre.js            tyre slip->force curve and surface grip (asphalt / dirt sh
 js/rapier.js          Rapier3D chassis: dynamic bike body, suspension probes, streamed static colliders (fixed 120 Hz tick)
 js/model.js           3D models (Raider R150 underbone, Click 125i scooter, Smash 115 step-through, CBR650R supersport, TMX Supremo + tricycle sidecar, Aerox 155 maxi-scooter, Rouser NS125 street bike, Macho 125 on the TMX builder), low-poly extruded panels
 js/tex.js             N64-style procedural textures (tiny, dithered, bilinear) + sky
+js/layout.js          fits the HUD + touch controls to any phone screen (safe area, orientation, handedness, size): applies the rectangles from layoutcalc.js
+js/layoutcalc.js      pure layout solver behind it (no DOM; tools/layout.mjs sweeps it)
 js/hud.js             gauge clusters (sport / scooter LCD / CBR TFT), messages, minimap
 js/world.js           builds the island from data/map/island.json: terrain, roads, town, props, collision footprints, parking lot
 data/map/island.json  the island layout (coast, features, river, roads, town blocks, vehicles, hangars, prop counts)

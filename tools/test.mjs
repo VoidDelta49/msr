@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // One command for "did I break anything": static checks + headless physics invariants + diff against tools/baseline.json.
-//   node tools/test.mjs              run everything (~3 s), prints only problems + a summary line
+//   node tools/test.mjs              run everything (~6 s), prints only problems + a summary line
 //   node tools/test.mjs --update     accept the current physics numbers as the new baseline (do this after an INTENDED physics change)
 //   node tools/test.mjs --no-check   skip the static checks
-//   node tools/test.mjs --full       also run the garage sweep (every part option / slider extreme of every bike, ~25 s)
+//   node tools/test.mjs --full       also run the garage sweep (every part option / slider extreme of every bike, ~25 s) and the real-browser layout check (~25 s, needs playwright)
 // Exit code 0 = pass. Baseline drift is reported as DRIFT lines (fails the run): relative tolerance 4% (absolute floor per metric),
 // so a refactor that should not change the feel shows up immediately, and an intended tweak is one --update away.
 import { spawnSync } from 'node:child_process';
@@ -19,6 +19,12 @@ const update = process.argv.includes('--update'), problems = [];
 if (!process.argv.includes('--no-check')) {
   const r = spawnSync(process.execPath, [path.join(dir, 'check.mjs')], { encoding: 'utf8' });
   if (r.status !== 0) { process.stdout.write(r.stdout); problems.push('static checks failed'); } else process.stdout.write(r.stdout.split('\n').filter(l => l.startsWith('WARN')).join('\n') + (r.stdout.includes('WARN') ? '\n' : ''));
+}
+
+// touch / HUD layout: every phone viewport x control scheme x handedness x gauge x size must lay out with no overlap and nothing off-screen
+if (!process.argv.includes('--no-check')) {
+  const r = spawnSync(process.execPath, [path.join(dir, 'layout.mjs')], { encoding: 'utf8' });
+  if (r.status !== 0) { problems.push('layout sweep failed (node tools/layout.mjs -v):'); for (const l of r.stdout.split('\n').filter(l => l.startsWith('FAIL')).slice(0, 8)) problems.push('  ' + l.slice(6)); }
 }
 
 const res = {};
@@ -44,6 +50,9 @@ for (const b of bikeIds) {
 { const b = bikeIds[0], x = runScenario('launch', b), y = runScenario('launch', b); if (JSON.stringify(x) !== JSON.stringify(y)) problems.push(`INVARIANT ${b}: launch is not deterministic`); }
 // fuzz: random inputs and garage setups on every bike (finite state, sane speed/rpm/lean/gear/fuel, no exceptions)
 for (const b of bikeIds) for (const seed of [1, 2]) { const r = fuzzOne(b, seed, 25); if (r.fail) problems.push(`FUZZ ${b} seed ${seed} t=${r.t}s: ${r.fail}  (node tools/fuzz.mjs ${b} --seed ${seed} --secs 25)`); }
+if (process.argv.includes('--full')) { // real-browser layout check (skips itself when there is no playwright / chromium)
+  const r = spawnSync(process.execPath, [path.join(dir, 'layout-dom.mjs')], { encoding: 'utf8' }); if (r.status !== 0) { problems.push('layout in a real browser failed (node tools/layout-dom.mjs):'); for (const l of r.stdout.split('\n').filter(l => l.startsWith('FAIL')).slice(0, 8)) problems.push('  ' + l.slice(6)); }
+}
 if (process.argv.includes('--full')) { const r = spawnSync(process.execPath, [path.join(dir, 'sweep.mjs')], { encoding: 'utf8' }); if (r.status !== 0) { problems.push('garage sweep flagged variants:'); for (const l of r.stdout.split('\n').filter(l => l.startsWith('FAIL')).slice(0, 15)) problems.push('  ' + l.slice(6)); } }
 
 // baseline
@@ -61,6 +70,6 @@ else {
   for (const k of Object.keys(old)) if (!(k in flat)) problems.push(`DRIFT ${k}: metric disappeared (was ${old[k]})`);
 }
 const shown = problems.slice(0, 25); for (const p of shown) console.log('FAIL  ' + p); if (problems.length > shown.length) console.log(`...and ${problems.length - shown.length} more (node tools/sim.mjs <bike> <scenario> to look closer)`);
-const how = update ? ', baseline updated' : `, matches baseline; determinism + fuzz ok${process.argv.includes('--full') ? '; garage sweep ok' : ''}`;
+const how = update ? ', baseline updated' : `, matches baseline; determinism + fuzz + layout ok${process.argv.includes('--full') ? '; garage sweep + browser layout ok' : ''}`;
 console.log(problems.length ? `test: ${problems.length} problem(s)` : `test: ok (${bikeIds.length} bikes x ${SCENARIOS.length} scenarios${how})`);
 process.exit(problems.length ? 1 : 0);

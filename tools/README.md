@@ -13,6 +13,8 @@ Run these instead of reading code or launching the game. All print only problems
 | `node tools/sweep.mjs [bike\|all] [-v]` | Each part option, slider min/max and toggle flip through launch+brake; flags NaN or implausible jumps vs stock | ~25 s |
 | `node tools/bike.mjs [id]` | No arg: comparison table of all bikes (mass, PS, PS/100kg, sim 0-60, top, braking, sound outliers). With id: full report | ~2 s |
 | `node tools/new-bike.mjs <id> --from <bike>` | Scaffold a new bike (copy full of TODO markers; `check` fails until they're gone) and print the checklist | – |
+| `node tools/layout.mjs [-v]` | Touch/HUD layout solver (`js/layoutcalc.js`) swept over 46 phone viewports x scheme x handedness x gauge x size x notch: no overlaps, nothing off-screen. `--size WxH [--notch --lefty --cvt]` prints one viewport's rectangles. Also part of `test.mjs` | ~3 s |
+| `node tools/layout-dom.mjs [--size WxH] [--shot dir]` | Same sweep in real headless Chromium on the real `index.html` + CSS + `js/layout.js`, measuring actual DOM boxes (overlap, safe area, cut-off labels, banner clipping). Part of `test.mjs --full`; skips without playwright | ~25 s |
 | `node tools/serve.mjs [port]` | Static http server for manual play-testing (ES modules need http) | – |
 | `node tools/smoke.mjs` | Real-browser smoke (playwright-core + chromium): PLAY, switch every bike, fail on console errors. Skips (exit 0) if no browser | – |
 
@@ -24,7 +26,8 @@ For a custom experiment write a 10-line script on `tools/lib/headless.mjs` (`cre
 
 ## Limits (know what a green run does NOT cover)
 - Flat ground, no Rapier: suspension heave/pitch, walls, crashes, tricycle roll are NOT simulated (only the bike solver is).
-- Rendering, audio, UI, multiplayer, WebGPU: only checked statically (syntax/imports/data) or by `smoke.mjs` in a real browser.
+- Touch/HUD layout is checked by `layout.mjs` + `layout-dom.mjs` (not the main menu, garage or options panels). Changing a button label or size in the top bar / banner / engine buttons: re-run both, they fail if a label stops fitting.
+- Rendering, audio, other UI, multiplayer, WebGPU: only checked statically (syntax/imports/data) or by `smoke.mjs` in a real browser.
 - Baseline tolerance is 4% (absolute floors for times); `test.mjs` fails on drift so intended changes need `--update` plus a note in the commit.
 - When a new bike is added: `check` validates its JSON/sound profile and `test` fails with "new metric" until `--update` is run.
 
