@@ -44,6 +44,30 @@ export function footTests() {
   // jump: leaves the ground, apex ~1 m, lands again, can't jump in the air
   reset(0, 30); let top = 0, air = 0; footStep({ mx: 0, mz: 0, jump: true }, 1 / 60); for (let i = 0; i < 120; i++) { footStep({ mx: 0, mz: 0, jump: false }, 1 / 60); top = Math.max(top, F.y); if (!F.gnd) air++; }
   if (!(top > .8 && top < 1.2)) bad(`jump apex ${top.toFixed(2)} m`); if (!(F.gnd && Math.abs(F.y) < 1e-6)) bad('did not land'); if (!(air > 30 && air < 60)) bad(`air time ${air} frames`);
+  // feel (build 11.38): speed eases in with a push and out with friction, sprint ramps, the jump is forgiving and variable
+  const W = { mx: 0, mz: 1, run: true }, still = { mx: 0, mz: 0 };
+  reset(0, 30); footStep(W, 1 / 60); if (!(F.spd > 0 && F.spd < FC.RUN * .5)) bad(`start is not eased (${F.spd.toFixed(2)} m/s after one frame)`); if (!(F.rs > 0 && F.rs < .2)) bad(`sprint did not ramp (rs=${F.rs.toFixed(2)} after one frame)`);
+  run(W, 1); if (!(F.rs > .99)) bad('sprint never fully built up');
+  footStep(still, 1 / 60); if (!(F.spd > FC.RUN * .7)) bad(`let go and stopped dead (${F.spd.toFixed(2)} m/s after one frame)`); run(still, .6); if (F.spd > .01) bad(`friction never stopped the walker (${F.spd.toFixed(2)} m/s after 0.6 s)`); if (F.rs > .01) bad('sprint stuck on after stopping');
+  reset(0, 30); run({ mx: 0, mz: 1, run: true }, 1); const stopT = (() => { let n = 0; while (F.spd > .01 && n < 600) { footStep(still, 1 / 60); n++; } return n / 60; })(); if (!(stopT > .1 && stopT < .5)) bad(`sprint stop took ${stopT.toFixed(2)} s`);
+  // quick turn-around beats the plain push (reversal boost): from full speed to going the other way within a second
+  reset(0, 30); run(W, 1); run({ mx: 0, mz: -1, run: true }, .6); if (!(F.vz > FC.RUN * .9)) bad(`could not reverse at speed (vz=${F.vz.toFixed(2)})`);
+  // jump: a tap is a short hop, a held jump goes the full height
+  const apex = held => { reset(0, 30); footStep({ mx: 0, mz: 0, jump: true, held }, 1 / 60); let t = 0; for (let i = 0; i < 120; i++) { footStep({ mx: 0, mz: 0, jump: held, held }, 1 / 60); t = Math.max(t, F.y); } return t; };
+  const aTap = apex(false), aHold = apex(true); if (!(aTap > .3 && aTap < aHold - .2)) bad(`tap hop ${aTap.toFixed(2)} m vs held jump ${aHold.toFixed(2)} m`); if (!(aHold > .8 && aHold < 1.2)) bad(`held jump apex ${aHold.toFixed(2)} m`);
+  // coyote time: a jump a moment after leaving the ground works; much later it doesn't; no jump from high up
+  reset(0, 30); F.gnd = false; F.y = .05; F.vy = -1; F.coy = .08; footStep({ mx: 0, mz: 0, jump: true, held: true }, 1 / 60); if (!(F.vy > 3)) bad('coyote jump refused');
+  reset(0, 30); F.gnd = false; F.y = 2; F.vy = 0; F.coy = 0; footStep({ mx: 0, mz: 0, jump: true, held: true }, 1 / 60); if (F.vy > 0) bad('double jump in mid air');
+  // jump buffer: pressed just before touching down = jumps on landing
+  reset(0, 30); F.gnd = false; F.y = .1; F.vy = -3; F.coy = 0; footStep({ mx: 0, mz: 0, jump: true, held: false }, 1 / 60); for (let i = 0; i < 6; i++) footStep(still, 1 / 60); if (!(F.vy > 3 || F.y > .3)) bad('buffered jump was lost');
+  // landing: the camera spring dips, then settles; a hard landing bleeds some speed
+  reset(0, 30); footStep({ mx: 0, mz: 0, jump: true, held: true }, 1 / 60); let minDip = 0; for (let i = 0; i < 80; i++) { footStep({ mx: 0, mz: 0, jump: false, held: false }, 1 / 60); minDip = Math.min(minDip, F.dip); } if (!(minDip < -.03 && minDip >= -.3)) bad(`landing dip ${minDip.toFixed(3)} m`);
+  run(still, 2.5); if (!(Math.abs(F.dip) < .003 && Math.abs(F.dv) < .02)) bad(`camera spring did not settle (dip ${F.dip.toFixed(4)}, dv ${F.dv.toFixed(4)})`);
+  // view bob: amplitude builds while walking on the ground and the phase advances with distance; none while standing
+  reset(0, 30); run({ mx: 0, mz: 1 }, 1); const ph0 = F.bp; if (!(F.ba > .8)) bad(`bob amplitude ${F.ba.toFixed(2)} while walking`); run({ mx: 0, mz: 1 }, .3); if (F.bp === ph0) bad('bob phase stuck'); run(still, 1.5); if (!(F.ba < .05)) bad(`bob amplitude ${F.ba.toFixed(2)} while standing`);
+  if (![F.rs, F.bp, F.ba, F.dip, F.dv, F.coy, F.jb].every(Number.isFinite)) bad('non-finite feel state');
+  // first person: backpedalling is slower than walking forward and can't sprint
+  reset(0, 30); F.fp = true; run({ mx: 0, mz: -1, run: true }, 2); if (!(F.spd < FC.WALK * .8)) bad(`first-person backpedal speed ${F.spd.toFixed(2)}`); F.fp = false;
   // get on: only close to the bike
   S.x = 0; S.z = 0; reset(8, 30); if (!mount().length || !F.on) bad('got on from 30 m away'); reset(1.2, 0); if (mount() || F.on) bad('could not get on next to the bike');
   // determinism + finite

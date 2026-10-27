@@ -59,8 +59,10 @@ const jset = e => { const dx = e.clientX - jcx, dy = e.clientY - jcy, d = Math.h
 const jend = () => { TC.jx = TC.jy = 0; jk.style.transform = ''; };
 ptr(joy, e => { const r = joy.getBoundingClientRect(); jcx = r.left + r.width / 2; jcy = r.top + r.height / 2; jr = r.width * .4; jset(e); }, jset, jend);
 ptr($('jumpB'), () => { buzz(10); TC.jump = TC.jumpH = 1; $('jumpB').classList.add('on'); }, null, () => { TC.jumpH = 0; $('jumpB').classList.remove('on'); });
+let jrun = false; // joystick sprint with hysteresis: pushed to the rim starts it, it holds until the stick comes well back (no flicker at the threshold)
 export function footInput(dt) {
   const kf = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0), kr = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0);
-  const jm = Math.hypot(TC.jx, TC.jy), live = jm > .15, jump = !!(K.Space || TC.jump || TC.jumpH); TC.jump = 0; // small dead zone so a resting thumb doesn't creep
-  return { mx: clamp(kr + (live ? TC.jx : 0), -1, 1), mz: clamp(kf - (live ? TC.jy : 0), -1, 1), run: !!(K.ShiftLeft || K.ShiftRight) || jm > .92, jump };
+  const jm = Math.hypot(TC.jx, TC.jy), live = jm > .15; jrun = jm > (jrun ? .8 : .92); // small dead zone so a resting thumb doesn't creep
+  const held = !!(K.Space || TC.jumpH), jump = held || !!TC.jump; TC.jump = 0; // jump: pressed since last frame or still held; held alone lets a tap be a short hop
+  return { mx: clamp(kr + (live ? TC.jx : 0), -1, 1), mz: clamp(kf - (live ? TC.jy : 0), -1, 1), run: !!(K.ShiftLeft || K.ShiftRight) || jrun, jump, held };
 }

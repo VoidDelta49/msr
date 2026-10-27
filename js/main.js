@@ -157,7 +157,7 @@ function visuals(dt, now) {
   const dy = B.rearH.position.y - G.pivotY, dz = G.rearZ - G.pivotZ; B.swing.position.set(G.swingX, G.pivotY + dy / 2, G.pivotZ + dz / 2); B.swing.rotation.x = -Math.atan2(dy, dz); B.swing.scale.z = Math.hypot(dy, dz);
   B.frontW.rotation.x = -S.wA; B.rearW.rotation.x = -S.wAR; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3;
   B.cluL.rotation.y = (sp.type === 'cvt' ? S.brake : Math.max(S.cl, ctx.bcfg.autoClutch && S.c < .5 ? 1 : 0)) * .3;
-  const av = Math.abs(S.v), fov = (cfg.fov ?? 72) + Math.min(14, av * .35); if (!ctx.GAR && Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); }
+  const av = Math.abs(S.v), fov = (cfg.fov ?? 72) + (F.on ? F.rs * 6 : Math.min(14, av * .35)); // on foot sprinting widens the view a little (F.rs is already eased) if (!ctx.GAR && Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); }
   if (LK.id === null && av > 1.5) { const k = Math.exp(-dt * 3); LK.y *= k; LK.p *= k; if (Math.abs(LK.y) < .002) LK.y = 0; if (Math.abs(LK.p) < .002) LK.p = 0; }
   if (ctx.GAR) studioFrame(dt, now);
   else if (F.on) { figPose(); footCam(camera, dt, H); }
