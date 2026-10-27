@@ -17,15 +17,18 @@ export function figBuild() {
     s.updateMatrix(); const m = new THREE.Mesh(s.geometry, s.material); m.matrixAutoUpdate = false; m.matrix.copy(s.matrix); G.add(m);
     if (!s.geometry.boundingBox) s.geometry.computeBoundingBox(); box.union(bb.copy(s.geometry.boundingBox).applyMatrix4(s.matrix));
   }
+  F.eye = Math.max(.9, box.max.y - box.min.y - .1); // first person: just below the helmet's top
   const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2; // feet on the ground, centred on the body
   for (const m of G.children) { m.matrix.premultiply(new THREE.Matrix4().makeTranslation(-cx, -box.min.y, -cz)); m.matrixWorldNeedsUpdate = true; }
 }
-export const figShow = on => { G.visible = on; };
+export const figShow = on => { G.visible = on; figBody(true); };
+export const figBody = on => { for (const m of G.children) m.visible = on; }; // first person hides the body but keeps the contact shadow
 export function figPose() { G.position.set(F.x, F.y, F.z); G.rotation.set(0, F.psi, 0); }
 
 // third-person camera orbiting the walker: F.cy azimuth, F.cp pitch (drag in main.js)
 const tg = new THREE.Vector3(), want = new THREE.Vector3(); const DIST = 3.8;
 export function footCam(camera, dt, H) {
+  if (F.fp) { camera.position.set(F.x, F.y + F.eye, F.z); camera.rotation.set(-F.cp, F.cy, 0); return; } // first person: eyes at the helmet; cp > 0 looks down, cy turns left
   tg.set(F.x, F.y + 1.15, F.z); const cp = F.cp, k = Math.cos(cp);
   want.set(tg.x + Math.sin(F.cy) * k * DIST, tg.y + Math.sin(cp) * DIST, tg.z + Math.cos(F.cy) * k * DIST);
   want.y = Math.max(want.y, H(want.x, want.z) + .5);

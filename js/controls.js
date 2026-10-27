@@ -10,7 +10,7 @@ export const K = {}, TC = { back: 0, st: 0, stId: null, thr: 0, thrId: null, brk
 addEventListener('keydown', e => {
   if (e.repeat || (e.target.type === 'text')) return; K[e.code] = true; const A = actions; if (ctx.MENU) return; // pause menu open (menu.js)
   if (e.code === 'KeyF') A.foot(); // get off / on the bike (foot.js)
-  if (F.on) { if (e.code === 'Space') TC.jump = 1; } // on foot: Shift runs and Space jumps, the bike's keys do nothing
+  if (F.on) { if (e.code === 'Space') TC.jump = 1; if (e.code === 'KeyC') A.cam(); } // on foot: Shift runs and Space jumps, the bike's keys do nothing
   else {
     if (e.code === 'KeyE' || e.code === 'ShiftLeft') A.shift(1); if (e.code === 'KeyQ' || e.code === 'ControlLeft') A.shift(-1);
     if (e.code === 'KeyR') A.start(1); if (e.code === 'KeyK') A.key(); if (e.code === 'KeyT') A.kill(); if (e.code === 'KeyC') A.cam(); if (e.code === 'KeyG') A.garage();

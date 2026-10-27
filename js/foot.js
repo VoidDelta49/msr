@@ -6,7 +6,7 @@
 // F.cy is the camera's azimuth (the camera sits at F + (sin cy, cos cy) * dist): W walks away from it.
 import { S, ctx } from './state.js';
 
-export const F = { on: false, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, psi: 0, cy: 0, cp: .25, gnd: true, spd: 0 };
+export const F = { on: false, fp: false, eye: 1.4, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, psi: 0, cy: 0, cp: .25, gnd: true, spd: 0 };
 export const FC = {
   R: .3,        // body radius (m)
   WALK: 2.8, RUN: 6.2, // m/s

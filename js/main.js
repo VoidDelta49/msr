@@ -16,7 +16,7 @@ import { say, drawCluster, drawMini, updPerf, setFps, setPhys, setGfx, setJank }
 import { RP, TICK, initRapier, tickR, syncBody, crashVisual, bounce } from './rapier.js';
 import { actions, input, footInput, ptr, TC, WMAX } from './controls.js';
 import { F, footEnv, footStep, dismount, mount, nearBike, offBlock } from './foot.js';
-import { figBuild, figShow, figPose, footCam } from './footfig.js';
+import { figBuild, figShow, figBody, figPose, footCam } from './footfig.js';
 import { missions, animMarker } from './missions.js';
 import { G as GARAGE, buildGarage, garageFrame } from './garage.js';
 import { initStudio, enter as studioIn, leave as studioOut, studioFrame } from './studio.js';
@@ -100,12 +100,16 @@ function getOff() {
   const why = dismount(); if (why) return say(why);
   if (S.key) keySwitch(); // parking: ignition off (a running engine would idle on with nobody on it)
   F.prevCam = ctx.camMode; if (ctx.camMode === 0) toggleCam(); // first person has no body to look from: third person while walking
-  document.body.classList.add('foot'); B.rider.forEach(m => m.visible = false); figBuild(); figShow(true);
+  F.fp = F.prevCam === 0; footView(); // first person stays first person
+  document.body.classList.add('foot'); B.rider.forEach(m => m.visible = false); figBuild(); figShow(true); figBody(!F.fp);
   say(document.body.classList.contains('touch') ? 'On foot: joystick walks, JUMP jumps, drag the screen to look' : 'On foot: WASD walk, Shift run, Space jump, F get on', 2600);
 }
+// CAM on foot: first person (eyes at the helmet, no body) <-> third person orbit
+function footView() { F.cp = F.fp ? 0 : .25; $('bCam').textContent = F.fp ? 'CAM: 1ST' : 'CAM: 3RD'; }
+function footCamToggle() { F.fp = !F.fp; footView(); figBody(!F.fp); }
 function footOff() { // back on the bike (or the bike was reset under us): F.on is cleared by foot.js mount() / here
   F.on = false; document.body.classList.remove('foot'); figShow(false); B.rider.forEach(m => m.visible = ctx.camMode === 1);
-  if (F.prevCam === 0 && ctx.camMode === 1) toggleCam(); F.prevCam = 1; S.thr = S.brake = 0;
+  if (F.prevCam === 0 && ctx.camMode === 1) toggleCam(); F.prevCam = 1; S.thr = S.brake = 0; $('bCam').textContent = ctx.camMode ? 'CAM: 3RD' : 'CAM: 1ST';
 }
 function getOn() { const why = mount(); if (why) return say(why, 1400); footOff(); say('On the bike. K = key, then hold R to start', 2200); }
 // the bike waits where it was parked: brake on, clutch in, nothing else
@@ -130,7 +134,7 @@ addEventListener('pointermove', e => {
   const q = PT.get(e.pointerId); if (!q) return; q.x = e.clientX; q.y = e.clientY;
   if (PT.size === 2) { const d = pdist(); if (pinch > 0 && d > 0) { cfg.fov = clamp((cfg.fov ?? 72) * pinch / d, 50, 110); pinch = d; } return; } // fingers apart = zoom in = smaller FOV
   if (e.pointerId !== LK.id) return;
-  if (F.on) { F.cy -= (e.clientX - LK.x) * .006; F.cp = clamp(F.cp + (e.clientY - LK.yy) * .004, -.15, 1.25); } // on foot the drag orbits the walker (and sets which way W goes)
+  if (F.on) { F.cy -= (e.clientX - LK.x) * .006; F.cp = clamp(F.cp + (e.clientY - LK.yy) * .004, F.fp ? -1.3 : -.15, F.fp ? 1.3 : 1.25); } // on foot the drag orbits the walker (and sets which way W goes)
   else { LK.y = clamp(LK.y - (e.clientX - LK.x) * .006, -Math.PI, Math.PI); LK.p = clamp(LK.p + (e.clientY - LK.yy) * .004, -.8, .8); }
   LK.x = e.clientX; LK.yy = e.clientY;
 });
@@ -181,11 +185,11 @@ $('bounceB').onclick = () => { if (RP.ok) bounce(); };
 
 /* ---------- wiring ---------- */
 Object.assign(actions, {
-  shift: d => F.on ? (d > 0 && (TC.jump = 1)) : ctx.drive.shift(ctx.spec, S, d, ctx.bcfg), start: d => ctx.GAR ? (d && startEngine()) : starter(d), key: keySwitch, kill: killSwitch, cam: () => F.on || toggleCam(), garage: openGarage, foot: () => F.on ? getOn() : getOff(),
+  shift: d => F.on ? (d > 0 && (TC.jump = 1)) : ctx.drive.shift(ctx.spec, S, d, ctx.bcfg), start: d => ctx.GAR ? (d && startEngine()) : starter(d), key: keySwitch, kill: killSwitch, cam: () => F.on ? footCamToggle() : toggleCam(), garage: openGarage, foot: () => F.on ? getOn() : getOff(),
   opts: () => ctx.OPT ? closeOpts() : openOpts(), closeOpts,
 });
 O.onPerf = () => updPerf(API);
-$('bGar').onclick = openGarage; $('bCam').onclick = () => F.on || toggleCam(); $('bFoot').onclick = () => actions.foot(); $('bReset').onclick = () => { if (ctx.rideExit) ctx.rideExit(); reset(); say('Back at the lot'); };
+$('bGar').onclick = openGarage; $('bCam').onclick = () => F.on ? footCamToggle() : toggleCam(); $('bFoot').onclick = () => actions.foot(); $('bReset').onclick = () => { if (ctx.rideExit) ctx.rideExit(); reset(); say('Back at the lot'); };
 function goFS() { const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => { })).catch(() => { }); }
 addEventListener('pointerdown', () => { if (!ctx.paused && !ctx.GAR && !ctx.OPT) goFS(); });
 // menu.js: PLAY / RESUME (fullscreen was requested there, inside the tap) and the menu's bike picker
