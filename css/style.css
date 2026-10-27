@@ -55,21 +55,25 @@ input[type=range]{flex:1 1 200px;accent-color:var(--hot)}
 @keyframes mCl{to{transform:translateX(-140px)}}
 body.ingame #menu{background:rgba(6,9,13,.55)}body.ingame #mBg{display:none}
 #mUI{position:absolute;inset:0;display:flex;flex-direction:column;gap:14px;overflow-y:auto;padding:calc(18px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(14px + env(safe-area-inset-bottom)) calc(22px + env(safe-area-inset-left));
-  background:linear-gradient(90deg,rgba(8,12,18,.88) 0,rgba(8,12,18,.62) 34%,rgba(8,12,18,0) 62%)}
-@media (max-aspect-ratio:1/1){#mUI{background:linear-gradient(180deg,rgba(8,12,18,.85) 0,rgba(8,12,18,.45) 48%,rgba(8,12,18,0) 72%)}}
-#mUI header h1{font:italic 900 clamp(30px,6.4vw,58px)/.95 system-ui;letter-spacing:-.02em;text-shadow:3px 3px 0 #0b1118,0 0 18px rgba(0,0,0,.35)}
-#mUI header h1 span{color:var(--hot)}
-#mUI header p{color:#d5dde4;margin-top:6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;font-size:12px;text-shadow:0 1px 3px #000}
-.mp{display:flex;flex-direction:column;gap:8px;width:min(340px,100%)}
-.mb{position:relative;overflow:hidden;display:flex;align-items:baseline;justify-content:space-between;gap:10px;text-align:left;font:italic 900 19px system-ui;letter-spacing:.03em;padding:12px 16px;border-radius:10px;border:2px solid rgba(255,255,255,.18);background:rgba(16,21,27,.82);color:var(--ink);transform:skewX(-8deg)}
-.mb>*{transform:skewX(8deg)}
-.mb:active,.mb:focus-visible{border-color:var(--hot);outline:0}
-.mb small{font:700 12px system-ui;color:var(--dim);letter-spacing:.02em}
-.mb.hot{background:var(--hot);color:#1a1000;border-color:var(--hot);font-size:24px;padding:14px 16px}
-.mb.sm{font-size:15px;padding:9px 14px;align-self:flex-start}
+  background:linear-gradient(90deg,rgba(6,9,13,.82) 0,rgba(6,9,13,.55) 40%,rgba(6,9,13,.4) 100%)}
+@media (max-aspect-ratio:1/1){#mUI{background:linear-gradient(180deg,rgba(6,9,13,.82) 0,rgba(6,9,13,.55) 55%,rgba(6,9,13,.4) 100%)}}
+/* garage theme: the menu panels are the same dark frosted glass as the garage cards (.gcard) */
+#mMain,#mBikes,#mMPP,#mHelpP,#mNewsP,#mLoad,#mUI header{background:rgba(8,11,15,.74);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);border-radius:14px}
+#mUI header{width:min(340px,100%);padding:10px 14px}
+#mUI header h1{font:900 clamp(17px,3.4vw,22px)/1.15 system-ui;letter-spacing:.16em;text-transform:uppercase}
+#mUI header h1 span,#mUI header h1 em{color:var(--hot)}
+#mUI header p{color:var(--dim);margin-top:5px;font:700 11px system-ui;letter-spacing:.14em;text-transform:uppercase}
+.mp{display:flex;flex-direction:column;gap:8px;width:min(340px,100%);padding:10px}
+.mb{position:relative;overflow:hidden;display:flex;align-items:baseline;justify-content:space-between;gap:10px;text-align:left;font:800 14px system-ui;letter-spacing:.1em;text-transform:uppercase;padding:12px 14px;border-radius:10px;border:1px solid #2c343d;background:rgba(29,35,42,.8);color:var(--ink)}
+.mb:active,.mb:focus-visible{border-color:var(--hot);background:rgba(255,176,32,.14);outline:0}
+@media (hover:hover){.mb:hover{border-color:var(--hot);background:rgba(255,176,32,.14)}.mb.hot:hover{background:#ffc04d}}
+.mb small{font:500 11px system-ui;color:var(--dim);letter-spacing:0;text-transform:none}
+.mb.hot{background:var(--hot);color:#1a1000;border-color:var(--hot);font-size:17px;padding:13px 14px}
+.mb.hot:active,.mb.hot:focus-visible{background:#ffc04d}
+.mb.sm{font-size:12px;padding:9px 12px;align-self:flex-start}
 #mPre{position:absolute;left:0;right:0;bottom:0;height:4px;background:rgba(26,16,0,.35);transform:scaleX(0);transform-origin:left;transition:transform .3s}
 #mBikes{width:min(760px,100%);min-height:0;flex:1 1 auto}
-.mhd{display:flex;align-items:center;gap:12px}.mhd b{font:italic 900 14px system-ui;letter-spacing:.12em;color:#d5dde4;text-shadow:0 1px 3px #000}
+.mhd{display:flex;align-items:center;gap:12px}.mhd b{font:900 13px system-ui;letter-spacing:.2em;color:var(--hot)}
 #mCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;overflow-y:auto;min-height:0;max-height:100%;padding:2px 2px 8px;overscroll-behavior:contain}
 /* bike cards (bikecard.js): title menu and garage picker */
 .bc{position:relative;display:grid;gap:3px;align-content:start;text-align:left;padding:9px 12px 10px;border-radius:10px;border:2px solid rgba(255,255,255,.14);background:rgba(16,21,27,.85);min-width:0}
@@ -79,15 +83,17 @@ body.ingame #menu{background:rgba(6,9,13,.55)}body.ingame #mBg{display:none}
 .bc span{display:block;height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:3px}.bc span u{display:block;height:100%;background:linear-gradient(90deg,#5ec8ff,var(--hot))}
 .bc small{font:600 11px system-ui;color:var(--dim)}
 .bc.on{border-color:var(--hot);box-shadow:inset 4px 0 0 var(--hot)}
-#mHelpP{width:min(560px,100%);background:rgba(12,16,21,.88);padding:14px;border-radius:12px}
+#mCards .bc{background:rgba(29,35,42,.85);border:1px solid #2c343d}#mCards .bc.on{border-color:var(--hot)}
+#mHelpP{width:min(560px,100%);padding:14px}
 .mtxt{color:#c9d2da;font-size:13px}
-#mNewsP{width:min(560px,100%);background:rgba(12,16,21,.88);padding:14px;border-radius:12px;max-height:70vh}
+#mNewsP{width:min(560px,100%);padding:14px;max-height:70vh}
 #mLog{overflow-y:auto;display:flex;flex-direction:column;gap:12px;font-size:13px;color:#c9d2da}
 #mLog h3{margin:0 0 4px;font:900 15px system-ui;color:var(--ink)}#mLog h3 small{font-weight:500;color:var(--dim);margin-left:8px}
 #mLog ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:3px}
 #mNewsN:not(:empty),#mUpdN:not(:empty){margin-left:8px;color:var(--hot)}
-#mLoad{gap:10px;background:rgba(12,16,21,.85);padding:14px 16px;border-radius:12px}
-#mStage{font:italic 900 18px system-ui}
+#mUpdN:not(:empty){color:#1a1000}
+#mLoad{gap:10px;padding:14px 16px}
+#mStage{font:800 14px system-ui;letter-spacing:.14em;text-transform:uppercase}
 #mBar{position:relative;height:12px;border-radius:6px;background:#0a0e12;border:1px solid #2a3138;overflow:hidden}
 #mFill{position:absolute;inset:0;background:var(--hot);transform:scaleX(0);transform-origin:left;transition:transform .25s}
 /* moving stripes keep running on the compositor while the island build blocks the main thread */
@@ -95,7 +101,7 @@ body.ingame #menu{background:rgba(6,9,13,.55)}body.ingame #mBg{display:none}
 @keyframes mStr{to{transform:translateX(-28px)}}
 #mDet{color:var(--dim);font:600 12px ui-monospace,monospace;min-height:1.2em}
 #mFoot{margin-top:auto;color:rgba(255,255,255,.45);font:600 11px ui-monospace,monospace}
-@media (max-height:420px){#mUI{gap:8px;padding-top:calc(10px + env(safe-area-inset-top))}.mb{padding:9px 14px;font-size:16px}.mb.hot{font-size:20px;padding:10px 14px}.mp{gap:6px}}
+@media (max-height:420px){#mUI{gap:8px;padding-top:calc(10px + env(safe-area-inset-top))}.mb{padding:8px 12px;font-size:13px}.mb.hot{font-size:15px;padding:9px 12px}.mp{gap:6px;padding:8px}#mUI header{padding:8px 12px}}
 /* short landscape phones: two columns of menu buttons so the whole menu fits without scrolling */
 @media (max-height:420px) and (min-aspect-ratio:1/1){#mMain{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;width:min(560px,100%)}#mMain .mb.hot{grid-column:1/-1}}
 body.menu #tc,body.menu #top,body.menu #mis,body.menu #gauge,body.menu #mini,body.menu #perf,body.menu #msg{display:none}
@@ -109,7 +115,7 @@ body.menu #tc,body.menu #top,body.menu #mis,body.menu #gauge,body.menu #mini,bod
 #rcd{position:fixed;top:30%;left:0;right:0;text-align:center;font:italic 900 72px system-ui;color:var(--hot);text-shadow:4px 4px 0 #0b1118;opacity:0;pointer-events:none;transition:opacity .15s;z-index:6}
 #rcd.on{opacity:1}
 body.gar #race,body.gar #ride,body.gar #tags,body.menu #ride,body.menu #race,body.menu #tags,body.menu #rcd,body.opt #tags{display:none}
-#mMPP{width:min(400px,100%);background:rgba(12,16,21,.88);padding:14px;border-radius:12px}
+#mMPP{width:min(400px,100%);padding:14px}
 .mpf{display:flex;gap:8px;flex-wrap:wrap}.mpf label{flex:1 1 140px;display:grid;gap:3px;font:700 11px system-ui;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
 #mMPP input{width:100%;font:700 16px system-ui;padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.22);background:#0a0e12;color:var(--ink);user-select:text;-webkit-user-select:text;touch-action:manipulation;text-transform:none}
 #mpRoom{text-transform:uppercase!important;letter-spacing:.12em}

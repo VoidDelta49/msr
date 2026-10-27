@@ -1,4 +1,8 @@
 [
+  { "v": "11.37", "d": "2026-10-27", "t": [
+    "The main menu now has the garage look: dark frosted-glass panels, flat amber-highlight buttons and spaced amber headings. The island scene behind it is dimmed to match.",
+    "Fixed: the UPDATE button's version number was amber on amber and couldn't be read. (Menu theme by mrralphmc-ux, PR #1.)"
+  ] },
   { "v": "11.36", "d": "2026-10-27", "t": [
     "Night lights: the light pools on the ground under lamp posts now follow the terrain (each pool is a small grid hugging the drawn ground) instead of a flat disc that floated over slopes and uneven ground."
   ] },
