@@ -261,6 +261,7 @@ const tint = (g, c) => { const k = new THREE.Color(c), n = g.attributes.position
 const JACKET = 0x2a3a52, JEAN = 0x2d3d63, HELM = 0x1d2b4f, VISOR = 0x0c0f14, SHOE = 0xe9e6df, GLOVE = 0x18191b;
 function rider(ct, torso, head, arms, legs) {
   B.riderDims = { al: arms[4], lt: legs[0][4], tw: legs[0][5], ls: legs[1][4], sw: legs[1][5] }; // limb sizes, for riderStand() (B.rider is merged into one mesh at the end of the build)
+  B.hip = [legs[0][1] - Math.sin(legs[0][3]) * legs[0][4] / 2, legs[0][2] + Math.cos(legs[0][3]) * legs[0][4] / 2]; // hip joint [y, z] in the bike's frame (tools/pillion.mjs checks the pillion seat data against it)
   const r = (g, c, ...p) => mk(tint(g, c), MRider, ct, ...p);
   B.rider = [r(prof([[-.12, -.26], [.12, -.26], [.13, .2], [.04, .27], [-.08, .26], [-.13, .2]], .36, .03), JACKET, 0, torso[0], torso[1], torso[2]),
     r(new THREE.IcosahedronGeometry(.15, 1), HELM, 0, head[0], head[1]), r(box(.2, .085, .05), VISOR, 0, head[0] - .01, head[1] - .13)];
@@ -286,6 +287,26 @@ export function riderStand() {
     add(box(.1, .07, .17), SHOE, s * .09, .035, -.04);
   }
   return { geo: mergeGeometries(P), mat: MRider, eye: hy };
+}
+// Pillion passenger (ride.js): the rider mesh again, shifted back onto the pillion seat and recoloured. It shares the rider's position,
+// normal and index buffers (only the colour buffer is new, a few KB), so a passenger costs one draw call and no extra modelling.
+// Outfits: [jacket, helmet, jeans]; the vertices are found by the rider's own colours, so any bike's rider works.
+const PAX_OUTFIT = [['#e8463a', '#f1f1ec', '#2d3d63'], ['#f2c230', '#2b2d33', '#4a4f57'], ['#3aa0e8', '#f1f1ec', '#1f2226'], ['#56c46a', '#2b2d33', '#7b6a4f'],
+  ['#c060d0', '#f2c230', '#2d3d63'], ['#f08a30', '#2b2d33', '#4a4f57'], ['#f1f1ec', '#e8463a', '#1f2226'], ['#2b2d33', '#3aa0e8', '#7b6a4f']];
+const PAX_ROLE = new WeakMap(), PAX_GEO = new WeakMap();
+export const MPax = MRider;
+export function pillionGeo(src, id) {
+  const k = id % PAX_OUTFIT.length; let by = PAX_GEO.get(src); if (!by) PAX_GEO.set(src, by = new Map()); if (by.has(k)) return by.get(k);
+  const c = src.attributes.color, n = c.count; let role = PAX_ROLE.get(src);
+  if (!role) { // 1 jacket, 2 helmet, 3 jeans (0: visor, gloves, shoes keep their colour)
+    role = new Uint8Array(n); const key = [JACKET, HELM, JEAN].map(h => new THREE.Color(h));
+    for (let i = 0; i < n; i++) for (let j = 0; j < 3; j++) if (Math.abs(c.getX(i) - key[j].r) + Math.abs(c.getY(i) - key[j].g) + Math.abs(c.getZ(i) - key[j].b) < .01) role[i] = j + 1;
+    PAX_ROLE.set(src, role);
+  }
+  const g = new THREE.BufferGeometry(); if (src.index) g.setIndex(src.index); for (const [name, a] of Object.entries(src.attributes)) if (name !== 'color') g.setAttribute(name, a);
+  const col = c.array.slice(), o = PAX_OUTFIT[k].map(h => new THREE.Color(h));
+  for (let i = 0; i < n; i++) if (role[i]) { const q = o[role[i] - 1]; col[i * 3] = q.r; col[i * 3 + 1] = q.g; col[i * 3 + 2] = q.b; }
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeBoundingSphere(); by.set(k, g); return g;
 }
 export const B = { root: new THREE.Group(), lean: new THREE.Group(), body: new THREE.Group(), ct: new THREE.Group(), MP };
 B.root.add(B.lean); B.lean.add(B.body); B.body.add(B.ct); B.ct.position.y = -.6; scene.add(B.root);
@@ -915,6 +936,8 @@ export function buildModel(bike, spec) {
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;
   B.ct.clear(); B.fenderPaint = false; B.decal = null; B.sc = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model; setLiveryUV();
+  const pc = bike.chassis.pil; // pillion seat (data/bikes/*.json chassis.pil): where the recoloured rider copy goes + the passenger's eye (ride.js)
+  B.G.pil = pc ? { dz: pc.dz, dy: pc.dy, hip: B.hip, cam: { x: .1, y: B.cam.position.y + pc.dy + .08, z: B.cam.position.z + pc.dz } } : null;
   // rider: one mesh per material, still listed in B.rider (camera toggles visibility, crashes move them)
   const rm = new Map(); for (const o of B.rider) { if (!rm.has(o.material)) rm.set(o.material, []); rm.get(o.material).push(o); }
   B.rider = [...rm.values()].map(L => L.length > 1 ? mergeList(L, B.ct) : L[0]);

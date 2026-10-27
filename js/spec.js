@@ -34,3 +34,19 @@ export function computeSpec(bike, b) {
   return s;
 }
 export const tq = (s, rpm) => lerpTable(s.TQ, rpm);
+
+// A pillion passenger (ride.js): kg sitting sp.pil.x metres ahead of the rear axle with their centre of mass sp.pil.h metres above the
+// road. Adds the mass, moves the bike's centre of mass back and up (wheelies come earlier, stoppies later, the rear tyre carries more)
+// and adds pitch inertia about the new centre (parallel axis + the person's own swing). Always worked out from the unloaded values kept
+// in sp.base, so it is idempotent and kg = 0 gives the bike back exactly. A new computeSpec() starts unloaded again (ride.js re-applies).
+// Trikes carry people in the sidecar instead (S.paxM, physics.js). Returns true when the spec changed.
+export function withPassenger(sp, kg) {
+  const b = sp.base || (sp.base = { m: sp.m, ms: sp.ms, lf: sp.lf, lr: sp.lr, h: sp.h, I: sp.I });
+  if (!(kg > 0) || !sp.pil || sp.sc) kg = 0;
+  if ((sp.pk || 0) === kg) return false; sp.pk = kg;
+  if (!kg) { Object.assign(sp, b); return true; }
+  const M = b.m + kg, p = sp.pil, lr = Math.min(.88 * sp.wb, Math.max(.12 * sp.wb, (b.m * b.lr + kg * p.x) / M)), h = (b.m * b.h + kg * p.h) / M;
+  sp.m = M; sp.ms = b.ms + kg; sp.lr = lr; sp.lf = sp.wb - lr; sp.h = h;
+  sp.I = b.I + b.m * ((lr - b.lr) ** 2 + (h - b.h) ** 2) + kg * ((p.x - lr) ** 2 + (p.h - h) ** 2 + .09); // .09 = the person's own (0.3 m radius of gyration)^2
+  return true;
+}

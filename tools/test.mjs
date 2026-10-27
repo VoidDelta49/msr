@@ -50,6 +50,14 @@ for (const b of bikeIds) {
   const K = R.brake; if (K && !(K.fullM > 3 && K.fullM < 60 && K.halfM > K.fullM)) bad(b, 'brake', `implausible stopping distances (${K.fullM} m full, ${K.halfM} m half)`);
   if (K && K.stoppie > 15) bad(b, 'brake', `stock bike stands on its nose (${K.stoppie} deg)`);
   const W = R.wheelie; if (W && W.wcOn > 15) bad(b, 'wheelie', `wheelie control let the nose up ${W.wcOn} deg`);
+  const Q = R.pillion; if (Q && !Q.na) { // a 65 kg passenger on the back: slower, never faster; centre of mass still well between the axles; wheelie control still holds; exact restore
+    if (!(Q.dT60 > 0 && Q.dT60 < .8 * R.launch.t60)) bad(b, 'pillion', `0-60 changed by ${Q.dT60} s (unloaded ${R.launch.t60} s)`);
+    if (Q.dTop > .5) bad(b, 'pillion', `top speed went UP by ${Q.dTop} km/h with a passenger`);
+    if (!(Q.lrPct > 20 && Q.lrPct < 50 && Q.dLrPct < 0)) bad(b, 'pillion', `centre of mass at ${Q.lrPct} % of the wheelbase from the rear axle (moved ${Q.dLrPct})`);
+    if (!(Q.dHCm > 0 && Q.dHCm < 25 && Math.abs(Q.dFullM) < .25 * R.brake.fullM)) bad(b, 'pillion', `centre of mass +${Q.dHCm} cm, braking distance ${Q.dFullM} m different`);
+    if (Q.wcOn > 20 || Q.stoppie > 15) bad(b, 'pillion', `loaded bike lifts its nose ${Q.wcOn} deg (wheelie control on) / stands on its nose ${Q.stoppie} deg`);
+    if (!Q.idem) bad(b, 'pillion', 'adding then removing the passenger does not give the bike back exactly');
+  }
   const Z = R.iss; if (Z && !Z.na && !(Z.offAt > 2.5 && Z.offAt < 4 && Z.restarted)) bad(b, 'iss', `idling stop misbehaves (${JSON.stringify(Z)})`);
 }
 

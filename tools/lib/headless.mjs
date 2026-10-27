@@ -18,10 +18,10 @@ globalThis.sessionStorage ??= globalThis.localStorage;
 register('./hooks.mjs', import.meta.url);
 
 const J = rel => pathToFileURL(path.join(ROOT, rel)).href;
-const [{ S, ctx }, { computeSpec }, { DRIVES }, phys, ign, conf] = await Promise.all([
+const [{ S, ctx }, { computeSpec, withPassenger }, { DRIVES }, phys, ign, conf] = await Promise.all([
   import(J('js/state.js')), import(J('js/spec.js')), import(J('js/drivetrain.js')), import(J('js/physics.js')), import(J('js/ignition.js')), import(J('js/config.js')),
 ]);
-export { S, ctx, computeSpec, DRIVES, ign, conf };
+export { S, ctx, computeSpec, withPassenger, DRIVES, ign, conf };
 export const cfg = conf.cfg;
 
 export const bikeIds = JSON.parse(readFileSync(path.join(ROOT, 'data/bikes/index.json'), 'utf8'));
@@ -32,12 +32,13 @@ export const loadAll = () => Object.fromEntries(bikeIds.map(id => [id, loadBike(
 //   opts.parts: { key: optionIndex, ... } and opts.set: { slider/toggle: value } override the bike's defaults
 //   opts.spec: raw spec overrides applied after computeSpec (e.g. { mu: 1.6 } for a sticky tyre)
 //   opts.cfg: game options to override (wc = wheelie control, tough = tough biker)
+//   opts.pax: kg of pillion passenger on the back (spec.js withPassenger: more mass, centre of mass back and up)
 export function createSim(id, opts = {}) {
   const bike = typeof id === 'string' ? loadBike(id) : id;
   const bcfg = { ...bike.defaults, ...(opts.parts || {}), ...(opts.set || {}) };
   Object.assign(cfg, { wc: true, tough: false }, opts.cfg || {});
   globalThis.__says = []; globalThis.__blips = {};
-  ctx.bike = bike; ctx.bcfg = bcfg; ctx.spec = Object.assign(computeSpec(bike, bcfg), opts.spec || {}); ctx.drive = DRIVES[bike.drivetrain]; ctx.stand = false;
+  ctx.bike = bike; ctx.bcfg = bcfg; ctx.spec = Object.assign(computeSpec(bike, bcfg), opts.spec || {}); if (opts.pax) withPassenger(ctx.spec, opts.pax); ctx.drive = DRIVES[bike.drivetrain]; ctx.stand = false;
   for (const k of Object.keys(S)) delete S[k];
   Object.assign(S, {
     x: 0, z: 0, psi: 0, v: 0, rpm: 0, running: false, key: false, kill: false, tip: false, cr: 0, cranking: false, cT: 0, keyT: 0, stT: 0, fi: 0, warm: 0, gear: 0, cl: 0,

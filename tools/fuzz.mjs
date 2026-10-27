@@ -3,7 +3,7 @@
 // invariants every tick (finite state, sane speed/rpm/lean/gear/fuel, no exceptions). Seeded, so a failure is reproducible.
 //   node tools/fuzz.mjs [bike|all] [--seeds 3] [--seed N] [--secs 40]
 // Failure line ends with the exact command to replay it. Covers every bike in index.json automatically, including new ones.
-import { createSim, bikeIds, loadBike, S, ctx, ign, TICK } from './lib/headless.mjs';
+import { createSim, bikeIds, loadBike, S, ctx, ign, TICK, withPassenger } from './lib/headless.mjs';
 
 export const mulberry = a => () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
 
@@ -39,7 +39,7 @@ export function fuzzOne(id, seed, secs = 40) {
         chaos = rnd() < .25; next = s.t + .1 + rnd() * 1.4; ctx.stand = rnd() < .04;
         S.thr = chaos ? pick([0, 0, .3, .6, 1, 1, rnd()]) : pick([.4, .7, 1, 1, 1, rnd()]); S.brake = pick([0, 0, 0, .3, 1, rnd()]); S.steer = pick([0, 0, 0, .5, -.5, 1, -1, rnd() * 2 - 1]); if (sp.type === 'manual' && chaos) S.cl = pick([0, 0, 1, rnd()]); else if (sp.type !== 'manual') S.cl = 0;
         S.back = rnd() < .05; S.surf = .4 + rnd() * .6; slope = pick([0, 0, 0, .05, -.05, .2, -.2]); S.hF = slope * sp.wb / 2; S.hR = -slope * sp.wb / 2;
-        if (sp.sc) S.paxM = pick([0, 0, 70, 150]);
+        if (sp.sc) S.paxM = pick([0, 0, 70, 150]); else withPassenger(sp, pick([0, 0, 65])); // sidecar passengers / a pillion passenger (ride.js), on and off at random
         const r = chaos ? rnd() : 1; if (r < .35) sim.shift(pick([1, 1, -1])); else if (r < .38) ign.keySwitch(); else if (r < .41) ign.killSwitch(); else if (r < .55) ign.starter(1); else if (r < .62) ign.starter(0);
         if (rnd() < .03) S.air = true; else if (rnd() < .3) S.air = false;
       }

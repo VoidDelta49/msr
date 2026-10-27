@@ -60,7 +60,7 @@ Main menu > MULTIPLAYER: type a name, then JOIN a room code or make a NEW ROOM a
 The relay is a small Cloudflare Worker in `server/` (deploy steps in `server/README.md`).
 
 
-**Tricycle rides (11.23):** stop next to a friend's TMX with the sidecar fitted and tap their name tag (it shows 🛺): RIDE asks, the driver gets OK / ✕. Two passengers fit on the bench; each adds 65 kg to the sidecar in the driver's physics. Your own bike is put away while you ride and comes back beside the tricycle when you tap GET OFF. If the tricycle crashes, everybody aboard is flung out cartoon-style (on every phone that sees it) and lands next to their bike. Needs the 11.23 relay (`server/worker.js`, `ride` messages): redeploy it with `npx wrangler deploy`.
+**Passengers (11.23 tricycles, 11.45 any bike):** stop next to a friend's bike and tap their name tag (it shows 🛺 for a tricycle with the sidecar fitted, 🏍️+1 for any other bike with a free pillion seat): RIDE asks, the driver gets OK / ✕. A tricycle takes two on the sidecar bench (little seated figures, each adds 65 kg to the sidecar in the driver's physics). Every other bike takes one pillion passenger: the rider model again, shifted back onto the seat in other clothes (it shares the rider's mesh, one extra draw call). The 65 kg sit behind the driver, so the centre of mass moves back and up (`withPassenger` in `js/spec.js`): slower pull-away, the front gets light so wheelies come earlier, braking about the same. Your own bike is put away while you ride (first person looks over the driver's shoulder) and comes back beside the driver's bike when you tap GET OFF. If the bike crashes, everybody aboard is flung out cartoon-style (on every phone that sees it) and lands next to their bike. A bike's seat is `chassis.pil` in its JSON; `node tools/pillion.mjs` checks every bike's seat against the real model. Needs the 11.23 relay (`server/worker.js`, `ride` messages) and nothing newer: redeploy it with `npx wrangler deploy` if you have not.
 ## Controls
 
 Touch:
@@ -110,7 +110,7 @@ js/perf.js            culling, terrain LOD, merging, Lambert materials, auto res
 js/gpucull.js         WebGPU compute culling + indirect draws for instanced props
 js/net.js             multiplayer: relay connection, state packets, interpolated ghost bikes, name tags
 js/race.js            tap-to-race between two riders
-js/ride.js            tricycle passengers: hop into a friend's sidecar, cartoon ejections on a crash
+js/ride.js            passengers: hop into a friend's sidecar or on the back of any bike, cartoon ejections on a crash
 server/               Cloudflare Worker + Durable Object relay (one room per code)
 js/audio.js (+ engine-worklet.js), controls.js, garage.js, options.js, missions.js, config.js, state.js, util.js
 ```

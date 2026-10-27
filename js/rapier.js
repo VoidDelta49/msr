@@ -72,10 +72,13 @@ export function initRapier() {
   })());
 }
 
+// The body's mass follows the spec (a pillion passenger changes it while riding, ride.js): only a crash tumble feels it
+export function setMass() { if (!RP.ok || !ctx.spec) return; const sp = ctx.spec; body.setAdditionalMassProperties(sp.m, { x: 0, y: 0, z: 0 }, { x: sp.I, y: sp.I * 1.2, z: sp.I * .4 }, { x: 0, y: 0, z: 0, w: 1 }, true); }
+
 // Put the body where S says (reset, bike switch, leaving the garage, turning Rapier on), at rest.
 export function syncBody() {
   if (!RP.ok || !ctx.spec) return; const sp = ctx.spec; if (S.crashed) endCrash();
-  body.setAdditionalMassProperties(sp.m, { x: 0, y: 0, z: 0 }, { x: sp.I, y: sp.I * 1.2, z: sp.I * .4 }, { x: 0, y: 0, z: 0, w: 1 }, true);
+  setMass();
   S.chair = S.chairV = 0; const sx = (sp.sc || 0) * .95; scap.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); sbox.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); scap.setEnabled(!!sp.sc); sbox.setEnabled(false);
   stream(true); body.setTranslation({ x: S.x, y: S.zH + Y0, z: S.z }, true); body.setRotation(qYX(S.psi, S.th || 0), true);
   S.hF = H(S.x - Math.sin(S.psi) * sp.lf, S.z - Math.cos(S.psi) * sp.lf); S.hR = H(S.x + Math.sin(S.psi) * sp.lr, S.z + Math.cos(S.psi) * sp.lr);

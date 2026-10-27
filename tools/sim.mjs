@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Headless physics scenarios on the game's real solver (see lib/headless.mjs). No browser, a few seconds for all bikes.
 //   node tools/sim.mjs [bike|all] [scenario|all] [--json] [--part exhaust=1 ...] [--set kf=14 ...] [--no-wc] [--tough]
-// scenarios: launch start brake corner wheelie stall idle      (default: all, every bike)
+// scenarios: launch start brake corner wheelie stall idle iss pillion      (default: all, every bike)
 // Output is one compact line per bike+scenario. Numbers are comparable between runs, so use them to see what a change did:
 //   node tools/sim.mjs all launch > /tmp/before; (edit) ; node tools/sim.mjs all launch | diff /tmp/before -
-import { createSim, bikeIds, TICK, S, ign } from './lib/headless.mjs';
+import { createSim, bikeIds, TICK, S, ign, withPassenger } from './lib/headless.mjs';
 
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const appr = (v, t, s) => v < t ? Math.min(t, v + s) : Math.max(t, v - s);
@@ -98,6 +98,17 @@ const SC = {
     const sim = createSim(o.bike, { ...o, set: { iss: true, ...o.set } }); sim.quickStart(); S.warm = 1; S.brake = 0; let off = null;
     sim.run(8, s => { S.thr = 0; if (!S.running && off == null) { off = r2(s.t); return false; } });
     const m = { offAt: off }; S.thr = .6; S.key = true; sim.run(1.5, () => { S.thr = .6; }); m.restarted = S.running ? 1 : 0; m.nan = sim.finite(); return m;
+  },
+  // a 65 kg pillion passenger (spec.js withPassenger): what the extra weight, further back and higher, does to launch, braking, nose lift and the
+  // load on the rear tyre. Trikes carry people in the sidecar instead (na). idem = adding then removing the passenger gives the bike back exactly
+  pillion(o) {
+    const b0 = createSim(o.bike, o), sp = b0.spec; if (sp.sc || !sp.pil) return { na: 1 };
+    const w = { ...o, pax: 65 }, a = SC.launch(o), l = SC.launch(w), k0 = SC.brake(o), k1 = SC.brake(w), wh = SC.wheelie(w), m = {};
+    m.t60 = l.t60; m.dT60 = r2(l.t60 - a.t60); m.top = l.top; m.dTop = r1(l.top - a.top); m.wpMax = l.wpMax;
+    m.fullM = k1.fullM; m.dFullM = r1(k1.fullM - k0.fullM); m.stoppie = k1.stoppie; m.wcOn = wh.wcOn;
+    const p = createSim(o.bike, w).spec, q = p.base; m.lrPct = r1(p.lr / p.wb * 100); m.dLrPct = r1((p.lr - q.lr) / p.wb * 100); m.hCm = r1(p.h * 100); m.dHCm = r1((p.h - q.h) * 100); m.I = r1(p.I); m.kg = r1(p.m - q.m);
+    const s = createSim(o.bike, o).spec, was = JSON.stringify([s.m, s.ms, s.lf, s.lr, s.h, s.I]); withPassenger(s, 65); withPassenger(s, 65); withPassenger(s, 0);
+    m.idem = JSON.stringify([s.m, s.ms, s.lf, s.lr, s.h, s.I]) === was ? 1 : 0; m.nan = a.nan || l.nan || k1.nan || wh.nan; return m;
   },
   // neutral, nothing touched: stays running near its idle speed, doesn't roll, burns a little fuel
   idle(o) {

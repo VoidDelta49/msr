@@ -1,4 +1,10 @@
 [
+  { "v": "11.45", "d": "2026-10-27", "t": [
+    "Proper passengers on every bike, not just the tricycle: stop next to a friend's bike and tap their name tag (it shows 🏍️+1 when the pillion seat is free). RIDE asks, the driver taps OK, and you sit behind them. The passenger is the rider model again, shifted back onto the seat in different clothes (eight outfits, picked by player), so it costs one extra draw call and no new triangles.",
+    "The weight is real: 65 kg behind the rider moves the bike's centre of mass back and up, so it pulls away slower (a Raider 150 takes about 1.2 s longer to 60 km/h, a Smash 115 about 2.8 s), the front gets light and wheelies come earlier, braking distance is about the same. Taking the passenger off gives the bike back exactly.",
+    "First person looks over the driver's shoulder; GET OFF puts your own bike down on the driver's left. If the bike crashes, the passenger is flung out cartoon-style like the sidecar passengers. Switching bikes or fitting / removing the sidecar drops the passenger. A tricycle still seats two on the sidecar bench.",
+    "No relay update needed (the pillion uses the first entry of the same seat list). New: tools/pillion.mjs checks every bike's seat against the real model and plays a whole ride through a fake relay."
+  ] },
   { "v": "11.44", "d": "2026-10-27", "t": [
     "Cuter and lighter wheels: spokes, rim lip, hub, pinstripes and brake discs are now flat cut-out textures (N64 style) instead of little 3D parts. Every bike lost about 700-1,500 triangles (all eight together: 30.9k to 23.5k, a quarter of the bike geometry); the draw call count did not change.",
     "The tyre is still a chunky 3D ring. The garage wheel colour, rim tape and carbon wheels still work, and brake discs now have drilled holes."
