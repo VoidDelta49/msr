@@ -1,4 +1,7 @@
 [
+  { "v": "11.36", "d": "2026-10-27", "t": [
+    "Night lights: the light pools on the ground under lamp posts now follow the terrain (each pool is a small grid hugging the drawn ground) instead of a flat disc that floated over slopes and uneven ground."
+  ] },
   { "v": "11.35", "d": "2026-10-27", "t": [
     "On foot: CAM (or C) switches between first person (eyes at the helmet, no body) and third person."
   ] },

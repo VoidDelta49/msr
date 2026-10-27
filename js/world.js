@@ -8,7 +8,7 @@ import { cfg, Q, BUILD } from './config.js';
 import { attribute, texture, uv, vec2, vec3, float, select } from 'three/tsl';
 import { gpuInst, finishGpuInst } from './gpucull.js';
 import * as T from './tex.js';
-import { glowMat, lampMat, poolMat, haloMat, POOL_GEO, HALO_GEO } from './lights.js';
+import { glowMat, lampMat, poolMat, haloMat, poolPatches, HALO_GEO } from './lights.js';
 import { mkTex } from './tex.js';
 import { DRAW, FAR, freeze, cullFar, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
 
@@ -406,7 +406,9 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     add(new THREE.BoxGeometry(1,1,1),lampMat(),LH,false,FAR.mid);
     add(new THREE.BoxGeometry(1,1,1),lampMat([1.9,1.9,1.9],[.5,.5,.5]),LS,false,FAR.mid);
     add(HALO_GEO(),haloMat(.55),LHA,false,FAR.mid);
-    add(POOL_GEO(),poolMat(.6),LP,false,FAR.small);
+    // pools follow the drawn terrain (per-vertex height), chunked like inst() so they cull by distance
+    {const pm=poolMat(.6),cell=new Map();for(const o of LP){const k=Math.floor(o.x/CHUNK)*1000+Math.floor(o.z/CHUNK);let a=cell.get(k);if(!a)cell.set(k,a=[]);a.push(o)}
+      for(const L of cell.values()){const m=new THREE.Mesh(poolPatches(L,H),pm);m.receiveShadow=false;m.castShadow=false;scene.add(freeze(m));cullFar(m,FAR.small)}}
   }
 }
 /* minimap base image */

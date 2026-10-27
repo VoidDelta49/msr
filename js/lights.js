@@ -23,7 +23,7 @@ export function lampMat(on = [2.3, 1.8, 1], off = [.55, .55, .5]) {
 const radial = () => { const f = clamp(float(1).sub(uv().sub(.5).length().mul(2)), 0, 1); return f.mul(f); };
 // light on the ground: flat quad, tinted per instance (c), strength k. Add sx/sz per instance.
 export function poolMat(k = .55) {
-  const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   m.colorNode = vec3(1, .86, .6); m.opacityNode = radial().mul(LAMP).mul(k); return m;
 }
 // glow around a lamp seen from afar: two crossed quads, faded out near the camera so it never fills the screen
@@ -32,6 +32,27 @@ export function haloMat(k = .6) {
   m.colorNode = vec3(1, .8, .45); m.opacityNode = radial().mul(LAMP).mul(k).mul(smoothstep(4, 18, positionWorld.sub(cameraPosition).length())); return m;
 }
 export const POOL_GEO = () => new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+// Ground-hugging pools (build 11.36): a flat quad floated over sloped / uneven ground, so each pool is an N x N grid whose
+// every vertex sits on the drawn terrain (hf(x, z) + lift). Same footprint as the old quad (centre x/z, yaw ry, size sx x sz),
+// tint c as vertex colour, uv 0..1 for the radial falloff. World-space geometry (no instancing); the caller chunks the list.
+export function poolPatches(list, hf, N = 8, lift = .07) {
+  const V = (N + 1) * (N + 1), pos = new Float32Array(list.length * V * 3), col = new Float32Array(list.length * V * 3), uvs = new Float32Array(list.length * V * 2);
+  const idx = new Uint32Array(list.length * N * N * 6), cc = new THREE.Color(); let vi = 0, ii = 0;
+  for (const p of list) {
+    const cr = Math.cos(p.ry || 0), sr = Math.sin(p.ry || 0); cc.set(p.c ?? 0xffffff); const base = vi;
+    for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) {
+      const u = i / N - .5, v = j / N - .5, lx = u * p.sx, lz = v * p.sz, x = p.x + lx * cr + lz * sr, z = p.z - lx * sr + lz * cr;
+      pos.set([x, hf(x, z) + lift, z], vi * 3); col.set([cc.r, cc.g, cc.b], vi * 3); uvs.set([i / N, 1 - j / N], vi * 2); vi++;
+    }
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const a = base + j * (N + 1) + i, b = a + 1, c = a + N + 1, d = c + 1;
+      idx.set([a, c, b, b, c, d], ii); ii += 6; // wound so the top face points up (+y)
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeBoundingSphere(); return g;
+}
 export const HALO_GEO = () => { const a = new THREE.PlaneGeometry(1, 1), b = new THREE.PlaneGeometry(1, 1).rotateY(Math.PI / 2); return mergeTwo(a, b); };
 function mergeTwo(a, b) { // tiny merge (indexed planes) without importing the addons
   const g = new THREE.BufferGeometry(), pa = a.attributes, pb = b.attributes, n = pa.position.count;
