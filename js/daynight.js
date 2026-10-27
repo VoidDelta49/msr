@@ -8,6 +8,7 @@ import { gameMs, Q } from './config.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, sun, hemi, head, SKYU, GRADE, IBL, ENVG, bakeEnv } from './renderer.js';
 import { setLamps } from './lights.js';
+import { F, at } from './foot.js';
 
 const LAT = 12.88 * Math.PI / 180, LON = 121.77, R = Math.PI / 180;
 
@@ -86,7 +87,7 @@ export function dayNight() {
   // light moves. The light follows the bike in whole steps of ~3 m (a multiple of a shadow texel, so the static shadows don't
   // shimmer when it steps) and the shadow pass is redrawn only on a step or a sun/moon move (every 2 s of game time at most).
   // Parked: no shadow pass at all; at 200 km/h ~18 a second instead of every frame. Before, it re-rendered every frame.
-  const ms0 = Q.shadow || 1024, tx = 56 / ms0, st = tx * Math.round(3 / tx), cx = Math.round(S.x / st) * st, cz = Math.round(S.z / st) * st, cy = Math.round((S.zH || 0) / 4) * 4;
+  const ms0 = Q.shadow || 1024, tx = 56 / ms0, st = tx * Math.round(3 / tx), P = at(), cx = Math.round(P.x / st) * st, cz = Math.round(P.z / st) * st, cy = Math.round((F.on ? F.y : S.zH || 0) / 4) * 4; // follows the walker when on foot
   sun.target.position.set(cx, cy, cz); sun.position.set(cx + tv.x * 90, cy + tv.y * 90, cz + tv.z * 90);
   const K = SHK; if (K[0] !== cx || K[1] !== cz || K[2] !== cy || K[3] !== tv.x || K[4] !== tv.y || K[5] !== tv.z || sun.userData.shDirty) { K[0] = cx; K[1] = cz; K[2] = cy; K[3] = tv.x; K[4] = tv.y; K[5] = tv.z; sun.userData.shDirty = false; sun.shadow.needsUpdate = true; }
   setLamps(sstep(3, -3, el)); // street lamps, lit windows and signs come on around sunset (el 3° .. −3°)

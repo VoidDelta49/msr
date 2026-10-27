@@ -4,6 +4,7 @@
 import { cfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { clamp, sstep, vnoise } from './util.js';
+import { at } from './foot.js';
 
 let AC = null, E = null, lastSpec = null, ambT = 0, crashWas = false, airWas = false, offR = 0, lastT = 0;
 let rdT = -1, onRdC = 0, pFf = null, pFr = null, pTh = 0, suspT = 0, lashT = 0, runWas = false, coolT = 0, coolEnd = 0; // part-sound edge detectors (suspension hits, chain lash, exhaust cooling)
@@ -187,12 +188,12 @@ export function updAudio() {
 }
 
 function ambience(t, v, live) {
-  const z = ctx.zones ? ctx.zones(S.x || 0, S.z || 0, Z) : null, on = cfg.amb !== false && cfg.sound;
+  const P = at(), z = ctx.zones ? ctx.zones(P.x || 0, P.z || 0, Z) : null, on = cfg.amb !== false && cfg.sound;
   st(A.amb.gain, on && !ctx.paused ? (1 - .55 * sstep(3, 25, v)) * (1 - .2 * sstep(4000, 9000, S.rpm || 0)) : 0, .3);
   st(A.ambLP.frequency, ctx.GAR ? 700 : 20000, .2);
   if (!z) return;
   // ears: right vector of the bike's heading, for panning toward the sea and the river
-  const rx = Math.cos(S.psi || 0), rz = -Math.sin(S.psi || 0), pdir = (dx, dz) => { const l = Math.hypot(dx, dz) || 1; return clamp((dx * rx + dz * rz) / l * .7, -.7, .7); };
+  const rx = Math.cos(P.psi || 0), rz = -Math.sin(P.psi || 0), pdir = (dx, dz) => { const l = Math.hypot(dx, dz) || 1; return clamp((dx * rx + dz * rz) / l * .7, -.7, .7); };
   const swell = .55 + .45 * Math.pow(Math.sin(t * .85 + Math.sin(t * .31) * 2), 2);
   sg(A.surf, z.coast * .5 * swell, .25); if (A.surfP.pan) st(A.surfP.pan, pdir(z.sx, z.sz), .5);
   sg(A.riv, z.river * .22, .3); if (A.rivP.pan) st(A.rivP.pan, pdir(z.rx, z.rz), .5);

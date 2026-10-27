@@ -4,7 +4,7 @@ import { $, clamp } from './util.js';
 import { cfg, save, bikeCfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, camera, sun, GPU, API, FELL, draw, warm, setDPR } from './renderer.js';
-import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad, LMF } from './world.js';
+import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad, LMF, OBBS } from './world.js';
 ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
@@ -14,7 +14,9 @@ import { dayNight } from './daynight.js';
 import { initAudio, updAudio, blip } from './audio.js';
 import { say, drawCluster, drawMini, updPerf, setFps, setPhys, setGfx, setJank } from './hud.js';
 import { RP, TICK, initRapier, tickR, syncBody, crashVisual, bounce } from './rapier.js';
-import { actions, input, ptr, TC, WMAX } from './controls.js';
+import { actions, input, footInput, ptr, TC, WMAX } from './controls.js';
+import { F, footEnv, footStep, dismount, mount, nearBike, offBlock } from './foot.js';
+import { figBuild, figShow, figPose, footCam } from './footfig.js';
 import { missions, animMarker } from './missions.js';
 import { G as GARAGE, buildGarage, garageFrame } from './garage.js';
 import { initStudio, enter as studioIn, leave as studioOut, studioFrame } from './studio.js';
@@ -37,6 +39,7 @@ for (const d of await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=$
 
 const SPAWN = (F => ({ ...F.W(62, 30), psi: Math.PI / 2 - F.ry }))(LMF.lot[0]); // in the parking lot, wherever the map puts it
 function reset() {
+  if (F.on) footOff(); // reset / bike swap while walking: back on the bike
   Object.assign(S, {
     x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: 0, running: false, key: false, kill: false, tip: false, cr: 0, cranking: false, cT: 0, keyT: 0, stT: 0, fi: 0, warm: S.warm || 0, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, leanV: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
     fuel: S.fuel ?? ctx.spec.fuel.cap, wp: 0, wpv: 0, wA: 0, wAR: 0, ws: 0, lkF: false, lkR: false, ayu: 0, skid: 0, fxr: 0, surf: 1, cutT: 0, act: 0, shCD: 0, lim: false, padT: 0, hits: S.hits || 0, odo: S.odo || 0,
@@ -46,7 +49,7 @@ function reset() {
 // a part that changes the model's shape (B.var, e.g. spoke vs mag wheels) rebuilds it
 function recompute() { ctx.spec = computeSpec(ctx.bike, ctx.bcfg); if ((ctx.spec.var | 0) !== B.var) { buildModel(ctx.bike, ctx.spec); attachCam(); } applyLook(ctx.spec); }
 // put the camera / rider visibility back on a freshly built local model
-function attachCam() { if (!ctx.GAR && ctx.camMode === 0) { B.cam.add(camera); camera.position.set(0, 0, 0); camera.rotation.set(-.3, 0, 0); } B.rider.forEach(m => m.visible = !ctx.GAR && ctx.camMode === 1); }
+function attachCam() { if (!ctx.GAR && !F.on && ctx.camMode === 0) { B.cam.add(camera); camera.position.set(0, 0, 0); camera.rotation.set(-.3, 0, 0); } B.rider.forEach(m => m.visible = !ctx.GAR && !F.on && ctx.camMode === 1); }
 // multiplayer (net.js): a remote rider's bike + paint is built into B like ours, snapshotted, then ours is rebuilt.
 // Cached by look, so 8 friends on the same bike and paint cost one build. Not while crashed (the rider is a ragdoll).
 // look = { bike, parts: { key: option index } }: only known part keys, indices clamped to the bike's options; everything
@@ -88,6 +91,29 @@ function startEngine() {
   quickStart(); blip('start'); say('Engine on');
 }
 
+/* ---------- on foot (foot.js / footfig.js) ---------- */
+// S stays the parked bike's state; F is the walker. Get off: key off, bike held still (loop), camera to third person, rider body stands next to it.
+footEnv({ H, SEA, OBBS });
+function getOff() {
+  if (F.on || ctx.GAR || ctx.OPT || ctx.paused || ctx.ride) return;
+  if (ctx.racing) return say('Not during a race');
+  const why = dismount(); if (why) return say(why);
+  if (S.key) keySwitch(); // parking: ignition off (a running engine would idle on with nobody on it)
+  F.prevCam = ctx.camMode; if (ctx.camMode === 0) toggleCam(); // first person has no body to look from: third person while walking
+  document.body.classList.add('foot'); B.rider.forEach(m => m.visible = false); figBuild(); figShow(true);
+  say(document.body.classList.contains('touch') ? 'On foot: wheel turns, gas walks, ▲ jumps' : 'On foot: WASD walk, Shift run, Space jump, F get on', 2600);
+}
+function footOff() { // back on the bike (or the bike was reset under us): F.on is cleared by foot.js mount() / here
+  F.on = false; document.body.classList.remove('foot'); figShow(false); B.rider.forEach(m => m.visible = ctx.camMode === 1);
+  if (F.prevCam === 0 && ctx.camMode === 1) toggleCam(); F.prevCam = 1; S.thr = S.brake = 0;
+}
+function getOn() { const why = mount(); if (why) return say(why, 1400); footOff(); say('On the bike. K = key, then hold R to start', 2200); }
+// the bike waits where it was parked: brake on, clutch in, nothing else
+function footTick(dt) {
+  S.thr = 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; S.back = false;
+  footStep(footInput(dt), dt);
+}
+
 /* ---------- camera / animation ---------- */
 function toggleCam() {
   ctx.camMode ^= 1; document.body.classList.toggle('cam3', ctx.camMode === 1);
@@ -103,7 +129,10 @@ addEventListener('pointerdown', e => { if (e.target.id !== 'gl' || ctx.GAR || ct
 addEventListener('pointermove', e => {
   const q = PT.get(e.pointerId); if (!q) return; q.x = e.clientX; q.y = e.clientY;
   if (PT.size === 2) { const d = pdist(); if (pinch > 0 && d > 0) { cfg.fov = clamp((cfg.fov ?? 72) * pinch / d, 50, 110); pinch = d; } return; } // fingers apart = zoom in = smaller FOV
-  if (e.pointerId !== LK.id) return; LK.y = clamp(LK.y - (e.clientX - LK.x) * .006, -Math.PI, Math.PI); LK.p = clamp(LK.p + (e.clientY - LK.yy) * .004, -.8, .8); LK.x = e.clientX; LK.yy = e.clientY;
+  if (e.pointerId !== LK.id) return;
+  if (F.on) { F.cy -= (e.clientX - LK.x) * .006; F.cp = clamp(F.cp + (e.clientY - LK.yy) * .004, -.15, 1.25); } // on foot the drag orbits the walker (and sets which way W goes)
+  else { LK.y = clamp(LK.y - (e.clientX - LK.x) * .006, -Math.PI, Math.PI); LK.p = clamp(LK.p + (e.clientY - LK.yy) * .004, -.8, .8); }
+  LK.x = e.clientX; LK.yy = e.clientY;
 });
 const lkEnd = e => { if (!PT.delete(e.pointerId)) return; if (e.pointerId === LK.id) LK.id = null; if (PT.size < 2 && pinch) { pinch = 0; cfg.fov = Math.round(cfg.fov); save(); } };
 addEventListener('pointerup', lkEnd); addEventListener('pointercancel', lkEnd);
@@ -127,6 +156,7 @@ function visuals(dt, now) {
   const av = Math.abs(S.v), fov = (cfg.fov ?? 72) + Math.min(14, av * .35); if (!ctx.GAR && Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); }
   if (LK.id === null && av > 1.5) { const k = Math.exp(-dt * 3); LK.y *= k; LK.p *= k; if (Math.abs(LK.y) < .002) LK.y = 0; if (Math.abs(LK.p) < .002) LK.p = 0; }
   if (ctx.GAR) studioFrame(dt, now);
+  else if (F.on) { figPose(); footCam(camera, dt, H); }
   else if (ctx.camMode === 0) {
     LK.yr += (clamp(S.yaw * .12, -.25, .25) - LK.yr) * (1 - Math.exp(-dt * 8)); B.cam.rotation.set(-(S.th + (S.wp || 0)) * .4, LK.yr, S.lean * .35); camera.rotation.set(-.3 + LK.p, LK.y, 0);
     const vib = S.running ? .0007 * (.4 + S.rpm / 9000) : 0, ph = now * S.rpm / 60 * 2 * Math.PI; camera.position.set(Math.sin(ph * .5) * vib, Math.sin(ph) * vib, 0);
@@ -136,24 +166,26 @@ function visuals(dt, now) {
   }
   if (!ctx.GAR) dayNight(); // the studio has its own lights
   dom('wg', 'rotate(' + (S.steer * WMAX() * 57.3).toFixed(1) + ')', (e, v) => e.setAttribute('transform', v)); dom('cluFill', (S.cl * 100).toFixed(0) + '%', (e, v) => e.style.height = v); dom('bKey', !!S.key, (e, v) => e.classList.toggle('on', v)); dom('bKill', !!S.kill, (e, v) => e.classList.toggle('on', v)); dom('brkFill', (S.brake * 100).toFixed(0) + '%', (e, v) => e.style.setProperty('--p', v)); dom('thrg', (S.thr * 36).toFixed(1) + 'px', (e, v) => e.style.backgroundPositionY = v);
+  const fb = ctx.GAR || ctx.OPT || ctx.paused || ctx.ride || ctx.racing || S.crashed ? '' : F.on ? (nearBike() ? 'GET ON' : '') : !offBlock() ? 'GET OFF' : ''; // the touch button (F on a keyboard)
+  dom('bFoot', fb, (e, v) => { e.textContent = v; e.hidden = !v; });
   animMarker(now);
 }
 
 /* ---------- garage ---------- */
 GARAGE.onChange = recompute;
 GARAGE.onBike = () => { setBike(); say(ctx.bike.name, 1200); };
-function openGarage() { if (ctx.GAR || ctx.OPT) return; if (ctx.ride) return say('Get off the tricycle first'); buildGarage(); $('garage').hidden = false; ctx.GAR = true; document.body.classList.add('gar'); scene.add(camera); B.rider.forEach(m => m.visible = false); studioIn(); }
+function openGarage() { if (ctx.GAR || ctx.OPT) return; if (F.on) return say('Get back on the bike first'); if (ctx.ride) return say('Get off the tricycle first'); buildGarage(); $('garage').hidden = false; ctx.GAR = true; document.body.classList.add('gar'); scene.add(camera); B.rider.forEach(m => m.visible = false); studioIn(); }
 $('gClose').onclick = () => { studioOut(); $('garage').hidden = true; ctx.GAR = false; TC.rev = 0; document.body.classList.remove('gar'); ctx.camMode ^= 1; toggleCam(); syncBody(); };
 ptr($('revB'), () => { TC.rev = 1; $('revB').classList.add('on'); }, null, () => { TC.rev = 0; $('revB').classList.remove('on'); });
 $('bounceB').onclick = () => { if (RP.ok) bounce(); };
 
 /* ---------- wiring ---------- */
 Object.assign(actions, {
-  shift: d => ctx.drive.shift(ctx.spec, S, d, ctx.bcfg), start: d => ctx.GAR ? (d && startEngine()) : starter(d), key: keySwitch, kill: killSwitch, cam: toggleCam, garage: openGarage,
+  shift: d => F.on ? (d > 0 && (TC.jump = 1)) : ctx.drive.shift(ctx.spec, S, d, ctx.bcfg), start: d => ctx.GAR ? (d && startEngine()) : starter(d), key: keySwitch, kill: killSwitch, cam: () => F.on || toggleCam(), garage: openGarage, foot: () => F.on ? getOn() : getOff(),
   opts: () => ctx.OPT ? closeOpts() : openOpts(), closeOpts,
 });
 O.onPerf = () => updPerf(API);
-$('bGar').onclick = openGarage; $('bCam').onclick = toggleCam; $('bReset').onclick = () => { if (ctx.rideExit) ctx.rideExit(); reset(); say('Back at the lot'); };
+$('bGar').onclick = openGarage; $('bCam').onclick = () => F.on || toggleCam(); $('bFoot').onclick = () => actions.foot(); $('bReset').onclick = () => { if (ctx.rideExit) ctx.rideExit(); reset(); say('Back at the lot'); };
 function goFS() { const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => { })).catch(() => { }); }
 addEventListener('pointerdown', () => { if (!ctx.paused && !ctx.GAR && !ctx.OPT) goFS(); });
 // menu.js: PLAY / RESUME (fullscreen was requested there, inside the tap) and the menu's bike picker
@@ -204,7 +236,7 @@ function loop(t) {
   if (t - fT > 1000) { const fps = Math.round(fN * 1000 / (t - fT)); setFps(fps); setPhys('Physics ' + pms.toFixed(2) + ' ms'); autoRes(fps, !ctx.paused && !ctx.GAR && !ctx.OPT); setGfx(renderer.info.render.drawCalls, resScale()); setJank(jankText()); updPerf(API); fN = 0; fT = t; }
   raceTick(dt);
   if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); if (RP.ok) tickRapier(dt); garageFrame(); }
-  else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
+  else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; if (F.on) footTick(dt); else input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
   const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } const D0 = performance.now(); renderer.info.reset(); cull(camera); draw(); const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0);
@@ -213,4 +245,4 @@ renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFr
 O.setDPR = setDPR; O.live = true;
 if (ctx.mpWant) { const w = ctx.mpWant; ctx.mpWant = null; netJoin(w.room, w.name, w.url); } // MULTIPLAYER > JOIN before the game had loaded
 O.api = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };
+window.__cpm = { F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };

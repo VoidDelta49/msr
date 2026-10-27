@@ -3,13 +3,18 @@ import { $, PI, clamp, appr } from './util.js';
 import { S, ctx } from './state.js';
 import { cfg } from './config.js';
 import { initAudio } from './audio.js';
+import { F } from './foot.js';
 
 export const actions = {};
-export const K = {}, TC = { back: 0, st: 0, stId: null, thr: 0, thrId: null, brk: 0, brkId: null, clu: 0, wa: 0, cluId: null, rev: 0 };
+export const K = {}, TC = { back: 0, st: 0, stId: null, thr: 0, thrId: null, brk: 0, brkId: null, clu: 0, wa: 0, cluId: null, rev: 0, jump: 0 };
 addEventListener('keydown', e => {
   if (e.repeat || (e.target.type === 'text')) return; K[e.code] = true; const A = actions; if (ctx.MENU) return; // pause menu open (menu.js)
-  if (e.code === 'KeyE' || e.code === 'ShiftLeft') A.shift(1); if (e.code === 'KeyQ' || e.code === 'ControlLeft') A.shift(-1);
-  if (e.code === 'KeyR') A.start(1); if (e.code === 'KeyK') A.key(); if (e.code === 'KeyT') A.kill(); if (e.code === 'KeyC') A.cam(); if (e.code === 'KeyG') A.garage();
+  if (e.code === 'KeyF') A.foot(); // get off / on the bike (foot.js)
+  if (F.on) { if (e.code === 'Space') TC.jump = 1; } // on foot: Shift runs and Space jumps, the bike's keys do nothing
+  else {
+    if (e.code === 'KeyE' || e.code === 'ShiftLeft') A.shift(1); if (e.code === 'KeyQ' || e.code === 'ControlLeft') A.shift(-1);
+    if (e.code === 'KeyR') A.start(1); if (e.code === 'KeyK') A.key(); if (e.code === 'KeyT') A.kill(); if (e.code === 'KeyC') A.cam(); if (e.code === 'KeyG') A.garage();
+  }
   if (e.code === 'KeyO') A.opts(); else if (e.code === 'Escape') A.closeOpts();
   if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
 });
@@ -45,4 +50,15 @@ export function input(dt) {
   else { if (TC.cluId === null) TC.clu = appr(TC.clu, 0, 5 * dt); S.cl = K.Space ? appr(S.cl, 1, 8 * dt) : TC.cluId !== null ? TC.clu : appr(S.cl, TC.clu, 2.5 * dt); }
   S.back = !!(TC.back || K.KeyX);
   S.shCD -= dt; S.cutT -= dt; S.act -= dt;
+}
+
+// On foot (foot.js): WASD / arrows walk relative to the camera, Shift runs, Space jumps. Touch: the gas pad walks forward (pull far = run),
+// the brake pad walks back, the wheel turns the camera, ▲ jumps. Returns the stick for footStep.
+export function footInput(dt) {
+  const kf = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0), kr = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0);
+  const tf = TC.thrId !== null ? TC.thr : 0, tb = TC.brkId !== null ? TC.brk : 0;
+  if (TC.stId === null) TC.wa = appr(TC.wa, 0, 5 * dt);
+  const turn = TC.stId !== null || TC.wa !== 0 ? TC.wa / WMAX() : 0; F.cy -= turn * 2.4 * dt;
+  const jump = !!(K.Space || TC.jump); TC.jump = 0;
+  return { mx: kr, mz: clamp(kf + tf - tb, -1, 1), run: !!(K.ShiftLeft || K.ShiftRight) || tf > .75, jump };
 }
