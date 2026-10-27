@@ -245,6 +245,60 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   for(const b of BLD)if(b[0]==='shop'){const[,x,z,ry=0,w=8,d=9.5,fl=1]=b,[q,q2]=hq(x,z),f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo,F=clamp(Math.round(fl)-1,0,2),h=[3.2,6,8.8][F]+sl+.25,y=f.lo-.25;
     bl[F].push({x,y,z,ry,sx:w,sy:h,sz:d,c:hcol(q,q2)});roofs.push({x,y:y+h,z,ry,sx:w+.6,sy:.22,sz:d+.8,c:TIN[(q2*TIN.length)|0]});
     if(F===0&&q<.7)awn.push({x:x+Math.sin(ry)*(d/2+.9),y:f.lo+2.5,z:z+Math.cos(ry)*(d/2+.9),ry,sx:w*.9,sy:.1,sz:1.8,c:new THREE.Color().setHSL(q2,.7,.5)});addOBB(x,z,w/2,d/2,ry)}
+  // ----- building variations (Build 11.45): house2 bahay bunga sari chapel lighthouse warehouse stall cottage resort -----
+  // [type, x, z, ry, w, d] like 'house' (front = +z rotated by ry); BD = default w, d. No rand(): colours come from the position hash, so
+  // editing one never reshuffles the island. They reuse the shophouse lists (bl = lit windows, roofs, awn) and add a few of their own.
+  const BD={house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12]};
+  const PL=[],PR=[],GL=[],DK=[],TH=[],LHB=[],LHL=[],LHC=[],TINM=new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),WH=[];
+  const nb=(L,x,y,z,ry,sx,sy,sz,c)=>L.push({x,y,z,ry,sx,sy,sz,c}); // box standing on y
+  const at=(x,z,ry,a,d)=>({x:x+Math.cos(ry)*a+Math.sin(ry)*d,z:z-Math.sin(ry)*a+Math.cos(ry)*d}); // a along the width, d towards the front
+  for(const b of BLD){const t=b[0],D=BD[t];if(!D)continue;const[,x,z,ry=0,w=D[0],d=D[1]]=b,[q,q2]=hq(x,z),f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo;if(sl>=2.4)continue;
+    const y=f.lo-.25,lo=f.lo,S=sl+.25,col=hcol(q,q2),tin=TIN[(q2*TIN.length)|0],P=(a,dd)=>at(x,z,ry,a,dd),hue=n=>new THREE.Color().setHSL((q*n)%1,.7,.5);
+    if(t==='house2'){const h=6.2+S,fr=P(0,d/2),bk=P(0,d/2+.75),rl=P(0,d/2+1.45);
+      bl[1].push({x,y,z,ry,sx:w,sy:h,sz:d,c:col});PR.push({x,y:y+h,z,ry,sx:w+.8,sy:1.2,sz:d+.9,c:tin});
+      nb(PL,bk.x,lo+3.1,bk.z,ry,w*.78,.18,1.5,0xd9d5cc);nb(PL,rl.x,lo+3.28,rl.z,ry,w*.78,.85,.09,0xffffff);nb(DK,fr.x,lo,fr.z,ry,1.1,2.1,.14,0x3a2a1c);addOBB(x,z,w/2,d/2,ry)}
+    else if(t==='bahay'){const h1=2.7+S,fr=P(0,d/2+.4),dr=P(0,d/2+.05);
+      nb(PL,x,y,z,ry,w,h1,d,0xb4ad9d);bl[0].push({x,y:y+h1,z,ry,sx:w+.9,sy:3.2,sz:d+.9,c:new THREE.Color().setHSL(.07+q*.04,.5,.66)});
+      PR.push({x,y:y+h1+3.2,z,ry,sx:w+2.2,sy:1.55,sz:d+2.2,c:0xa8492f});nb(PL,fr.x,lo,fr.z,ry,w*.34,.45,1.3,0xa59e8e);nb(DK,dr.x,lo+.3,dr.z,ry,1.2,2.1,.14,0x2b1d12);addOBB(x,z,w/2+.5,d/2+.5,ry)}
+    else if(t==='bunga'){const h=3.2+S,pc=P(0,d/2+1.1),p1=P(-w*.22,d/2+1.9),p2=P(w*.22,d/2+1.9);
+      bl[0].push({x,y,z,ry,sx:w,sy:h,sz:d,c:col});PR.push({x,y:y+h,z,ry:ry+PI/2,sx:d+1,sy:1.55,sz:w+1.4,c:tin});
+      nb(PL,pc.x,lo,pc.z,ry,w*.55,.22,2.2,0xcfc8b8);nb(PL,pc.x,lo+2.6,pc.z,ry,w*.55,.14,2.3,0xffffff);nb(PL,p1.x,lo+.2,p1.z,ry,.18,2.4,.18,0xffffff);nb(PL,p2.x,lo+.2,p2.z,ry,.18,2.4,.18,0xffffff);
+      nb(DK,P(0,d/2+.04).x,lo+.2,P(0,d/2+.04).z,ry,1.1,2,.12,0x4a2f1f);addOBB(x,z,w/2,d/2,ry)}
+    else if(t==='sari'){const h=3.1+S,fr=P(0,d/2+.9),sg=P(0,d/2+.15),ct=P(0,d/2+.55);
+      bl[0].push({x,y,z,ry,sx:w,sy:h,sz:d,c:col});roofs.push({x,y:y+h,z,ry,sx:w+.6,sy:.22,sz:d+.8,c:tin});
+      awn.push({x:fr.x,y:lo+2.55,z:fr.z,ry,sx:w*.96,sy:.1,sz:1.9,c:hue(3.7)});awn.push({x:sg.x,y:y+h+.45,z:sg.z,ry,sx:w*.82,sy:.8,sz:.12,c:hue(5.3)});
+      nb(PL,ct.x,lo,ct.z,ry,w*.8,.95,.7,0x8c6b4a);for(let k=-1;k<=1;k++){const g=P(k*w*.22,d/2+.55);nb(PL,g.x,lo+.95,g.z,ry,.55,.38,.4,hue(2.1+k))}
+      addOBB(x,z,w/2,d/2,ry)}
+    else if(t==='chapel'){const h=4.4+S,fr=P(0,d/2),bt=P(0,d/2-1.4);
+      nb(PL,x,y,z,ry,w,h,d,0xece4d2);PR.push({x,y:y+h,z,ry,sx:w+.8,sy:1.9,sz:d+.8,c:0x8a3b2b});
+      nb(PL,bt.x,y,bt.z,ry,2.8,h+5.2,2.8,0xece4d2);PR.push({x:bt.x,y:y+h+5.2,z:bt.z,ry,sx:3.4,sy:1.9,sz:3.4,c:0x8a3b2b});
+      nb(PL,bt.x,y+h+7.1,bt.z,ry,.2,1.5,.2,0x2e2e2e);nb(PL,bt.x,y+h+7.9,bt.z,ry,.9,.2,.2,0x2e2e2e);
+      nb(DK,fr.x,lo,fr.z,ry,1.7,2.7,.14,0x3a2314);nb(GL,fr.x,lo+3.3,fr.z,ry,.9,.9,.1,0xffffff);
+      for(const k of[-1,1])for(const m of[-3.2,.4,3.8]){const s2=P(k*(w/2+.03),m);nb(GL,s2.x,lo+1.4,s2.z,ry,.12,1.8,.9,0xffffff)}addOBB(x,z,w/2,d/2,ry)}
+    else if(t==='lighthouse'){const bands=[[6.5,3.4,0xf2efe6],[6,3,0xc0392b],[6,2.65,0xf2efe6],[5,2.3,0xc0392b]];let yy=y;
+      bands.forEach(([bh,br,c],i)=>{const hh=bh+(i?0:S);LHB.push({x,y:yy,z,ry,sx:br,sy:hh,sz:br,c});yy+=hh});
+      LHB.push({x,y:yy,z,ry,sx:3.3,sy:.5,sz:3.3,c:0x2e2e2e});LHL.push({x,y:yy+.5,z,ry,sx:1.6,sy:2.6,sz:1.6,c:0xffffff});LHC.push({x,y:yy+3.1,z,ry,sx:2.2,sy:2.2,sz:2.2,c:0x8a2f2f});
+      nb(DK,at(x,z,ry,0,3.3).x,lo,at(x,z,ry,0,3.3).z,ry,1.1,2,.14,0x2b1d12);addOBB(x,z,3.3,3.3,ry)}
+    else if(t==='warehouse'){const h=5.2+S,fr=P(0,d/2+.03);
+      WH.push({x,y,z,ry,sx:w,sy:h,sz:d,c:hq(x,z)[1]>.5?0x7d8c96:0x6f8a73});PR.push({x,y:y+h,z,ry,sx:w+.8,sy:1.6,sz:d+.8,c:0xb9bcc0});
+      nb(DK,fr.x,lo,fr.z,ry,Math.min(6,w*.46),4.2,.18,0x1d1f22);for(let k=0;k<3;k++){const g=P(w/2-1.6-k*1.1,d/2+1);nb(PL,g.x,lo,g.z,ry,.9,.9,.9,hue(1.3+k))}addOBB(x,z,w/2,d/2,ry)}
+    else if(t==='stall'){const c1=P(0,d/2-.7),r1=P(0,0);
+      nb(PL,c1.x,lo,c1.z,ry,w*.9,.9,1.1,0x9aa2a8);nb(PL,r1.x,lo+2.3,r1.z,ry,w+.6,.12,d+.6,hue(2.9));
+      for(const a of[-1,1])for(const e of[-1,1]){const p=P(a*(w/2-.1),e*(d/2-.1));nb(PL,p.x,lo,p.z,ry,.12,2.35,.12,0x6b5a45)}
+      for(let k=-1;k<=1;k++){const g=P(k*w*.26,d/2-.7);nb(PL,g.x,lo+.9,g.z,ry,.6,.16,.5,k?0xb9c4cc:0xe0a070)}addOBB(x,z,w/2,d/2,ry)}
+    else if(t==='cottage'){const h=2.6,fr=P(0,d/2+.5);
+      nb(PL,x,lo-.05,z,ry,w+.8,.55,d+.8,0x9c7a4c);bl[0].push({x,y:lo+.5,z,ry,sx:w,sy:h,sz:d,c:col});
+      TH.push({x,y:lo+.5+h,z,ry,sx:(w+1.6)/1.414,sy:2.3,sz:(d+1.6)/1.414,c:0xc9a96b});nb(PL,fr.x,lo,fr.z,ry,1.6,.3,.8,0x8a6a40);addOBB(x,z,w/2+.4,d/2+.4,ry)}
+    else if(t==='resort'){const h=6.6+S,fr=P(0,d/2+1.6),sg=P(0,d/2+.1),pl=P(0,d/2+10),pd=P(0,d/2+10);
+      bl[1].push({x,y,z,ry,sx:w,sy:h,sz:d,c:col});roofs.push({x,y:y+h,z,ry,sx:w+.8,sy:.32,sz:d+.8,c:0xd9d4c8});
+      awn.push({x:fr.x,y:lo+3.2,z:fr.z,ry,sx:7,sy:.16,sz:3.4,c:0xf4f4f0});awn.push({x:sg.x,y:y+h+.9,z:sg.z,ry,sx:w*.42,sy:1.3,sz:.16,c:0x18a0a0});
+      for(const k of[-1,1]){const p=P(k*3.2,d/2+3);nb(PL,p.x,lo,p.z,ry,.22,3.1,.22,0xffffff)}
+      nb(PL,pd.x,lo,pd.z,ry,w*.78,.06,12.5,0xe9dcc0);nb(PL,pl.x,lo,pl.z,ry,w*.5,.1,7.5,0x35b8e6);addOBB(x,z,w/2,d/2,ry)}}
+  const nbi=(L,g,m,sh,far)=>{if(L.length)inst(g(),m(),L,sh,far)},ub=()=>new THREE.BoxGeometry(1,1,1).translate(0,.5,0); // only lists that have entries: maps without these buildings draw exactly what they did
+  nbi(PL,()=>aoGeo(ub(),.62,0,.6),()=>vstd(0xffffff,.85),true,FAR.tree);nbi(DK,ub,()=>std(0x1d1f22,.9),false,FAR.mid);nbi(GL,ub,()=>lampMat([1.6,1.35,.85],[.35,.4,.5]),false,FAR.mid);
+  nbi(PR,()=>prism(1,1.6,1),()=>TINM,true,FAR.tree);nbi(WH,ub,()=>TINM,true,FAR.big);nbi(TH,()=>new THREE.ConeGeometry(1,1,4).rotateY(PI/4).translate(0,.5,0),()=>std(0xffffff,1),true,FAR.tree);
+  nbi(LHB,()=>new THREE.CylinderGeometry(1,.93,1,16).translate(0,.5,0),()=>std(0xffffff,.6),true,FAR.big);nbi(LHL,()=>new THREE.CylinderGeometry(1,1,1,12).translate(0,.5,0),()=>lampMat([2.4,2,1.1],[.5,.5,.5]),false,FAR.big);
+  nbi(LHC,()=>new THREE.ConeGeometry(1,1,12).translate(0,.5,0),()=>std(0xffffff,.7),true,FAR.big);
   [1,2,3].forEach((n,i)=>inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6/(n)),glowMat(vstd(0xffffff,.85,0,tW[i]),tWG[i]),bl[i]));
   inst(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),roofs);inst(new THREE.BoxGeometry(1,1,1),std(0xffffff,.7),awn,false,FAR.small);
   // landmarks: original coordinates, mapped through each one's frame F (W = world position, F.y = levelled ground)
@@ -310,14 +364,15 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   const trunk=new THREE.CylinderGeometry(.14,.22,8,6,4).translate(0,4,0);{const p=trunk.attributes.position;for(let i=0;i<p.count;i++){const y=p.getY(i);p.setX(i,p.getX(i)+(y/8)**2*1.3)}}
   const fronds=mergeGeometries(Array.from({length:8},(_,i)=>new THREE.BoxGeometry(.55,.04,3.6).translate(0,0,1.8).rotateX(.45+(i%2)*.25).rotateY(i*PI/4).translate(1.3,8,0)));
   const palms=[],trees=[];
+  const inBld=(x,z)=>OBBS.some(b=>{const dx=x-b.cx,dz=z-b.cz;return Math.abs(dx*b.c+dz*b.s)<b.hx+.6&&Math.abs(dz*b.c-dx*b.s)<b.hz+.6}); // no palm grows through a building (checked after the palm's random numbers are drawn, so the layout does not reshuffle)
   const PP=PROPS.palms,TP=PROPS.trees;
   for(let i=0;i<PP.tries&&palms.length<PP.max;i++){const th=rand()*2*PI,r=coastR(th)-8-rand()*rand()*PP.band,x=ICX+Math.cos(th)*r,z=ICZ+Math.sin(th)*r,h=terr(x,z);
     if(h<SEA+.4||h>12||lastCarve>.05)continue;if(hg.some(o=>Math.hypot(x-o.x,z-o.z)<22))continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+2.5)continue;if(rd(x,z,TOWN)<1&&rand()<.85)continue;
-    palms.push({x,y:foot(x,z,.3,.3).lo-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4});addOBB(x,z,.25,.25)}
+    const pm={x,y:foot(x,z,.3,.3).lo-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4};if(inBld(x,z))continue;palms.push(pm);addOBB(x,z,.25,.25)}
   // extra islands: palms along each outline (trees below); only when the map has islands, so rand's sequence is unchanged otherwise
   for(const I of ISL){const n=Math.round(PP.max*I.per/(2*PI*CMAX));for(let k=0,c=0;k<n*6&&c<n;k++){const p=I.S[(rand()*I.S.length)|0],dx=I.cx-p[0],dz=I.cz-p[1],l=Math.hypot(dx,dz)||1,o=8+rand()*rand()*PP.band,x=p[0]+dx/l*o,z=p[1]+dz/l*o,h=terr(x,z);
       if(islD(x,z,I.S)<4||h<SEA+.4||h>12||lastCarve>.05)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+2.5)continue;c++;
-      palms.push({x,y:foot(x,z,.3,.3).lo-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4});addOBB(x,z,.25,.25)}
+      const pm={x,y:foot(x,z,.3,.3).lo-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4};if(inBld(x,z))continue;palms.push(pm);addOBB(x,z,.25,.25)}
   }
   inst(...pair({g:aoGeo(trunk,.55,0,5),m:vstd(0xd8c8b0,.9,0,tBark)},{g:aoGeo(fronds,.7,6.4,8.4),m:vstd(0xffffff,.8,0,tFrond)}),palms,false,FAR.tree);
   for(let i=0;i<TP.tries&&trees.length<TP.max;i++){const x=ICX+(rand()-.5)*2*CMAX,z=ICZ+(rand()-.5)*2*CMAX,h=terr(x,z);if(h<10||h>150||lastCarve>.05)continue;

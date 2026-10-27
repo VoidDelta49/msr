@@ -1,4 +1,9 @@
 [
+  { "v": "11.47", "d": "2026-10-28", "t": [
+    "The island is bigger: a small islet in the southern bay, reached by a causeway off the ring road (lighthouse, chapel, sari-sari store, fish stalls and resort cottages around its own loop road); a seaside resort strip with a boulevard, two resort hotels with pools, cottages and stalls along the new beach south of the ring road; a second town on the north coast (Poblacion Hilaga) with its own streets, shophouses, chapel and market stalls, joined to the ring road and the airstrip; and a harbor quay with warehouses, fish stalls and a lighthouse.",
+    "Ten new building types: two-storey house, bahay na bato, bungalow with a porch, sari-sari store (awning, sign, lit window), fish stall, resort cottage on a deck with a thatch roof, resort hotel with a pool, warehouse, chapel with a belfry and lit stained windows, and a lighthouse with a lamp that glows at night.",
+    "Map maker: the building brush has all the new types (paint the small ones like houses; chapel, lighthouse, warehouse and resort are placed one at a time) with width and depth fields for each. Palms no longer grow through buildings."
+  ] },
   { "v": "11.46", "d": "2026-10-28", "t": [
     "Options rebuilt: five tabs (Graphics, Controls, Audio, Game, System) with proper switches, segmented choices and sliders that show their real value, and a hint under every setting. Held sideways on a phone the tabs sit in a rail on the left so the settings get the full height.",
     "One reload for all graphics changes: settings that rebuild the renderer are marked, saved, and applied together with one Apply & reload bar, instead of reloading the game after every tap.",

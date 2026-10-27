@@ -136,7 +136,7 @@ button,input,select{font:inherit;color:inherit}
     <li><b>Select</b> <kbd>V</kbd>: tap anything to edit it on the right. Drag handles to reshape; drag a <i>selected</i> object to move it. Empty drag pans, wheel/pinch zooms.</li>
     <li><b>Road</b> <kbd>R</kbd>: tap points, <kbd>Enter</kbd> or Done to finish. Ends snap onto other roads so junctions blend.</li>
     <li><b>Land</b> <kbd>L</kbd>: drag an outline to draw an island anywhere in the sea. <b>Coast</b> <kbd>C</kbd> pushes the main island's shore in or out.</li>
-    <li><b>Buildings</b> <kbd>B</kbd>: pick a type and tap or paint. Houses face the nearest road. Church, plaza, market and gas stations can be added or moved; the ground under them is levelled.</li>
+    <li><b>Buildings</b> <kbd>B</kbd>: pick a type and tap or paint. Houses face the nearest road. Church, plaza, market and gas stations can be added or moved; the ground under them is levelled. New in 11.45: two-storey house, bahay na bato, bungalow, sari-sari store, fish stall, resort cottage, resort hotel (with pool), warehouse, chapel and lighthouse. Chapel, lighthouse, warehouse and resort are placed one at a time; the rest paint like houses.</li>
     <li><b>Multi-select</b> <kbd>M</kbd> or hold <kbd>Shift</kbd>: tap items to add them, drag empty space for a box. Move them together, delete them, or <b>Merge roads</b> into one. A selected road point can <b>Split</b> the road.</li>
     <li><kbd>Del</kbd> deletes the selected point (or object), <kbd>Ctrl Z</kbd> / <kbd>Ctrl Shift Z</kbd> undo/redo, <kbd>F</kbd> fits the island, <kbd>Esc</kbd> deselects.</li>
   </ul>
@@ -198,8 +198,12 @@ const DEFB=[['church',128,62,0],['plaza',118,28,0],['market',120,-40,0],['gas',-
 function lmList(M){const L=(M.buildings||DEFB).filter(b=>LMO[b[0]]);if(!L.some(b=>b[0]==='lot'))L.push(['lot',40,40,0]);return L}
 const LMS={church:[[128,62,13,24,'#d8c6a0'],[118.5,51,5,5,'#b9a47c'],[128,49.4,15,1.6,'#c9b48c']],plaza:[[118,28,62,40,'#6fae4a'],[98,28,15,28,'#c98a5a']],
   market:[[120,-40,46,56,'#a4aab0'],[119.25,-52,42,2.2,'#d0705a'],[119.25,-30,42,2.2,'#5a9ad0']],gas:[[-40,40,40,40,'#c2bfb6'],[-40,40,20,18,'#f4f4f0'],[-40,35,6,1.2,'#d03028'],[-40,45,6,1.2,'#d03028']],lot:[[40,40,70,70,'#55595f']]};
-const BT={house:'House',nipa:'Nipa hut',shop:'Shophouse',church:'Church',plaza:'Plaza',market:'Market',gas:'Gas station',lot:'Parking lot'};
-const bSize=b=>LMO[b[0]]?LMH[b[0]]:b[0]==='nipa'?[2.25,2.1]:[(b[4]||(b[0]==='shop'?8:7))/2,(b[5]||(b[0]==='shop'?9.5:7))/2];
+const BT={house:'House',nipa:'Nipa hut',shop:'Shophouse',house2:'Two-storey house',bahay:'Bahay na bato',bunga:'Bungalow',sari:'Sari-sari store',chapel:'Chapel',lighthouse:'Lighthouse',warehouse:'Warehouse',stall:'Fish stall',cottage:'Resort cottage',resort:'Resort hotel',church:'Church',plaza:'Plaza',market:'Market',gas:'Gas station',lot:'Parking lot'};
+/* Build 11.45 variations: default footprint w, d (same numbers as BD in world.js); VARY = sizes get a little random spread when painted, ONE = placed one at a time */
+const BDM={house:[7,7],shop:[8,9.5],house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12]};
+const VARY=new Set(['house2','bahay','bunga','sari','cottage','stall']),ONE=new Set(['chapel','lighthouse','warehouse','resort']);
+const TCOL={bahay:'#b4ad9d',chapel:'#ece4d2',lighthouse:'#c0392b',warehouse:'#7d8c96',stall:'#d9a050',cottage:'#c9a96b',resort:'#18a0a0'};
+const bSize=b=>LMO[b[0]]?LMH[b[0]]:b[0]==='nipa'?[2.25,2.1]:[(b[4]||(BDM[b[0]]||[7,7])[0])/2,(b[5]||(BDM[b[0]]||[7,7])[1])/2];
 const bLoc=(b,x,z)=>{const c=Math.cos(b[3]||0),s=Math.sin(b[3]||0),dx=x-b[1],dz=z-b[2];return[dx*c-dz*s,dx*s+dz*c]};
 const hash2=(i,j)=>{let n=(Math.imul(i,374761393)+Math.imul(j,668265263))|0;n=Math.imul(n^(n>>>13),1274126177);return((n^(n>>>16))>>>0)/4294967296};
 const bCol=b=>{const q=hash2(Math.round(b[1]*10),Math.round(b[2]*10)),q2=hash2(Math.round(b[2]*10)+7,Math.round(b[1]*10)-3);return`hsl(${q*360},${(35+q2*30)|0}%,${(62+((q*7.31)%1)*18)|0}%)`};
@@ -363,11 +367,11 @@ function label(t,x,z,c,sz){g.font=`600 ${sz}px system-ui`;g.textAlign='center';g
 function drawBld(b,on){const t=b[0],s=cam.s;g.save();g.translate(sx(b[1]),sy(b[2]));g.rotate(-(b[3]||0));g.scale(s,s);g.lineWidth=(on?2.5:1)/s;g.strokeStyle=on?'#ffb02e':'#00000090';
   if(LMO[t]){const[ox,oz]=LMO[t];for(const[cx,cz,w,d,c]of LMS[t]){g.fillStyle=c;g.fillRect(cx-ox-w/2,cz-oz-d/2,w,d);g.strokeRect(cx-ox-w/2,cz-oz-d/2,w,d)}
     if(t==='lot'&&s>.8){g.strokeStyle='#ffffffa0';g.lineWidth=.12;g.beginPath();for(const rz of[22,36,50])for(let k=0;k<=20;k++){const x=11.2+k*1.6-40;g.moveTo(x,rz-40-1.2);g.lineTo(x,rz-40+1.2)}g.stroke()}}
-  else{const[hw,hd]=bSize(b);g.fillStyle=t==='nipa'?'#b59a5e':bCol(b);g.fillRect(-hw,-hd,2*hw,2*hd);g.strokeRect(-hw,-hd,2*hw,2*hd);
+  else{const[hw,hd]=bSize(b);g.fillStyle=t==='nipa'?'#b59a5e':TCOL[t]||bCol(b);g.fillRect(-hw,-hd,2*hw,2*hd);g.strokeRect(-hw,-hd,2*hw,2*hd);
     g.fillStyle='#00000055';if(t==='nipa'){g.beginPath();g.moveTo(-hw,-hd);g.lineTo(hw,hd);g.moveTo(hw,-hd);g.lineTo(-hw,hd);g.lineWidth=.3;g.strokeStyle='#5a4524';g.stroke()}
     else if(t==='shop')for(let f=1;f<(b[6]||1);f++)g.fillRect(-hw,-hd+f*.7,2*hw,.35);else g.fillRect(-hw,-.15,2*hw,.3);
     g.fillStyle=on?'#ffb02e':'#000a';g.fillRect(-hw*.4,hd-.7,hw*.8,.7)}
-  g.restore();if(LMO[t]&&s>.6)label(BT[t],b[1],b[2],on?'#ffb02e':'#fff',11)}
+  g.restore();if((LMO[t]||ONE.has(t))&&s>.6)label(BT[t],b[1],b[2],on?'#ffb02e':'#fff',11)}
 function grid(){const st=[50,100,250,500,1000].find(v=>v*cam.s>70)||1000;g.strokeStyle='#ffffff14';g.lineWidth=1;g.beginPath();
   for(let x=Math.ceil(wx(0)/st)*st;x<wx(W);x+=st){g.moveTo(sx(x),0);g.lineTo(sx(x),H)}for(let z=Math.ceil(wz(0)/st)*st;z<wz(H);z+=st){g.moveTo(0,sy(z));g.lineTo(W,sy(z))}g.stroke();
   g.fillStyle='#ffffff60';g.font='10px ui-monospace,monospace';g.textAlign='left';g.textBaseline='top';for(let x=Math.ceil(wx(0)/st)*st;x<wx(W);x+=st)g.fillText(x,sx(x)+3,54);}
@@ -462,14 +466,14 @@ let mergeHint=null;
 function splitAtJunction(){const{r,o,e}=mergeHint;mergeHint=null;const oi=doc.roads.indexOf(o),ri=doc.roads.indexOf(r);if(oi<0||ri<0)return;snap();
   const[,i]=dSeg(e[0],e[1],o.pts,!!o.closed);o.pts.splice(i,0,[r1(e[0]),r1(e[1])]);if(o.closed){o.pts=o.pts.slice(i).concat(o.pts.slice(0,i+1));delete o.closed}else{const n={...clone(o),id:nid('r'),pts:o.pts.slice(i).map(p=>p.slice())};o.pts=o.pts.slice(0,i+1);doc.roads.splice(oi+1,0,n)}
   multi=[{k:'road',i:doc.roads.indexOf(r)}];changed(false);panel();toast('Split. Now Shift-tap the half you want to join, then Merge roads.')}
-let lastB=null;const SPC={house:12,nipa:9,shop:10};
+let lastB=null;const SPC={house:12,nipa:9,shop:10,house2:12,bahay:12,bunga:12,sari:8,cottage:8,stall:7,chapel:14,lighthouse:12,warehouse:28,resort:30};
 function nearRoadPt(x,z){let best=null,bd=70;for(const r of doc.roads){if(r.kind==='strip')continue;for(const p of crSample(r.pts,r.closed,4)){const d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;best=p}}}return best}
 function brushAt(x,z,first){if(first)lastB=null;
   if(erase){const R=Math.max(4,12/cam.s);let n=0;for(let i=doc.buildings.length-1;i>=0;i--){const b=doc.buildings[i];if(LMO[b[0]])continue;const[a,d]=bLoc(b,x,z),[hw,hd]=bSize(b);if(Math.hypot(Math.max(Math.abs(a)-hw,0),Math.max(Math.abs(d)-hd,0))<R){doc.buildings.splice(i,1);n++}}if(n)changed(false);return n>0}
-  const lm=!!LMO[bType];if(lm&&!first)return false;if(lastB&&Math.hypot(x-lastB[0],z-lastB[1])<(SPC[bType]||10))return false;
+  const lm=!!LMO[bType],one=lm||ONE.has(bType);if(one&&!first)return false;if(lastB&&Math.hypot(x-lastB[0],z-lastB[1])<(SPC[bType]||10))return false;
   let ry=0;if(faceRoad){const p=nearRoadPt(x,z);if(p)ry=Math.atan2(p[0]-x,p[1]-z)}ry=+ry.toFixed(4);const R=Math.random,X=r1(snapV(x)),Z=r1(snapV(z));
-  const b=bType==='house'?['house',X,Z,ry,r1(6+R()*3),r1(6+R()*2.5)]:bType==='shop'?['shop',X,Z,ry,r1(6+R()*4.5),r1(8+R()*3),1+(R()*3|0)]:[bType,X,Z,ry];
-  doc.buildings.push(b);lastB=[x,z];if(lm){sel={k:'bld',i:doc.buildings.length-1};setTool('select')}changed(lm);return true}
+  const b=bType==='house'?['house',X,Z,ry,r1(6+R()*3),r1(6+R()*2.5)]:bType==='shop'?['shop',X,Z,ry,r1(6+R()*4.5),r1(8+R()*3),1+(R()*3|0)]:VARY.has(bType)?[bType,X,Z,ry,r1(BDM[bType][0]*(.9+R()*.2)),r1(BDM[bType][1]*(.9+R()*.2))]:[bType,X,Z,ry];
+  doc.buildings.push(b);lastB=[x,z];if(one){sel={k:'bld',i:doc.buildings.length-1};setTool('select')}changed(lm);return true}
 function finishLand(){const d=drawing;stopDraw();if(!d)return;const m=Math.max(12,20/cam.s),P=[];for(const p of d.pts)if(!P.length||Math.hypot(p[0]-P[P.length-1][0],p[1]-P[P.length-1][1])>=m)P.push(p);
   if(P.length>3&&Math.hypot(P[0][0]-P[P.length-1][0],P[0][1]-P[P.length-1][1])<m*.7)P.pop();
   if(P.length<3){toast('Draw a bigger outline');return}snap();doc.islands.push({id:nid('i'),pts:P});sel={k:'isl',i:doc.islands.length-1};changed();setTool('select')}
@@ -538,7 +542,7 @@ function panel(){const B=$('sBody');fields=[];let h='',title='Map',tag='';
     if(R0)fields=[{sec:'Roads'},F('Width',()=>R0.w,v=>rd2.forEach(m=>doc.roads[m.i].w=v),{step:.5,min:3,noT:1}),F('Highway',()=>!!R0.hwy,v=>rd2.forEach(m=>v?doc.roads[m.i].hwy=true:delete doc.roads[m.i].hwy),{t:'chk',noT:1})];
     if(mergeHint&&rd2.some(m=>doc.roads[m.i]===mergeHint.r)&&rd2.some(m=>doc.roads[m.i]===mergeHint.o))h+=`<div class="note" style="color:var(--ac2)">These roads meet at a T, not end to end.</div><div class="row"><button class="btn pri" data-mop="tsplit">Split at the junction</button></div>`;else mergeHint=null;
     h+=`<div class="row">${rd2.length>1?'<button class="btn pri" data-mop="merge">Merge roads</button>':''}<button class="btn del" data-mop="del">Delete all</button><button class="btn" data-mop="clear">Clear</button></div><div class="note">Drag any selected item to move them together. ${rd2.length>1?'Merge joins the roads end to end into one (nearest ends first).':''}</div>`}
-  else if(tool==='build'){title='Building brush';h=`<div class="sec">Type</div><div class="chips">${['house','nipa','shop','church','plaza','market','gas'].map(t=>`<span class="chip${bType===t&&!erase?' on':''}" data-bt="${t}">${BT[t]}</span>`).join('')}<span class="chip${erase?' on':''}" data-bt="erase" style="color:var(--bad)">Eraser</span></div>
+  else if(tool==='build'){title='Building brush';h=`<div class="sec">Type</div><div class="chips">${['house','nipa','shop','house2','bahay','bunga','sari','stall','cottage','resort','warehouse','chapel','lighthouse','church','plaza','market','gas'].map(t=>`<span class="chip${bType===t&&!erase?' on':''}" data-bt="${t}">${BT[t]}</span>`).join('')}<span class="chip${erase?' on':''}" data-bt="erase" style="color:var(--bad)">Eraser</span></div>
     <div class="f"><label>Face the nearest road</label><input type="checkbox" id="iFace"${faceRoad?' checked':''}></div>
     <div class="note">Tap to place, drag to paint a row (houses, huts, shophouses get random sizes). Landmarks are placed one at a time and level the ground under them. Eraser removes small buildings.</div>`}
   else if(tool==='land'){title='Draw land';h=`<div class="note">Drag a closed outline to make an island. It gets beaches, and hills if it's big; add a volcano or ridge on it for mountains. Select an island to reshape it with its handles.</div>`}
@@ -563,10 +567,10 @@ function panel(){const B=$('sBody');fields=[];let h='',title='Map',tag='';
     else if(KIND[k]){title=NAMES[k];fields=[idx(o,0,'x'),idx(o,1,'z'),F('Heading',()=>Math.round(A(o[2])),v=>o[2]=+Rd(v).toFixed(4),{step:15,hint:'degrees'})]}
     else if(k==='bump'){title='Speed bump';fields=[idx(o,0,'x'),idx(o,1,'z'),F('Runs along',()=>o[2],v=>o[2]=v,{t:'sel',opts:[['z','North–south road'],['x','East–west road']]})]}
     else if(k==='area'){title=sel.i==='town'?'Town bounds':'Paddy fields';h=`<div class="note">${sel.i==='town'?'Town ground colour, no houses or trees inside.':'Paddy texture and flat ground.'}</div>`;fields=[num(o,'x0','x min'),num(o,'z0','z min'),num(o,'x1','x max'),num(o,'z1','z max')]}
-    else if(k==='bld'){const lm=LMO[o[0]],sm=o[0]==='house'||o[0]==='shop';title=BT[o[0]]||o[0];
+    else if(k==='bld'){const lm=LMO[o[0]],sm=!!BDM[o[0]];title=BT[o[0]]||o[0];
       fields=[...(lm?[]:[F('Type',()=>o[0],v=>{o[0]=v;if(v==='nipa')o.length=4;else{o[4]??=v==='shop'?8:7;o[5]??=v==='shop'?9.5:7;if(v==='shop')o[6]??=1;else o.length=6}panel()},{t:'sel',noT:1,opts:[['house','House'],['nipa','Nipa hut'],['shop','Shophouse']]})]),
         idx(o,1,'x',{noT:!lm}),idx(o,2,'z',{noT:!lm}),F('Heading',()=>Math.round(A(o[3]||0)),v=>o[3]=+Rd(v).toFixed(4),{step:15,hint:'degrees, front faces the handle',noT:!lm})];
-      if(sm)fields.push(F('Width',()=>o[4]??(o[0]==='shop'?8:7),v=>o[4]=v,{step:.5,noT:1}),F('Depth',()=>o[5]??(o[0]==='shop'?9.5:7),v=>o[5]=v,{step:.5,noT:1}));
+      if(sm)fields.push(F('Width',()=>o[4]??BDM[o[0]][0],v=>o[4]=v,{step:.5,noT:1}),F('Depth',()=>o[5]??BDM[o[0]][1],v=>o[5]=v,{step:.5,noT:1}));
       if(o[0]==='shop')fields.push(F('Floors',()=>o[6]??1,v=>o[6]=clamp(Math.round(v),1,3),{min:1,max:3,noT:1}));
       if(lm)h=`<div class="note">${{lot:'Spawn point and parking-quest bays. The map needs exactly one.',gas:'Refuel here. Shows as a red dot on the minimap.',church:'Floodlit at night.',plaza:'Lawn, basketball court, lamp posts.',market:'Stalls under a tin roof, lit at night.'}[o[0]]} The ground under it is levelled.</div>`}
     else if(k==='isl'){title='Island';tag=o.id;h=`<div class="note">${o.pts.length} outline points. Drag handles to reshape, double-click the outline to add a point.</div>`}
