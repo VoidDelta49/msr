@@ -14,9 +14,9 @@ body.gar #mini{display:none}
 #tc{display:none}
 body.touch #tc{display:block}
 #cluFill{position:absolute;left:0;right:0;bottom:0;height:0;background:linear-gradient(0deg,rgba(67,224,122,.5),rgba(255,176,32,.6) 45%,rgba(255,74,61,.7))}
-#clu small{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font:800 clamp(9px,calc(var(--cw) * .13),12px) system-ui;letter-spacing:.12em}
+#clu small{position:absolute;inset:0;display:grid;place-items:center;text-align:center;font:800 12px system-ui;letter-spacing:.12em}
 #wheel svg{width:100%;height:100%;overflow:visible}
-#thr small{position:absolute;left:0;right:0;bottom:-2px;text-align:center;white-space:nowrap;color:var(--dim);font-size:clamp(8px,calc(var(--tw) * .12),11px);letter-spacing:.12em}
+#thr small{position:absolute;left:0;right:0;bottom:-2px;text-align:center;white-space:nowrap;color:var(--dim);font-size:11px;letter-spacing:.12em}
 #thrg{position:absolute;left:10px;right:10px;top:10px;bottom:22px;border-radius:14px;border:2px solid rgba(255,255,255,.35);background:repeating-linear-gradient(0deg,#151515 0 7px,#2c2c2c 7px 12px);background-position-y:0}
 #thr.on #thrg{border-color:var(--hot)}
 body.gar #tc,body.gar #top,body.gar #gauge,body.gar #mis{display:none}
@@ -120,29 +120,22 @@ body.gar #race,body.gar #ride,body.gar #tags,body.menu #ride,body.menu #race,bod
 /* ---------- touch layout (Build 10.1) ----------
    Right thumb: throttle + front brake (+ clutch and shifter on manual bikes). Left thumb: handlebar, with the
    engine buttons just above it. Sizes follow the screen (--w / --tw / --th) and Options > touch size (--k);
-   Options > left-handed mirrors the two clusters.
-   Mobile fit: every size is also capped by the screen (--W / --H = dynamic viewport), so a big touch size or a small
-   phone can never push the clusters into each other, the gauge or the top bar. */
-body{--k:1;--H:100vh;--W:100vw;--el:calc(12px + env(safe-area-inset-left));--er:calc(12px + env(safe-area-inset-right));--eb:calc(12px + env(safe-area-inset-bottom));--et:calc(8px + env(safe-area-inset-top));
-  --mini:min(120px,calc(var(--H) * .26));
-  --w:min(calc(clamp(110px,calc(var(--H) * .38),160px) * var(--k)),calc(var(--W) * .24),calc(var(--H) - var(--eb) - var(--et) - var(--mini) - 76px));
-  --tw:min(calc(clamp(96px,calc(var(--W) * .15),120px) * var(--k)),calc(var(--W) * .17));
-  --th:min(calc(clamp(104px,calc(var(--H) * .32),132px) * var(--k)),calc(var(--H) - var(--eb) - 200px));
-  --cw:min(calc(clamp(84px,calc(var(--W) * .17),130px) * var(--k)),calc(var(--W) * .17))}
-@supports (height:1dvh){body{--H:100dvh;--W:100dvw}}
+   Options > left-handed mirrors the two clusters. */
+body{--k:1;--el:calc(12px + env(safe-area-inset-left));--er:calc(12px + env(safe-area-inset-right));--eb:calc(12px + env(safe-area-inset-bottom));--et:calc(8px + env(safe-area-inset-top));
+  --w:calc(clamp(110px,38vh,160px) * var(--k));--tw:calc(clamp(96px,15vw,120px) * var(--k));--th:calc(clamp(104px,32vh,132px) * var(--k));--cw:calc(clamp(84px,17vw,130px) * var(--k));--mini:min(120px,26vh)}
 #mini{position:fixed;top:var(--et);left:calc(8px + env(safe-area-inset-left));width:var(--mini);height:var(--mini);pointer-events:none;z-index:4}
 #top{position:fixed;top:var(--et);right:calc(8px + env(safe-area-inset-right));display:flex;gap:6px;z-index:5}
 #top .b{min-width:0;min-height:0;padding:0 6px;white-space:nowrap;overflow:hidden}
 body.touch .b{min-height:44px}
 #perf{position:fixed;top:calc(58px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));font:700 11px/14px ui-monospace,monospace;color:rgba(255,255,255,.75);text-shadow:0 1px 2px #000;pointer-events:none;text-align:right;overflow:hidden;overflow-wrap:anywhere}
 /* quest / race / ride banner: js/layout.js pins it into the zone layoutcalc.js reserves and sets the --bn* / --bw* sizes (bannerH() models this wrapping); text first (two lines at most), buttons after it */
-#mis,#race,#ride{position:fixed;top:calc(58px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--glass);padding:var(--bnp,8px);border-radius:10px;display:flex;flex-wrap:wrap;gap:var(--bng,8px);align-items:center;z-index:5;width:max-content;max-width:calc(var(--W) - 2 * max(var(--mini) + 14px + env(safe-area-inset-left),132px + env(safe-area-inset-right)));font-size:var(--bnf,13px);line-height:var(--bnl,15px);overflow:hidden}
+#mis,#race,#ride{position:fixed;top:calc(58px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--glass);padding:var(--bnp,8px);border-radius:10px;display:flex;flex-wrap:wrap;gap:var(--bng,8px);align-items:center;z-index:5;max-width:calc(100vw - 2 * var(--mini) - 40px);font-size:var(--bnf,13px);line-height:var(--bnl,15px);overflow:hidden}
 #misT,#raceT,#rideT{flex:1 1 var(--bntw,150px);min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
 #mis .b,#race .b,#ride .b{flex:none;height:var(--bnbh,40px);min-height:0;padding:0 var(--bnx,10px);font-size:var(--bnf,13px);line-height:1;white-space:nowrap}
 #raceY,#rideY,#misNext{min-width:var(--bw0,80px)}#raceP,#rideB{min-width:var(--bw1,96px)}#raceF{min-width:var(--bw2,82px)}#misX,#raceX,#rideX{min-width:var(--bw3,44px)}
 #race{z-index:6;border:1px solid rgba(255,176,32,.5)}
 #ride{z-index:7;border:1px solid rgba(58,215,255,.6)}#ride .hot{background:#3ad7ff;color:#04141a;border-color:#3ad7ff}
-#gauge{position:fixed;left:calc(var(--el) + var(--w) + 16px);bottom:var(--eb);width:max(0px,min(210px,calc(var(--W) * .24),calc(var(--W) - var(--el) - var(--w) - 16px - var(--er) - var(--tw) - var(--cw) - 24px)));height:auto;border-radius:12px;pointer-events:none}
+#gauge{position:fixed;left:calc(var(--el) + var(--w) + 16px);bottom:var(--eb);width:min(210px,24vw);height:auto;border-radius:12px;pointer-events:none}
 #wheel{position:fixed;left:var(--el);bottom:var(--eb);width:var(--w);height:var(--w);touch-action:none}
 /* engine buttons: key, kill, start (hold to crank), walk back */
 #lb{position:fixed;left:var(--el);bottom:calc(var(--eb) + var(--w) + 10px);display:flex;gap:8px;align-items:stretch}
@@ -182,30 +175,21 @@ body.lefty #brk{right:auto;left:var(--el);border-radius:10px 30px 30px 10px}
 body.lefty #clu,body.lefty #shift{right:auto;left:calc(var(--el) + var(--tw) + 12px)}
 body.lefty.cvt #brk{left:calc(var(--el) + var(--tw) + 12px);border-radius:16px}
 body.lefty #gauge{left:auto;right:calc(var(--er) + var(--w) + 16px)}
-/* portrait phones: thumb zones sized from the width (and capped so the three columns always fit side by side), top bar becomes a column,
-   engine buttons become a 2x2 block that stays left of the clutch/shifter column, gauge above them */
+/* portrait phones: bigger thumbs zones from the width, top bar becomes a column, gauge above the engine buttons */
 @media (max-aspect-ratio:1/1){
-  body{--av:calc(var(--W) - var(--el) - var(--er) - 20px);
-    --w:min(calc(clamp(104px,calc(var(--W) * .4),172px) * var(--k)),calc(var(--av) * .46));
-    --tw:min(calc(clamp(88px,calc(var(--W) * .26),120px) * var(--k)),calc(var(--av) * .3));
-    --th:calc(clamp(112px,calc(var(--H) * .17),150px) * var(--k));
-    --cw:min(calc(clamp(72px,calc(var(--W) * .21),112px) * var(--k)),calc(var(--av) * .24));
-    --mini:min(104px,calc(var(--W) * .27))}
+  body{--w:calc(clamp(104px,40vw,172px) * var(--k));--tw:calc(clamp(88px,26vw,120px) * var(--k));--th:calc(clamp(112px,17vh,150px) * var(--k));--cw:calc(clamp(72px,21vw,112px) * var(--k));--mini:min(104px,27vw)}
   #top{flex-direction:column;align-items:flex-end}
   #perf{top:calc(var(--et) + var(--mini) + 4px);left:calc(8px + env(safe-area-inset-left));right:auto;text-align:left}
   #mis,#race,#ride{left:calc(8px + env(safe-area-inset-left));transform:none;top:calc(var(--et) + var(--mini) + 22px);max-width:calc(100vw - 110px);flex-wrap:wrap;white-space:normal}
-  #gauge{left:var(--el);bottom:calc(var(--eb) + var(--w) + 124px);width:min(200px,44vw)}
+  #gauge{left:var(--el);bottom:calc(var(--eb) + var(--w) + 72px);width:min(200px,44vw)}
   body.lefty #gauge{left:auto;right:var(--er)}
-  #lb{display:grid;grid-template-columns:1fr 1fr;gap:6px;width:calc(var(--av) - var(--tw) - var(--cw))}
-  #lb button{min-width:0;height:46px;padding:0 4px;font-size:12px}#lb #bStart{min-width:0}
+  #lb{gap:6px}#lb button{min-width:48px;padding:0 8px}#lb #bStart{min-width:72px}
 }
 /* short landscape phones */
 @media (max-height:380px){
   #lb button{height:44px}#shift button{height:44px}#brk{height:48px}
   #mini{width:min(104px,28vh);height:min(104px,28vh)}
 }
-/* landscape phones: shifter arrows side by side, so the right-hand stack stays below the mission bar */
-@media (min-aspect-ratio:1/1) and (max-height:480px){#shift{grid-template-columns:1fr 1fr;width:max(var(--cw),104px)}}
 .sw{display:flex;gap:6px;align-items:center}
 
 /* garage (garage.js + studio.js): the studio is the 3D canvas; these are the floating panels over it */

@@ -51,7 +51,6 @@ export function relayout() {
   const m = res.m, lb = $('lb'), fs = res.s < .85 ? 11 : 13, btn = [...lb.children];
   lb.style.display = res.mode === 'row' ? 'flex' : 'grid'; lb.style.gridTemplateColumns = res.mode === 'row' ? '' : '1fr 1fr'; lb.style.gap = res.mode === 'row' ? '8px' : '6px';
   btn.forEach((b, i) => { b.style.minWidth = '0'; b.style.width = res.mode === 'row' ? m.bw[i] + 'px' : ''; b.style.height = m.lh + 'px'; b.style.fontSize = fs + 'px'; b.style.padding = '0 4px'; });
-  $('shift').style.gridTemplateColumns = '1fr'; // the solver stacks the two arrows (css has a side-by-side variant for landscape)
   [...$('shift').children].forEach(b => { b.style.height = m.sbh + 'px'; });
   // pad captions shrink with their pad (11 px 'THROTTLE ↓' is 7.7em wide incl. letter-spacing; 'CLUTCH' is 4.8em and 'drag ↓ to pull' wraps under it)
   const cap = (el, w, em, max) => { el.querySelector('small').style.fontSize = Math.max(7, Math.min(max, (w - 3) / em)) + 'px'; };
