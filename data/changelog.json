@@ -1,4 +1,7 @@
 [
+  { "v": "11.39", "d": "2026-10-27", "t": [
+    "On foot, first person: the walking bob is now Half-Life 1 style and much gentler: vertical only (no side sway, roll or wobble), one slow up-down per stride, height following your speed."
+  ] },
   { "v": "11.38", "d": "2026-10-27", "t": [
     "On foot, feel: the camera is much smoother (look angles ease, steps and slopes glide instead of popping, the third-person camera trails you softly and pulls back a little when you sprint), the body now stands upright instead of staying in the seated pose, and the first-person view has a proper walking bob, side sway and a faint breath when standing still.",
     "On foot, movement: speed eases in and out with real friction instead of snapping, sprint builds up and drops off smoothly (with a slight widening of the view), turning around at speed is quick, and in first person backing up and strafing are slower. Jumping is more forgiving: you can still jump a moment after walking off an edge, a jump pressed just before landing counts, a tap is a short hop and holding the button jumps full height. Take-off and landing dip the camera, and a hard landing costs a little speed.",

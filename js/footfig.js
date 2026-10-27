@@ -66,10 +66,10 @@ export function footCam(camera, dt, H) {
   C.y += (F.y - C.y) * (F.gnd ? ease(12, dt) : 1);  // steps and slope kinks glide; in the air the camera follows exactly
   if (F.fp) {
     C.fx = F.x; C.fz = F.z;
-    const a = F.ba, r = F.rs, ph = F.bp, ay = (.022 + .03 * r) * a, ax = (.016 + .02 * r) * a, ar = (.0035 + .006 * r) * a;
-    const by = Math.sin(ph * 2) * ay + Math.sin(F.t * 1.7) * .0025 * (1 - a), bx = Math.sin(ph) * ax; // two vertical bumps per stride, side sway once; a faint breath when standing
-    camera.position.set(F.x + Math.cos(C.cy) * bx, C.y + F.eye + F.dip + by, F.z - Math.sin(C.cy) * bx);
-    camera.rotation.set(-(C.cp - F.dip * .45 + Math.cos(ph * 2) * .004 * a), C.cy, Math.sin(ph) * ar); // cp > 0 looks down, cy turns left; landing nods the view down
+    // Half-Life 1 style bob: vertical only (no sway, no roll, no pitch wobble), one slow up-down per stride, height proportional to ground speed (HL: cl_bob = speed * 0.01)
+    const by = Math.sin(F.bp) * Math.min(F.spd, 6.2) * .0036 * F.ba;
+    camera.position.set(F.x, C.y + F.eye + F.dip + by, F.z);
+    camera.rotation.set(-(C.cp - F.dip * .45), C.cy, 0); // cp > 0 looks down, cy turns left; landing nods the view down
     return;
   }
   C.fx += (F.x - C.fx) * ease(13, dt); C.fz += (F.z - C.fz) * ease(13, dt); C.d += (DIST + F.rs * .5 - C.d) * ease(4, dt); // the focus trails the walker a little, sprinting pulls the camera back
