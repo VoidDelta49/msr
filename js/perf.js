@@ -31,6 +31,8 @@ export function cullFar(o, far) {
   else { o.updateMatrixWorld(true); box.setFromObject(o).getBoundingSphere(sph); }
   ITEMS.push({ o, x: sph.center.x, z: sph.center.z, r: sph.radius, far: Math.min(far, DRAW) });
 }
+// same for a piece that is not an object (a BatchedMesh instance): o = anything with a visible setter, s = its world sphere
+export function cullFarSphere(o, s, far) { ITEMS.push({ o, x: s.center.x, z: s.center.z, r: s.radius, far: Math.min(far, DRAW) }); }
 // terrain tile: levels[0] full detail ... levels[n] coarsest, picked by distance to the tile's rectangle
 export const LOD_D = [200, 480];
 export function addLOD(levels, x0, z0, x1, z1) { LODS.push({ levels, x0, z0, x1, z1, cur: -2 }); }

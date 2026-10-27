@@ -18,7 +18,7 @@ Run these instead of reading code or launching the game. All print only problems
 | `node tools/foot.mjs` | Headless on-foot character (`js/foot.js`): get off / on, walk + run speed, camera-relative stick, walls (axis-aligned + rotated, no tunnelling), the parked bike, sea edge, ledges, slopes, jump, determinism. Part of `test.mjs` | <1 s |
 | `node tools/roads.mjs [-v]` | Roads: runs the real `js/roads.js` + the real terrain on `data/map/island.json` and fails on a SEAM (closed road does not close), OVERLAP (two road surfaces disagree on height where they overlap), GRADE (steeper than the road's limit) or STEP (ground jumps 25 cm apart between different roads; speed bumps excluded). `-v` lists every junction. Needs the `// @terrain-begin/end` markers in `world.js`. Part of `test.mjs` | <1 s |
 | `node tools/serve.mjs [port]` | Static http server for manual play-testing (ES modules need http) | – |
-| `node tools/smoke.mjs` | Real-browser smoke (playwright-core + chromium): PLAY, switch every bike, fail on console errors. Skips (exit 0) if no browser | – |
+| `node tools/smoke.mjs` | Real-browser smoke (playwright-core + chromium, WebGL 2): PLAY, switch every bike, fail on console errors. Skips (exit 0) if no browser. `--perf [--top N]`: draw calls / triangles at 5 spots + the biggest groups of visible objects + batch stats; `--tod 12` fixes the hour, `--gfx low`, `--shot x.png` (one per spot with `--perf`) | ~60 s |
 
 ## sim.mjs
 Scenarios: `launch` (0-60/100 km/h, 100/400 m, top speed, scripted rider shifts at redline) · `start` (key + starter: catch time, idle) · `brake` (60 km/h to stop, full and half lever; lock time, stoppie, g) · `corner` (lean, radius, grip asked at 5/10/15 m/s) · `wheelie` (synthetic strong+sticky setup, wheelie control on vs off; 0 = this bike can't lift) · `stall` (anti-stall off, clutch dump in 1st; info only) · `idle` · `iss` (Idling Stop, scooters).
@@ -29,7 +29,7 @@ For a custom experiment write a 10-line script on `tools/lib/headless.mjs` (`cre
 ## Limits (know what a green run does NOT cover)
 - Flat ground, no Rapier: suspension heave/pitch, walls, crashes, tricycle roll are NOT simulated (only the bike solver is).
 - Touch/HUD layout is checked by `layout.mjs` + `layout-dom.mjs` (not the main menu, garage or options panels). Changing a button label or size in the top bar / banner / engine buttons: re-run both, they fail if a label stops fitting.
-- Rendering, audio, other UI, multiplayer, WebGPU: only checked statically (syntax/imports/data) or by `smoke.mjs` in a real browser.
+- Rendering, audio, other UI, multiplayer, WebGPU: only checked statically (syntax/imports/data) or by `smoke.mjs` in a real browser. Draw calls: `smoke.mjs --perf` (exact counts; timings on swiftshader mean nothing). WebGPU does not run on swiftshader (device lost, game falls back).
 - Baseline tolerance is 4% (absolute floors for times); `test.mjs` fails on drift so intended changes need `--update` plus a note in the commit.
 - When a new bike is added: `check` validates its JSON/sound profile and `test` fails with "new metric" until `--update` is run.
 

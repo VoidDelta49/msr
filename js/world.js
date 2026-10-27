@@ -8,10 +8,11 @@ import { cfg, Q, BUILD } from './config.js';
 import { attribute, texture, uv, vec2, vec3, float, select } from 'three/tsl';
 import { gpuInst, finishGpuInst } from './gpucull.js';
 import * as T from './tex.js';
-import { glowMat, lampMat, poolMat, haloMat, poolPatches, HALO_GEO } from './lights.js';
+import { glowMat, lampMat, poolMat, haloMat, poolPatches, HALO_GEO, nightOnly } from './lights.js';
 import { mkTex } from './tex.js';
-import { DRAW, FAR, freeze, cullFar, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
+import { DRAW, FAR, freeze, cullFar, cullFarSphere, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
 import { buildRoads, groundModel } from './roads.js';
+import { MULTI, batchInst, finishBatches, staticBatch } from './batch.js';
 
 // N64-style textures (tex.js): tiny, dithered, bilinear. Tiling scale ~ what the old 256 px speck textures had.
 const tAsph=mkTex(T.asphalt()),tCon=mkTex(T.concrete());
@@ -115,6 +116,7 @@ const CHUNK=700;
 const GCULL=GPU&&cfg.gpuCull!==false;
 function inst(geo,mat,list,shadow=true,far=FAR.big){
   if(GCULL&&list.length>=8&&!mat.transparent){geo.computeBoundingBox();const b=geo.boundingBox;if(b.max.y-b.min.y>.05){gpuInst(geo,mat,list,shadow,Math.min(far,DRAW));return}}
+  if(MULTI){batchInst(geo,mat,list,shadow,far);return} // WebGL 2 + multi-draw: one draw per material for the whole island (batch.js)
   const mkI=(L,m,cs)=>{const o=new THREE.InstancedMesh(geo,m,L.length);
     L.forEach((o2,i)=>{dummy.position.set(o2.x,o2.y||0,o2.z);dummy.rotation.set(0,o2.ry||0,0);dummy.scale.set(o2.sx||1,o2.sy||1,o2.sz||1);dummy.updateMatrix();o.setMatrixAt(i,dummy.matrix);if(cs&&o2.c!==undefined)o.setColorAt(i,new THREE.Color(o2.c))});
     o.computeBoundingSphere();freeze(o);scene.add(o);return o};
@@ -139,7 +141,7 @@ function pair(a,b){
   const geo=mergeGeometries([ga,gb]),t=attribute('tsel','float').greaterThan(.5),u=uv();
   const tx=m=>m.map?texture(m.map,u.mul(vec2(m.map.repeat.x,m.map.repeat.y))).rgb:vec3(1);
   const mat=Q.lite?new THREE.MeshLambertNodeMaterial({vertexColors:true}):new THREE.MeshStandardNodeMaterial({vertexColors:true});
-  mat.colorNode=select(t,tx(b.m),tx(a.m));if(!Q.lite){mat.roughnessNode=select(t,float(b.m.roughness),float(a.m.roughness));mat.metalnessNode=select(t,float(b.m.metalness),float(a.m.metalness))}
+  mat.colorNode=select(t,tx(b.m),tx(a.m));mat.userData.pair=[a.m,b.m]; // batch.js folds untextured pairs into its shared materialif(!Q.lite){mat.roughnessNode=select(t,float(b.m.roughness),float(a.m.roughness));mat.metalnessNode=select(t,float(b.m.metalness),float(a.m.metalness))}
   return[geo,mat]}
 function prism(w,h,len){const s=new THREE.Shape();s.moveTo(-w/2,0);s.lineTo(w/2,0);s.lineTo(0,h);s.lineTo(-w/2,0);return new THREE.ExtrudeGeometry(s,{depth:len,bevelEnabled:false}).translate(0,0,-len/2)}
 const pastel=()=>new THREE.Color().setHSL(rand(),.35+rand()*.3,.62+rand()*.18);
@@ -184,9 +186,12 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     for(const[ai,aj,di,dj]of[[0,0,1,0],[n,0,0,1],[n,n,-1,0],[0,n,0,-1]])for(let k=0;k<n;k++){const i1=ai+di*k,j1=aj+dj*k,i2=i1+di,j2=j1+dj,v=p.length/3;
       put(i0+i2*st,j0+j2*st,drop);put(i0+i1*st,j0+j1*st,drop);const a=i1+V*j1,b=i2+V*j2;ix.push(a,b,v,a,v,v+1,a,v,b,a,v+1,v)}
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(nr,3));
-    g.setAttribute('color',new THREE.Float32BufferAttribute(cc,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(ix);
-    const m=new THREE.Mesh(g,tmat);m.receiveShadow=true;freeze(m);scene.add(m);return m}
-  for(let tj=0;tj<N/TT;tj++)for(let ti=0;ti<N/TT;ti++){const x0=ti*TT*TS-SZ/2+GX,z0=tj*TT*TS-SZ/2+GZ;addLOD([1,2,4].map(st=>tile(ti*TT,tj*TT,st)),x0,z0,x0+TT*TS,z0+TT*TS)}
+    g.setAttribute('color',new THREE.Float32BufferAttribute(cc,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(ix);return g}
+  // Build 11.43: every tile at every level is one piece of ONE BatchedMesh (one multi-draw for all the ground in view, sorted
+  // front to back); perf.js switches a tile's level by showing one piece and hiding the other two.
+  const TL=[],TG=[];for(let tj=0;tj<N/TT;tj++)for(let ti=0;ti<N/TT;ti++){const x0=ti*TT*TS-SZ/2+GX,z0=tj*TT*TS-SZ/2+GZ;TL.push([x0,z0]);for(const st of[1,2,4])TG.push(tile(ti*TT,tj*TT,st))}
+  {const{b,ids}=staticBatch(TG,tmat);b.receiveShadow=true;b.name='terrain';scene.add(b);
+    TL.forEach(([x0,z0],i)=>addLOD([0,1,2].map(l=>{const id=ids[i*3+l];return{set visible(v){b.setVisibleAt(id,v)}}}),x0,z0,x0+TT*TS,z0+TT*TS))}
   geo.dispose();
   const sea=new THREE.Mesh(new THREE.PlaneGeometry(8000,8000).rotateX(-PI/2),new THREE.MeshStandardMaterial({color:0x2a88a6,map:mkTex(T.sea(),400),roughness:.2,metalness:.15,transparent:true,opacity:.9}));sea.position.y=SEA;scene.add(freeze(sea));
   // rice paddies: patchwork texture with dikes
@@ -211,8 +216,8 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   for(const[k,B]of Object.entries(rb)){const mat=new THREE.MeshStandardMaterial({map:k==='hwy'?tHwy:k==='strip'?tCon:tRoad,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2}),ch=new Map();
     for(let t=0;t<B.i.length;t+=3){const a=B.i[t],b=B.i[t+1],c=B.i[t+2],key=Math.floor((B.p[a*3]+B.p[b*3]+B.p[c*3])/3/TILE)*1000+Math.floor((B.p[a*3+2]+B.p[b*3+2]+B.p[c*3+2])/3/TILE);
       let C=ch.get(key);if(!C)ch.set(key,C={p:[],u:[],i:[],map:new Map()});for(const v of[a,b,c]){let n=C.map.get(v);if(n===undefined){n=C.p.length/3;C.map.set(v,n);C.p.push(B.p[v*3],B.p[v*3+1],B.p[v*3+2]);C.u.push(B.u[v*2],B.u[v*2+1])}C.i.push(n)}}
-    for(const C of ch.values()){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(C.p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(C.u,2));g.setIndex(C.i);g.computeVertexNormals();
-      const m=new THREE.Mesh(g,mat);m.receiveShadow=true;scene.add(freeze(m));cullFar(m,FAR.big)}}
+    const RG=[...ch.values()].map(C=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(C.p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(C.u,2));g.setIndex(C.i);g.computeVertexNormals();return g});
+    if(RG.length){const{b}=staticBatch(RG,mat);b.receiveShadow=true;b.name='roads-'+k;scene.add(b)}}
   inst(new THREE.BoxGeometry(1,1,1),std(0xb5b1a8,.8),deck);inst(new THREE.BoxGeometry(1,1,1),std(0xe8e4da,.6),rail,true,FAR.mid);inst(aoGeo(new THREE.CylinderGeometry(.6,.7,1,8).translate(0,.5,0),.55),vstd(0x9a968c,.8),pil);
   // power poles + sagging wires
   inst(aoGeo(mergeGeometries([new THREE.CylinderGeometry(.11,.15,8,6).translate(0,4,0),new THREE.BoxGeometry(.12,.12,1.7).translate(0,7.6,0)]),.55,0,4),vstd(0x8d887e,.8),poles,false,FAR.mid);
@@ -246,17 +251,19 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   const mesh=(g,m,X,Y,Z,F,r0=0)=>{const o=new THREE.Mesh(g,m),w=F.W(X,Z);o.position.set(w.x,F.y+Y,w.z);o.rotation.y=F.ry+r0;return o};
   const tCourt=mkTex(T.court()),stone=std(0xcdbb98,.95);
   for(const F of LMF.plaza){const{W,obb,ry,y}=F;
-    const pz=mesh(new THREE.PlaneGeometry(62,40).rotateX(-PI/2),std(0x6fae4a,.9),118,.02,28,F);pz.receiveShadow=true;scene.add(freeze(pz));
+    if(MULTI){const c=F.W(118,28);inst(new THREE.PlaneGeometry(62,40).rotateX(-PI/2),std(0x6fae4a,.9),[{x:c.x,y:y+.02,z:c.z,ry}],false,FAR.big)}
+    else{const pz=mesh(new THREE.PlaneGeometry(62,40).rotateX(-PI/2),std(0x6fae4a,.9),118,.02,28,F);pz.receiveShadow=true;scene.add(freeze(pz))}
     const ct=mesh(new THREE.PlaneGeometry(15,28).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tCourt,roughness:.7}),98,.03,28,F);scene.add(freeze(ct));
     inst(mergeGeometries([new THREE.CylinderGeometry(.1,.1,3.2,6).translate(0,1.6,0),new THREE.BoxGeometry(1.8,1.1,.08).translate(0,3.4,.3)]),std(0xdedede,.5),[{...W(98,14.6),y,ry},{...W(98,41.4),y,ry:ry+PI}],true,FAR.small);obb(98,14.6,.2,.2);obb(98,41.4,.2,.2)}
   for(const F of LMF.church){const ch=new THREE.Group(),w=F.W(128,62);ch.position.set(w.x,F.y,w.z);ch.rotation.y=F.ry;scene.add(ch);
-    const cm=(g,m,x,y,z)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;ch.add(o);return o};
+    // with batching (batch.js) each part is a one-instance prop: plain colours, so the whole church joins the shared material's draw
+    const cm=MULTI?(g,m,x,y,z)=>inst(g.translate(x,y,z),m,[{x:w.x,y:F.y,z:w.z,ry:F.ry}],true,FAR.big):(g,m,x,y,z)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;ch.add(o);return o};
     cm(new THREE.BoxGeometry(13,10,24).translate(0,5,0),stone,0,0,0);cm(prism(14,5,25),std(0x8a3b2b,.7),0,10,0);
     cm(new THREE.BoxGeometry(15,14,1.6).translate(0,7,0),stone,0,0,-12.6);cm(prism(15,4,1.6),stone,0,14,-12.6);
     cm(new THREE.BoxGeometry(2.6,4.5,.4).translate(0,2.25,0),std(0x4a2f1f,.8),0,0,-13.5);
     cm(new THREE.BoxGeometry(5,20,5).translate(0,10,0),stone,-9.5,0,-11);cm(new THREE.ConeGeometry(3.6,4,4).rotateY(PI/4).translate(0,2,0),std(0x8a3b2b,.7),-9.5,20,-11);
     cm(new THREE.BoxGeometry(.25,2.2,.25),std(0x333333,.5),0,17,-12.6);cm(new THREE.BoxGeometry(1.2,.25,.25),std(0x333333,.5),0,17.4,-12.6);
-    cm(new THREE.BoxGeometry(1.6,2,5.2),std(0x222222,.8),-9.5,15,-11);mergeByMaterial(ch,mergeGeometries);freeze(ch);cullFar(ch,FAR.big);
+    cm(new THREE.BoxGeometry(1.6,2,5.2),std(0x222222,.8),-9.5,15,-11);if(MULTI)scene.remove(ch);else{mergeByMaterial(ch,mergeGeometries);freeze(ch);cullFar(ch,FAR.big)}
     F.obb(128,62,6.5,12);F.obb(128,49.4,7.5,.8);F.obb(118.5,51,2.5,2.5)}
   // market shed
   const tMr=mkTex(T.tin(),[8,1]);
@@ -375,9 +382,10 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     add(new THREE.BoxGeometry(1,1,1),lampMat(),LH,false,FAR.mid);
     add(new THREE.BoxGeometry(1,1,1),lampMat([1.9,1.9,1.9],[.5,.5,.5]),LS,false,FAR.mid);
     add(HALO_GEO(),haloMat(.55),LHA,false,FAR.mid);
-    // pools follow the drawn terrain (per-vertex height), chunked like inst() so they cull by distance
-    {const pm=poolMat(.6),cell=new Map();for(const o of LP){const k=Math.floor(o.x/CHUNK)*1000+Math.floor(o.z/CHUNK);let a=cell.get(k);if(!a)cell.set(k,a=[]);a.push(o)}
-      for(const L of cell.values()){const m=new THREE.Mesh(poolPatches(L,H),pm);m.receiveShadow=false;m.castShadow=false;scene.add(freeze(m));cullFar(m,FAR.small)}}
+    // pools follow the drawn terrain (per-vertex height), in 140 m cells that cull by distance: one BatchedMesh, night only
+    {const pm=poolMat(.6),cell=new Map();for(const o of LP){const k=Math.floor(o.x/140)*1000+Math.floor(o.z/140);let a=cell.get(k);if(!a)cell.set(k,a=[]);a.push(o)}
+      const PG=[...cell.values()].map(L=>poolPatches(L,H)),SP=PG.map(g=>g.boundingSphere.clone());
+      if(PG.length){const{b,ids}=staticBatch(PG,pm,{sort:false});b.name='pools';scene.add(nightOnly(b));ids.forEach((id,i)=>cullFarSphere({set visible(v){b.setVisibleAt(id,v)}},SP[i],FAR.small))}}
   }
 }
 /* minimap base image */
@@ -415,6 +423,7 @@ const freeBays=[];
     inst(new THREE.BoxGeometry(20,.5,18),std(0xf4f4f0,.6),[{...W(gx,gz),y:y+5.6,ry}],true,FAR.mid);
     inst(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0x43e07a,transparent:true,opacity:.25,depthWrite:false}),[{...W(gx,gz),y:y+.03,ry,sx:12,sy:.01,sz:7}],false,FAR.small)}
 }
+finishBatches(scene);
 const marker=new THREE.Mesh(new THREE.BoxGeometry(1.4,.02,2.4),new THREE.MeshBasicMaterial({color:0x43e07a,transparent:true,opacity:.45,depthWrite:false}));
 const arrow=new THREE.Mesh(new THREE.ConeGeometry(.35,.8,4).rotateX(PI),new THREE.MeshBasicMaterial({color:0x43e07a}));
 export const GPU_TYPES=finishGpuInst(scene);

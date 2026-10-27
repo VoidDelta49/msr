@@ -1,4 +1,10 @@
 [
+  { "v": "11.43", "d": "2026-10-27", "t": [
+    "Faster: far fewer draw calls. Measured in five spots (lot, town, highway, town edge, plaza) on Medium: 115-180 draw calls per frame before, 26-35 now, with the same picture.",
+    "The ground is one object (every 280 m tile at every detail level, drawn nearest first), the roads are one per surface, and on WebGL 2 every prop of the island (houses, shops, roofs, trees, palms, poles, rails, parked vehicles, lamps...) is drawn once per material for the whole island instead of once per type per 700 m chunk. Untextured props and the church share one material, so most of the town is a single draw. All shadow-casting props are one draw in the shadow pass. Props now hide per 140 m cell instead of per 700 m chunk, so less off-screen geometry is drawn too.",
+    "Quest beacons are two draws in total (rings, beams) instead of 2-3 each; light pools are one, and pools and halos are skipped entirely by day (they were drawn invisible).",
+    "WebGPU keeps its GPU culling for props; the ground, roads, pools and beacons are batched there too. Not yet checked on a real phone."
+  ] },
   { "v": "11.42", "d": "2026-10-27", "t": [
     "Fixed: the mountain (terrace) road was buried. Where the road runs lower than the hillside, the grass climbed as a wall up to 17 m high within 5 m of the centre line, and the 5 m terrain mesh poked through the road surface, so the road was hard to see and you rode into invisible-looking walls. The ground beside a road now rises as a graded cut bank (at most 0.7 m per metre) behind a level shoulder, in bare earth colour so the road stands out against the grass, and no terrain reaches above the road surface any more.",
     "Terrain below a road (embankments, bridges, river crossings) is unchanged. tools/roads.mjs now also checks the drawn mesh and the physics ground beside every road (CORRIDOR)."

@@ -7,14 +7,20 @@ import { uniform, vec3, uv, float, clamp, smoothstep, mix, positionWorld, camera
 import { liteOf } from './perf.js';
 
 export const LAMP = uniform(0);
-const GLOWM = [];
+const GLOWM = [], NIGHTM = new WeakSet(), NIGHT = [];
 let lvl = -1;
+// Objects drawn only with the lamps on (light pools, halos): by day their opacity is 0, so drawing them was pure fill-rate on
+// additive quads. batch.js / world.js register the batched ones (whole objects, so their own culling never fights this).
+export const lampsOn = () => lvl > 0, isNight = m => NIGHTM.has(m), nightOnly = o => { NIGHT.push(o); o.visible = lvl > 0; return o; };
 export function setLamps(v) {
   v = Math.round(v * 200) / 200; if (v === lvl) return; lvl = v; LAMP.value = v;
+  for (const o of NIGHT) o.visible = v > 0;
   for (const m of GLOWM) { m.emissiveIntensity = v * 1.15; const l = liteOf(m); if (l !== m) l.emissiveIntensity = v * 1.15; }
 }
 // building material with lit windows / signs: emissiveMap = the lit twin of its colour map (intensity 0 by day)
 export function glowMat(m, map) { m.emissive.set(0xffffff); m.emissiveMap = map; m.emissiveIntensity = 0; GLOWM.push(m); return m; }
+// batch.js: a merged copy of a glow material has to follow the lamp level too
+export const isGlow = m => GLOWM.includes(m), glowTrack = m => { m.emissiveIntensity = Math.max(lvl, 0) * 1.15; GLOWM.push(m); return m; };
 
 // bulb / lamp lens: dull grey by day, hot warm white at night (values > 1 so the tone mapper burns it out)
 export function lampMat(on = [2.3, 1.8, 1], off = [.55, .55, .5]) {
@@ -24,12 +30,12 @@ const radial = () => { const f = clamp(float(1).sub(uv().sub(.5).length().mul(2)
 // light on the ground: flat quad, tinted per instance (c), strength k. Add sx/sz per instance.
 export function poolMat(k = .55) {
   const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-  m.colorNode = vec3(1, .86, .6); m.opacityNode = radial().mul(LAMP).mul(k); return m;
+  m.colorNode = vec3(1, .86, .6); m.opacityNode = radial().mul(LAMP).mul(k); NIGHTM.add(m); return m;
 }
 // glow around a lamp seen from afar: two crossed quads, faded out near the camera so it never fills the screen
 export function haloMat(k = .6) {
   const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide });
-  m.colorNode = vec3(1, .8, .45); m.opacityNode = radial().mul(LAMP).mul(k).mul(smoothstep(4, 18, positionWorld.sub(cameraPosition).length())); return m;
+  m.colorNode = vec3(1, .8, .45); m.opacityNode = radial().mul(LAMP).mul(k).mul(smoothstep(4, 18, positionWorld.sub(cameraPosition).length())); NIGHTM.add(m); return m;
 }
 export const POOL_GEO = () => new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
 // Ground-hugging pools (build 11.36): a flat quad floated over sloped / uneven ground, so each pool is an N x N grid whose

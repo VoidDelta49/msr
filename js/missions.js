@@ -44,11 +44,23 @@ export function beacon(c, r) {
 }
 const destB = beacon(0x43e07a, DR);
 const PO = { polygonOffset: true, polygonOffsetFactor: -2 }, bm = (c, o, x) => new THREE.MeshBasicMaterial({ color: c, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: o, ...x });
-const ringG = new THREE.RingGeometry(HR - .6, HR, 40).rotateX(-Math.PI / 2), hardG = new THREE.RingGeometry(HR + .6, HR + 1.3, 40).rotateX(-Math.PI / 2), hardM = bm(0xff4a3d, .8, PO);
-const BM = Object.fromEntries(Object.entries(TYPE).map(([k, t]) => [k, { ring: bm(t.c, .75, PO), beam: bm(t.c, .3) }])); // shared per type
-for (const h of HUBS) { // one group per hub slot: ring, beam, red outer ring for bike-locked jobs
-  const g = h.b = new THREE.Group(), r = new THREE.Mesh(ringG, BM.park.ring), bz = new THREE.Mesh(beamG, BM.park.beam), hr = new THREE.Mesh(hardG, hardM);
-  r.position.y = hr.position.y = .1; g.add(r, bz, hr); g.visible = false; scene.add(g);
+const ringG = new THREE.RingGeometry(HR - .6, HR, 40).rotateX(-Math.PI / 2), hardG = new THREE.RingGeometry(HR + .6, HR + 1.3, 40).rotateX(-Math.PI / 2);
+// Every hub slot's ring, beam and red outer ring (bike-locked jobs) live in two BatchedMeshes (Build 11.43): all the rings in
+// one, all the beams in the other, the type colour per instance. Two draws for every beacon in view instead of 2-3 each.
+const RB = new THREE.BatchedMesh(HUBS.length * 2, ringG.attributes.position.count + hardG.attributes.position.count, ringG.index.count + hardG.index.count, bm(0xffffff, .75, PO));
+const BB = new THREE.BatchedMesh(HUBS.length, beamG.attributes.position.count, beamG.index.count, bm(0xffffff, .3));
+const gRing = RB.addGeometry(ringG), gHard = RB.addGeometry(hardG), gBeam = BB.addGeometry(beamG), hc = new THREE.Color(), hm = new THREE.Matrix4();
+for (const M of [RB, BB]) { M.frustumCulled = false; M.name = 'hubs'; scene.add(M); } // hubs move: three culls each instance, not the whole batch
+for (const h of HUBS) { // per slot: instance ids + the old group's interface (visible, place)
+  const r = RB.addInstance(gRing), hr = RB.addInstance(gHard), bz = BB.addInstance(gBeam); let vis = true, hard = false; RB.setColorAt(hr, hc.set(0xff4a3d)); BB.setColorAt(bz, hc); // colour textures exist before the warm-up compiles the shaders
+  h.b = {
+    set visible(v) { if (v === vis) return; vis = v; RB.setVisibleAt(r, v); BB.setVisibleAt(bz, v); RB.setVisibleAt(hr, v && hard); },
+    place(x, y, z, id, bike) {
+      hard = !!bike; RB.setColorAt(r, hc.set(TYPE[id].c)); BB.setColorAt(bz, hc); RB.setVisibleAt(hr, vis && hard);
+      RB.setMatrixAt(r, hm.makeTranslation(x, y + .1, z)); RB.setMatrixAt(hr, hm); BB.setMatrixAt(bz, hm.makeScale(1, bike ? 2 : 1, 1).setPosition(x, y, z));
+    },
+  };
+  h.b.visible = false;
 }
 function crate(w, h, c, stripe, lid) {
   const g = new THREE.Group(), m = c => new THREE.MeshLambertMaterial({ color: c });
@@ -76,10 +88,10 @@ function place(h, town) { // a random road spot, away from the other hubs
 function setup(h, town) { // roll position, job type and bike requirement
   const ids = Object.keys(ctx.bikes); h.placed = false; place(h, town); if (!h.placed) place(h, false);
   h.id = rng() < .5 ? 'parcel' : 'food'; h.bike = rng() < BIKE_P && ids.length > 1 ? ids[(rng() * ids.length) | 0] : null;
-  const g = h.b, t = TYPE[h.id]; Object.assign(h, t); g.position.set(h.x, h.y, h.z); g.children[0].material = BM[h.id].ring; g.children[1].material = BM[h.id].beam; g.children[1].scale.y = h.bike ? 2 : 1; g.children[2].visible = !!h.bike;
+  Object.assign(h, TYPE[h.id]); h.b.place(h.x, h.y, h.z, h.id, h.bike);
 }
 function init() { // needs road samples / ground height, so not at import time
-  ready = true; Object.assign(HUBS[0], TYPE.park, { y: H(28, 29) }); const g = HUBS[0].b; g.position.set(28, HUBS[0].y, 29); g.children[0].material = BM.park.ring; g.children[1].material = BM.park.beam; g.children[2].visible = false;
+  ready = true; Object.assign(HUBS[0], TYPE.park, { y: H(28, 29) }); HUBS[0].b.place(28, HUBS[0].y, 29, 'park', null);
   HUBS.forEach((h, i) => i && setup(h, i <= TOWN_HUBS)); pins(null);
 }
 export function pins(list) { // minimap pins: [{x, z, c, g, h}]; the map shows the ones in view plus the 3 nearest at its rim

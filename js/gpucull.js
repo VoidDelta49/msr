@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { Fn, If, storage, uniform, uniformArray, instanceIndex, atomicAdd, atomicStore, uint, float, dot } from 'three/tsl';
 import { renderer, sun } from './renderer.js';
 import { cullUpdate } from './perf.js';
+import { batchCull } from './batch.js';
 
 const TYPES = [];
 export const gpuInst = (geo, mat, list, shadow, far) => TYPES.push({ geo, mat, list, shadow, far });
@@ -120,7 +121,7 @@ function finishPerType(scene) {
 // every frame, right before drawing: all culling in one place. The camera matrix is brought up to date once, then the CPU side
 // (perf.js: distance culling of single objects + terrain LOD, every 4th frame) and the GPU side (one dispatch for every instanced prop)
 export function cull(camera) {
-  camera.updateWorldMatrix(true, false); cullUpdate(camera);
+  camera.updateWorldMatrix(true, false); cullUpdate(camera); batchCull(camera);
   if (!run) return;
   pm.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); fr.setFromProjectionMatrix(pm, camera.coordinateSystem);
   // nothing moved (parked, paused, garage, menus): last frame's result still stands, skip the dispatch and its queue submit
