@@ -109,7 +109,7 @@ export const AA = (() => {
 })();
 let pipe = null, scenePass = null;
 if (AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx) {
-  const T = await import('three/tsl'); scenePass = T.pass(scene, camera, AA.ms ? { samples: AA.ms } : {}); let out = T.renderOutput(scenePass);
+  const T = await import('three/tsl'); scenePass = T.pass(scene, camera, AA.ms ? { samples: AA.ms } : {}); AA.rt = scenePass.renderTarget.samples; /* what the target really carries (tools/options.mjs) */ let out = T.renderOutput(scenePass);
   if (cfg.grade) {
     const G = GRADE; G.sh = T.uniform(new THREE.Color(.95, .98, 1.06)); G.hi = T.uniform(new THREE.Color(1.05, 1.02, .96)); G.con = T.uniform(.2); G.vib = T.uniform(.45); G.vig = T.uniform(.22);
     let c = out.rgb.clamp(0, 1); const L = T.vec3(.2126, .7152, .0722);

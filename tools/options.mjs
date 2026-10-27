@@ -5,8 +5,8 @@
 //     no horizontal overflow, tap targets are big enough, switches/segments/sliders write the right keys into localStorage 'cpmme', presets +
 //     "Custom", disabled rows, reset-all (two taps), tab memory, and the 11.46 migration of the old `fxaa` boolean to `aa`.
 //  B. live game (skipped with --quick; ~1 boot per AA mode): the mode that is really running (renderer.js AA), and that it does what it says:
-//     the same still frame is rendered in every mode and the hard luminance steps are counted (all grading/dither filters off); MSAA and FXAA
-//     must cut them clearly. Also the reload bar in game: changing a reload-only setting flags it and lists it, changing it back clears the flag,
+//     the same still frame is rendered in every mode and the edges are checked for smoothing pixels (all grading/dither filters off); MSAA and FXAA
+//     must clearly add them. Also the reload bar in game: changing a reload-only setting flags it and lists it, changing it back clears the flag,
 //     Apply & reload comes back up running the new mode. Swiftshader timings mean nothing, the counts and the states do.
 // --shot dir: pictures of every tab at 390x844 and 844x390 (part A) to look at.
 import { createRequire } from 'node:module';
@@ -88,14 +88,17 @@ for (const vp of VPS) {
 }
 
 /* ---------- B: the live game ---------- */
-const MODES = { off: { ms: 0, fx: false }, fxaa: { ms: 0, fx: true }, msaa2: { ms: 2, fx: false }, msaa4: { ms: 4, fx: false }, msaa4fx: { ms: 4, fx: true } };
+const ALL = { off: { ms: 0, fx: false }, fxaa: { ms: 0, fx: true }, msaa2: { ms: 2, fx: false }, msaa4: { ms: 4, fx: false }, msaa4fx: { ms: 4, fx: true } };
+const MODES = Object.fromEntries(Object.entries(ALL).filter(([k]) => !opt('--modes') || opt('--modes').split(',').includes(k))); // --modes off,msaa4: a subset while iterating
 const hard = {};
-// count hard luminance steps between neighbouring pixels in the PNG (an un-antialiased edge is one hard step, an antialiased one is two or three soft ones)
+// An un-antialiased edge goes straight from one colour to the other; an antialiased one has a pixel in between. So: over every run of three
+// neighbouring pixels (across and down) whose ends differ clearly (an edge), count how often the middle one sits well between them (a ramp).
+// ramps/edges is low for Off and rises with MSAA and FXAA. (Counting "hard steps" does not work: AA splits one big step into two medium ones.)
 const EDGES = async b64 => {
   const img = new Image(); img.src = 'data:image/png;base64,' + b64; await img.decode(); const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
-  const d = g.getImageData(0, 0, c.width, c.height).data, w = c.width, h = c.height, L = i => d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114; let hd = 0, sf = 0;
-  for (let y = 0; y < h - 1; y++) for (let x = 0; x < w - 1; x++) { const i = (y * w + x) * 4; for (const j of [i + 4, i + w * 4]) { const q = Math.abs(L(i) - L(j)); if (q >= 40) hd++; else if (q >= 6) sf++; } }
-  return { hard: hd, soft: sf };
+  const d = g.getImageData(0, 0, c.width, c.height).data, w = c.width, h = c.height, L = i => d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114; let edges = 0, ramps = 0;
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const i = (y * w + x) * 4; for (const k of [4, w * 4]) { const p = L(i - k), q = L(i), r = L(i + k), span = r - p; if (Math.abs(span) >= 60) { edges++; const t = (q - p) / span; if (t > .2 && t < .8) ramps++; } } }
+  return { edges, ramps, ratio: ramps / Math.max(1, edges) };
 };
 async function boot(mode, extra) {
   const pg = await page([960, 540], { aa: mode, gfx: 'med', grade: false, nightFx: false, n64: false, ibl: false, autoRes: false, fpsCap: 0, retro: 0, tod: 12, ...extra });
@@ -112,7 +115,8 @@ if (!a.includes('--quick')) {
     const pg = await boot(mode), AA = await pg.evaluate(async () => { const r = await import('./js/renderer.js'); return { ...r.AA }; }), want = MODES[mode];
     ok(AA.mode === mode, `${mode}: renderer says mode ${AA.mode}`); ok(AA.fx === want.fx, `${mode}: FXAA is ${AA.fx}, wanted ${want.fx}`);
     if (want.ms && !AA.ms) notes.push(`${mode}: this GPU/driver offers no MSAA here (${AA.why}); that path ran as FXAA`); else ok(AA.ms === want.ms || (want.ms && AA.why), `${mode}: MSAA samples are ${AA.ms}, wanted ${want.ms}`);
-    hard[mode] = await still(pg); notes.push(`${mode.padEnd(8)} running as ${AA.label.padEnd(15)} hard steps ${String(hard[mode].hard).padStart(6)}  soft ${String(hard[mode].soft).padStart(6)}`);
+    ok(!want.ms || AA.rt === AA.ms || AA.why, `${mode}: the scene target carries ${AA.rt} samples, wanted ${AA.ms}`); ok(want.ms || !AA.rt, `${mode}: the scene target should not be multisampled`);
+    hard[mode] = await still(pg); notes.push(`${mode.padEnd(8)} running as ${AA.label.padEnd(15)} (target samples ${AA.rt}) edge pixels ${String(hard[mode].edges).padStart(6)}  with a ramp ${String(hard[mode].ramps).padStart(5)} = ${(hard[mode].ratio * 100).toFixed(1)}%`);
 
     if (mode === 'fxaa') { // the reload bar, in game
       await pg.click('#bOpt'); await pg.waitForSelector('#opts:not([hidden])'); await tab(pg, 'gfx');
@@ -126,15 +130,17 @@ if (!a.includes('--quick')) {
       await pg.waitForFunction(() => window.__cpm && window.__cpm.RP && window.__cpm.RP.ok, null, { timeout: 180000 }).catch(async () => { await pg.click('#mPlay'); await pg.waitForFunction(() => window.__cpm && window.__cpm.RP && window.__cpm.RP.ok, null, { timeout: 180000 }); });
       const A2 = await pg.evaluate(async () => ({ ...(await import('./js/renderer.js')).AA }));
       ok(A2.mode === 'msaa4', `Apply & reload: came back as ${A2.mode}, wanted msaa4`); hard.afterReload = await still(pg);
-      notes.push(`after Apply & reload: running as ${A2.label}, hard steps ${hard.afterReload.hard}`);
+      notes.push(`after Apply & reload: running as ${A2.label}, ramps ${(hard.afterReload.ratio * 100).toFixed(1)}%`);
     }
     ok(!pg.errs.length, `${mode}: ${pg.errs[0]}`); await pg.close();
   }
-  const off = hard.off.hard, pct = m => ((1 - hard[m].hard / off) * 100).toFixed(0) + '%';
-  notes.push(`hard steps removed vs Off: FXAA ${pct('fxaa')}, MSAA 2× ${pct('msaa2')}, MSAA 4× ${pct('msaa4')}, MSAA 4× + FXAA ${pct('msaa4fx')}`);
-  ok(hard.fxaa.hard < off * .9, 'FXAA should remove at least 10% of the hard steps'); ok(hard.msaa4.hard < off * .9, 'MSAA 4× should remove at least 10% of the hard steps');
-  ok(hard.msaa2.hard < off * .95, 'MSAA 2× should remove at least 5% of the hard steps'); ok(hard.msaa4.hard <= hard.msaa2.hard * 1.02, 'MSAA 4× should not be rougher than 2×'); ok(hard.msaa4fx.hard <= hard.msaa4.hard * 1.02, 'MSAA 4× + FXAA should not be rougher than MSAA 4× alone');
-  ok(hard.afterReload.hard < off * .9, 'the mode picked in the reload bar should really be running after the reload');
+  const r = m => hard[m] && hard[m].ratio, off = r('off'), more = (m, k) => hard[m] && off != null && ok(r(m) > off * k, `${m}: ${(r(m) * 100).toFixed(1)}% of edges have a smoothing pixel, Off has ${(off * 100).toFixed(1)}%: it should be at least ${k}x that`);
+  if (off != null) {
+    more('fxaa', 1.5); more('msaa4', 1.5); more('msaa2', 1.25); more('msaa4fx', 1.5);
+    if (hard.msaa2 && hard.msaa4) ok(r('msaa4') >= r('msaa2') * .95, 'MSAA 4× should not be rougher than 2×');
+    if (hard.msaa4fx && hard.msaa4) ok(r('msaa4fx') >= r('msaa4') * .95, 'MSAA 4× + FXAA should not be rougher than MSAA 4× alone');
+    if (hard.afterReload) ok(hard.afterReload.ratio > off * 1.5, 'the mode picked in the reload bar should really be running after the reload');
+  }
 }
 
 for (const n of notes) console.log('  ' + n);
