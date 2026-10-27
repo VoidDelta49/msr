@@ -119,13 +119,13 @@ Part options in the bike JSON are applied generically: `pow`, `ie` and `csp` mul
 
 ## Renderer
 
-Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on device loss or errors). Options (⚙) has Force WebGL, FPS and renderer readouts, Sound, Ambient sounds, Volume, and touch steering sensitivity.
+Uses three r0.186.1 `WebGPURenderer` with automatic WebGL 2 fallback (also on device loss or errors). Options (⚙, or O on a keyboard) has five tabs: Graphics (presets, quality, anti-aliasing, resolution, frame cap, look filters, WebGPU/WebGL), Controls (touch steering, control size, left-handed layout, analog brake, field of view), Audio, Game (time of day, Tough Biker, wheelie control, HUD readouts) and System (renderer and build, error log, reset). Settings that rebuild the renderer are flagged "reloads" and applied together with the Apply & reload bar.
 
 Sound is fully synthesized WebAudio, no samples: an AudioWorklet engine voice builds every combustion pulse (muffler thump, pipe tone, valvetrain tick, intake, afterfire crackle on closed throttle and at the limiter; aftermarket exhausts get louder, brighter and poppier), speed-driven wind with gusts (louder in first person), tyre roar on asphalt vs crunch off-road, squeal past the grip limit, scraping, and island ambience by location: surf toward the sea, the river, cicadas and birds in the countryside, frogs at the rice paddies, town hum with dogs and jeepney horns, a volcano rumble. Ambience ducks as you speed up.
 
 ### Performance (Build 5.3)
 - **Quality** (Options → GRAPHICS, reloads): Low / Medium (default) / High. Sets draw distance (fog end: 550 / 1100 / 1400 m), pixel-ratio cap (1 / 1.5 / 2), shadows (off / 1024 / 2048), texture anisotropy, and on Low swaps the island's PBR materials for cheaper Lambert ones.
-- **Anti-aliasing FXAA** (on by default, reloads): one cheap post pass instead of MSAA.
+- **Anti-aliasing** (FXAA by default, reloads): Off / FXAA / MSAA 2× / MSAA 4× / MSAA 4× + FXAA. FXAA is one cheap post pass. MSAA is the multisampled render target of the scene pass (so the sample count is real and it combines with the grade and N64 filter); WebGPU only has 4 samples, and a GPU without multisampling falls back to FXAA (Options says which one is running). MSAA smooths shape edges, FXAA also the alpha-cut ones (wheel faces, signs).
 - **N64 colour filter** (on by default, reloads): 15-bit colour with a 4x4 ordered dither and a touch of saturation, in the same post pass.
 - **Retro res** (Off / 480p / 360p / 240p): caps the render height and upscales with crisp pixels. Also a big speed-up on slow phones.
 - **Auto resolution** (on by default): drops render resolution in 10% steps (down to 55%) when the game can't hold the screen's refresh rate, and creeps back up when it can.

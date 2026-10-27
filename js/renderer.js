@@ -1,7 +1,7 @@
 // WebGPU when the browser has it, WebGL 2 otherwise (or when forced in Options / after a GPU failure)
 import * as THREE from 'three';
 import { $ } from './util.js';
-import { cfg, Q } from './config.js';
+import { cfg, Q, AA_MODES } from './config.js';
 
 export let FELL = false; try { FELL = !!sessionStorage.getItem('cpmGL'); } catch (e) { }
 const mkR = gl => new THREE.WebGPURenderer({ canvas: $('gl'), antialias: false, powerPreference: 'high-performance', forceWebGL: gl });
@@ -81,7 +81,7 @@ export const sun = new THREE.DirectionalLight(0xffeccc, 2.8); sun.castShadow = Q
 export const head = new THREE.SpotLight(0xfff0d6, 0, 75, .42, .5, 2); head.castShadow = false; scene.add(head, head.target);
 // Post: one pass over the finished frame. Tone mapping + sRGB first (renderOutput), then the colour grade, then FXAA
 // (expects display-space colours), then the N64 filter: 15-bit colour (5 bits per channel, like the N64's framebuffer)
-// with a 4x4 ordered dither. All three are Options toggles; with none the scene renders directly.
+// with a 4x4 ordered dither. All are Options settings (MSAA lives in the scene pass itself); with none the scene renders directly.
 // Grade ("modern N64"): split toning (shadows and highlights each multiplied by a tint, blended by brightness), a soft
 // S-curve for contrast, vibrance (muted colours pushed harder than already-saturated ones, so paint and signs pop
 // without clipping to neon) and a light vignette. daynight.js sets the uniforms from a palette keyed by sun elevation
@@ -90,9 +90,26 @@ export const GRADE = { sh: null, hi: null, con: null, vib: null, vig: null, nigh
 // Night filter (Options): how eyes see in the dark (scotopic vision). Dim areas lose their colour and shift to a cool
 // grey-blue, lamp-lit and headlight-lit areas keep theirs, and the blacks lift a touch so the road stays readable.
 // GRADE.night (0 day .. 1 night) comes from daynight.js.
+// Anti-aliasing (Options): AA = what is really running. MSAA is the multisampled render target of the scene pass below (the
+// canvas itself stays un-antialiased), so the pass runs even when MSAA is the only effect; the samples are clamped to what
+// the GPU can do for the scene pass's RGBA16F target (WebGPU: 4 only), and a GPU with no multisampling at all gets FXAA.
+// FXAA smooths what MSAA can't: alpha-cut edges (wheel faces, signs) and shader aliasing.
+export const AA = (() => {
+  const w = AA_MODES[cfg.aa] || AA_MODES.fxaa; let ms = 0, why = '';
+  if (w.ms) {
+    if (renderer.backend.isWebGPUBackend) ms = 4;
+    else {
+      const gl = renderer.backend.gl, ok = gl && gl.getInternalformatParameter ? Array.from(gl.getInternalformatParameter(gl.RENDERBUFFER, gl.RGBA16F, gl.SAMPLES) || []).sort((a, b) => a - b) : [];
+      ms = ok.filter(n => n <= w.ms).pop() || ok[0] || 0; // the most it offers up to what was asked, else its smallest count
+    }
+    if (!ms) why = 'MSAA is not supported on this GPU, using FXAA';
+    else if (ms !== w.ms) why = 'this GPU does MSAA ' + ms + '× here, not ' + w.ms + '×';
+  }
+  return { mode: cfg.aa, ms, fx: w.fx || (w.ms > 0 && !ms), why, label: ms ? 'MSAA ' + ms + '×' + (w.fx ? ' + FXAA' : '') : w.fx || w.ms ? 'FXAA' : 'Off' };
+})();
 let pipe = null, scenePass = null;
-if (cfg.fxaa || cfg.n64 || cfg.grade || cfg.nightFx) {
-  const T = await import('three/tsl'); scenePass = T.pass(scene, camera); let out = T.renderOutput(scenePass);
+if (AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx) {
+  const T = await import('three/tsl'); scenePass = T.pass(scene, camera, AA.ms ? { samples: AA.ms } : {}); let out = T.renderOutput(scenePass);
   if (cfg.grade) {
     const G = GRADE; G.sh = T.uniform(new THREE.Color(.95, .98, 1.06)); G.hi = T.uniform(new THREE.Color(1.05, 1.02, .96)); G.con = T.uniform(.2); G.vib = T.uniform(.45); G.vig = T.uniform(.22);
     let c = out.rgb.clamp(0, 1); const L = T.vec3(.2126, .7152, .0722);
@@ -109,7 +126,7 @@ if (cfg.fxaa || cfg.n64 || cfg.grade || cfg.nightFx) {
     c = T.mix(c, T.vec3(l).mul(T.vec3(.86, .95, 1.14)), k);                                                   // cool grey-blue
     out = T.vec4(c.add(c.oneMinus().mul(n.mul(.045))), 1);                                                   // lift the blacks
   }
-  if (cfg.fxaa) { const { fxaa } = await import('three/addons/tsl/display/FXAANode.js'); out = fxaa(out); }
+  if (AA.fx) { const { fxaa } = await import('three/addons/tsl/display/FXAANode.js'); out = fxaa(out); }
   if (cfg.n64) {
     const b = new Uint8Array(64), BY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]; BY.forEach((v, i) => { b[i * 4] = b[i * 4 + 1] = b[i * 4 + 2] = Math.round((v + .5) / 16 * 255); b[i * 4 + 3] = 255; });
     const bt = new THREE.DataTexture(b, 4, 4); bt.magFilter = bt.minFilter = THREE.NearestFilter; bt.wrapS = bt.wrapT = THREE.RepeatWrapping; bt.generateMipmaps = false; bt.needsUpdate = true;

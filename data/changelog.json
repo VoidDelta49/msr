@@ -1,4 +1,10 @@
 [
+  { "v": "11.46", "d": "2026-10-28", "t": [
+    "Options rebuilt: five tabs (Graphics, Controls, Audio, Game, System) with proper switches, segmented choices and sliders that show their real value, and a hint under every setting. Held sideways on a phone the tabs sit in a rail on the left so the settings get the full height.",
+    "One reload for all graphics changes: settings that rebuild the renderer are marked, saved, and applied together with one Apply & reload bar, instead of reloading the game after every tap.",
+    "Graphics presets (Performance / Balanced / Quality) set quality, anti-aliasing, sky lighting and auto resolution in one tap, and show Custom when you have changed one of them. Reset all options is in the System tab (two taps; your bikes and multiplayer name stay).",
+    "MSAA is back as an anti-aliasing choice next to FXAA: Off, FXAA, MSAA 2×, MSAA 4× or MSAA 4× + FXAA. It runs in the scene pass, so it works together with the colour grade and the N64 filter. WebGPU only has 4× samples (2× runs as 4×), and a GPU that cannot multisample falls back to FXAA and says so in Options. Your old FXAA on/off choice carries over."
+  ] },
   { "v": "11.45", "d": "2026-10-27", "t": [
     "Proper passengers on every bike, not just the tricycle: stop next to a friend's bike and tap their name tag (it shows 🏍️+1 when the pillion seat is free). RIDE asks, the driver taps OK, and you sit behind them. The passenger is the rider model again, shifted back onto the seat in different clothes (eight outfits, picked by player), so it costs one extra draw call and no new triangles.",
     "The weight is real: 65 kg behind the rider moves the bike's centre of mass back and up, so it pulls away slower (a Raider 150 takes about 1.2 s longer to 60 km/h, a Smash 115 about 2.8 s), the front gets light and wheelies come earlier, braking distance is about the same. Taking the passenger off gives the bike back exactly.",

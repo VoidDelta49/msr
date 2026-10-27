@@ -70,6 +70,9 @@ for (const b of bikeIds) for (const seed of [1, 2]) { const r = fuzzOne(b, seed,
 if (process.argv.includes('--full')) { // real-browser layout check (skips itself when there is no playwright / chromium)
   const r = spawnSync(process.execPath, [path.join(dir, 'layout-dom.mjs')], { encoding: 'utf8' }); if (r.status !== 0) { problems.push('layout in a real browser failed (node tools/layout-dom.mjs):'); for (const l of r.stdout.split('\n').filter(l => l.startsWith('FAIL')).slice(0, 8)) problems.push('  ' + l.slice(6)); }
 }
+if (process.argv.includes('--full')) { // options panel + settings in a real browser (--quick: no game boot; the AA modes in the live game are `node tools/options.mjs`)
+  const r = spawnSync(process.execPath, [path.join(dir, 'options.mjs'), '--quick'], { encoding: 'utf8' }); if (r.status !== 0) { problems.push('options panel in a real browser failed (node tools/options.mjs --quick):'); for (const l of r.stdout.split('\n').filter(l => l.startsWith('FAIL')).slice(0, 8)) problems.push('  ' + l.slice(6)); }
+}
 if (process.argv.includes('--full')) { const r = spawnSync(process.execPath, [path.join(dir, 'sweep.mjs')], { encoding: 'utf8' }); if (r.status !== 0) { problems.push('garage sweep flagged variants:'); for (const l of r.stdout.split('\n').filter(l => l.startsWith('FAIL')).slice(0, 15)) problems.push('  ' + l.slice(6)); } }
 
 // baseline
