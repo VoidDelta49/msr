@@ -1,4 +1,7 @@
 [
+  { "v": "11.40", "d": "2026-10-27", "t": [
+    "Fixed: the on-foot character was still drawn sitting down. The rider's parts are merged into one mesh when the bike is built, so the standing pose never kicked in. The body is now rebuilt standing (legs straight, torso upright, arms hanging) from the bike's own rider measurements."
+  ] },
   { "v": "11.39", "d": "2026-10-27", "t": [
     "On foot, first person: the walking bob is now Half-Life 1 style and much gentler: vertical only (no side sway, roll or wobble), one slow up-down per stride, height following your speed."
   ] },

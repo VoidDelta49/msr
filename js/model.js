@@ -215,6 +215,7 @@ const MRider = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .
 const tint = (g, c) => { const k = new THREE.Color(c), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = k.r; a[i * 3 + 1] = k.g; a[i * 3 + 2] = k.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
 const JACKET = 0x2a3a52, JEAN = 0x2d3d63, HELM = 0x1d2b4f, VISOR = 0x0c0f14, SHOE = 0xe9e6df, GLOVE = 0x18191b;
 function rider(ct, torso, head, arms, legs) {
+  B.riderDims = { al: arms[4], lt: legs[0][4], tw: legs[0][5], ls: legs[1][4], sw: legs[1][5] }; // limb sizes, for riderStand() (B.rider is merged into one mesh at the end of the build)
   const r = (g, c, ...p) => mk(tint(g, c), MRider, ct, ...p);
   B.rider = [r(prof([[-.12, -.26], [.12, -.26], [.13, .2], [.04, .27], [-.08, .26], [-.13, .2]], .36, .03), JACKET, 0, torso[0], torso[1], torso[2]),
     r(new THREE.IcosahedronGeometry(.15, 1), HELM, 0, head[0], head[1]), r(box(.2, .085, .05), VISOR, 0, head[0] - .01, head[1] - .13)];
@@ -224,6 +225,22 @@ function rider(ct, torso, head, arms, legs) {
     B.rider.push(r(box(th[5], th[5], th[4]), JEAN, s * th[0], th[1], th[2], th[3]), r(box(sh[5], sh[4], sh[5]), JEAN, s * sh[0], sh[1], sh[2], sh[3]));
     B.rider.push(r(box(.1, .07, .17), SHOE, s * sh[0], sh[1] - Math.cos(sh[3]) * sh[4] / 2, sh[2] - Math.sin(sh[3]) * sh[4] / 2 - .04));
   }
+}
+// The same rider standing (on foot, footfig.js): legs straight down on the shoes, torso upright, arms hanging, one merged geometry with the
+// feet at y = 0 facing -z. Limb lengths come from this bike's rider(). Returns { geo, mat, eye } (eye = visor height) or null before a bike is built.
+export function riderStand() {
+  const d = B.riderDims; if (!d) return null;
+  const { al, lt, tw, ls, sw } = d, P = [], ni = g => g.index ? g.toNonIndexed() : g;
+  const add = (g, c, x, y, z, rx = 0) => { P.push(ni(tint(g, c)).rotateX(rx).translate(x, y, z)); };
+  const shinTop = .065 + ls, hipTop = shinTop - .02 + lt, tcy = hipTop - .03 + .26, hy = tcy + .27 + .12, shY = tcy + .2; // joints overlap a little; torso profile spans y -.26 .. .27
+  add(prof([[-.12, -.26], [.12, -.26], [.13, .2], [.04, .27], [-.08, .26], [-.13, .2]], .36, .03), JACKET, 0, tcy, 0);
+  add(new THREE.IcosahedronGeometry(.15, 1), HELM, 0, hy, -.02); add(box(.2, .085, .05), VISOR, 0, hy - .01, -.15);
+  for (const s of [-1, 1]) {
+    add(box(.09, .09, al), JACKET, s * .23, shY - al / 2, 0, PI / 2); add(box(.08, .07, .08), GLOVE, s * .23, shY - al - .01, 0); // arm (long axis z turned to hang down), glove
+    add(box(tw, tw, lt), JEAN, s * .09, shinTop - .02 + lt / 2, 0, PI / 2); add(box(sw, ls, sw), JEAN, s * .09, .065 + ls / 2, 0);   // thigh (z turned vertical), shin
+    add(box(.1, .07, .17), SHOE, s * .09, .035, -.04);
+  }
+  return { geo: mergeGeometries(P), mat: MRider, eye: hy };
 }
 export const B = { root: new THREE.Group(), lean: new THREE.Group(), body: new THREE.Group(), ct: new THREE.Group(), MP };
 B.root.add(B.lean); B.lean.add(B.body); B.body.add(B.ct); B.ct.position.y = -.6; scene.add(B.root);
