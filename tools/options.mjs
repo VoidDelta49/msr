@@ -103,7 +103,9 @@ async function boot(mode, extra) {
 }
 async function still(pg) { // the same frame every time: bike at the lot, HUD hidden
   await pg.evaluate(async () => { const c = window.__cpm; c.reset(); c.S.v = 0; c.syncBody(); for (const id of ['top', 'perf', 'msg', 'tc', 'gauge', 'mini', 'tags', 'race', 'ride', 'mis', 'rcd']) { const e = document.getElementById(id); if (e) e.style.visibility = 'hidden'; } await new Promise(r => { let n = 40; const f = () => --n ? requestAnimationFrame(f) : r(); requestAnimationFrame(f); }); });
-  const buf = await pg.screenshot({ clip: { x: 160, y: 60, width: 640, height: 300 } }); return pg.evaluate(EDGES, buf.toString('base64'));
+  const buf = await pg.screenshot({ clip: { x: 160, y: 60, width: 640, height: 300 } });
+  await pg.evaluate(() => { for (const id of ['top', 'perf', 'msg', 'tc', 'gauge', 'mini', 'tags', 'race', 'ride', 'mis', 'rcd']) { const e = document.getElementById(id); if (e) e.style.visibility = ''; } }); // give the HUD back (the options test clicks it)
+  return pg.evaluate(EDGES, buf.toString('base64'));
 }
 if (!a.includes('--quick')) {
   for (const mode of Object.keys(MODES)) {
