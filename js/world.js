@@ -11,6 +11,7 @@ import * as T from './tex.js';
 import { glowMat, lampMat, poolMat, haloMat, poolPatches, HALO_GEO } from './lights.js';
 import { mkTex } from './tex.js';
 import { DRAW, FAR, freeze, cullFar, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
+import { buildRoads } from './roads.js';
 
 // N64-style textures (tex.js): tiny, dithered, bilinear. Tiling scale ~ what the old 256 px speck textures had.
 const tAsph=mkTex(T.asphalt()),tCon=mkTex(T.concrete());
@@ -22,6 +23,7 @@ const tAsph=mkTex(T.asphalt()),tCon=mkTex(T.concrete());
 const MQ=new URLSearchParams(location.search).get('map')||'',MLOC=MQ==='local'&&(()=>{try{return localStorage.getItem('cpm.map.test')}catch(e){return null}})();
 export const MAPSRC=MLOC?'local':/^[\w-]+$/.test(MQ)?MQ:'island';
 export const MD=MLOC?JSON.parse(MLOC):await (await fetch(`data/map/${MAPSRC}.json?v=`+BUILD)).json();
+// @terrain-begin (tools/roads.mjs runs this block headless: keep it free of DOM/three/await)
 const SEA=MD.sea,ICX=MD.island.cx,ICZ=MD.island.cz,CR=MD.island.coast,CN=CR.length;
 // shoreline radius: periodic Catmull-Rom through the coast samples (sample 0 at +x, turning towards +z)
 function coastR(th){const f=(((th/(2*PI))%1)+1)%1*CN,i=Math.floor(f),t=f-i,g=k=>CR[((k%CN)+CN)%CN],a=g(i-1),b=g(i),c=g(i+1),d=g(i+2);
@@ -80,36 +82,11 @@ for(const b of LMB){const F=frame(b),[hx,hz]=LMH[F.t],ex=Math.abs(hx*Math.cos(F.
   F.y=terrBase(F.x,F.z);FEAT.push({type:'flat',x0:F.x-ex,z0:F.z-ez,x1:F.x+ex,z1:F.z+ez,h:F.y,blend:30});LMF[F.t].push(F)}
 const nearLM=(x,z)=>[...LMF.lot,...LMF.gas].some(F=>{const[a,d]=F.loc(x,z),h=F.t==='lot'?30:22;return Math.hypot(Math.max(Math.abs(a)-h,0),Math.max(Math.abs(d)-h,0))<=2});
 const atGas=(x,z)=>LMF.gas.some(F=>{const[a,d]=F.loc(x,z);return Math.abs(a)<6&&Math.abs(d)<3.5});
+// @terrain-end
 const GEN=[]; // roadside houses the generator placed this load (map maker bakes them into 'buildings')
-/* roads: Catmull-Rom splines, heights smoothed from the terrain and grade-limited.
-   island.json road = {pts, w, hwy?, closed?, kind?}; kind 'strip' = airstrip (concrete, runway markings, no poles/houses) */
-const ROADS=MD.roads.map(r=>({pts:r.pts,w:r.w,closed:!!r.closed,hwy:!!r.hwy,kind:r.kind||'',grade:r.grade})),SEGG=new Map(),BUMPS=[];
-function crSample(r){const P=r.pts,n=P.length,out=[];const get=i=>r.closed?P[(i+n)%n]:P[clamp(i,0,n-1)];
-  for(let i=0;i<(r.closed?n:n-1);i++){const p0=get(i-1),p1=get(i),p2=get(i+1),p3=get(i+2),L=Math.hypot(p2[0]-p1[0],p2[1]-p1[1]),k=Math.max(1,Math.round(L/2));
-    for(let j=0;j<k;j++){const t=j/k,t2=t*t,t3=t2*t,f=(a,b,c,d)=>.5*(2*b+(-a+c)*t+(2*a-5*b+4*c-d)*t2+(-a+3*b-3*c+d)*t3);out.push([f(p0[0],p1[0],p2[0],p3[0]),f(p0[1],p1[1],p2[1],p3[1])])}}
-  out.push(r.closed?out[0]:P[n-1]);return out}
-for(const r of ROADS){const S=crSample(r);let h=S.map(([x,z])=>terrBase(x,z));
-  for(let pass=0;pass<3;pass++){const a=h.slice();for(let i=0;i<h.length;i++){let s=0,c=0;for(let j=-12;j<=12;j++){const k=i+j;if(k>=0&&k<h.length){s+=a[k];c++}}h[i]=s/c}}
-  const G=r.grade||.13,dl=i=>Math.hypot(S[i][0]-S[i-1][0],S[i][1]-S[i-1][1]); // max grade per metre (was .26 per sample, so short samples in hairpins allowed 35%)
-  for(let i=1;i<h.length;i++){const g=G*dl(i);h[i]=clamp(h[i],h[i-1]-g,h[i-1]+g)}for(let i=h.length-2;i>=0;i--){const g=G*dl(i+1);h[i]=clamp(h[i],h[i+1]-g,h[i+1]+g)}
-  r.s=S.map(([x,z],i)=>({x,z,h:Math.max(h[i],.05)}));r.G=G}
-// Junctions: a road that ends on another road takes that road's height at its end and eases away from it at its own
-// grade limit (each road is smoothed on its own, so a branch used to meet its parent with a step: 39 cm at the terrace
-// road, 19 m where the pass met it).
-for(const r of ROADS){if(r.closed)continue;for(const e of[0,r.s.length-1]){const E=r.s[e];let bd=1e9,bh=0;
-  for(const o of ROADS){if(o===r)continue;for(const q of o.s){const d=Math.hypot(q.x-E.x,q.z-E.z);if(d<bd&&d<o.w/2+2){bd=d;bh=q.h}}}
-  if(bd===1e9)continue;E.h=bh;const dir=e===0?1:-1;
-  for(let i=e+dir;i>=0&&i<r.s.length;i+=dir){const A=r.s[i-dir],B=r.s[i],g=r.G*Math.hypot(B.x-A.x,B.z-A.z),c=clamp(B.h,A.h-g,A.h+g);if(c===B.h)break;B.h=c}}}
-for(const r of ROADS){
-  for(let i=0;i<r.s.length;i++){const a=r.s[Math.max(0,i-1)],b=r.s[Math.min(r.s.length-1,i+1)],l=Math.hypot(b.x-a.x,b.z-a.z)||1;r.s[i].tx=(b.x-a.x)/l;r.s[i].tz=(b.z-a.z)/l}
-  for(let i=1;i<r.s.length;i++){const A=r.s[i-1],B=r.s[i],sg={ax:A.x,az:A.z,bx:B.x,bz:B.z,ha:A.h,hb:B.h,w:r.w,l2:Math.max(1e-6,(B.x-A.x)**2+(B.z-A.z)**2)},m=r.w/2+9;
-    for(let gx=Math.floor((Math.min(A.x,B.x)-m)/20);gx<=Math.floor((Math.max(A.x,B.x)+m)/20);gx++)for(let gz=Math.floor((Math.min(A.z,B.z)-m)/20);gz<=Math.floor((Math.max(A.z,B.z)+m)/20);gz++){const k=gx*1000+gz;if(!SEGG.has(k))SEGG.set(k,[]);SEGG.get(k).push(sg)}}}
-for(const[x,z,ax]of MD.bumps)BUMPS.push({x,z,ax});
-const NR={d:0,h:0,w:0};
-function nearRoad(x,z){const L=SEGG.get(Math.floor(x/20)*1000+Math.floor(z/20));if(!L)return null;let bd=1e18,bh=0,bw=0;
-  for(const s of L){const ex=s.bx-s.ax,ez=s.bz-s.az,t=clamp(((x-s.ax)*ex+(z-s.az)*ez)/s.l2,0,1),px=s.ax+ex*t-x,pz=s.az+ez*t-z,d=px*px+pz*pz;if(d<bd){bd=d;bh=s.ha+(s.hb-s.ha)*t;bw=s.w}}
-  NR.d=Math.sqrt(bd);NR.h=bh;NR.w=bw;return NR}
-function bumpAt(x,z){for(const b of BUMPS){const al=b.ax==='z'?z-b.z:x-b.x,cr=b.ax==='z'?x-b.x:z-b.z;if(Math.abs(al)<.35&&Math.abs(cr)<3.6)return .075*(1+Math.cos(PI*al/.35))/2}return 0}
+/* roads: Catmull-Rom splines, terrain-following heights, junction levelling, surface lookup: see js/roads.js (pure, so tools/roads.mjs
+   tests it). island.json road = {pts, w, hwy?, closed?, kind?}; kind 'strip' = airstrip (concrete, runway markings, no poles/houses) */
+const {ROADS,nearRoad,bumpAt,BUMPS}=buildRoads(MD,terrBase);
 function HA(x,z,mesh){const t=terr(x,z),q=nearRoad(x,z);if(!q)return t;const hw=q.w/2;
   if(q.d<hw)return mesh?q.h-.25:q.h+bumpAt(x,z);if(lastCarve>.25)return t;
   const b=sstep(hw,hw+8,q.d);return q.h-.05+(t-q.h+.05)*b}

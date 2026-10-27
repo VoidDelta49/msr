@@ -1,4 +1,10 @@
 [
+  { "v": "11.41", "d": "2026-10-27", "t": [
+    "Fixed: bumps where roads meet. Every road used to be shaped on its own, so where two roads overlapped (crossings, branches, the town's north-east corner, the airstrip's taxi roads) they sat at different heights and the ground jumped between the two surfaces along the line where the nearest road changes: up to half a metre at the highway junctions. Now every junction is one level surface: the roads there share one height over the whole overlap and ease back into their own terrain-following profile at a gentle grade.",
+    "Fixed: the highway loop had a 6 cm step where its end met its start. It is now smoothed as a closed loop.",
+    "Fixed: a strip of ground inside a wide road could be treated as the shoulder of a narrower road next to it (a small lip). The road whose edge is nearest now decides.",
+    "The speed bumps are the only bumps left on the road: new tools/roads.mjs fails the test run if any junction, crossing or the loop seam has a step in it."
+  ] },
   { "v": "11.40", "d": "2026-10-27", "t": [
     "Fixed: the on-foot character was still drawn sitting down. The rider's parts are merged into one mesh when the bike is built, so the standing pose never kicked in. The body is now rebuilt standing (legs straight, torso upright, arms hanging) from the bike's own rider measurements."
   ] },

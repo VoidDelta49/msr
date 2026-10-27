@@ -22,6 +22,12 @@ if (!process.argv.includes('--no-check')) {
   if (r.status !== 0) { process.stdout.write(r.stdout); problems.push('static checks failed'); } else process.stdout.write(r.stdout.split('\n').filter(l => l.startsWith('WARN')).join('\n') + (r.stdout.includes('WARN') ? '\n' : ''));
 }
 
+// roads: every junction / crossing / loop seam must be one level surface (js/roads.js on the real map), so the only bumps are the speed bumps
+if (!process.argv.includes('--no-check')) {
+  const r = spawnSync(process.execPath, [path.join(dir, 'roads.mjs')], { encoding: 'utf8' });
+  if (r.status !== 0) { problems.push('road junction check failed (node tools/roads.mjs -v):'); for (const l of (r.stdout + r.stderr).split('\n').filter(l => l.startsWith('FAIL')).slice(0, 8)) problems.push('  ' + l.slice(5)); }
+}
+
 // touch / HUD layout: every phone viewport x control scheme x handedness x gauge x size must lay out with no overlap and nothing off-screen
 if (!process.argv.includes('--no-check')) {
   const r = spawnSync(process.execPath, [path.join(dir, 'layout.mjs')], { encoding: 'utf8' });
