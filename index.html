@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no,interactive-widget=resizes-visual">
 <title>CPM Motor Edition</title>
-<link rel="stylesheet" href="css/style.css?v=11.33">
+<link rel="stylesheet" href="css/style.css?v=11.34">
 <!-- the import map must come before any module load (modulepreload counts): Firefox ignores a later one ("three" was not remapped) -->
-<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.33","./js/audio.js":"./js/audio.js?v=11.33","./js/config.js":"./js/config.js?v=11.33","./js/controls.js":"./js/controls.js?v=11.33","./js/drivetrain.js":"./js/drivetrain.js?v=11.33","./js/garage.js":"./js/garage.js?v=11.33","./js/studio.js":"./js/studio.js?v=11.33","./js/hud.js":"./js/hud.js?v=11.33","./js/main.js":"./js/main.js?v=11.33","./js/missions.js":"./js/missions.js?v=11.33","./js/model.js":"./js/model.js?v=11.33","./js/options.js":"./js/options.js?v=11.33","./js/perf.js":"./js/perf.js?v=11.33","./js/physics.js":"./js/physics.js?v=11.33","./js/tyre.js":"./js/tyre.js?v=11.33","./js/rapier.js":"./js/rapier.js?v=11.33","./js/renderer.js":"./js/renderer.js?v=11.33","./js/spec.js":"./js/spec.js?v=11.33","./js/state.js":"./js/state.js?v=11.33","./js/util.js":"./js/util.js?v=11.33","./js/world.js":"./js/world.js?v=11.33","./js/tex.js":"./js/tex.js?v=11.33","./js/gpucull.js":"./js/gpucull.js?v=11.33","./js/net.js":"./js/net.js?v=11.33","./js/race.js":"./js/race.js?v=11.33","./js/ride.js":"./js/ride.js?v=11.33","./js/ignition.js":"./js/ignition.js?v=11.33","./js/daynight.js":"./js/daynight.js?v=11.33","./js/lights.js":"./js/lights.js?v=11.33","./js/bikecard.js":"./js/bikecard.js?v=11.33","./js/layout.js":"./js/layout.js?v=11.33","./js/layoutcalc.js":"./js/layoutcalc.js?v=11.33","./js/foot.js":"./js/foot.js?v=11.33","./js/footfig.js":"./js/footfig.js?v=11.33","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.34","./js/audio.js":"./js/audio.js?v=11.34","./js/config.js":"./js/config.js?v=11.34","./js/controls.js":"./js/controls.js?v=11.34","./js/drivetrain.js":"./js/drivetrain.js?v=11.34","./js/garage.js":"./js/garage.js?v=11.34","./js/studio.js":"./js/studio.js?v=11.34","./js/hud.js":"./js/hud.js?v=11.34","./js/main.js":"./js/main.js?v=11.34","./js/missions.js":"./js/missions.js?v=11.34","./js/model.js":"./js/model.js?v=11.34","./js/options.js":"./js/options.js?v=11.34","./js/perf.js":"./js/perf.js?v=11.34","./js/physics.js":"./js/physics.js?v=11.34","./js/tyre.js":"./js/tyre.js?v=11.34","./js/rapier.js":"./js/rapier.js?v=11.34","./js/renderer.js":"./js/renderer.js?v=11.34","./js/spec.js":"./js/spec.js?v=11.34","./js/state.js":"./js/state.js?v=11.34","./js/util.js":"./js/util.js?v=11.34","./js/world.js":"./js/world.js?v=11.34","./js/tex.js":"./js/tex.js?v=11.34","./js/gpucull.js":"./js/gpucull.js?v=11.34","./js/net.js":"./js/net.js?v=11.34","./js/race.js":"./js/race.js?v=11.34","./js/ride.js":"./js/ride.js?v=11.34","./js/ignition.js":"./js/ignition.js?v=11.34","./js/daynight.js":"./js/daynight.js?v=11.34","./js/lights.js":"./js/lights.js?v=11.34","./js/bikecard.js":"./js/bikecard.js?v=11.34","./js/layout.js":"./js/layout.js?v=11.34","./js/layoutcalc.js":"./js/layoutcalc.js?v=11.34","./js/foot.js":"./js/foot.js?v=11.34","./js/footfig.js":"./js/footfig.js?v=11.34","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
 <!-- start the heavy downloads at HTML parse, not after menu.js runs (same URLs as the importmap, so menu.js's fetches and import() reuse them) -->
 <link rel="modulepreload" href="./vendor/three/build/three.webgpu.js">
 <link rel="modulepreload" href="./vendor/three/build/three.core.js">
@@ -24,10 +24,11 @@
 <div id="ride" hidden><span id="rideT"></span><button class="b hot" id="rideY">RIDE</button><button class="b" id="rideB" hidden>RACE</button><button class="b" id="rideX">✕</button></div>
 <div id="rcd"></div>
 <div id="mis" hidden><span id="misT"></span><button class="b" id="misNext" hidden>Next</button><button class="b" id="misX">✕</button></div>
-<button class="b" id="bFoot" hidden>GET OFF</button>
 <div id="top"><button class="b" id="bMenu" aria-label="Menu">☰</button><button class="b" id="bCam">CAM</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button><button class="b" id="bOpt" aria-label="Options">⚙</button></div>
+<button class="b" id="bFoot" hidden>GET OFF</button>
 
 <div id="tc">
+  <div id="joy"><i id="joyK"></i></div><button id="jumpB">JUMP</button>
   <div id="lb"><button id="bKey">KEY</button><button id="bKill">KILL</button><button id="bStart">START</button><button id="bBack">◀ BACK</button></div>
   <div id="shift"><button id="bUp" aria-label="Shift up">▲</button><button id="bDn" aria-label="Shift down">▼</button></div>
   <div id="clu"><div id="cluFill"></div><small>CLUTCH<br>drag ↓ to pull</small></div>
@@ -133,6 +134,6 @@
   <div class="sec">ERROR LOG</div><pre id="oLog"></pre>
 </div></div>
 
-<script type="module" src="js/menu.js?v=11.33"></script>
+<script type="module" src="js/menu.js?v=11.34"></script>
 </body>
 </html>

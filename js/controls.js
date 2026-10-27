@@ -52,13 +52,15 @@ export function input(dt) {
   S.shCD -= dt; S.cutT -= dt; S.act -= dt;
 }
 
-// On foot (foot.js): WASD / arrows walk relative to the camera, Shift runs, Space jumps. Touch: the gas pad walks forward (pull far = run),
-// the brake pad walks back, the wheel turns the camera, ▲ jumps. Returns the stick for footStep.
+// On foot (foot.js): WASD / arrows walk relative to the camera, Shift runs, Space jumps. Touch: the joystick (#joy, push it all the way to run)
+// and the JUMP button (#jumpB, hold to keep hopping); the camera turns by dragging the scene (main.js). Returns the stick for footStep.
+const joy = $('joy'), jk = $('joyK'); let jr = 1, jcx = 0, jcy = 0; TC.jx = TC.jy = 0; TC.jumpH = 0;
+const jset = e => { const dx = e.clientX - jcx, dy = e.clientY - jcy, d = Math.hypot(dx, dy), k = d > 0 ? Math.min(1, d / jr) / d : 0; TC.jx = dx * k; TC.jy = dy * k; jk.style.transform = `translate(${TC.jx * jr * .55}px,${TC.jy * jr * .55}px)`; };
+const jend = () => { TC.jx = TC.jy = 0; jk.style.transform = ''; };
+ptr(joy, e => { const r = joy.getBoundingClientRect(); jcx = r.left + r.width / 2; jcy = r.top + r.height / 2; jr = r.width * .4; jset(e); }, jset, jend);
+ptr($('jumpB'), () => { buzz(10); TC.jump = TC.jumpH = 1; $('jumpB').classList.add('on'); }, null, () => { TC.jumpH = 0; $('jumpB').classList.remove('on'); });
 export function footInput(dt) {
   const kf = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0), kr = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0);
-  const tf = TC.thrId !== null ? TC.thr : 0, tb = TC.brkId !== null ? TC.brk : 0;
-  if (TC.stId === null) TC.wa = appr(TC.wa, 0, 5 * dt);
-  const turn = TC.stId !== null || TC.wa !== 0 ? TC.wa / WMAX() : 0; F.cy -= turn * 2.4 * dt;
-  const jump = !!(K.Space || TC.jump); TC.jump = 0;
-  return { mx: kr, mz: clamp(kf + tf - tb, -1, 1), run: !!(K.ShiftLeft || K.ShiftRight) || tf > .75, jump };
+  const jm = Math.hypot(TC.jx, TC.jy), live = jm > .15, jump = !!(K.Space || TC.jump || TC.jumpH); TC.jump = 0; // small dead zone so a resting thumb doesn't creep
+  return { mx: clamp(kr + (live ? TC.jx : 0), -1, 1), mz: clamp(kf - (live ? TC.jy : 0), -1, 1), run: !!(K.ShiftLeft || K.ShiftRight) || jm > .92, jump };
 }

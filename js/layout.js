@@ -46,6 +46,11 @@ export function relayout() {
     s.setProperty('--bnp', bn.pad + 'px'); s.setProperty('--bng', bn.gap + 'px'); s.setProperty('--bnl', bn.lh + 'px'); s.setProperty('--bnbh', bn.bh + 'px'); s.setProperty('--bnf', bn.fs + 'px'); s.setProperty('--bntw', bn.tw + 'px'); s.setProperty('--bnx', (bn.fs > 12 ? 10 : 8) + 'px');
     bn.bw.forEach((w, i) => s.setProperty('--bw' + i, w + 'px'));
   }
+  // GET OFF / GET ON (foot.js): the solver's free spot, or the CSS spot when none is free
+  const fo = $('bFoot'), fr = r.foot; if (fr) { put(fo, fr, H, false); fo.style.fontSize = tr.top.fs + 'px'; } else { fo.style.cssText = ''; }
+  // on foot (foot.js): the joystick takes the wheel's place and the JUMP button the gas pad's (a round button in its lower part); both only show on foot
+  if (r.wheel) put($('joy'), r.wheel, H, true);
+  if (r.thr) { const d = Math.min(r.thr.w, r.thr.h); put($('jumpB'), { x: r.thr.x + (r.thr.w - d) / 2, y: r.thr.y + r.thr.h - d, w: d, h: d }, H, true); }
   if (!o.touch || !res.m) return res;
   // thumb controls: engine buttons (one row, or a 2x2 block), shifter, text sizes follow the scale
   const m = res.m, lb = $('lb'), fs = res.s < .85 ? 11 : 13, btn = [...lb.children];

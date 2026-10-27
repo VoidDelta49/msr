@@ -101,7 +101,7 @@ function getOff() {
   if (S.key) keySwitch(); // parking: ignition off (a running engine would idle on with nobody on it)
   F.prevCam = ctx.camMode; if (ctx.camMode === 0) toggleCam(); // first person has no body to look from: third person while walking
   document.body.classList.add('foot'); B.rider.forEach(m => m.visible = false); figBuild(); figShow(true);
-  say(document.body.classList.contains('touch') ? 'On foot: wheel turns, gas walks, ▲ jumps' : 'On foot: WASD walk, Shift run, Space jump, F get on', 2600);
+  say(document.body.classList.contains('touch') ? 'On foot: joystick walks, JUMP jumps, drag the screen to look' : 'On foot: WASD walk, Shift run, Space jump, F get on', 2600);
 }
 function footOff() { // back on the bike (or the bike was reset under us): F.on is cleared by foot.js mount() / here
   F.on = false; document.body.classList.remove('foot'); figShow(false); B.rider.forEach(m => m.visible = ctx.camMode === 1);

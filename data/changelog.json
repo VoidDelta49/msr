@@ -1,4 +1,7 @@
 [
+  { "v": "11.34", "d": "2026-10-27", "t": [
+    "On foot, touch controls: all the bike's controls are hidden and replaced by a joystick (push it all the way to run) and a JUMP button (hold to keep hopping); drag the screen to look around. GET OFF / GET ON now has its own free spot chosen by the layout solver, so it no longer sits on top of other buttons."
+  ] },
   { "v": "11.33", "d": "2026-10-27", "t": [
     "You can now get off the bike: F (or the GET OFF button when stopped) parks it with the key off and puts your rider on foot beside it. WASD walk, Shift run, Space jump, drag to look around; on touch the gas pad walks, the brake pad walks back, the wheel turns the camera and the up arrow jumps. You collide with buildings and the bike, can't wade into the sea, and F / GET ON next to the bike puts you back on it. Barebones for now: no animation, and other players still see your bike parked with its rider."
   ] },

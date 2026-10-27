@@ -18,10 +18,11 @@ export const hit = (a, b, p = 0) => a.x < b.x + b.w + p && b.x < a.x + a.w + p &
 // Density tiers. top: the five buttons of #top (menu, CAM: 3RD, GARAGE, RESET, options) as heights / widths / gap (label widths measured
 // in Chromium at 13 / 11 px bold plus padding and ~12% for Roboto / SF; tools/layout-dom.mjs fails if a label ever overflows its button).
 // ban: quest / race / ride banner (#mis #race #ride): text line height, button height, button widths (worst case: the four
-// buttons of the race banner), padding, gap, text width it asks for before wrapping the buttons below it.
+// buttons of the race banner), padding, gap, text width it asks for before wrapping the buttons below it. foot: the GET OFF / GET ON button
+// (#bFoot, only shown when it applies; its spot is the first free one of a few, like the gauge; none free = layout.js falls back to the CSS spot).
 export const TIERS = [
-  { top: { h: 44, w: [44, 86, 76, 62, 44], gap: 6, fs: 13 }, ban: { lh: 15, bh: 40, bw: [80, 96, 82, 44], pad: 8, gap: 8, tw: 150, fs: 13 }, mini: 1 },
-  { top: { h: 36, w: [38, 72, 64, 52, 38], gap: 4, fs: 11 }, ban: { lh: 14, bh: 34, bw: [72, 86, 74, 38], pad: 6, gap: 6, tw: 120, fs: 12 }, mini: .85 }
+  { top: { h: 44, w: [44, 86, 76, 62, 44], gap: 6, fs: 13 }, foot: { w: 92, h: 44 }, ban: { lh: 15, bh: 40, bw: [80, 96, 82, 44], pad: 8, gap: 8, tw: 150, fs: 13 }, mini: 1 },
+  { top: { h: 36, w: [38, 72, 64, 52, 38], gap: 4, fs: 11 }, foot: { w: 80, h: 36 }, ban: { lh: 14, bh: 34, bw: [72, 86, 74, 38], pad: 6, gap: 6, tw: 120, fs: 12 }, mini: .85 }
 ];
 const topSize = (t, por) => por ? { w: Math.max(...t.w), h: 5 * t.h + 4 * t.gap } : { w: t.w.reduce((a, b) => a + b, 0) + 4 * t.gap, h: t.h };
 
@@ -50,7 +51,9 @@ function build(W, H, ins, o, f, mode, tier) {
   let bb = null; for (const [x0, x1, y0] of ban) { const w = x1 - x0; if (w < BANNER_MIN_W) continue; const h = bannerH(w, tr.ban); if (!bb || y0 + h < bb.y + bb.h - 1) bb = { x: x0, y: y0, w, h }; }
   if (!bb) return { r, bad: 'banner zone too narrow', mode };
   r.banner = bb;
-  if (!o.touch) return { r, bad: check(W, H, ins, r), mode };
+  const fb = tr.foot, bot = Math.max(bb.y + bb.h, r.top.y + r.top.h, my + mini) + T;
+  const placeFoot = spots => { for (const sp of spots) { r.foot = { ...sp, w: fb.w, h: fb.h }; if (!check(W, H, ins, r)) return; } r.foot = null; };
+  if (!o.touch) { placeFoot([{ x: mx, y: my + mini + 4 }, { x: r.top.x - T - fb.w, y: my }, { x: mx + mini + T, y: my }, { x: (W - fb.w) / 2, y: bot }]); return { r, bad: check(W, H, ins, r), mode }; }
   // ---- thumb clusters (drawn right-handed, mirrored at the end for left-handed) ----
   const z = por ? { w: cl(.40 * W, 104, 172), tw: cl(.26 * W, 88, 120), th: cl(.17 * H, 112, 150), cw: cl(.21 * W, 72, 112) }
                 : { w: cl(.38 * H, 110, 160), tw: cl(.15 * W, 96, 120), th: cl(.32 * H, 104, 132), cw: cl(.17 * W, 84, 130) };
@@ -69,6 +72,8 @@ function build(W, H, ins, o, f, mode, tier) {
     else { r.clu = { x: px, y: B - th, w: cw, h: th }; r.shift = { x: px, y: B - th - V - sh, w: cw, h: sh }; }
   }
   if (o.lefty) for (const k of ['wheel', 'lb', 'thr', 'brk', 'clu', 'shift']) if (r[k]) r[k] = { ...r[k], x: L + R - r[k].x - r[k].w };
+  // GET OFF / GET ON: under the minimap, beside it (portrait), above the engine buttons, bottom centre between the thumb clusters, top centre
+  placeFoot([{ x: mx, y: my + mini + 4 }, { x: mx + mini + T, y: my }, { x: r.top.x - T - fb.w, y: my }, { x: o.lefty ? R - fb.w : L, y: r.lb.y - V - fb.h }, { x: (W - fb.w) / 2, y: B - fb.h }, { x: (W - fb.w) / 2, y: bot }]);
   // ---- gauge (3rd person only): first spot that is free, widest first ----
   if (o.cam3) {
     const gwMax = por ? Math.min(200, .44 * W) : Math.min(210, .24 * W), dir = o.lefty ? -1 : 1, gh = gw => gw * 224 / 512;

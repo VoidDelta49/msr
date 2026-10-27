@@ -49,11 +49,11 @@ const PASS = async ({ notchOpts, only }) => {
     $('raceY').textContent = 'ACCEPT'; $('raceP').textContent = '📦 PARCEL'; $('raceF').textContent = '🍔 FOOD'; $('raceX').textContent = '✕'; shown($('raceY'), true); shown($('raceP'), true); shown($('raceF'), true);
     $('rideY').textContent = 'GET OFF'; $('rideB').textContent = 'RACE'; $('rideX').textContent = '✕'; shown($('rideY'), true); shown($('rideB'), true); shown($('rideX'), true);
     $('misNext').textContent = 'Next'; $('misX').textContent = 'OK'; shown($('misNext'), true);
-    $('bCam').textContent = 'CAM: 3RD';
+    $('bCam').textContent = 'CAM: 3RD'; $('bFoot').textContent = 'GET OFF'; shown($('bFoot'), true);
     LAYOUT.key = ''; const res = relayout();
     const tag = `${W}x${H}${notch ? ' notch' : ''} ${sc}${lefty ? ' lefty' : ''}${cam3 ? ' cam3' : ''} k=${k / 10}${perf ? '' : ' noperf'} banner=${ban}`;
     if (!res.ok) { out.push(`${tag}: solver not ok: ${res.why}`); continue; }
-    const ids = ['mini', 'top', 'perf', ban, 'wheel', 'lb', 'thr', 'brk', 'clu', 'shift', 'gauge'].filter(id => vis($(id))), R = {};
+    const ids = ['mini', 'top', 'perf', 'bFoot', ban, 'wheel', 'lb', 'thr', 'brk', 'clu', 'shift', 'gauge'].filter(id => vis($(id))), R = {};
     for (const id of ids) R[id] = rect($(id));
     const ins = LAYOUT.ins;
     for (const id of ids) { const r = R[id]; if (r.x < ins.l - .6 || r.y < ins.t - .6 || r.x + r.w > W - ins.r + .6 || r.y + r.h > H - ins.b + .6) out.push(`${tag}: ${id} outside the safe area (${[r.x, r.y, r.w, r.h].map(Math.round)})`); }
