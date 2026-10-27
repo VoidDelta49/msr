@@ -11,7 +11,7 @@ import * as T from './tex.js';
 import { glowMat, lampMat, poolMat, haloMat, poolPatches, HALO_GEO } from './lights.js';
 import { mkTex } from './tex.js';
 import { DRAW, FAR, freeze, cullFar, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
-import { buildRoads } from './roads.js';
+import { buildRoads, groundModel } from './roads.js';
 
 // N64-style textures (tex.js): tiny, dithered, bilinear. Tiling scale ~ what the old 256 px speck textures had.
 const tAsph=mkTex(T.asphalt()),tCon=mkTex(T.concrete());
@@ -87,21 +87,12 @@ const GEN=[]; // roadside houses the generator placed this load (map maker bakes
 /* roads: Catmull-Rom splines, terrain-following heights, junction levelling, surface lookup: see js/roads.js (pure, so tools/roads.mjs
    tests it). island.json road = {pts, w, hwy?, closed?, kind?}; kind 'strip' = airstrip (concrete, runway markings, no poles/houses) */
 const {ROADS,nearRoad,bumpAt,BUMPS}=buildRoads(MD,terrBase);
-function HA(x,z,mesh){const t=terr(x,z),q=nearRoad(x,z);if(!q)return t;const hw=q.w/2;
-  if(q.d<hw)return mesh?q.h-.25:q.h+bumpAt(x,z);if(lastCarve>.25)return t;
-  const b=sstep(hw,hw+8,q.d);return q.h-.05+(t-q.h+.05)*b}
 // Ground the bike stands on = what is drawn: road ribbons (analytic) or the 5 m terrain mesh, interpolated per
 // triangle exactly like the PlaneGeometry. (The analytic terrain has detail and shoulder curves the mesh can't show.)
 // Map size follows the coast: the terrain grid is centred on the island and covers its widest radius + 80 m of sea,
 // rounded up to whole tiles. Terrain tiles, LOD, road chunks, prop culling and physics heights all derive from it.
-const CMAX=Math.max(...CR),EXT=Math.max(CMAX,...ISL.map(I=>I.R)),TS=5,TILE=280,TSZ=Math.ceil((2*EXT+160)/TILE)*TILE,TN=TSZ/TS,GX=Math.round(ICX/TS)*TS,GZ=Math.round(ICZ/TS)*TS;let MH=null;
-function meshH(x,z){const fx=(x-GX+TSZ/2)/TS,fz=(z-GZ+TSZ/2)/TS,ix=Math.floor(fx),iz=Math.floor(fz);if(ix<0||iz<0||ix>=TN||iz>=TN)return HA(x,z);
-  const u=fx-ix,v=fz-iz,W=TN+1,a=MH[ix+W*iz],b=MH[ix+W*(iz+1)],c=MH[ix+1+W*(iz+1)],d=MH[ix+1+W*iz];
-  return u+v<=1?a+(d-a)*u+(b-a)*v:c+(b-c)*(1-u)+(d-c)*(1-v)}
-// Next to a road the mesh is pulled down under the ribbon, which would make every road edge a ~10 cm kerb; there the
-// smooth shoulder is used instead, but never below the mesh (so the bike can't sink into the grass).
-function H(x,z,mesh){if(mesh||!MH)return HA(x,z,mesh);const q=nearRoad(x,z);if(q&&q.d<q.w/2)return q.h+bumpAt(x,z);const m=meshH(x,z);
-  if(q&&q.d<q.w/2+6){return Math.max(m,HA(x,z))}return m}
+const CMAX=Math.max(...CR),EXT=Math.max(CMAX,...ISL.map(I=>I.R)),TS=5,TILE=280,TSZ=Math.ceil((2*EXT+160)/TILE)*TILE,TN=TSZ/TS,GX=Math.round(ICX/TS)*TS,GZ=Math.round(ICZ/TS)*TS;
+const GRD=groundModel({terr,carve:()=>lastCarve,nearRoad,bumpAt,GX,GZ,TSZ,TS}),HA=GRD.HA,meshH=GRD.meshH,H=GRD.H; // roads.js: drawn mesh + physics ground next to roads
 const roadH=(x,z)=>H(x,z);
 // Lowest / highest DRAWN ground under a footprint (centre, corners, edge midpoints). Props are placed on this, not on
 // terr(): the analytic terrain has detail the 5 m mesh can't show and ignores the road cuts/fills, so props placed on it
@@ -162,7 +153,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   // terrain mesh with vertex colours
   const N=TN,SZ=TSZ,geo=new THREE.PlaneGeometry(SZ,SZ,N,N).rotateX(-PI/2).translate(GX,0,GZ),pos=geo.attributes.position,col=new Float32Array(pos.count*3),c=new THREE.Color();
   const C={sand:new THREE.Color(0xe2d2a2),grass:new THREE.Color(0x76a845),grass2:new THREE.Color(0x5e9438),forest:new THREE.Color(0x3d6b2c),rock:new THREE.Color(0x7c746a),ash:new THREE.Color(0x55504c),town:new THREE.Color(0xb3a98f),rice:new THREE.Color(0x9fd24a),rice2:new THREE.Color(0x7dbf3c),bed:new THREE.Color(0x8a7a5a),dry:new THREE.Color(0xa3ab4e),dirt:new THREE.Color(0x9c8a5e),wet:new THREE.Color(0xb8a57a)};
-  for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i),h=H(x,z,true),inl=inland(x,z);pos.setY(i,h);
+  for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i),h=H(x,z,true),cutAmt=GRD.trimmed(),inl=inland(x,z);pos.setY(i,h);
     const dv=Math.hypot(x-VOL.x,z-VOL.z),dt=Math.hypot(x-TERR.x,z-TERR.z),n=fbm(x*.03,z*.03);
     if(lastCarve>.4)c.copy(C.bed);
     else if(h<SEA+1.3&&inl<90)c.copy(C.sand);
@@ -174,8 +165,9 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     if(h>SEA+1.3&&h<60&&lastCarve<.4){const dp=sstep(.55,.75,fbm(x*.008+3,z*.008));c.lerp(C.dry,dp*.6)} // sun-dried grass patches
     if(h<SEA+.7&&inl<90)c.lerp(C.wet,.5); // wet sand at the waterline
     const q=nearRoad(x,z);if(q&&lastCarve<.4){const k=1-sstep(q.w/2,q.w/2+2.6,q.d);if(k>0)c.lerp(C.dirt,k*.65)} // worn dirt shoulders
+    if(cutAmt>.15)c.lerp(cutAmt>3?C.rock:C.dirt,sstep(.15,2,cutAmt)*.75); // graded cut bank beside a road: bare earth, so the road reads against the grass
     col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b}
-  MH=new Float32Array(pos.count);for(let i=0;i<pos.count;i++)MH[i]=pos.getY(i);
+  const MH=new Float32Array(pos.count);for(let i=0;i<pos.count;i++)MH[i]=pos.getY(i);GRD.setMH(MH);
   // baked AO: valleys and gullies (lower than the ground ~10 m around) darker, ridges a touch brighter
   {const W=N+1,ao=new Float32Array(pos.count);for(let j=0;j<W;j++)for(let i=0;i<W;i++){const k=i+W*j;let s=0,c=0;for(const[a,b]of[[-2,0],[2,0],[0,-2],[0,2],[-2,-2],[2,2],[-2,2],[2,-2]]){const ii=i+a,jj=j+b;if(ii>=0&&jj>=0&&ii<W&&jj<W){s+=MH[ii+W*jj];c++}}
     ao[k]=clamp(1-(s/c-MH[k])*.07,.7,1.08)}for(let i=0;i<pos.count;i++){col[i*3]*=ao[i];col[i*3+1]*=ao[i];col[i*3+2]*=ao[i]}}

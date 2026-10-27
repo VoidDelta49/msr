@@ -16,15 +16,15 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), v
 const mapArg = process.argv.slice(2).find(a => a.endsWith('.json'));
 globalThis.addEventListener ??= () => { }; // js/util.js touches it at import time
 const { PI, clamp, sstep, fbm, rand, hash2 } = await import(pathToFileURL(path.join(ROOT, 'js/util.js')).href);
-const { buildRoads } = await import(pathToFileURL(path.join(ROOT, 'js/roads.js')).href);
+const { buildRoads, groundModel } = await import(pathToFileURL(path.join(ROOT, 'js/roads.js')).href);
 const MD = JSON.parse(readFileSync(mapArg ? path.resolve(mapArg) : path.join(ROOT, 'data/map/island.json'), 'utf8'));
 
 // terrBase(): the terrain block of world.js, evaluated here (it needs only MD + a few maths helpers)
 const src = readFileSync(path.join(ROOT, 'js/world.js'), 'utf8'), b = src.indexOf('// @terrain-begin'), e = src.indexOf('// @terrain-end');
 if (b < 0 || e < b) { console.log('FAIL roads: the // @terrain-begin / // @terrain-end markers are missing from js/world.js (tools/roads.mjs needs them)'); process.exit(1); }
-const terrBase = new Function('MD', 'PI', 'clamp', 'sstep', 'fbm', 'rand', 'hash2', 'addOBB', src.slice(b, e) + '\nreturn terrBase;')(MD, PI, clamp, sstep, fbm, rand, hash2, () => { });
+const TB = new Function('MD', 'PI', 'clamp', 'sstep', 'fbm', 'rand', 'hash2', 'addOBB', src.slice(b, e) + '\nreturn { terrBase, terr, carve: () => lastCarve, CR, ICX, ICZ, ISL };')(MD, PI, clamp, sstep, fbm, rand, hash2, () => { });
 
-const { ROADS, nearRoad, roadsAt, BUMPS, JUNCTIONS } = buildRoads(MD, terrBase);
+const terrBase = TB.terrBase, { ROADS, nearRoad, roadsAt, bumpAt, BUMPS, JUNCTIONS } = buildRoads(MD, terrBase);
 const problems = [], name = r => `r${r.id}${MD.roads[r.id].id ? ' (' + MD.roads[r.id].id + ')' : ''}`;
 const f2 = v => v.toFixed(1), f3 = v => v.toFixed(3);
 const nearBump = (x, z) => BUMPS.some(k => { const al = k.ax === 'z' ? z - k.z : x - k.x, cr = k.ax === 'z' ? x - k.x : z - k.z; return Math.abs(al) < .8 && Math.abs(cr) < 4.5 });
@@ -62,6 +62,24 @@ if (stepHits.length) {
   problems.push(`STEP ${stepHits.length} points in ${spots} spots where neighbouring road points 25 cm apart differ by more than a grade allows; worst ${f3(w.dh)} m between ${w.ids.map(i => name(ROADS[i])).join(' and ')} at (${f2(w.x)}, ${f2(w.z)})`);
 }
 
+
+// CORRIDOR (11.42): the DRAWN mesh (5 m grid, built the way world.js builds it) and the physics ground H() beside every road.
+//   mesh poking above the ribbon inside the strip, or a wall right at the road edge, hid the road (terrace road: up to 6 m of grass over it)
+const TS = 5, EXT = Math.max(Math.max(...TB.CR), ...TB.ISL.map(I => I.R)), TSZ = Math.ceil((2 * EXT + 160) / 280) * 280, TN = TSZ / TS, GX = Math.round(TB.ICX / TS) * TS, GZ = Math.round(TB.ICZ / TS) * TS;
+const GRD = groundModel({ terr: TB.terr, carve: TB.carve, nearRoad, bumpAt, GX, GZ, TSZ, TS }), mc = new Map();
+GRD.setMH(new Proxy({}, { get: (_, k) => { k = +k; let v = mc.get(k); if (v === undefined) { const i = k % (TN + 1), j = (k - i) / (TN + 1); mc.set(k, v = GRD.HA(GX - TSZ / 2 + i * TS, GZ - TSZ / 2 + j * TS, true)) } return v } }));
+let cor = { up: 0, at: null, edge: 0, eat: null, bad: 0, n: 0 }, hp = { up: 0, n: 0, spots: new Set() };
+// tight bends and hairpin apexes: another stretch of the SAME road (10+ m of road away) passes within 11 m (turn radius under ~9 m), so the 5 m mesh cannot hold two heights apart; reported, not failed
+const tight = r => r.s.map((a, i) => r.s.some((b, j) => Math.abs(i - j) > 5 && (!r.closed || Math.abs(i - j) < r.s.length - 5) && Math.hypot(a.x - b.x, a.z - b.z) < 11));
+for (const r of ROADS) { if (r.kind === 'strip') continue; const TG = tight(r); for (let i = 0; i < r.s.length; i++) {
+  const s = r.s[i], nx = -s.tz, nz = s.tx, hw = r.w / 2, hpn = TG[i];
+  for (let o = -hw; o <= hw + 1e-6; o += .5) { const x = s.x + nx * o, z = s.z + nz * o, q = nearRoad(x, z); if (!q || q.d >= q.w / 2) continue; cor.n++; const qh = q.h, up = GRD.meshH(x, z) - (qh + .04); // nearRoad() returns one shared object: read it before the mesh lookup reuses it
+     if (hpn) { if (up > hp.up) hp.up = up; if (up > .1) { hp.n++; hp.spots.add(Math.round(x / 10) + ',' + Math.round(z / 10)) } continue } if (up > cor.up) { cor.up = up; cor.at = [x, z, r.id] } if (up > .1) cor.bad++ }
+  for (const sd of [-1, 1]) for (const o of [hw + .3, hw + 1, hw + 2]) { const x = s.x + nx * o * sd, z = s.z + nz * o * sd, q = nearRoad(x, z); if (!q || q.d < q.w / 2) continue; const qh = q.h, qe = q.d - q.w / 2, up = GRD.H(x, z) - qh - .15 * qe; if (!hpn && up > cor.edge) { cor.edge = up; cor.eat = [x, z, r.id] } }
+} }
+if (cor.up > .12) problems.push(`CORRIDOR drawn terrain rises ${f2(cor.up)} m above the road surface inside the strip of ${name(ROADS[cor.at[2]])} at (${f2(cor.at[0])}, ${f2(cor.at[1])}); ${cor.bad} of ${cor.n} surface points more than 10 cm`);
+if (cor.edge > .5) problems.push(`CORRIDOR ground within 2 m of the edge of ${name(ROADS[cor.eat[2]])} is ${f2(cor.edge)} m above the road at (${f2(cor.eat[0])}, ${f2(cor.eat[1])}): a wall at the road edge`);
+
 // report: hairpin inner edge (same road, informational)
 let hair = 0; for (const r of ROADS) for (let i = 0; i < r.s.length; i++) { const s = r.s[i], nx = -s.tz, nz = s.tx; for (const o of [-r.w / 2 + .6, r.w / 2 - .6]) { const x = s.x + nx * o, z = s.z + nz * o, q0 = nearRoad(x, z); if (!q0 || q0.d >= q0.w / 2 || nearBump(x, z)) continue; const q1 = nearRoad(x + D, z); if (q1 && q1.d < q1.w / 2 && q1.i === q0.i && Math.abs(q1.h - q0.h) / D > .3) hair++ } }
 
@@ -69,6 +87,6 @@ if (verbose) {
   console.log(`junctions (${JUNCTIONS.length}):`);
   for (const j of JUNCTIONS) console.log(`  (${f2(j.x)}, ${f2(j.z)}) level ${f3(j.h0)} m, set by ${name(ROADS[j.primary])}; ` + j.members.map(m => `${name(ROADS[m.road])} ${m.len} samples, blend ${m.T.map(x => x ? x + ' m' : 'grade ramp').join(' / ')}`).join('; '));
 }
-console.log(`roads: ${ROADS.length} roads, ${JUNCTIONS.length} junctions levelled, ${overlaps} overlap points checked, worst overlap mismatch ${f3(worstOv.d)} m` + (hair ? `; info: ${hair} samples on the inner edge of tight hairpins climb over 30% (one road, not a junction)` : ''));
+console.log(`roads: ${ROADS.length} roads, ${JUNCTIONS.length} junctions levelled, ${overlaps} overlap points checked, worst overlap mismatch ${f3(worstOv.d)} m; corridor: mesh over ribbon max ${f2(cor.up)} m, ground at road edge max ${f2(cor.edge)} m` + (hp.n ? ` (hairpin apexes, info: ${hp.n} points in ${hp.spots.size} spots up to ${f2(hp.up)} m)` : '') + (hair ? `; info: ${hair} samples on the inner edge of tight hairpins climb over 30% (one road, not a junction)` : ''));
 for (const p of problems) console.log('FAIL ' + p);
 process.exit(problems.length ? 1 : 0);

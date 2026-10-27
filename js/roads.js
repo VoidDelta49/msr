@@ -159,3 +159,37 @@ export function buildRoads(MD, terrBase) {
   function bumpAt(x, z) { for (const b of BUMPS) { const al = b.ax === 'z' ? z - b.z : x - b.x, cr = b.ax === 'z' ? x - b.x : z - b.z; if (Math.abs(al) < .35 && Math.abs(cr) < 3.6) return .075 * (1 + Math.cos(Math.PI * al / .35)) / 2 } return 0 }
   return { ROADS, nearRoad, roadsAt, bumpAt, BUMPS, JUNCTIONS };
 }
+
+// ---- ground next to a road: the drawn terrain mesh and the physics ground (world H()) ----
+// Build 11.42: the shoulder used to blend from the road's height to the raw terrain over 8 m, so wherever the road is lower than the hillside
+// (every cut on the terrace road, up to 17 m of terrain within 5 m of the centre line) the grass rose as a wall over the road and the 5 m
+// mesh poked through the ribbon. Now the terrain beside a road may not climb faster than CUT m per m of distance from the road edge
+// (a graded cut bank), and the DRAWN mesh additionally keeps a DIL m wide level shelf along each edge (its vertices are 5 m apart, so a
+// triangle that straddles the edge must not reach above the surface). Terrain below the road (fills, causeways, bridges) is unchanged.
+// carve() = river carve amount of the last terr() call. Pure so tools/roads.mjs checks the same function the game runs.
+export const CUT = .7, DIL = 4, SHELF = .05;
+export function groundModel({ terr, carve, nearRoad, bumpAt, GX, GZ, TSZ, TS }) {
+  const TN = TSZ / TS, W = TN + 1; let MH = null, trimmed = 0;
+  function HA(x, z, mesh) {
+    trimmed = 0; const t = terr(x, z), q = nearRoad(x, z); if (!q) return t; const hw = q.w / 2;
+    if (q.d < hw) return mesh ? q.h - .25 : q.h + bumpAt(x, z);
+    if (carve() > .25) return t;
+    const e = q.d - hw, b = sst(e / 8); let v = q.h - .05 + (t - q.h + .05) * b;
+    if (v > q.h - SHELF) { const lim = q.h - SHELF + CUT * Math.max(0, e - (mesh ? DIL : 0)); if (v > lim) { trimmed = v - lim; v = lim } }
+    return v;
+  }
+  function meshH(x, z) {
+    const fx = (x - GX + TSZ / 2) / TS, fz = (z - GZ + TSZ / 2) / TS, ix = Math.floor(fx), iz = Math.floor(fz); if (ix < 0 || iz < 0 || ix >= TN || iz >= TN) return HA(x, z);
+    const u = fx - ix, v = fz - iz, a = MH[ix + W * iz], b = MH[ix + W * (iz + 1)], c = MH[ix + 1 + W * (iz + 1)], d = MH[ix + 1 + W * iz];
+    return u + v <= 1 ? a + (d - a) * u + (b - a) * v : c + (b - c) * (1 - u) + (d - c) * (1 - v);
+  }
+  // Ground the bike stands on = what is drawn: the road ribbon, else the mesh interpolated per triangle exactly like the PlaneGeometry.
+  // Just outside the edge the mesh is pulled under the ribbon; a floor that eases from the road height down 25 cm over 1.2 m keeps that from being a kerb.
+  function H(x, z, mesh) {
+    if (mesh || !MH) return HA(x, z, mesh);
+    const q = nearRoad(x, z); if (q && q.d < q.w / 2) return q.h + bumpAt(x, z);
+    const qh = q ? q.h : 0, e = q ? q.d - q.w / 2 : 9; // nearRoad() returns one shared object: copy before anything else looks a road up
+    const m = meshH(x, z); if (q && e < 1.2) return Math.max(m, qh - .25 * e / 1.2); return m;
+  }
+  return { HA, H, meshH, setMH: a => { MH = a }, trimmed: () => trimmed };
+}

@@ -1,4 +1,8 @@
 [
+  { "v": "11.42", "d": "2026-10-27", "t": [
+    "Fixed: the mountain (terrace) road was buried. Where the road runs lower than the hillside, the grass climbed as a wall up to 17 m high within 5 m of the centre line, and the 5 m terrain mesh poked through the road surface, so the road was hard to see and you rode into invisible-looking walls. The ground beside a road now rises as a graded cut bank (at most 0.7 m per metre) behind a level shoulder, in bare earth colour so the road stands out against the grass, and no terrain reaches above the road surface any more.",
+    "Terrain below a road (embankments, bridges, river crossings) is unchanged. tools/roads.mjs now also checks the drawn mesh and the physics ground beside every road (CORRIDOR)."
+  ] },
   { "v": "11.41", "d": "2026-10-27", "t": [
     "Fixed: bumps where roads meet. Every road used to be shaped on its own, so where two roads overlapped (crossings, branches, the town's north-east corner, the airstrip's taxi roads) they sat at different heights and the ground jumped between the two surfaces along the line where the nearest road changes: up to half a metre at the highway junctions. Now every junction is one level surface: the roads there share one height over the whole overlap and ease back into their own terrain-following profile at a gentle grade.",
     "Fixed: the highway loop had a 6 cm step where its end met its start. It is now smoothed as a closed loop.",
