@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clone as skelClone } from 'three/addons/utils/SkeletonUtils.js';
-import { attribute, uniformArray, texture, uv, vec2, vec3, select, instancedBufferAttribute, smoothstep } from 'three/tsl';
+import { attribute, uniformArray, texture, uv, vec2, vec3, float, step, select, instancedBufferAttribute, smoothstep } from 'three/tsl';
 import { PI } from './util.js';
 import { scene, std, sun } from './renderer.js';
 import * as T from './tex.js';
@@ -73,12 +73,61 @@ let T0 = [0, 0], RK = 0;
 const toSt = (z, y) => { const dz = z - T0[0], dy = y - T0[1], c = Math.cos(RK), s = Math.sin(RK); return [-dy * s + dz * c, dy * c + dz * s]; };
 const profSt = (pts, w, b, seg) => prof(pts.map(p => p.length === 4 ? [...toSt(p[0], p[1]), ...toSt(p[2], p[3])] : toSt(p[0], p[1])), w, b, seg);
 function mkSt(geo, m, x, z, y, rx = 0, ry = 0, rz = 0) { const [lz, ly] = toSt(z, y); return mk(geo, m, B.steer, x, ly, lz, rx - RK, ry, rz); }
-// wheel: chunky low-poly tyre, rim lip, spokes (twin = "Y" pairs), hub, brake disc (petal-ish, 12 sides) on the right
-function wheelG(R, t, rim, spokes, sw, twin, disc = .11) {
-  const g = new THREE.Group(); mk(new THREE.TorusGeometry(R, t, 6, 20), MR, g, 0, 0, 0, 0, PI / 2); mk(new THREE.TorusGeometry(rim, .013, 4, 20), MW, g, 0, 0, 0, 0, PI / 2);
-  for (let i = 0; i < spokes; i++) for (const o of twin ? [-.15, .15] : [0]) mk(box(.02, rim - .03, sw).translate(0, rim / 2 + .03, 0), MW, g, 0, 0, 0, i * 2 * PI / spokes + o);
-  mk(cyl(.05, .05, .11, 8), MW, g, 0, 0, 0, 0, 0, PI / 2);
-  if (disc) { mk(cyl(disc, disc, .006, 12), MC, g, .058, 0, 0, 0, 0, PI / 2); mk(cyl(disc * .55, disc * .55, .01, 8), MB, g, .058, 0, 0, 0, 0, PI / 2); }
+/* ---------- flat wheel faces ---------- */
+// N64 trick: spokes, rim lip, hub, pinstripes and brake discs are NOT geometry. Each wheel gets one flat plane per side (and one
+// per disc / drum) with a cut-out texture, so a wheel is a tyre torus + 4-8 triangles instead of ~700. All faces share one atlas
+// (WTX, 128 px tiles, drawn lazily and cached by design). The texture holds no colours, only which part a pixel belongs to:
+// R = wheel colour (palette entry 0 = MW: paint scheme colour or carbon), G = pinstripe (entry 1 = MRS), B = chrome / alloy
+// (entry 2 = MC), black = dark parts, alpha = silhouette. The palette shader (palMat) turns that into colours and discards the
+// transparent pixels (maskNode), so the garage's wheel colour / rim tape / carbon options still work and the faces batch into
+// the one skinned bike mesh: no extra draw calls.
+const WTS = 128, WTW = 8, WTH = 6, WTC = document.createElement('canvas'), MWF = std(0xffffff, .5, .3), WT = new Map();
+WTC.width = WTS * WTW; WTC.height = WTS * WTH;
+const WTG = WTC.getContext('2d'), WTX = new THREE.CanvasTexture(WTC); WTX.anisotropy = 4;
+const WCOL = { R: '#f00', G: '#0f0', B: '#00f', K: '#000' };
+// tile for a design: draw(g, k) paints in metres around the tile centre (k = px per metre); cached by key
+function wheelTile(key, S, draw) {
+  let i = WT.get(key); if (i === undefined) {
+    i = Math.min(WT.size, WTW * WTH - 1); WT.set(key, i);
+    const x = (i % WTW) * WTS, y = (i / WTW | 0) * WTS, k = WTS / (2 * S);
+    WTG.save(); WTG.beginPath(); WTG.rect(x, y, WTS, WTS); WTG.clip(); WTG.clearRect(x, y, WTS, WTS); WTG.translate(x + WTS / 2, y + WTS / 2); WTG.scale(k, k);
+    draw(WTG, k); WTG.restore(); WTX.needsUpdate = true;
+  }
+  return i;
+}
+// plane of half-size S facing +x (s = 1) or -x (s = -1), UVs on tile i
+function wheelPlane(g, S, s, x, tile) {
+  const geo = new THREE.PlaneGeometry(2 * S, 2 * S).rotateY(s * PI / 2), uv = geo.attributes.uv, tx = (tile % WTW) * WTS, ty = (tile / WTW | 0) * WTS;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, (tx + uv.getX(i) * WTS) / WTC.width, 1 - (ty + (1 - uv.getY(i)) * WTS) / WTC.height);
+  return mk(geo, MWF, g, x, 0, 0);
+}
+const wring = (g, r, hw) => { g.lineWidth = 2 * hw; g.beginPath(); g.arc(0, 0, r, 0, 2 * PI); g.stroke(); };
+const wdisc = (g, r, c) => { g.fillStyle = WCOL[c]; g.beginPath(); g.arc(0, 0, r, 0, 2 * PI); g.fill(); };
+// sp: rim (rim lip radius), lip (its half width), n/w/to (spoke count, width m, twin-pair offset rad or 0), r0/r1 (spoke radii), sc (spoke colour channel),
+// hub / hc (hub radius + channel), sx (x of the pinstripes) with sr/sw (their radius, half width), plates [[x, r, kind]] ('disc' = brake disc, 'drum' = alloy drum)
+function wheelFaces(g, sp) {
+  const S = sp.rim + .02;
+  for (const s of [-1, 1]) {
+    const st = (sp.sx || []).some(x => Math.sign(x) === s), key = JSON.stringify(['f', S, sp.lip, sp.n, sp.w, sp.to, sp.r0, sp.r1, sp.sc, sp.hub, sp.hc, st ? [sp.sr, sp.sw] : 0]);
+    wheelPlane(g, S, s, s * .016, wheelTile(key, S, (c, k) => {
+      c.fillStyle = WCOL[sp.sc]; const w = Math.max(sp.w, 2.2 / k);
+      for (let i = 0; i < sp.n; i++) for (const o of sp.to ? [-sp.to, sp.to] : [0]) { c.save(); c.rotate(i * 2 * PI / sp.n + o); c.fillRect(-w / 2, -sp.r1, w, sp.r1 - sp.r0); c.restore(); }
+      c.strokeStyle = WCOL.R; wring(c, sp.rim, sp.lip); if (sp.hub) wdisc(c, sp.hub, sp.hc);
+      if (st) { c.strokeStyle = WCOL.G; wring(c, sp.sr, sp.sw); }
+    }));
+  }
+  for (const [x, r, kind] of sp.plates || []) {
+    const S2 = r + .006;
+    wheelPlane(g, S2, Math.sign(x), x, wheelTile(JSON.stringify(['p', S2, kind]), S2, c => {
+      wdisc(c, r, 'B');
+      if (kind === 'disc') { wdisc(c, r * .55, 'K'); c.fillStyle = WCOL.K; for (let i = 0; i < 10; i++) { c.beginPath(); c.arc(Math.cos(i * PI / 5) * r * .78, Math.sin(i * PI / 5) * r * .78, r * .07, 0, 2 * PI); c.fill(); } }
+    }));
+  }
+}
+// wheel: chunky low-poly tyre torus + flat faces (spokes: twin = "Y" pairs; disc on the right; ex = extra pinstripes / alloy drum)
+function wheelG(R, t, rim, spokes, sw, twin, disc = .11, ex = {}) {
+  const g = new THREE.Group(); mk(new THREE.TorusGeometry(R, t, 6, 20), MR, g, 0, 0, 0, 0, PI / 2);
+  wheelFaces(g, { rim, lip: .013, n: spokes, w: sw, to: twin ? .15 : 0, r0: .045, r1: rim + .015, sc: 'R', hub: .05, hc: 'R', sx: ex.sx, sr: ex.sr, sw: ex.sw, plates: [...(disc ? [[.058, disc, 'disc']] : []), ...(ex.plates || [])] });
   return g;
 }
 // sport wheel: fat tyre (torus squashed to width wx), rim with paint pinstripes (MRS), 5 split "Y" spokes, floating discs
@@ -86,12 +135,8 @@ function wheelG(R, t, rim, spokes, sw, twin, disc = .11) {
 const MRS = std(0x15161a, .4, .3), MGold = std(0xc39a45, .3, .85), MEng = std(0x3e4249, .5, .6), MCov = std(0x60656d, .4, .7);
 function wheelS(R, t, wx, rim, front) {
   const g = new THREE.Group(); mk(new THREE.TorusGeometry(R, t, 6, 22).scale(1, 1, wx), MR, g, 0, 0, 0, 0, PI / 2);
-  mk(new THREE.TorusGeometry(rim, .014, 4, 22), MW, g, 0, 0, 0, 0, PI / 2);
-  for (const x of [-.045, .045]) mk(new THREE.TorusGeometry(rim - .002, .006, 3, 22), MRS, g, x, 0, 0, 0, PI / 2);
-  for (let i = 0; i < 5; i++) for (const o of [-.14, .14]) mk(box(.024, rim - .05, .028).translate(0, (rim - .05) / 2 + .045, 0), MW, g, 0, 0, 0, i * 2 * PI / 5 + o);
-  mk(cyl(.055, .055, front ? .13 : .15, 8), MW, g, 0, 0, 0, 0, 0, PI / 2);
   const dr = front ? .155 : .12;
-  for (const x of front ? [-.075, .075] : [.072]) { mk(cyl(dr, dr, .005, 16), MC, g, x, 0, 0, 0, 0, PI / 2); mk(cyl(dr * .6, dr * .6, .008, 10), MB, g, x, 0, 0, 0, 0, PI / 2); }
+  wheelFaces(g, { rim, lip: .014, n: 5, w: .028, to: .14, r0: .045, r1: rim - .005, sc: 'R', hub: .055, hc: 'R', sx: [-.045, .045], sr: rim - .002, sw: .006, plates: front ? [[-.075, dr, 'disc'], [.075, dr, 'disc']] : [[.072, dr, 'disc']] });
   return g;
 }
 const MVis = std(0x0c0f14, .1, .6), MVisG = std(0x2c3036, .15, .5), MAlu = std(0xb9bec4, .32, .75), MCop = std(0xb8682c, .35, .6),
@@ -493,7 +538,7 @@ function supersport(ct) {
 // Leftovers with their own textures (grille, plate, floor mat, decal, cluster) are merged per material per group.
 const PN = 48, PA = [], PB = [], PE = [], PAL = new Map();
 for (let i = 0; i < PN; i++) { PA.push(new THREE.Vector4(1, 1, 1, .5)); PB.push(new THREE.Vector4()); PE.push(new THREE.Vector4()); }
-function writePal(m, i) { const c = m.color, e = m.emissive, k = m.emissiveIntensity; PA[i].set(c.r, c.g, c.b, m.roughness); PB[i].set(m.metalness, m.map === LIV.t ? 1 : m.map === CF ? 2 : 0, 0, 0); PE[i].set(e.r * k, e.g * k, e.b * k, 0); }
+function writePal(m, i) { const c = m.color, e = m.emissive, k = m.emissiveIntensity; PA[i].set(c.r, c.g, c.b, m.roughness); PB[i].set(m.metalness, m === MWF ? 3 : m.map === LIV.t ? 1 : m.map === CF ? 2 : 0, 0, 0); PE[i].set(e.r * k, e.g * k, e.b * k, 0); }
 function palIdx(m) { let i = PAL.get(m); if (i === undefined) { i = Math.min(PAL.size, PN - 1); PAL.set(m, i); writePal(m, i); } return i; }
 function syncPal() { for (const [m, i] of PAL) writePal(m, i); }
 const palable = m => m.isMeshStandardMaterial && !m.vertexColors && !m.transparent && !m.alphaTest && (!m.map || m.map === LIV.t || m.map === CF);
@@ -503,10 +548,14 @@ function palMat(PA, PB, PE, lt) {
   const uA = uniformArray(PA, 'vec4'), uB = uniformArray(PB, 'vec4'), uE = uniformArray(PE, 'vec4');
   const m = new THREE.MeshStandardNodeMaterial(), i = attribute('pal', 'float').add(.5).toInt(), a = uA.element(i), b = uB.element(i), u = uv();
   const liv = texture(lt, u.mul(vec2(1 / (LZ1 - LZ0), 1 / (LY1 - LY0))).add(vec2(-LZ0 / (LZ1 - LZ0), -LY0 / (LY1 - LY0)))), cf = texture(CF, u.mul(4));
-  m.colorNode = a.rgb.mul(select(b.y.greaterThan(1.5), cf.rgb, select(b.y.greaterThan(.5), liv.rgb, vec3(1))));
-  m.roughnessNode = a.w; m.metalnessNode = b.x; m.emissiveNode = uE.element(i).rgb; return m;
+  // wheel faces (mode 3, see "flat wheel faces"): the colour comes from palette entries 0 / 1 / 2 by the texture's R / G / B, black = dark parts
+  const wt = texture(WTX, u), isW = b.y.greaterThan(2.5), wsum = wt.r.add(wt.g).add(wt.b).min(1), wk = float(1).sub(wsum);
+  const ent = j => uA.element(j).rgb.mul(select(uB.element(j).y.greaterThan(1.5), cf.rgb, vec3(1))), wmix = (f, dark) => f(0).mul(wt.r).add(f(1).mul(wt.g)).add(f(2).mul(wt.b)).add(float(dark).mul(wk));
+  m.colorNode = select(isW, ent(0).mul(wt.r).add(ent(1).mul(wt.g)).add(ent(2).mul(wt.b)).add(vec3(WDARK.r, WDARK.g, WDARK.b).mul(wk)), a.rgb.mul(select(b.y.greaterThan(1.5), cf.rgb, select(b.y.greaterThan(.5), liv.rgb, vec3(1)))));
+  m.roughnessNode = select(isW, wmix(j => uA.element(j).w, .6), a.w); m.metalnessNode = select(isW, wmix(j => uB.element(j).x, .3), b.x); m.emissiveNode = uE.element(i).rgb;
+  m.maskNode = select(isW, step(.4, wt.a), float(1)); return m;
 }
-const MT = palMat(PA, PB, PE, LIV.t);
+const WDARK = new THREE.Color(0x14161a), MT = palMat(PA, PB, PE, LIV.t);
 // one mesh's geometry in the frame `rel` (a Matrix4 from its world to the target), with pal (+ bone) attributes
 function palGeo(o, rel, bone) {
   const src = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry, g = new THREE.BufferGeometry(), n = src.attributes.position.count;
@@ -554,10 +603,8 @@ function mergeStatic(par, skip) {
 // muffler, black chain case. v = trim: 0 spoke wheels + drum/drum, 1 spokes + front disc, 2 five-spoke mags + front disc.
 // The "Smash" side script and the front badge are pseudo-letter decals (MDec), not real lettering.
 function wheelWire(R, t, rim, drum, disc) {
-  const g = new THREE.Group(); mk(new THREE.TorusGeometry(R, t, 6, 20), MR, g, 0, 0, 0, 0, PI / 2); mk(new THREE.TorusGeometry(rim, .012, 4, 20), MW, g, 0, 0, 0, 0, PI / 2);
-  for (let i = 0; i < 16; i++) mk(box(.006, rim - .05, .006).translate(0, (rim - .05) / 2 + .045, 0), MC, g, (i & 1 ? .025 : -.025), 0, 0, i * PI / 8 + (i & 1 ? .12 : -.12));
-  mk(cyl(drum, drum, .09, 10), MAlu, g, 0, 0, 0, 0, 0, PI / 2);                                            // drum hub
-  if (disc) { mk(cyl(disc, disc, .006, 12), MC, g, .05, 0, 0, 0, 0, PI / 2); mk(cyl(disc * .55, disc * .55, .01, 8), MB, g, .05, 0, 0, 0, 0, PI / 2); }
+  const g = new THREE.Group(); mk(new THREE.TorusGeometry(R, t, 6, 20), MR, g, 0, 0, 0, 0, PI / 2);
+  wheelFaces(g, { rim, lip: .012, n: 16, w: .007, to: 0, r0: .045, r1: rim - .005, sc: 'B', hub: 0, hc: 'R', plates: [[-.04, drum, 'drum'], [.04, drum, 'drum'], ...(disc ? [[.05, disc, 'disc']] : [])] });
   return g;
 }
 function underbone(ct, v) {
@@ -746,7 +793,7 @@ function tmx(ct, v, m = 0) {
 function aerox(ct) {
   const rw = .272, rake = .45, headY = .92, fZ = -.7, fork = (headY - rw) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
   B.G = { rw, rearZ: .65, fork, rake, pivotY: .34, pivotZ: .04, swingX: -.1 }; B.wheelCol = 0x15161a; B.cargo = { y: .88, z: .55 };
-  const wheel = (t, disc) => { const g = wheelG(.215, t, .175, 5, .024, true, disc); mk(new THREE.TorusGeometry(.173, .005, 3, 22), MRS, g, .045, 0, 0, 0, PI / 2); return g; };
+  const wheel = (t, disc) => wheelG(.215, t, .175, 5, .024, true, disc, { sx: [.045], sr: .173, sw: .005 });
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .65); ct.add(B.rearH); B.rearW = wheel(.057, 0); B.rearH.add(B.rearW);
   mk(arc(.285, .31, 1.3, 2.6, .13), MF, B.rearH, 0, 0, 0);                                                   // rear hugger
   B.swing = mk(prof([[-.5, -.07], [-.5, .07], [-.2, .11], [.42, .09], [.52, .02], [.48, -.07], [.2, -.1]], .13, .015), MG, ct, -.1, .3, .345); // unit swing
@@ -802,7 +849,7 @@ function aerox(ct) {
 function rouser(ct) {
   const rw = .3, rake = .46, headY = 1.03, fZ = -.7, fork = (headY - rw) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
   B.G = { rw, rearZ: .62, fork, rake, pivotY: .4, pivotZ: .08, swingX: 0 }; B.wheelCol = 0x15161a; B.cargo = { y: 1.02, z: .6 }; B.decal = MDec;
-  const wheel = front => { const g = wheelG(.262, .04, .218, 5, .024, true, front ? .12 : 0); for (const x of [-.04, .04]) mk(new THREE.TorusGeometry(.216, .005, 3, 22), MRS, g, x, 0, 0, 0, PI / 2); if (!front) mk(cyl(.075, .075, .05, 10), MAlu, g, -.05, 0, 0, 0, 0, PI / 2); return g; };
+  const wheel = front => wheelG(.262, .04, .218, 5, .024, true, front ? .12 : 0, { sx: [-.04, .04], sr: .216, sw: .005, plates: front ? [] : [[-.05, .075, 'drum']] });
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .62); ct.add(B.rearH); B.rearW = wheel(false); B.rearH.add(B.rearW);
   mk(cyl(.085, .085, .012, 10), MB, B.rearH, -.08, 0, 0, 0, 0, PI / 2);                                      // sprocket
   mk(arc(rw + .02, rw + .045, 1.0, 2.4, .12), MF, B.rearH, 0, 0, 0);                                         // rear hugger
@@ -867,7 +914,7 @@ const MODELS = { sport, scooter, supersport, underbone, tmx, aerox, rouser, mach
 export function buildModel(bike, spec) {
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;
-  B.ct.clear(); B.fenderPaint = false; B.decal = null; B.sc = 0; PAL.clear(); MODELS[bike.model](B.ct, B.var); B.kind = bike.model; setLiveryUV();
+  B.ct.clear(); B.fenderPaint = false; B.decal = null; B.sc = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model; setLiveryUV();
   // rider: one mesh per material, still listed in B.rider (camera toggles visibility, crashes move them)
   const rm = new Map(); for (const o of B.rider) { if (!rm.has(o.material)) rm.set(o.material, []); rm.get(o.material).push(o); }
   B.rider = [...rm.values()].map(L => L.length > 1 ? mergeList(L, B.ct) : L[0]);

@@ -1,4 +1,8 @@
 [
+  { "v": "11.44", "d": "2026-10-27", "t": [
+    "Cuter and lighter wheels: spokes, rim lip, hub, pinstripes and brake discs are now flat cut-out textures (N64 style) instead of little 3D parts. Every bike lost about 700-1,500 triangles (all eight together: 30.9k to 23.5k, a quarter of the bike geometry); the draw call count did not change.",
+    "The tyre is still a chunky 3D ring. The garage wheel colour, rim tape and carbon wheels still work, and brake discs now have drilled holes."
+  ] },
   { "v": "11.43", "d": "2026-10-27", "t": [
     "Faster: far fewer draw calls. Measured in five spots (lot, town, highway, town edge, plaza) on Medium: 115-180 draw calls per frame before, 26-35 now, with the same picture.",
     "The ground is one object (every 280 m tile at every detail level, drawn nearest first), the roads are one per surface, and on WebGL 2 every prop of the island (houses, shops, roofs, trees, palms, poles, rails, parked vehicles, lamps...) is drawn once per material for the whole island instead of once per type per 700 m chunk. Untextured props and the church share one material, so most of the town is a single draw. All shadow-casting props are one draw in the shadow pass. Props now hide per 140 m cell instead of per 700 m chunk, so less off-screen geometry is drawn too.",
