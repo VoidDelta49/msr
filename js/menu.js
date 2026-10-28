@@ -7,6 +7,13 @@ import { $ } from './util.js';
 import { ctx } from './state.js';
 import { O, openOpts } from './options.js';
 
+// No browser context menu anywhere: right-click, touch-and-hold, long-press on images/links and native drag all do nothing.
+// Text-entry fields keep theirs so name / room code / server URL can still be pasted.
+const TXT = 'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]):not([type=file]),textarea,[contenteditable=""],[contenteditable="true"]';
+const keepNative = e => e.target instanceof Element && e.target.closest(TXT);
+for (const t of ['contextmenu', 'dragstart']) addEventListener(t, e => { if (!keepNative(e)) e.preventDefault(); }, { capture: true });
+addEventListener('selectstart', e => { if (!keepNative(e) && !(e.target instanceof Element && e.target.closest('#oLog'))) e.preventDefault(); }, { capture: true });
+
 const IM = JSON.parse(document.querySelector('script[type=importmap]').textContent).imports;
 // heavy CDN files with their decompressed sizes (the progress bar counts decompressed stream bytes; versions are pinned)
 const LIBS = [[IM['three/webgpu'], 2284850], [IM['three/webgpu'].replace('three.webgpu.js', 'three.core.js'), 1458113], [IM['three/tsl'], 36854], [IM['@dimforge/rapier3d-compat'], 230867], [IM['@dimforge/rapier3d-compat'].replace('.mjs', '.wasm'), 3082103],
