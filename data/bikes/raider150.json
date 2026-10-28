@@ -202,8 +202,7 @@
         { "n": "Stock" },
         { "n": "Carbon (−0.4 kg)", "dm": -0.4, "cfx": 1 }
       ]
-    },
-    "sidecar": {"l": "Sidecar", "o": [{"n": "Solo"}, {"n": "Tricycle sidecar (+110 kg)", "sc": 1, "scm": 110, "dm": 110, "scW": 0.3, "scX": 0.95, "scD": 1.5, "drag": 0.62, "roll": 42, "brake": 0.95}]}
+    }
   },
   "sliders": [
     { "k": "pf", "l": "Fork preload", "min": -20, "max": 20, "u": " mm" },
@@ -220,7 +219,6 @@
     { "k": "autoClutch", "l": "Anti-stall clutch" }
   ],
   "defaults": {
-    "sidecar": 0,
     "pf": 0,
     "pr": 0,
     "exhaust": 0,
