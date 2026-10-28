@@ -1,4 +1,7 @@
 [
+  { "v": "11.56", "d": "2026-10-28", "t": [
+    "Speed blur gets San Andreas-style ghost trails and a speed vignette. Above 60 km/h a fading echo of the last frames trails behind the fast-moving road edges and roadside (the faster a spot streaks, the stronger its trail), while the point you are heading for and your bike stay crisp; the screen edges dim and lose a little colour as speed builds. The strength slider sets both the streak length and how long the trails linger. Phone-friendly: the trails are kept at half resolution and add one small pass, and nothing extra runs below 60 km/h."
+  ] },
   { "v": "11.55", "d": "2026-10-28", "t": [
     "Motion blur is now speed blur in the style of GTA San Andreas: it only appears when you ride fast (fades in from 60 km/h, full at 130), never on foot. Looking around, leaning, turning and the camera swinging no longer blur anything: the streaks come only from how far the camera travelled, so they fan out from the point you are heading for and the horizon stays sharp."
   ] },
