@@ -26,8 +26,8 @@ const BANNERS = ['mis', 'race', 'ride'];
 
 export function relayout() {
   const W = innerWidth, H = innerHeight, ins = insets();
-  const o = { k: (cfg.ui ?? 10) / 10, touch: body.classList.contains('touch'), cvt: body.classList.contains('cvt'), nocl: body.classList.contains('nocl'), lefty: !!cfg.lefty, cam3: body.classList.contains('cam3'), perf: !$('perf').hidden };
-  const key = [W, H, ins.t, ins.r, ins.b, ins.l, o.k, o.touch, o.cvt, o.nocl, o.lefty, o.cam3, o.perf].join();
+  const o = { k: (cfg.ui ?? 10) / 10, touch: body.classList.contains('touch'), cvt: body.classList.contains('cvt'), nocl: body.classList.contains('nocl'), ysh: body.classList.contains('cvt') && body.classList.contains('ysh'), lefty: !!cfg.lefty, cam3: body.classList.contains('cam3'), perf: !$('perf').hidden };
+  const key = [W, H, ins.t, ins.r, ins.b, ins.l, o.k, o.touch, o.cvt, o.nocl, o.ysh, o.lefty, o.cam3, o.perf].join();
   if (key === LAYOUT.key) return LAYOUT.last; LAYOUT.key = key;
   const res = LAYOUT.last = solve(W, H, ins, o), r = res.rects, tr = res.tr, por = res.por;
   body.classList.toggle('lay', true); body.classList.toggle('laybad', !res.ok); body.dataset.layout = res.ok ? `${res.mode} f${res.f} t${res.tier}` : 'bad: ' + res.why;

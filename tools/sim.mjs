@@ -99,6 +99,22 @@ const SC = {
     sim.run(8, s => { S.thr = 0; if (!S.running && off == null) { off = r2(s.t); return false; } });
     const m = { offAt: off }; S.thr = .6; S.key = true; sim.run(1.5, () => { S.thr = .6; }); m.restarted = S.running ? 1 : 0; m.nan = sim.finite(); return m;
   },
+  // YECVT (cvt.ye + a part option yec: 1): T vs S full-throttle rpm and 0-60, Y-Shift at a 60 km/h part-throttle cruise (rpm per level,
+  // drops out on throttle release), engine braking 80 -> 40 km/h shut throttle with Y-Shift 3 vs none, brake cancels it. na without YECVT
+  yshift(o) {
+    const yo = { ...o, parts: { ...o.parts } }, b0 = createSim(o.bike, o), vk = Object.entries(b0.bike.parts || {}).find(([, p]) => p.o.some(x => x.yec));
+    if (!vk) return { na: 1 }; if (!b0.spec.yec) yo.parts[vk[0]] = vk[1].o.findIndex(x => x.yec);
+    const go = (set, f) => { const sim = createSim(o.bike, { ...yo, set: { ...yo.set, ...set } }); sim.quickStart(); S.brake = 0; return f(sim); }, m = {};
+    for (const [k, set] of [['T', { ysp: false }], ['S', { ysp: true }]]) go(set, sim => { S.thr = 1; let r = 0; sim.run(30, s => { if (s.kmh() > 50 && !r) r = S.rpm; return s.kmh() < 60; }); m['rpm50' + k] = Math.round(r); m['t60' + k] = r2(sim.t); });
+    go({}, sim => {
+      S.thr = .5; sim.run(30, s => s.kmh() < 60); S.thr = .35; sim.run(3); m.rpm0 = Math.round(S.rpm);
+      for (let i = 1; i <= 3; i++) { S.shCD = 0; sim.shift(-1); sim.run(1.5); m['rpmY' + i] = Math.round(S.rpm); } m.kmhY3 = r2(sim.kmh());
+      S.thr = 0; sim.run(.3); m.relCancel = S.ysh ? 0 : 1;
+    });
+    for (const lv of [0, 3]) go({}, sim => { S.thr = 1; sim.run(40, s => s.kmh() < 80); S.thr = 0; sim.run(.3); for (let i = 0; i < lv; i++) { S.shCD = 0; sim.shift(-1); } const t0 = sim.t; sim.run(60, s => s.kmh() > 40); m['coast' + lv] = r2(sim.t - t0); });
+    go({}, sim => { S.thr = 1; sim.run(10, s => s.kmh() < 50); sim.shift(-1); S.brake = .5; sim.run(.2); m.brkCancel = S.ysh ? 0 : 1; m.nan = sim.finite(); });
+    return m;
+  },
   // a 65 kg pillion passenger (spec.js withPassenger): what the extra weight, further back and higher, does to launch, braking, nose lift and the
   // load on the rear tyre. Trikes carry people in the sidecar instead (na). idem = adding then removing the passenger gives the bike back exactly
   pillion(o) {

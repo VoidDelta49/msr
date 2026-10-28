@@ -32,7 +32,7 @@ await pg.goto(base + 'index.html'); await pg.waitForFunction(() => window.__read
 const PASS = async ({ notchOpts, only }) => {
   const $ = id => document.getElementById(id), body = document.body, { relayout, LAYOUT, cfg } = window.__L, out = [];
   const W = innerWidth, H = innerHeight;
-  const SC = { manual: [], scooter: ['cvt'], rotary: ['nocl'] }, BAN = ['race', 'ride', 'mis'];
+  const SC = { manual: [], scooter: ['cvt'], yecvt: ['cvt', 'ysh'], rotary: ['nocl'] }, BAN = ['race', 'ride', 'mis'];
   const TEXT = { raceT: 'Waiting for Alexander (parcel race)…', rideT: 'Alexander wants to ride in your sidecar', misT: 'FOOD 100% · HEAT 100% · 1234 m · STOP' };
   const rect = el => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; };
   const vis = el => el.getClientRects().length > 0;
@@ -41,7 +41,7 @@ const PASS = async ({ notchOpts, only }) => {
   for (const notch of notchOpts) for (const [sc, cls] of Object.entries(SC)) for (const lefty of [false, true]) for (const cam3 of [false, true]) for (const k of [7, 10, 14]) for (const perf of [true, false]) for (const ban of BAN) {
     if (only && (only.sc !== sc || only.cam3 !== cam3 || only.ban !== ban || lefty || k !== 10 || !perf || notch)) continue; // screenshots: exactly one scenario, left on screen
     cfg.ui = k; cfg.lefty = lefty; LAYOUT.ins = notch ? (W <= H ? { l: 0, r: 0, t: 47, b: 34 } : { l: 47, r: 47, t: 0, b: 21 }) : { l: 0, r: 0, t: 0, b: 0 };
-    body.classList.add('touch'); body.classList.toggle('lefty', lefty); body.classList.toggle('cam3', cam3); body.classList.toggle('cvt', cls[0] === 'cvt'); body.classList.toggle('nocl', cls[0] === 'nocl');
+    body.classList.add('touch'); body.classList.toggle('lefty', lefty); body.classList.toggle('cam3', cam3); body.classList.toggle('cvt', cls[0] === 'cvt'); body.classList.toggle('nocl', cls[0] === 'nocl'); body.classList.toggle('ysh', cls.includes('ysh'));
     shown($('perf'), perf);
     for (const b of BAN) shown($(b), b === ban);
     // worst-case content per banner

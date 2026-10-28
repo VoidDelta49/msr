@@ -33,7 +33,7 @@ export function bannerH(w, b) {
   return 2 + 2 * b.pad + rows.reduce((a, r) => a + r.h, 0) + (rows.length - 1) * b.gap;
 }
 
-/* o: { k size multiplier, touch, cvt, nocl, lefty, cam3, perf (readout shown) } */
+/* o: { k size multiplier, touch, cvt, nocl, ysh (YECVT scooter: Y-Shift buttons above the brake pad), lefty, cam3, perf (readout shown) } */
 function build(W, H, ins, o, f, mode, tier) {
   const por = W <= H, s = o.k * f, r = {}, L = ins.l + E, R = W - ins.r - E, B = H - ins.b - E, tr = TIERS[tier];
   // ---- top band: minimap (left), button bar (right), readout, quest / race banner ----
@@ -65,7 +65,8 @@ function build(W, H, ins, o, f, mode, tier) {
   r.lb = mode === 'row' ? { x: L, y: B - w - V - lh, w: rowW, h: lh } : { x: L, y: B - w - V - gridH, w: gridW, h: gridH };
   r.thr = { x: R - tw, y: B - th, w: tw, h: th };
   const px = R - tw - G - cw; // the pad column left of the throttle
-  if (o.cvt) r.brk = { x: px, y: B - th, w: cw, h: th };               // scooter: the brake lever becomes the big pad
+  if (o.cvt) { r.brk = { x: px, y: B - th, w: cw, h: th };             // scooter: the brake lever becomes the big pad
+    if (o.ysh) r.shift = { x: px, y: B - th - V - sh, w: cw, h: sh }; }  // YECVT: Y-Shift ▲▼ stacked above it, where a manual's shifter sits
   else {
     r.brk = { x: R - tw, y: B - th - V - bh, w: tw, h: bh };
     if (o.nocl) r.shift = { x: px, y: B - sh, w: cw, h: sh };            // rotary semi-auto: shifter only

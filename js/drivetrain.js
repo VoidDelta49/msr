@@ -73,20 +73,38 @@ const cvt = {
     s.final = C.final; s.eta = C.eta; s.lo ??= C.lo; s.hi ??= C.hi;
     s.e0 = C.clutch.e0 + s.eng; s.e1 = C.clutch.e1 + s.eng; s.cap = C.clutch.cap;
     s.vBase = V.base * Math.sqrt(V.roller / (s.roller ?? V.roller)); s.vPre = V.preload; s.vRise = V.rise; s.vLoad = V.load; s.vRate = V.rate;
+    // YECVT (Yamaha NMAX / Aerox Tech MAX, part option yec: 1): an electric motor moves the drive pulley, so there are no rollers or
+    // centre spring to tune. The ECU aims for the stock shift-rpm map (T mode), +s rpm in S mode, +lv rpm per Y-Shift level (3 levels),
+    // and kicks down by `kick` rpm for a moment when the throttle is snapped open. cvt.ye holds those numbers.
+    s.yec = s.yec && C.ye ? 1 : 0; if (s.yec) { s.ye = C.ye; s.vBase = V.base; s.yCsp = 1; }
   },
-  reset(S) { S.gear = 0; S.pos = 0; S.issT = 0; S.issOff = false; },
+  reset(S) { S.gear = 0; S.pos = 0; S.issT = 0; S.issOff = false; S.ysh = 0; S.yOpen = false; S.yk = 0; S.yT0 = 0; },
   ratio(s, S) { return (s.lo + (s.hi - s.lo) * S.pos) * s.final; },
-  eqRpm(s, pos, load) { return s.vBase * Math.sqrt(s.csp * (s.vPre + s.vRise * pos) + s.vLoad * load); },
+  eqRpm(s, pos, load) { return s.vBase * Math.sqrt((s.yec ? 1 : s.csp) * (s.vPre + s.vRise * pos) + s.vLoad * load); },
   clutch(s, S) {
     // shoe force ~ ω² minus the spring preload: starts biting at e0, fully locked by e1
     const f = clamp((S.rpm * S.rpm - s.e0 * s.e0) / (s.e1 * s.e1 - s.e0 * s.e0), 0, 1);
     S.c = f; return f * s.cap;
   },
   update(s, S, dt, Tdrive, b) {
-    const load = clamp(Tdrive / (s.tqMax * s.pow), 0, 1), eq = this.eqRpm(s, S.pos, load); S.rpmEq = eq;
+    const load = clamp(Tdrive / (s.tqMax * s.pow), 0, 1); let eq = this.eqRpm(s, S.pos, load); const rate = s.vRate, dn = 2.5;
+    if (s.yec) {
+      const Y = s.ye;
+      // Y-Shift drops out by itself when the rider brakes, or lets the throttle go after having opened it (Yamaha PH: "disengages
+      // automatically when the rider releases the throttle or brakes"); a level set with the throttle shut holds for engine braking
+      if (S.ysh) { if (S.brake > .3) S.ysh = 0; else if (S.thr > .15) S.yOpen = true; else if (S.yOpen && S.thr < .05) { S.ysh = 0; S.yOpen = false; } }
+      if (S.thr - S.yT0 > 4 * dt && S.thr > .5) S.yk = 1; S.yT0 = S.thr; S.yk = Math.max(0, S.yk - dt / 1.5); // snap open: brief kick-down
+      eq = Math.min(s.red - 300, eq + (b.ysp ? Y.s : Y.t) + Y.lv * S.ysh + Y.kick * S.yk); S.rpmEq = eq;
+      // the ECU knows the rear pulley's speed, so it drives the pulley straight to the ratio that puts the engine on eq (no waiting
+      // for the revs to answer, which with a slipping clutch would run the pulley to the stop). The motor moves the whole range in
+      // ~1/rate s, gentle enough that the engine's own inertia does not lock the rear tyre on a Y-Shift.
+      const need = eq * PI / 30 / Math.max(.1, Math.abs(S.v) / s.r) / s.final, tgt = S.v < .5 ? 0 : clamp((s.lo - need) / (s.lo - s.hi), 0, 1);
+      S.pos = appr(S.pos, tgt, Y.rate * dt); return;
+    }
+    S.rpmEq = eq;
     // the belt can only move while the rear pulley turns; when stopped the torque spring pulls it back to low
     if (S.v < .5) S.pos = appr(S.pos, 0, dt * 1.5);
-    else S.pos = clamp(S.pos + clamp(s.vRate * (S.rpm - eq) / 1000, -2.5, 1.2) * dt, 0, 1);
+    else S.pos = clamp(S.pos + clamp(rate * (S.rpm - eq) / 1000, -dn, 1.2) * dt, 0, 1);
   },
   // runs before the engine is integrated, so a restart's rpm isn't overwritten in the same step
   pre(s, S, dt, b) {
@@ -96,11 +114,18 @@ const cvt = {
     if (S.issOff && !S.running && S.key && !S.kill && S.thr > .05 && S.fuel > 0) { S.running = true; S.issOff = false; S.rpm = Math.max(S.rpm, s.idle + 200); }
     if (!b.iss && S.issOff) S.issOff = false;
   },
-  shift() { },
+  // YECVT Y-Shift: down = one more level (max 3), up = one level back. Belt-only CVTs ignore the buttons.
+  shift(s, S, d) {
+    if (!s.yec || S.shCD > 0) return; S.shCD = .2;
+    if (d < 0) { if (S.ysh >= 3) { say('Y-Shift 3 (max)', 700); return; } S.ysh++; S.yOpen = S.thr > .15; }
+    else { if (!S.ysh) return; S.ysh--; }
+    say(S.ysh ? 'Y-Shift ' + S.ysh : 'Y-Shift off', 700); blip('click');
+  },
   canStart(s, S) { if (S.brake < .3) return 'Hold the brake to start'; },
   top(s) { return Math.min(kph(s, s.hi * s.final, s.red), topV(s)); },
   stats(s) {
-    const top = this.top(s);
+    const top = this.top(s), Y = s.ye;
+    if (s.yec) return `YECVT (motor-driven pulley) · ratio ${s.lo.toFixed(2)}–${s.hi.toFixed(2)} × final ${s.final.toFixed(3)} · redline ${s.red} rpm<br>T mode full-throttle shift rpm ≈ ${Math.round((this.eqRpm(s, 0, 1) + Y.t) / 50) * 50}–${Math.round((this.eqRpm(s, 1, 1) + Y.t) / 50) * 50}, S mode +${Y.s}, Y-Shift +${Y.lv} per level (3)<br>Clutch bites ${s.e0} rpm, locks ${s.e1} rpm · est. top speed ≈ ${top.toFixed(0)} km/h`;
     return `Ratio ${s.lo.toFixed(2)}–${s.hi.toFixed(2)} × final ${s.final.toFixed(2)} · redline ${s.red} rpm<br>Clutch bites ${s.e0} rpm, locks ${s.e1} rpm<br>Full-throttle shift rpm ≈ ${Math.round(this.eqRpm(s, 0, 1) / 50) * 50}–${Math.round(this.eqRpm(s, 1, 1) / 50) * 50}<br>Top ratio reaches ${kph(s, s.hi * s.final, s.red).toFixed(0)} km/h at redline · est. top speed ≈ ${top.toFixed(0)} km/h`;
   },
 };

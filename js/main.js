@@ -48,7 +48,11 @@ function reset() {
   ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody();
 }
 // a part that changes the model's shape (B.var, e.g. spoke vs mag wheels) rebuilds it
-function recompute() { ctx.spec = computeSpec(ctx.bike, ctx.bcfg); if ((ctx.spec.var | 0) !== B.var) { buildModel(ctx.bike, ctx.spec); attachCam(); } applyLook(ctx.spec); }
+function recompute() {
+  ctx.spec = computeSpec(ctx.bike, ctx.bcfg); if ((ctx.spec.var | 0) !== B.var) { buildModel(ctx.bike, ctx.spec); attachCam(); } applyLook(ctx.spec);
+  document.body.classList.toggle('ysh', !!ctx.spec.yec); // YECVT: the scooter gets the ▲▼ Y-Shift buttons back (layoutcalc.js o.ysh)
+  $('brkT').textContent = ctx.bike.drivetrain === 'cvt' ? (ctx.spec.abs ? 'BRAKE · ABS' : 'BRAKE · CBS') : 'BRAKE';
+}
 // put the camera / rider visibility back on a freshly built local model
 function attachCam() { if (!ctx.GAR && !F.on && ctx.camMode === 0) { B.cam.add(camera); camera.position.set(0, 0, 0); camera.rotation.set(-.3, 0, 0); } B.rider.forEach(m => m.visible = !ctx.GAR && !F.on && ctx.camMode === 1); }
 // multiplayer (net.js): a remote rider's bike + paint is built into B like ours, snapshotted, then ours is rebuilt.
@@ -77,7 +81,6 @@ function setBike(keepPos) {
   document.body.classList.toggle('cvt', bike.drivetrain === 'cvt'); document.body.classList.toggle('nocl', bike.drivetrain === 'rotary');
   S.fuel = ctx.spec.fuel.cap; if (!keepPos) S.warm = 0; const keep = ctx.GAR || keepPos ? { x: S.x, z: S.z, psi: S.psi } : null; reset(); if (keep) Object.assign(S, keep);
   attachCam();
-  $('brkT').textContent = bike.drivetrain === 'cvt' ? 'BRAKE · CBS' : 'BRAKE';
 }
 // physics engine first: everything below positions the Rapier body
 stage('Starting physics', .8);

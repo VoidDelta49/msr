@@ -1,0 +1,658 @@
+{
+ "id": "nmax155",
+ "name": "Yamaha NMAX 155",
+ "short": "NMAX 155",
+ "tag": "CVT automatic \u00b7 VVA \u00b7 maxi-scooter \u00b7 YECVT on the Tech MAX",
+ "blurb": "155.09 cc liquid-cooled SOHC 4-valve Blue Core single with VVA (58.0 \u00d7 58.7 mm, 11.6:1), 11.3 kW (15.4 PS) @ 8,000 rpm, 14.2 Nm @ 6,500 rpm. V-belt CVT with a dry centrifugal clutch, secondary reduction 10.208 (56/16 \u00d7 35/12); the Tech MAX moves the drive pulley with an electric motor (YECVT: T and S modes, 3-level Y-Shift downshift). 230 mm discs front and rear with dual-channel ABS, traction control, 13\" alloys (110/70-13, 130/70-13), 100 mm fork, twin rear shocks, 1,340 mm wheelbase, 765 mm seat, 1,935 mm long, 129 kg kerb (Tech MAX 131 kg), 7.1 L tank, Stop & Start System.",
+ "model": "nmax",
+ "cluster": "nmax",
+ "drivetrain": "cvt",
+ "chassis": {
+  "m": 194,
+  "r": 0.256,
+  "wb": 1.34,
+  "lf": 0.76,
+  "lr": 0.58,
+  "h": 0.57,
+  "I": 35,
+  "drag": 0.29,
+  "roll": 24,
+  "brake": 0.85,
+  "bf": 0.62,
+  "travel": [
+   0.1,
+   0.085
+  ],
+  "pil": {
+   "dz": 0.3,
+   "dy": 0.06,
+   "x": 0.03,
+   "h": 1.2
+  },
+  "abs": 1,
+  "tc": 1
+ },
+ "engine": {
+  "Ie": 0.013,
+  "idle": 1600,
+  "red": 9500,
+  "peakPS": 15.4,
+  "tachMax": 10000,
+  "torque": [
+   [
+    0,
+    4.09
+   ],
+   [
+    1000,
+    6.64
+   ],
+   [
+    2000,
+    9.19
+   ],
+   [
+    3000,
+    11.24
+   ],
+   [
+    4000,
+    12.67
+   ],
+   [
+    5000,
+    13.59
+   ],
+   [
+    6000,
+    14.1
+   ],
+   [
+    6500,
+    14.2
+   ],
+   [
+    7000,
+    14.1
+   ],
+   [
+    7500,
+    14.0
+   ],
+   [
+    8000,
+    13.79
+   ],
+   [
+    8500,
+    13.08
+   ],
+   [
+    9000,
+    12.05
+   ],
+   [
+    9500,
+    10.62
+   ],
+   [
+    10500,
+    7.66
+   ]
+  ],
+  "fric": [
+   0.75,
+   0.00025
+  ],
+  "fuel": {
+   "cap": 7.1,
+   "idle": 0.0002,
+   "k": 0.0036
+  }
+ },
+ "cvt": {
+  "lo": 2.3,
+  "hi": 0.724,
+  "final": 10.208,
+  "eta": 0.84,
+  "clutch": {
+   "e0": 3300,
+   "e1": 5000,
+   "cap": 30
+  },
+  "variator": {
+   "base": 5800,
+   "preload": 0.5,
+   "rise": 0.25,
+   "load": 0.95,
+   "rate": 1.6,
+   "roller": 12
+  },
+  "ye": {
+   "t": 0,
+   "s": 1000,
+   "lv": 1000,
+   "kick": 800,
+   "rate": 1.2,
+   "eb": 2300
+  }
+ },
+ "sound": {
+  "parts": {
+   "sq": 0.75,
+   "sqHz": 1500,
+   "hiss": 0.85,
+   "chain": 0,
+   "lash": 0,
+   "clutch": 0,
+   "thump": 0.9,
+   "thumpHz": 0.97,
+   "rattle": 0.6,
+   "key": 0.9,
+   "keyHz": 1.05,
+   "tink": 0.75,
+   "tinkHz": 1.05,
+   "peg": 0.75
+  },
+  "lp": 0.8,
+  "gain": 0.78,
+  "whine": 0.035,
+  "mesh": [
+   188,
+   46
+  ],
+  "cyl": 1,
+  "pipe": 225,
+  "pq": 3.5,
+  "body": 98,
+  "bq": 2.1,
+  "punch": 0.9,
+  "rough": 0.07,
+  "crackle": 0.05,
+  "crackRpm": 7000,
+  "mech": 0.4,
+  "intake": 0.7,
+  "bright": 0.78,
+  "drive": 1.4,
+  "starter": 0.15
+ },
+ "parts": {
+  "ver": {
+   "l": "Variant",
+   "o": [
+    {
+     "n": "Standard (belt CVT)",
+     "var": 0,
+     "yec": 0
+    },
+    {
+     "n": "Tech MAX (YECVT, TFT, +2 kg)",
+     "var": 1,
+     "yec": 1,
+     "dm": 2
+    }
+   ]
+  },
+  "rollers": {
+   "l": "Rollers (bola)",
+   "o": [
+    {
+     "n": "10 g",
+     "roller": 10
+    },
+    {
+     "n": "11 g",
+     "roller": 11
+    },
+    {
+     "n": "12 g (stock)",
+     "roller": 12
+    },
+    {
+     "n": "14 g",
+     "roller": 14
+    }
+   ]
+  },
+  "cspring": {
+   "l": "Center spring",
+   "o": [
+    {
+     "n": "Stock",
+     "csp": 1
+    },
+    {
+     "n": "1000 rpm",
+     "csp": 1.18
+    },
+    {
+     "n": "1500 rpm",
+     "csp": 1.3
+    }
+   ]
+  },
+  "clspring": {
+   "l": "Clutch springs",
+   "o": [
+    {
+     "n": "Stock",
+     "eng": 0
+    },
+    {
+     "n": "1000 rpm",
+     "eng": 500
+    },
+    {
+     "n": "1500 rpm",
+     "eng": 800
+    }
+   ]
+  },
+  "pulley": {
+   "l": "Pulley set",
+   "o": [
+    {
+     "n": "Stock",
+     "lo": 2.3,
+     "hi": 0.724
+    },
+    {
+     "n": "Racing pulley",
+     "lo": 2.35,
+     "hi": 0.68
+    }
+   ]
+  },
+  "exhaust": {
+   "l": "Exhaust",
+   "o": [
+    {
+     "n": "Stock",
+     "pow": 1,
+     "snd": 0
+    },
+    {
+     "n": "Slip-on (+6%)",
+     "pow": 1.06,
+     "snd": 1
+    },
+    {
+     "n": "Full system (+12%)",
+     "pow": 1.12,
+     "snd": 2
+    }
+   ]
+  },
+  "ecu": {
+   "l": "ECU map",
+   "o": [
+    {
+     "n": "Stock",
+     "pow": 1,
+     "red": 9500,
+     "ie": 1,
+     "idle": 1600
+    },
+    {
+     "n": "Street tune",
+     "pow": 1.05,
+     "red": 10000,
+     "ie": 0.9,
+     "idle": 1600
+    },
+    {
+     "n": "Race map",
+     "pow": 1.1,
+     "red": 10500,
+     "ie": 0.8,
+     "idle": 1700
+    }
+   ]
+  },
+  "tires": {
+   "l": "Tires",
+   "o": [
+    {
+     "n": "Stock",
+     "mu": 0.85
+    },
+    {
+     "n": "Sport",
+     "mu": 1
+    },
+    {
+     "n": "Racing",
+     "mu": 1.2
+    }
+   ]
+  },
+  "paint": {
+   "l": "Paint",
+   "o": [
+    {
+     "n": "Black",
+     "c": "#16171a",
+     "lv": "k",
+     "rough": 0.35,
+     "wc": "#141518"
+    },
+    {
+     "n": "Ceramic Gray",
+     "c": "#8b8f93",
+     "lv": "g",
+     "rough": 0.55,
+     "wc": "#141518"
+    },
+    {
+     "n": "Crystal Graphite",
+     "c": "#3a3e44",
+     "lv": "g",
+     "rough": 0.45,
+     "metal": 0.4,
+     "wc": "#141518"
+    },
+    {
+     "n": "Matte Blue",
+     "c": "#2f4a66",
+     "lv": "g",
+     "rough": 0.7,
+     "wc": "#141518"
+    },
+    {
+     "n": "White",
+     "c": "#e8e8e3",
+     "lv": "g",
+     "wc": "#141518"
+    }
+   ]
+  },
+  "intake": {
+   "l": "Air filter",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Sport foam (+3%)",
+     "pow": 1.03
+    },
+    {
+     "n": "Cold-air intake (+5%)",
+     "pow": 1.05
+    }
+   ]
+  },
+  "flywheel": {
+   "l": "Flywheel",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Lightened (quicker revs)",
+     "ie": 0.8
+    },
+    {
+     "n": "Heavy (smoother)",
+     "ie": 1.3
+    }
+   ]
+  },
+  "brakes": {
+   "l": "Brake pads",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Sintered",
+     "brake": 1.08
+    },
+    {
+     "n": "Race compound",
+     "brake": 1.17
+    }
+   ]
+  },
+  "wheelcol": {
+   "l": "Wheel colour",
+   "o": [
+    {
+     "n": "Match paint"
+    },
+    {
+     "n": "Black",
+     "wc": "#16171a"
+    },
+    {
+     "n": "Gold",
+     "wc": "#c9a24a"
+    },
+    {
+     "n": "Silver",
+     "wc": "#b9bdc2"
+    },
+    {
+     "n": "Red",
+     "wc": "#c21d1d"
+    },
+    {
+     "n": "Blue",
+     "wc": "#1f4fbf"
+    },
+    {
+     "n": "White",
+     "wc": "#e9e9e4"
+    }
+   ]
+  },
+  "rimstripe": {
+   "l": "Rim stripe",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Gold",
+     "rim": "#c9a24a"
+    },
+    {
+     "n": "Red",
+     "rim": "#d42a2a"
+    },
+    {
+     "n": "White",
+     "rim": "#f1f1ec"
+    },
+    {
+     "n": "Cyan",
+     "rim": "#16b3cc"
+    }
+   ]
+  },
+  "cover": {
+   "l": "Engine cover",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Black",
+     "ec": "#1b1c1f"
+    },
+    {
+     "n": "Gold",
+     "ec": "#c9a24a"
+    },
+    {
+     "n": "Red",
+     "ec": "#a8161c"
+    },
+    {
+     "n": "Blue",
+     "ec": "#1f44d8"
+    }
+   ]
+  },
+  "cfbody": {
+   "l": "Body panels",
+   "g": "Carbon fiber",
+   "o": [
+    {
+     "n": "Stock (painted)"
+    },
+    {
+     "n": "Carbon (\u22123.0 kg)",
+     "dm": -3,
+     "cfb": 1
+    },
+    {
+     "n": "Tinted carbon (\u22123.0 kg)",
+     "dm": -3,
+     "cfb": 2
+    }
+   ]
+  },
+  "cffender": {
+   "l": "Fenders",
+   "g": "Carbon fiber",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Carbon (\u22120.4 kg)",
+     "dm": -0.4,
+     "cff": 1
+    }
+   ]
+  },
+  "cfwheel": {
+   "l": "Wheels",
+   "g": "Carbon fiber",
+   "o": [
+    {
+     "n": "Stock alloy"
+    },
+    {
+     "n": "Carbon (\u22122.4 kg)",
+     "dm": -2.4,
+     "cfw": 1
+    }
+   ]
+  },
+  "cfexh": {
+   "l": "Muffler cover",
+   "g": "Carbon fiber",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Carbon (\u22120.3 kg)",
+     "dm": -0.3,
+     "cfx": 1
+    }
+   ]
+  }
+ },
+ "sliders": [
+  {
+   "k": "pf",
+   "l": "Fork preload",
+   "min": -20,
+   "max": 20,
+   "u": " mm"
+  },
+  {
+   "k": "pr",
+   "l": "Shock preload",
+   "min": -20,
+   "max": 20,
+   "u": " mm"
+  },
+  {
+   "k": "yf",
+   "l": "Front ride height",
+   "min": -25,
+   "max": 25,
+   "step": 5,
+   "u": " mm"
+  },
+  {
+   "k": "yr",
+   "l": "Rear ride height",
+   "min": -25,
+   "max": 25,
+   "step": 5,
+   "u": " mm"
+  },
+  {
+   "k": "kf",
+   "l": "Fork spring",
+   "min": 5,
+   "max": 14,
+   "u": " kN/m"
+  },
+  {
+   "k": "kr",
+   "l": "Shock spring",
+   "min": 8,
+   "max": 26,
+   "u": " kN/m"
+  },
+  {
+   "k": "damp",
+   "l": "Damping",
+   "min": 20,
+   "max": 90,
+   "u": "%"
+  }
+ ],
+ "toggles": [
+  {
+   "k": "iss",
+   "l": "Stop & Start System"
+  },
+  {
+   "k": "tc",
+   "l": "Traction control (TCS)"
+  },
+  {
+   "k": "ysp",
+   "l": "YECVT S mode (Tech MAX)"
+  }
+ ],
+ "defaults": {
+  "ver": 1,
+  "pf": 0,
+  "pr": 0,
+  "rollers": 2,
+  "cspring": 0,
+  "clspring": 0,
+  "pulley": 0,
+  "exhaust": 0,
+  "ecu": 0,
+  "tires": 0,
+  "paint": 0,
+  "kf": 9,
+  "kr": 16,
+  "damp": 50,
+  "iss": true,
+  "yf": 0,
+  "yr": 0,
+  "intake": 0,
+  "flywheel": 0,
+  "brakes": 0,
+  "wheelcol": 0,
+  "rimstripe": 0,
+  "cover": 0,
+  "cfbody": 0,
+  "cffender": 0,
+  "cfwheel": 0,
+  "cfexh": 0,
+  "tc": true,
+  "ysp": false
+ },
+ "hint": "KEY on, hold BRAKE and press START, then twist the throttle. Tech MAX: \u25bc (Q) = Y-Shift downshift, up to 3 levels (more revs, more engine braking); \u25b2 (E) or releasing the throttle or braking cancels it. T/S mode in the garage DRIVE tab. Stop & Start shuts the engine off at a standstill; twist to restart"
+}

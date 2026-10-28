@@ -9,7 +9,7 @@ import { solve, GAP, hit } from '../js/layoutcalc.js';
 import { PHONES, NO_NOTCH, insFor } from './lib/phones.mjs';
 
 const argv = process.argv.slice(2), verbose = argv.includes('-v');
-const SCHEMES = { manual: {}, scooter: { cvt: true }, rotary: { nocl: true } };
+const SCHEMES = { manual: {}, scooter: { cvt: true }, yecvt: { cvt: true, ysh: true }, rotary: { nocl: true } };
 const rows = [], fails = [];
 function run(name, W, H) {
   for (const notch of NO_NOTCH.has(name.slice(0, -2)) ? [false] : [false, true]) for (const [sc, so] of Object.entries(SCHEMES)) for (const lefty of [false, true]) for (const cam3 of [false, true]) for (const k of [.7, 1, 1.4]) for (const perf of [true, false]) {
