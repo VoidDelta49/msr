@@ -1,4 +1,10 @@
 [
+  { "v": "11.49", "d": "2026-10-28", "t": [
+    "Multiplayer: when someone gets off their bike, everyone now sees it. Their bike stays parked with nobody on it and they walk around as a standing figure, with their name tag above their head. Riders on an older version still see the old way until they update.",
+    "Asking for a ride while you're on foot works now: walk up to a friend's bike, tap their name tag and hop on. Before, it left you half-walking with your bike hidden. GET OFF puts your own bike back down next to theirs.",
+    "If the driver gets off the bike, their passenger is let off too, and you can't ask to ride a bike whose rider has walked away. Races can't start while either of you is on foot.",
+    "Pinch to zoom, mouse-wheel zoom and the Field of view slider work again (since 11.38 the camera never picked up the FOV change, and leaving the garage could leave the view zoomed in)."
+  ] },
   { "v": "11.48", "d": "2026-10-28", "t": [
     "Full-screen map: tap the minimap (or press M) and it opens out of the minimap's circle into a map of the whole island, with the game paused behind it. Drag to move (it coasts), pinch or scroll to zoom, a compass and a scale bar, named places, gas stations, quest pins and other riders. Esc, M or the X folds it back into the minimap.",
     "Waypoints: tap anywhere on the land to drop a pin (it snaps to quest pins, gas stations and named places; the sea says no) and press SET WAYPOINT. A violet beacon marks it in the world, the minimap shows a pin or a rim arrow with the distance, and it clears itself when you arrive. CLEAR removes it. Not available during a race.",

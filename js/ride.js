@@ -126,8 +126,8 @@ const myKind = () => ctx.spec.sc ? 'trike' : ctx.spec.pil ? 'pillion' : '';
 const seatsOf = k => k === 'trike' ? 2 : k ? 1 : 0;
 const free = (k, s) => k === 'trike' ? !s || !s[0] || !s[1] : !!k && (!s || !s[0]);
 const hostV = P => { const n = P.snaps.length; return n ? Math.abs(P.snaps[n - 1].v) : 0; };
-function canBoard(P) { const k = kindOf(P.look); return !!k && P.d < NEAR && free(k, P.seats) && !(P.fl & (2 | 8 | 16 | 32)) && hostV(P) < 2 && Math.abs(S.v) < 1.5 && !S.crashed && !ctx.spec.sc && !R.seats[0] && !R.seats[1]; } // fl: crashed, paused / garage, racing, riding along
-ctx.rideIcon = P => { const k = kindOf(P.look); if (!k || P.d >= 40 || ctx.ride || ctx.spec.sc) return ''; return k === 'trike' ? (free(k, P.seats) ? '🛺' : '🛺 full') : (free(k, P.seats) && hostV(P) < 2 ? '🏍️+1' : ''); };
+function canBoard(P) { const k = kindOf(P.look); return !!k && P.d < NEAR && free(k, P.seats) && !(P.fl & (2 | 8 | 16 | 32 | 64)) && hostV(P) < 2 && Math.abs(S.v) < 1.5 && !S.crashed && !ctx.spec.sc && !R.seats[0] && !R.seats[1]; } // fl: crashed, paused / garage, racing, riding along, on foot. On foot yourself is fine: P.d is from the walker (net.js) and board() gets you off your feet first
+ctx.rideIcon = P => { const k = kindOf(P.look); if (!k || P.d >= 40 || ctx.ride || ctx.spec.sc || (P.fl & 64)) return ''; return k === 'trike' ? (free(k, P.seats) ? '🛺' : '🛺 full') : (free(k, P.seats) && hostV(P) < 2 ? '🏍️+1' : ''); };
 
 /* ---------- panel ---------- */
 const pnl = $('ride'), txt = $('rideT'), bY = $('rideY'), bB = $('rideB'), bX = $('rideX');
@@ -143,7 +143,7 @@ export function rideInit() {
   NET.on.tap = P => {
     if (ctx.ride) return say('Tap GET OFF first');
     if (canBoard(P)) return panel(kindOf(P.look) === 'trike' ? 'Ride in ' + P.name + "'s sidecar?" : 'Hop on behind ' + P.name + '?', 'RIDE', () => ask(P), 'RACE', () => { close(); raceTap(P); }, close);
-    if (trikeLook(P.look) && P.d < NEAR && !ctx.spec.sc && Math.abs(S.v) >= 1.5) say('Stop next to the tricycle to hop in', 1500);
+    if (trikeLook(P.look) && P.d < NEAR && !ctx.spec.sc && !F.on && Math.abs(S.v) >= 1.5) say('Stop next to the tricycle to hop in', 1500);
     raceTap(P);
   };
   NET.on.ride = onMsg;
@@ -173,7 +173,7 @@ function onMsg(m) {
   }
   if (m.op === 'ok') {
     if (!R.ask || R.ask.to !== P.id) return send({ t: 'ride', op: 'off', to: P.id }); R.ask = null;
-    if (P.d > NEAR + 3 || S.crashed) { send({ t: 'ride', op: 'off', to: P.id }); close(); return say('Too far away now', 1500); }
+    if (P.d > NEAR + 3 || S.crashed || ctx.GAR || ctx.racing || (P.fl & 64)) { send({ t: 'ride', op: 'off', to: P.id }); close(); return say('Too far away now', 1500); }
     board(P, clamp(m.seat | 0, 0, 1)); return;
   }
   if (m.op === 'off') {
@@ -189,6 +189,7 @@ function accept(id) {
 
 /* ---------- passenger ---------- */
 function board(P, seat) {
+  if (F.on && ctx.footOff) ctx.footOff(); // asked while walking: off your feet (figure, camera, HUD) before the seat takes over; getOff puts your bike back down next to the driver
   const k = kindOf(P.look), pc = P.tpl && P.tpl.G.pil && P.tpl.G.pil.cam; // pillion: the eye sits a little above and to the right of the rider's helmet, so the road isn't all jacket
   ctx.ride = { host: P.id, seat, kind: k, bike: P.look && P.look.bike, since: performance.now(), lx: P.x, lz: P.z, lpsi: S.psi, v: 0 };
   R.camPos = B.cam.position.clone(); if (k === 'trike') B.cam.position.set(SEATS[seat][0], 1.22, SEATS[seat][1] + .03); else B.cam.position.set(pc ? pc.x : .2, pc ? pc.y : 1.5, pc ? pc.z : .5);
@@ -217,6 +218,7 @@ function follow(dt) {
     if (r.fly.done) getOff(false); return;
   }
   if (NET.st !== 'on' || !P || P.lv) return getOff(false, 'The driver left');
+  if (P.fl & 64) return getOff(true, P.name + ' got off the bike'); // older builds don't drop us themselves
   if (P.seats && P.seats.indexOf(NET.id) < 0 && performance.now() - r.since > 3000) return getOff(false, P.name + ' let you off');
   if (kindOf(P.look) !== r.kind || (P.look && P.look.bike !== r.bike)) return getOff(true, P.name + (r.kind === 'trike' && kindOf(P.look) !== 'trike' ? ' took the sidecar off' : ' changed bikes'));
   if (!P.inst || !P.inst.o) return; const o = P.inst.o, h = P.inst.h;
@@ -234,7 +236,7 @@ export function rideFrame(dt, now) {
   const on = NET.st === 'on';
   // we drive: seat list upkeep, broadcast, our own passengers on our bike, crash = everybody out
   const mk = myKind();
-  if (!on || mk !== R.kind || ctx.bike.id !== R.bike) { // offline, or the sidecar went on / off, or another bike: nobody stays aboard
+  if (!on || mk !== R.kind || ctx.bike.id !== R.bike || F.on) { // offline, the sidecar went on / off, another bike, or we got off and walked away: nobody stays aboard
     for (let i = 0; i < 2; i++) if (R.seats[i]) { if (on) send({ t: 'ride', op: 'off', to: R.seats[i] }); R.seats[i] = 0; R.bcT = 0; }
     R.kind = mk; R.bike = ctx.bike.id;
   }

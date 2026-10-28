@@ -6,9 +6,10 @@ import * as THREE from 'three';
 import { cfg, MP_URL } from './config.js';
 import { S, ctx } from './state.js';
 import { scene, camera } from './renderer.js';
-import { B, twin, blobAdd, blobDel, bikeBlob } from './model.js';
+import { B, twin, blobAdd, blobDel, bikeBlob, riderStand } from './model.js';
 import { say } from './hud.js';
 import { $ } from './util.js';
+import { F, at } from './foot.js';
 
 export const PROTO = 3; // = PROTO in server/worker.js
 export const NET = ctx.NET = { st: 'off', id: 0, room: '', max: 8, peers: new Map(), err: '', note: '', on: {}, rtt: 0, live: 0, near: 1e9, slow: false };
@@ -47,7 +48,7 @@ function connect() {
 function lost(w, code) {
   if (ws !== w) return; ws = null; w.onclose = null; try { w.close(); } catch (e) { }
   const was = NET.st === 'on'; if (was) fails = 0; else fails++;
-  for (const P of NET.peers.values()) { P.tag.hidden = true; if (P.inst) P.inst.o.visible = false; } ctx.mpDots = []; ctx.mpK = '';
+  for (const P of NET.peers.values()) { P.tag.hidden = true; if (P.inst) P.inst.o.visible = false; if (P.walk) P.walk.visible = false; } ctx.mpDots = []; ctx.mpK = '';
   if (code >= 4000 && code <= 4004) { // version / full / flood / wrong page / other tab took our seat: the err message says why
     if (code === 4004 && !NET.err) NET.err = 'You joined this room from another tab.';
     want = null;
@@ -113,18 +114,30 @@ function addPeer(p) {
   tag.onclick = e => { e.stopPropagation(); if (NET.on.tap) NET.on.tap(P); };
   $('tags').appendChild(tag); NET.peers.set(p.id, P);
 }
-function delPeer(P) { clearTimeout(P.lv); if (P.inst) scene.remove(P.inst.o); if (P.blob) blobDel(P.blob); P.tag.remove(); NET.peers.delete(P.id); }
+function delPeer(P) { clearTimeout(P.lv); if (P.inst) scene.remove(P.inst.o); if (P.blob) blobDel(P.blob); if (P.walk) { scene.remove(P.walk); blobDel(P.wblob); } P.tag.remove(); NET.peers.delete(P.id); }
 function clearPeers() { for (const P of [...NET.peers.values()]) delPeer(P); ctx.mpDots = []; ctx.mpK = ''; }
 
 /* ---------- bike state packets ---------- */
 // u8 type, u8 flags, u16 rpm, u32 t(ms), f32 x y z, i16 quat xyzw, i16 lean th steer slider rearH bodyY (1e-4), i16 v (cm/s), u8 thr, i8 gear
-// flags: 1 engine on, 2 crashed, 4 braking, 8 paused / in the garage, 16 racing, 32 riding in someone's sidecar (bike put away)
+// flags: 1 engine on, 2 crashed, 4 braking, 8 paused / in the garage, 16 racing, 32 riding in someone's sidecar (bike put away),
+//        64 the rider is off the bike on foot (bike parked, nobody on it), 128 this packet is the WALKER, not the bike: x y z = feet,
+//        quat = heading only, v = walking speed, the rest 0. While on foot the walker goes out at the normal rate and the parked bike once
+//        a second, so the relay (which only checks type 1 + 44 bytes) needs no change. Receivers keep the two in separate buffers.
 const OUT = new DataView(new ArrayBuffer(PKT)), I16 = 32767;
 const GP = new THREE.Vector3(), GQ = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
+const flags = () => (S.running ? 1 : 0) | (S.crashed ? 2 : 0) | (S.brake > .1 && !F.on ? 4 : 0) | (ctx.paused || ctx.GAR ? 8 : 0) | (ctx.racing ? 16 : 0) | (ctx.ride ? 32 : 0) | (F.on ? 64 : 0);
+function packWalk() {
+  const d = OUT; for (let i = 0; i < PKT; i++) d.setUint8(i, 0);
+  d.setUint8(0, 1); d.setUint8(1, flags() | 128); d.setUint32(4, performance.now() >>> 0, true);
+  d.setFloat32(8, F.x, true); d.setFloat32(12, F.y, true); d.setFloat32(16, F.z, true);
+  GQ.setFromAxisAngle(UP, F.psi); d.setInt16(22, GQ.y * I16, true); d.setInt16(26, GQ.w * I16, true);
+  d.setInt16(40, Math.max(-I16, Math.min(I16, Math.round(F.spd * 100))), true);
+  ws.send(OUT.buffer);
+}
 function pack() {
   // in the garage the drawn bike sits on the studio pedestal (900 m up): send where it really is on the island instead
   const d = OUT, r = ctx.GAR ? GP.set(S.x, S.zH, S.z) : B.root.position, q = ctx.GAR ? GQ.setFromAxisAngle(UP, S.psi) : B.root.quaternion;
-  d.setUint8(0, 1); d.setUint8(1, (S.running ? 1 : 0) | (S.crashed ? 2 : 0) | (S.brake > .1 ? 4 : 0) | (ctx.paused || ctx.GAR ? 8 : 0) | (ctx.racing ? 16 : 0) | (ctx.ride ? 32 : 0));
+  d.setUint8(0, 1); d.setUint8(1, flags());
   d.setUint16(2, Math.max(0, Math.min(65535, S.rpm | 0)), true); d.setUint32(4, performance.now() >>> 0, true);
   d.setFloat32(8, r.x, true); d.setFloat32(12, r.y, true); d.setFloat32(16, r.z, true);
   d.setInt16(20, q.x * I16, true); d.setInt16(22, q.y * I16, true); d.setInt16(24, q.z * I16, true); d.setInt16(26, q.w * I16, true);
@@ -140,16 +153,18 @@ function bin(buf) {
   if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || Math.abs(x) > 5000 || Math.abs(z) > 5000 || Math.abs(y) > 2000) return; // junk: the server checks too
   const s = { t: d.getUint32(5, true), fl: d.getUint8(2), rpm: d.getUint16(3, true), x, y, z,
     qx: q(20), qy: q(22), qz: q(24), qw: q(26), lean: g(28), th: g(30), st: g(32), sl: g(34), rh: g(36), by: g(38), v: d.getInt16(41, true) / 100 };
-  const last = P.snaps[P.snaps.length - 1]; if (last && s.t <= last.t) { if (last.t - s.t < 60000) return; P.snaps.length = 0; P.off = null; P.sm = null; } // stale, or the sender reloaded
+  const W = !!(s.fl & 128), SN = W ? (P.ws || (P.ws = [])) : P.snaps; // the walker has its own buffer (flag 128), same clock
+  const last = SN[SN.length - 1]; if (last && s.t <= last.t) { if (last.t - s.t < 60000) return; SN.length = 0; if (!W) { P.off = null; P.sm = null; } } // stale, or the sender reloaded
+  if (W) { s.psi = 2 * Math.atan2(s.qy, s.qw); if (P.off === null) return; } else if (!(s.fl & 64) && P.ws) P.ws.length = 0; // back on the bike: drop the walker
   // clock offset: the smallest (arrival - send time) seen is the least-delayed packet; creep up slowly for clock drift
   const o = now - s.t; P.off = P.off === null || o < P.off ? o : P.off + (o - P.off) * .002;
   // jitter (how much later than the best case this packet came) and the sender's packet spacing size the playout delay
   P.jit += (Math.max(0, Math.min(500, o - P.off)) - P.jit) * .06; if (last) { const g = s.t - last.t; if (g < 700) P.iv += (g - P.iv) * .1; }
-  P.snaps.push(s); if (P.snaps.length > KEEP) P.snaps.shift(); P.seen = now;
+  SN.push(s); if (SN.length > KEEP) SN.shift(); P.seen = now;
 }
 
 /* ---------- per frame ---------- */
-let sendT = 0, lookT = -1e9, lookKey = '', W = innerWidth, Hh = innerHeight, built = false;
+let sendT = 0, sendB = 0, wasFoot = false, lookT = -1e9, lookKey = '', W = innerWidth, Hh = innerHeight, built = false;
 addEventListener('resize', () => { W = innerWidth; Hh = innerHeight; });
 const qa = new THREE.Quaternion(), qb = new THREE.Quaternion(), v3 = new THREE.Vector3(), FR = new THREE.Frustum(), PM = new THREE.Matrix4(), SPH = new THREE.Sphere(new THREE.Vector3(), 2.2);
 const lerp = (a, b, f) => a + (b - a) * f;
@@ -157,17 +172,24 @@ export function netFrame(dt, now) {
   if (NET.st !== 'on') { NET.live = 0; return; }
   // send: 10 Hz while anything moves, 5 Hz when the nearest rider is far, 1 Hz parked, nothing when alone (incoming messages
   // are what the free plan counts). Half rate on a slow link (high ping or a backed-up socket).
-  const moving = Math.abs(S.v) > .3 || S.crashed || S.thr > .05, slow = NET.slow = now < slowUntil;
-  let gap = moving ? (NET.near > 160 ? 200 : 100) : 1000; if (slow) gap *= 2; if (wake) { wake = false; sendT = -1e9; }
-  if (NET.live && now - sendT >= gap && ws && ws.readyState === 1) {
-    if (ws.bufferedAmount < 4096) { sendT = now; backlog = 0; pack(); } else if (++backlog > 3) slowUntil = now + 10000;
+  // on foot: the walker is what moves (flag 128 packets at these rates), the parked bike goes out once a second (flag 64)
+  const moving = F.on ? F.spd > .2 || !F.gnd : Math.abs(S.v) > .3 || S.crashed || S.thr > .05, slow = NET.slow = now < slowUntil;
+  let gap = moving ? (NET.near > 160 ? 200 : 100) : 1000; if (slow) gap *= 2;
+  if (F.on !== wasFoot) { wasFoot = F.on; wake = true; } // getting off / on shows up right away
+  if (wake) { wake = false; sendT = sendB = -1e9; }
+  if (NET.live && ws && ws.readyState === 1 && (now - sendT >= gap || (F.on && now - sendB >= 1000))) {
+    if (ws.bufferedAmount < 4096) {
+      backlog = 0;
+      if (!F.on) { sendT = sendB = now; pack(); }
+      else { if (now - sendB >= 1000) { sendB = now; pack(); } if (now - sendT >= gap) { sendT = now; packWalk(); } }
+    } else if (++backlog > 3) slowUntil = now + 10000;
   }
   if (now - lookT > 1000) { lookT = now; const parts = {}; for (const k in ctx.bike.parts) parts[k] = ctx.bcfg[k] | 0; const look = { bike: ctx.bike.id, parts }, k = JSON.stringify(look); if (k !== lookKey) { lookKey = k; send({ t: 'look', look }); } }
   if (!NET.peers.size) { NET.live = 0; NET.near = 1e9; if (ctx.mpK) { ctx.mpDots = []; ctx.mpK = ''; } return; }
   camera.updateMatrixWorld(); PM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); FR.setFromProjectionMatrix(PM);
   built = false; const dots = ctx.mpDots || (ctx.mpDots = []); dots.length = 0; let mk = '', live = 0, near = 1e9;
   for (const P of NET.peers.values()) {
-    if (P.lv) { P.tag.hidden = true; if (P.inst) P.inst.o.visible = false; continue; } // left: waiting to see if they come back
+    if (P.lv) { P.tag.hidden = true; if (P.inst) P.inst.o.visible = false; if (P.walk) P.walk.visible = false; continue; } // left: waiting to see if they come back
     live++; if (P.d < near) near = P.d;
     model(P); const n = P.snaps.length; if (!P.inst || !n) { P.tag.hidden = true; continue; }
     // the pose `dly` ms behind the sender's clock: interpolate, or predict (extrapolate up to 400 ms) if packets are late.
@@ -189,14 +211,36 @@ export function netFrame(dt, now) {
     h.slider.position.y = lerp(a.sl, b.sl, fq); h.rearH.position.y = lerp(a.rh, b.rh, fq);
     const dy = h.rearH.position.y - G.pivotY, dz = G.rearZ - G.pivotZ; h.swing.position.set(G.swingX, G.pivotY + dy / 2, G.pivotZ + dz / 2); h.swing.rotation.x = -Math.atan2(dy, dz); h.swing.scale.z = Math.hypot(dy, dz);
     const v = lerp(a.v, b.v, fq); P.wA += v * dt / G.rw; h.frontW.rotation.x = h.rearW.rotation.x = -P.wA;
-    const crashed = !!(b.fl & 2); if (P.fl !== b.fl) { P.fl = b.fl; for (const r of h.rider) r.visible = !crashed; P.tag.classList.toggle('idle', !!(b.fl & 8)); P.tag.classList.toggle('race', !!(b.fl & 16)); }
-    // cull: far bikes off, and frustum (the skinned mesh skips three's own culling)
-    P.x = o.position.x; P.z = o.position.z; P.d = Math.hypot(P.x - S.x, P.z - S.z);
-    SPH.center.copy(o.position); o.visible = !ctx.GAR && P.d < 350 && !(b.fl & 32) && FR.intersectsSphere(SPH); // the studio is private: no one else in it
+    const crashed = !!(b.fl & 2); if (P.fl !== b.fl) { P.fl = b.fl; for (const r of h.rider) r.visible = !crashed && !(b.fl & 64); P.tag.classList.toggle('idle', !!(b.fl & 8)); P.tag.classList.toggle('race', !!(b.fl & 16)); }
+    // cull: far bikes off, and frustum (the skinned mesh skips three's own culling). Distances are from us: the walker while we're on foot
+    const me = at(), bd = Math.hypot(o.position.x - me.x, o.position.z - me.z), wk = b.fl & 64 ? walker(P, now, dt) : null;
+    if (!wk && P.walk) P.walk.visible = false;
+    P.x = wk ? wk.position.x : o.position.x; P.z = wk ? wk.position.z : o.position.z; P.d = Math.hypot(P.x - me.x, P.z - me.z);
+    SPH.center.copy(o.position); o.visible = !ctx.GAR && bd < 350 && !(b.fl & 32) && FR.intersectsSphere(SPH); // the studio is private: no one else in it
+    if (wk) { SPH.center.copy(wk.position); wk.visible = !ctx.GAR && P.d < 350 && FR.intersectsSphere(SPH); }
     dots.push(P); mk += (P.x / 3 | 0) + ',' + (P.z / 3 | 0) + ';';
     tag(P, now);
   }
   ctx.mpK = mk; NET.live = live; NET.near = near;
+}
+// someone walking around (flag 64): their standing figure (model.js riderStand, the same body footfig.js uses for us), placed `dly` ms
+// behind like the bike, from the flag-128 packets. null when there is nothing to draw yet (no walker packet, or an older build)
+let STAND = null;
+function walker(P, now, dt) {
+  const SN = P.ws; if (!SN || !SN.length) return null;
+  if (!P.walk) {
+    if (!STAND || STAND.dims !== B.riderDims) { const st = riderStand(); if (!st) return null; STAND = { geo: st.geo, mat: st.mat, dims: B.riderDims }; } // shared by every walker; a rebuilt local rider makes a new one, old meshes keep theirs
+    const m = P.walk = new THREE.Mesh(STAND.geo, STAND.mat); m.visible = false; scene.add(m);
+    P.wblob = blobAdd({ b: m, p: new THREE.Vector3(0, .5, 0), h0: .5, d: .7, w: .6, cores: 0, spread: 0, vis: () => m.visible, ground: null, off: false });
+  }
+  const rt = now - P.off - P.dly, n = SN.length; let a = SN[0], b = a, f = 0;
+  if (rt >= SN[n - 1].t) { b = SN[n - 1]; a = n > 1 ? SN[n - 2] : b; const sp = b.t - a.t; f = sp > 0 && sp <= 600 ? 1 + Math.min(250, rt - b.t) / sp : 1; } // a short prediction when late
+  else if (rt > a.t) { let i = 1; while (SN[i].t < rt) i++; a = SN[i - 1]; b = SN[i]; f = (rt - a.t) / (b.t - a.t); }
+  if (Math.hypot(b.x - a.x, b.z - a.z) > 15) { a = b; f = 1; } // teleport (bike reset): no slide across the map
+  const m = P.walk, k = 1 - Math.exp(-Math.min(dt, .1) / .07), tx = lerp(a.x, b.x, f), ty = lerp(a.y, b.y, Math.min(1, f)), tz = lerp(a.z, b.z, f);
+  if (!m.userData.on || m.position.distanceTo(v3.set(tx, ty, tz)) > 6) { m.position.set(tx, ty, tz); m.userData.on = true; } else m.position.lerp(v3, k);
+  const da = Math.atan2(Math.sin(b.psi - a.psi), Math.cos(b.psi - a.psi)); m.rotation.set(0, a.psi + da * Math.min(1, f), 0);
+  return m;
 }
 // build (or swap) a player's model when their bike / paint changes; at most one build per frame (each is a hitch),
 // and at most one rebuild per player every 3 s (someone flipping paint, or spamming looks, can't stutter everyone)
@@ -208,8 +252,8 @@ function model(P) {
 }
 // name tag above the rider: tap it to challenge them (race.js)
 function tag(P, now) {
-  const e = P.tag; if (!P.inst.o.visible || P.d > 140) { e.hidden = true; return; }
-  v3.copy(P.inst.o.position); v3.y += 1.95; v3.project(camera); if (v3.z > 1) { e.hidden = true; return; }
+  const w = P.walk && P.walk.visible ? P.walk : null, e = P.tag; if (!(w || P.inst.o.visible) || P.d > 140) { e.hidden = true; return; }
+  v3.copy((w || P.inst.o).position); v3.y += w ? 2.05 : 1.95; v3.project(camera); if (v3.z > 1) { e.hidden = true; return; }
   const x = Math.round((v3.x * .5 + .5) * W), y = Math.round((.5 - v3.y * .5) * Hh); e.hidden = false;
   if (x !== P.tx || y !== P.ty) { P.tx = x; P.ty = y; e.style.transform = `translate(${x}px,${y}px) translate(-50%,-100%)`; }
   const away = now - P.seen > 8000, info = away ? 'away' : P.d < 90 ? Math.round(P.d) + ' m · ' + ((ctx.rideIcon && ctx.rideIcon(P)) || '🏁') : Math.round(P.d / 10) * 10 + ' m';

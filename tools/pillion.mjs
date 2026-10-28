@@ -8,6 +8,10 @@
 //    tap the name tag -> RIDE -> OK -> aboard (camera on the seat, own bike put away, flag 32, we follow the ghost) -> the ghost crashes
 //    (passenger flung, back on foot next to the bike) -> then WE drive: ask arrives, OK, the mass / centre of mass change, the figure
 //    shows, the seat list goes out, OFF restores the bike exactly, switching bikes drops the passenger. Also the tricycle's bench still works.
+// C  on foot + multiplayer: our packets say "on foot" (flag 64) and carry the walker (flag 128) that a receiver draws as a standing figure
+//    (fed back in as a ghost); a ghost that gets off loses its rider and can't be boarded; asking for a ride while walking lands us on the
+//    seat cleanly (feet, camera, figure off) and GET OFF puts us back on our own bike; getting off our own bike drops our passenger; and
+//    the FOV setting (pinch / wheel / Options) reaches the camera.
 // Nothing here touches the network: WebSocket is replaced by a stub that records what the game sends.
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
@@ -26,7 +30,7 @@ try {
   await pg.addInitScript(() => {
     sessionStorage.setItem('cpmGL', '1'); localStorage.setItem('cpmme', JSON.stringify({ tod: 12, bike: 'raider150' }));
     window.__sent = []; // what the game sends: JSON as objects, binary as { bin: flags byte }
-    window.WebSocket = class { constructor(u) { this.url = u; this.readyState = 1; this.bufferedAmount = 0; this.binaryType = 'arraybuffer'; window.__ws = this; } send(d) { window.__sent.push(typeof d === 'string' ? JSON.parse(d) : { bin: new Uint8Array(d)[1] }); } close() { } };
+    window.WebSocket = class { constructor(u) { this.url = u; this.readyState = 1; this.bufferedAmount = 0; this.binaryType = 'arraybuffer'; window.__ws = this; } send(d) { window.__sent.push(typeof d === 'string' ? JSON.parse(d) : { bin: new Uint8Array(d)[1], raw: new Uint8Array(d).slice() }); } close() { } };
   });
   await pg.goto(url); await pg.click('#mPlay');
   await pg.waitForFunction(() => window.__cpm && window.__cpm.RP && window.__cpm.RP.ok, null, { timeout: 120000 });
@@ -152,6 +156,46 @@ try {
       J({ t: 'ride', op: 'seats', from: 5, seats: [1, 7] });
       const bench = () => P.inst.h.body.children.filter(o => !o.userData.hip && o.geometry && o.geometry.attributes.color && o.material.vertexColors && o.position.x > .5);
       ok(await until(() => bench().length === 2 && bench().every(o => o.visible)), `sidecar bench shows ${bench().length} figures`);
+
+      /* ---------- C: on foot ---------- */
+      stage = 'C'; const F = (await import('./js/foot.js')).F, { camera } = await import('./js/renderer.js'), key = code => dispatchEvent(new KeyboardEvent('keydown', { code }));
+      const cfg = (await import('./js/config.js')).cfg;
+      c.setBike('raider150'); await sleep(300); c.reset(); S.v = 0; J({ t: 'look', from: 5, look: { bike: 'raider150', parts: {} } }); J({ t: 'ride', op: 'seats', from: 5, seats: [0, 0] }); gh.fl = 1; place(3, 0);
+      ok(await until(() => P.tpl && P.tpl.kind !== 'tmx' && P.inst.o.visible && P.d < 6, 30000), 'C: ghost raider did not come back');
+      // FOV: what the player sets is what the camera gets (the apply line was commented out by mistake in 11.38)
+      const f0 = cfg.fov; cfg.fov = 61; ok(await until(() => Math.abs(camera.fov - 61) < .6), `C: cfg.fov 61 but camera.fov ${camera.fov}`); cfg.fov = f0;
+      // a ghost that gets off: no rider on its bike, can't be boarded, no ride icon; its walker packets draw a standing figure
+      gh.fl = 64; ok(await until(() => P.inst.h.rider.every(r => !r.visible)), 'C: ghost on foot still shows its rider on the bike');
+      ok(!R._t.canBoard(P) && !ctx.rideIcon(P), 'C: a parked bike whose rider walked off should not offer a ride');
+      const wk = { x: S.x - Math.sin(S.psi) * 7, y: S.zH, z: S.z - Math.cos(S.psi) * 7, psi: 1 }; // in front of us: in view of the chase camera
+      const wpkt = () => { const b = new ArrayBuffer(45), d = new DataView(b); d.setUint8(0, 5); d.setUint8(1, 1); d.setUint8(2, 64 | 128); d.setUint32(5, performance.now() >>> 0, true);
+        d.setFloat32(9, wk.x, true); d.setFloat32(13, wk.y, true); d.setFloat32(17, wk.z, true); d.setInt16(23, Math.round(Math.sin(wk.psi / 2) * 32767), true); d.setInt16(27, Math.round(Math.cos(wk.psi / 2) * 32767), true); d.setInt16(41, 280, true); return b; };
+      const wpump = setInterval(() => ws.onmessage({ data: wpkt() }), 100);
+      ok(await until(() => P.walk && P.walk.visible && Math.hypot(P.walk.position.x - wk.x, P.walk.position.z - wk.z) < .2, 15000), `C: ghost walker not drawn at its spot (${P.walk && P.walk.visible} ${P.walk && P.walk.position.toArray().map(v => v.toFixed(2))} want ${wk.x.toFixed(2)},${wk.z.toFixed(2)} fl ${P.fl} ws ${P.ws && P.ws.length} d ${P.d.toFixed(1)} GAR ${!!ctx.GAR})`);
+      ok(P.walk && Math.abs(P.walk.rotation.y - 1) < .05, 'C: ghost walker heading');
+      ok(P.inst.o.visible && Math.hypot(P.inst.o.position.x - gh.x, P.inst.o.position.z - gh.z) < .2, 'C: the parked ghost bike should stay where it was (walker packets must not move it)');
+      clearInterval(wpump); gh.fl = 1; ok(await until(() => !P.walk.visible && P.inst.h.rider.every(r => r.visible)), 'C: ghost back on its bike: walker should go, rider come back');
+      // we get off: flag 64 on bike packets, flag 128 walker packets with our feet in them
+      window.__sent.length = 0; key('KeyF'); ok(await until(() => F.on), 'C: could not get off (F)');
+      ok(await until(() => window.__sent.some(m => m.bin !== undefined && (m.bin & 64) && !(m.bin & 128)) && window.__sent.some(m => m.bin !== undefined && (m.bin & 192) === 192), 8000), 'C: no on-foot bike packet (64) and walker packet (64|128) went out');
+      const wp = [...window.__sent].reverse().find(m => m.bin !== undefined && (m.bin & 128)), wd = wp && new DataView(wp.raw.buffer);
+      ok(wd && Math.abs(wd.getFloat32(8, true) - F.x) < 1 && Math.abs(wd.getFloat32(16, true) - F.z) < 1, 'C: walker packet does not carry the walker position');
+      // ...ask for a ride while walking: the ride works and nothing of the walk is left over
+      ok(await until(() => R._t.canBoard(P)), `C: canBoard false from foot (d ${P.d.toFixed(1)} kind ${R._t.kindOf(P.look)} look ${JSON.stringify(P.look)} fl ${P.fl} seats ${P.seats} v ${S.v} cr ${S.crashed} sc ${ctx.spec.sc} R ${R._t.R.seats})`); NET.on.tap(P); ok($('rideT').textContent === 'Hop on behind Ghost?', `C: tap panel from foot "${$('rideT').textContent}"`);
+      $('rideY').click(); J({ t: 'ride', op: 'ok', from: 5, seat: 0 });
+      ok(ctx.ride && !F.on && !document.body.classList.contains('foot') && !B.root.visible, `C: boarding from foot: ride ${!!ctx.ride} F.on ${F.on} foot class ${document.body.classList.contains('foot')}`);
+      ok(await until(() => window.__sent.some(m => m.bin !== undefined && (m.bin & 32) && !(m.bin & 64))), 'C: riding along should send flag 32 without 64');
+      $('rideY').click(); ok(await until(() => !ctx.ride && B.root.visible && !F.on), 'C: GET OFF after boarding from foot did not bring the bike back');
+      ok(await until(() => $('bFoot').textContent === 'GET OFF'), 'C: the GET OFF button should be back for our own bike');
+      // the driver walks off: we are let off
+      J({ t: 'ride', op: 'ask', from: 5 }); ok(vis('ride'), 'C: no ask panel'); $('rideX').click();
+      place(2.5, 0); NET.on.tap(P); $('rideY').click(); J({ t: 'ride', op: 'ok', from: 5, seat: 0 }); ok(ctx.ride, 'C: could not board for the walk-off test');
+      gh.fl = 64; ok(await until(() => !ctx.ride && B.root.visible), 'C: the driver got off but we stayed on the seat'); gh.fl = 1;
+      // we drive, our passenger is dropped when we get off
+      await sleep(300); window.__sent.length = 0; J({ t: 'ride', op: 'ask', from: 5 }); $('rideY').click(); ok(R._t.R.seats[0] === 5, 'C: could not take a passenger');
+      key('KeyF'); ok(await until(() => F.on), 'C: could not get off with a passenger');
+      ok(await until(() => R._t.R.seats[0] === 0 && window.__sent.some(m => m.op === 'off' && m.to === 5)), 'C: getting off our bike did not drop the passenger');
+      key('KeyF'); ok(await until(() => !F.on), 'C: could not get back on');
       clearInterval(pump);
     } catch (e) { fails.push(`exception after "${stage}": ${e.message}`); }
     return { fails };

@@ -12,6 +12,7 @@ import { ROADS, H } from './world.js';
 import { say } from './hud.js';
 import { blip } from './audio.js';
 import { $ } from './util.js';
+import { F } from './foot.js';
 
 const MODES = { sprint: 'sprint race', parcel: 'parcel delivery race', food: 'food delivery race' }, SPOIL = .1; // food: seconds added per % spoiled
 const R = { st: 'idle', mode: 'sprint' }, FIN_R = 10, finB = beacon(0xffb020, FIN_R);
@@ -33,6 +34,7 @@ NET.on.tap = P => {
   if (MI.q) return say('Finish or cancel your job first');
   if (P.d > 90) return say(P.name + ' is too far away. Ride closer (90 m)');
   if (P.fl & 16) return say(P.name + ' is in a race');
+  if (F.on) return say('Get on your bike to race'); if (P.fl & 64) return say(P.name + ' is on foot');
   panel('Race ' + P.name + '?', 'SPRINT', reset, () => ask(P, 'sprint'), P);
 };
 function ask(P, mode) {
@@ -41,6 +43,7 @@ function ask(P, mode) {
 }
 function accept() {
   const P = NET.peers.get(R.opp); if (!P) return reset();
+  if (F.on || (P.fl & 64)) { send({ t: 'race', op: 'no', to: R.opp, rid: R.rid }); say(F.on ? 'Get on your bike to race' : P.name + ' is on foot'); return reset(); }
   const f = finish(S.x, S.z, P.x, P.z);
   if (!f) { send({ t: 'race', op: 'no', to: R.opp, rid: R.rid, why: 'course' }); say("Couldn't find a course from here. Try nearer the town"); return reset(); }
   R.st = 'acc'; send({ t: 'race', op: 'go', to: R.opp, rid: R.rid, x: f.x, z: f.z, mode: R.mode, echo: true }); panel('Starting…', null, null);
@@ -61,7 +64,7 @@ function finish(ax, az, bx, bz) {
 NET.on.race = m => {
   const now = performance.now();
   if (m.op === 'ask') {
-    if (busy()) return send({ t: 'race', op: 'busy', to: m.from, rid: m.rid });
+    if (busy() || F.on) return send({ t: 'race', op: 'busy', to: m.from, rid: m.rid });
     R.st = 'inv'; R.mode = m.mode in MODES ? m.mode : 'sprint'; R.opp = m.from; R.rid = m.rid; R.until = now + 15000; blip('ok');
     panel(name(m.from) + ' wants a ' + MODES[R.mode] + '!', 'ACCEPT', () => { send({ t: 'race', op: 'no', to: R.opp, rid: R.rid }); reset(); }, accept);
     return;
