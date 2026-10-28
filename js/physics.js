@@ -66,7 +66,7 @@ export function step(dt) {
   D.pre(sp, S, dt, b); igPre(dt);
   // engine
   if (S.running && S.lim && S.rpm < sp.red - 150) S.lim = false; if (S.rpm >= sp.red) S.lim = true;
-  const thr = S.running && !S.lim && S.cutT <= 0 ? S.thr : 0;
+  const thr = S.running && !S.lim && S.cutT <= 0 ? (S.qbT > 0 ? Math.max(S.thr, .45) : S.thr) : 0; // qbT: quickshifter downshift auto-blip
   // idle control: opens the throttle just enough to cover the engine's own friction at the idle target (x0 = zero net torque), with
   // only ~30% spare below it. Enough to catch the revs and creep in 1st, not enough to pull the bike along in the higher gears
   const fr0 = sp.fric[0] + sp.fric[1] * S.rpm, x0 = fr0 / (tq(sp, S.rpm) * sp.pow + .85 * fr0);
@@ -80,7 +80,13 @@ export function step(dt) {
     const aw = 9.81 * sp.lr / sp.h, tgt = clamp((1.04 * aw - (S.af || 0)) / (.14 * aw), 0, 1) * (1 - sstep(0, .04, S.wp || 0));
     S.wcF = (S.wcF ?? 1) + (tgt - (S.wcF ?? 1)) * Math.min(1, dt / (tgt < (S.wcF ?? 1) ? .03 : .3)); wl *= S.wcF;
   } else S.wcF = 1;
-  const we = S.rpm * PI / 30, Tdrive = S.running ? S.thrEff * tq(sp, S.rpm) * sp.pow * wl : 0;
+  // traction control (chassis.tc, e.g. the H2's KTRC; garage toggle 'tc'): trims drive while the rear spins faster than the road,
+  // cuts quickly, gives it back gently, so the tyre hovers at a little useful slip instead of a burnout on the limiter
+  if (sp.tc && b.tc !== false) {
+    const tg = clamp(1 - ((S.ws || 0) - 1 - .12 * Math.abs(S.v) - 12 * (1 - sstep(4, 9, Math.abs(S.v)))) / 3, .15, 1), f = S.tcF ?? 1; // ~12% slip + 1 m/s allowed; launch slip let through below ~30 km/h
+    S.tcF = f + (tg - f) * Math.min(1, dt / (tg < f ? .02 : .2)); wl *= S.tcF;
+  } else S.tcF = 1;
+  const we = S.rpm * PI / 30, Tdrive = S.running ? S.thrEff * tq(sp, S.rpm) * sp.pow * wl * (sp.ram ? 1 + sp.ram * Math.min(1, S.v * S.v / 6900) : 1) : 0; // ram air: +ram at ~300 km/h (83 m/s), grows with v²
   // published torque is already net at the crank, so friction/pumping loss mostly shows with the throttle shut
   // (engine braking, rev decay); at full throttle only a small part is left
   const Te = Tdrive - (we > .5 ? (sp.fric[0] + sp.fric[1] * S.rpm) * (1 - .85 * S.thrEff) + (S.running ? 0 : 1.5) : 0);

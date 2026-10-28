@@ -12,7 +12,7 @@ export function computeSpec(bike, b) {
   const s = {
     type: bike.drivetrain, ...ch,
     ie: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
-    peakPS: en.peakPS, tachMax: en.tachMax, sound: bike.sound,
+    peakPS: en.peakPS, tachMax: en.tachMax, ram: en.ram || 0, sound: bike.sound,
     pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', dm: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0,
   };
   for (const [k, p] of Object.entries(bike.parts)) {
@@ -33,7 +33,8 @@ export function computeSpec(bike, b) {
   DRIVES[bike.drivetrain].spec(s, bike, b);
   return s;
 }
-export const tq = (s, rpm) => lerpTable(s.TQ, rpm);
+// tqc (power modes): torque ceiling as a fraction of peak torque, so the low end stays and the top end is cut
+export const tq = (s, rpm) => s.tqc ? Math.min(lerpTable(s.TQ, rpm), s.tqc * s.tqMax) : lerpTable(s.TQ, rpm);
 
 // A pillion passenger (ride.js): kg sitting sp.pil.x metres ahead of the rear axle with their centre of mass sp.pil.h metres above the
 // road. Adds the mass, moves the bike's centre of mass back and up (wheelies come earlier, stoppies later, the rear tyre carries more)

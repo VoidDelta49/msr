@@ -4,7 +4,7 @@
 import { $, lerpTable } from './util.js';
 import { ctx, S } from './state.js';
 import { cfg, save } from './config.js';
-import { computeSpec } from './spec.js';
+import { computeSpec, tq } from './spec.js';
 import { DRIVES } from './drivetrain.js';
 import { say } from './hud.js';
 import { TC } from './controls.js';
@@ -21,7 +21,7 @@ const TABS = [
   ['look', 'PAINT', { spin: 1, el: .2, r: 3.6, ty: .7, tz: 0 }], ['carbon', 'CARBON', { spin: 1, el: .18, r: 3.3, ty: .7, tz: 0 }],
   ['stats', 'STATS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }], ['builds', 'BUILDS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }],
 ];
-const WHERE = { exhaust: 'engine', ecu: 'engine', fuelsys: 'engine', tune: 'engine', trim: 'wheels', intake: 'engine', flywheel: 'engine', rollers: 'drive', cspring: 'drive', clspring: 'drive', pulley: 'drive', fs: 'drive', rs: 'drive', autoClutch: 'drive', iss: 'drive',
+const WHERE = { exhaust: 'engine', ecu: 'engine', fuelsys: 'engine', tune: 'engine', trim: 'wheels', intake: 'engine', flywheel: 'engine', rollers: 'drive', cspring: 'drive', clspring: 'drive', pulley: 'drive', fs: 'drive', rs: 'drive', autoClutch: 'drive', iss: 'drive', qs: 'drive', tc: 'drive', kit: 'engine', frame: 'look',
   pf: 'susp', pr: 'susp', yf: 'susp', yr: 'susp', kf: 'susp', kr: 'susp', damp: 'susp', tires: 'wheels', brakes: 'wheels', wheelcol: 'wheels', rimstripe: 'wheels' };
 const where = k => WHERE[k] || (k.startsWith('cf') ? 'carbon' : 'look');
 const has = t => t === 'look' || t === 'wheels' || t === 'stats' || t === 'builds' || Object.keys(ctx.bike.parts).some(k => where(k) === t) || ctx.bike.sliders.some(s => where(s.k) === t) || ctx.bike.toggles.some(s => where(s.k) === t);
@@ -30,7 +30,7 @@ const stock = () => (sId !== ctx.bike.id && (sSpec = computeSpec(ctx.bike, ctx.b
 
 /* ---------- numbers ---------- */
 // engine power at an rpm (PS) from the torque table; peak up to the redline
-const pAt = (s, r) => lerpTable(s.TQ, r) * r * s.pow / 7023.5, tAt = (s, r) => lerpTable(s.TQ, r) * s.pow;
+const pAt = (s, r) => tq(s, r) * r * s.pow / 7023.5, tAt = (s, r) => tq(s, r) * s.pow;
 function pk(s) { let b = 0, r = 0; for (let x = 1000; x <= s.red; x += 100) { const p = pAt(s, x); if (p > b) { b = p; r = x; } } return [b, r]; }
 // label, unit, value, decimals, which way is better (1 up, -1 down, 0 neutral), bar scale (full bar = scale × stock)
 const ROWS = [

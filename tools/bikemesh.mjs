@@ -3,6 +3,7 @@
 // model (B.root, rider included) and how many of them are draw calls, plus the budget of just the wheels (front+rear).
 //   PW=/opt/npm-tools/node_modules/playwright-core PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tools/bikemesh.mjs [--bike id] [--shot dir] [--json]
 // --look '{"cfw":1,"wc":16755200,"rim":43775}': merged into the bike's spec and applied (applyLook) before measuring / the screenshots.
+// --var n: rebuild the model as variant n (body kits, trims) before measuring.  --left: also a 3/4 shot of the left side.
 // --shot dir: opens the garage and writes dir/<bike>-side.png (wheel close-up from the side) and dir/<bike>-3q.png (3/4 view).
 // Used to compare model changes: run before and after, diff the table. Counts are exact; the screenshots are for eyes.
 import { createRequire } from 'node:module';
@@ -24,6 +25,7 @@ try {
   const ids = opt('--bike') ? [opt('--bike')] : await pg.evaluate(() => Object.keys(window.__cpm.ctx.bikes));
   for (const id of ids) {
     await pg.evaluate(async id => { window.__cpm.setBike(id); await new Promise(r => setTimeout(r, 250)); }, id);
+    if (opt('--var')) await pg.evaluate(async v => { const M = await import('./js/model.js'), c = window.__cpm; M.buildModel(c.ctx.bike, { var: +v }); M.applyLook(c.spec()); }, opt('--var')); // model variant (e.g. a body kit) without touching the saved build
     if (opt('--look')) await pg.evaluate(async l => { const M = await import('./js/model.js'); M.applyLook({ ...window.__cpm.spec(), ...JSON.parse(l) }); }, opt('--look'));
     rows.push({ id, ...await pg.evaluate(() => {
       const B = window.__cpm.B, out = { tri: 0, vert: 0, meshes: 0, draws: 0, wTri: 0, wMeshes: 0 }, wheels = new Set();
@@ -38,7 +40,7 @@ try {
     if (shot) {
       await pg.evaluate(() => document.getElementById('bGar').click()); await pg.waitForTimeout(2500); await pg.addStyleTag({ content: '#garage{visibility:hidden!important} #wheelHint{display:none}' });
       const S = await import('node:path');
-      for (const [name, v] of [['side', { az: Math.PI / 2, el: .03, r: 1.3, ty: .35, tz: 0 }], ['3q', { az: 2.2, el: .18, r: 1.4, ty: .35, tz: 0 }]]) {
+      for (const [name, v] of [['side', { az: Math.PI / 2, el: .03, r: 1.3, ty: .35, tz: 0 }], ['3q', { az: 2.2, el: .18, r: 1.4, ty: .35, tz: 0 }], ...(a.includes('--left') ? [['left', { az: -2.2, el: .18, r: 1.4, ty: .35, tz: 0 }]] : [])]) {
         await pg.evaluate(async v => (await import('./js/studio.js')).view(v), v); await pg.waitForTimeout(5000);
         await pg.screenshot({ path: S.join(shot, `${id}-${name}.png`), timeout: 120000 });
       }

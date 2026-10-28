@@ -5,14 +5,14 @@ import { say } from './hud.js';
 import { blip } from './audio.js';
 
 const kph = (s, R, rpm) => rpm * PI / 30 / R * s.r * 3.6;
-const topV = s => Math.cbrt(s.peakPS * 735.5 * s.pow * s.eta / s.drag) * 3.6;
+const topV = s => Math.cbrt(s.peakPS * 735.5 * s.pow * (s.tqc || 1) * s.eta / s.drag) * 3.6;
 
 /* ---------- manual: return-shift gearbox + wet clutch on a lever ---------- */
 const manual = {
   spec(s, bike, b) {
     const M = bike.manual;
     s.prim = M.prim; s.g = M.gears; s.nG = M.gears.length - 1; s.eta = M.eta; s.cap = M.clutchCap;
-    s.slipper = M.slipper || 0; s.eclutch = !!M.eclutch; // slipper: back-torque the clutch carries before it slips (Nm); eclutch: ECU works the clutch on shifts
+    s.slipper = M.slipper || 0; s.eclutch = !!M.eclutch; s.qs = !!M.qs; // slipper: back-torque the clutch carries before it slips (Nm); eclutch: ECU works the clutch on shifts
     s.final = b[M.final[0]] / b[M.final[1]];
   },
   reset(S) { S.gear = 0; },
@@ -30,7 +30,7 @@ const manual = {
       if (S.rpm > s.idle + 1800) S.ace = true; else if (S.rpm < s.idle + 250) S.ace = false;
       c = b.autoClutch ? Math.min(lev, S.ace ? 1 : .55 * sstep(s.idle + 300, s.idle + 2600, S.rpm)) : lev;
     }
-    if (b.autoClutch && (S.act > 0 || (S.brake > .5 && S.thr < .05 && av < 1.5))) c = 0;
+    if ((S.act > 0 && (b.autoClutch || s.qs)) || (b.autoClutch && S.brake > .5 && S.thr < .05 && av < 1.5)) c = 0; // act: shift actuator / quickshifter dog window
     S.c = c; return c * s.cap;
   },
   update() { },
@@ -38,12 +38,15 @@ const manual = {
   shift(s, S, d, b) {
     // Honda E-Clutch: with the lever out, the ECU's actuator opens the clutch for the shift. Upshifts also cut the
     // ignition so the engine is pulled down to the new gear's rpm; downshifts re-engage onto the slipper clutch.
-    const ec = s.eclutch && b.autoClutch && S.cl < .6;
-    if (S.shCD > 0) return; if (S.cl < .6 && !ec) { S.shCD = .3; say('Pull the clutch to shift', 900); blip('click'); return; }
+    // Quickshifter (H2): with the lever out and the bike rolling in gear, up = ignition cut, down = auto-blip; the dogs swap in a
+    // ~40-80 ms unloaded window (S.act). It never selects neutral, and pulling away still needs the lever.
+    const ec = s.eclutch && b.autoClutch && S.cl < .6, qs = !ec && s.qs && b.qs !== false && S.cl < .6 && S.gear > 0 && Math.abs(S.v) > 2;
+    if (S.shCD > 0) return; if (S.cl < .6 && !ec && !qs) { S.shCD = .3; say('Pull the clutch to shift', 900); blip('click'); return; }
     S.shCD = .15; let g = S.gear;
     if (d > 0) g = g === 0 ? 2 : g === 1 ? (Math.abs(S.v) < .6 ? 0 : 2) : Math.min(s.nG, g + 1); else g = g <= 2 ? 1 : g - 1;
     if (g !== S.gear) {
       if (ec && S.gear && g) { if (g > S.gear) { S.act = .03; if (S.thr > .1) S.cutT = .1; } else S.act = .1; } else if (ec) S.act = .15;
+      else if (qs) { if (g > S.gear) { S.act = .04; if (S.thr > .1) S.cutT = .06; } else { S.act = .08; S.qbT = .08; } }
       S.gear = g; blip('click');
     }
   },

@@ -7,7 +7,7 @@ import { clamp, sstep, vnoise } from './util.js';
 import { at } from './foot.js';
 
 let AC = null, E = null, lastSpec = null, ambT = 0, crashWas = false, airWas = false, offR = 0, lastT = 0;
-let rdT = -1, onRdC = 0, pFf = null, pFr = null, pTh = 0, suspT = 0, lashT = 0, runWas = false, coolT = 0, coolEnd = 0; // part-sound edge detectors (suspension hits, chain lash, exhaust cooling)
+let rdT = -1, onRdC = 0, pFf = null, pFr = null, pTh = 0, suspT = 0, lashT = 0, runWas = false, coolT = 0, coolEnd = 0, scTh = 0, scT = 0; // part-sound edge detectors (suspension hits, chain lash, exhaust cooling)
 const A = {}, Z = { coast: 0, river: 0, town: 0, paddy: 0, volc: 0, wild: 0, sx: 0, sz: 0, rx: 0, rz: 0 };
 const EXH = { gain: [1, 1.35, 1.7], bright: [1, 1.3, 1.6], pq: [1, 1.3, 1.6], crackle: [1, 2.4, 4], drive: [1, 1.15, 1.3], pipe: [1, .92, .85] };
 
@@ -74,6 +74,8 @@ export function initAudio() {
   // CVT belt whine (Click); gain 0 for chain bikes
   // reduction-gear whine (Click): one sine per gear mesh, pitch = wheel rev/s × the bike's `sound.mesh` multipliers
   A.bwg = node('gain'); A.bwg.connect(A.eng); const me = []; A.mesh = [0, 1].map(i => { const o = AC.createOscillator(), g = node('gain', 0, 0, i ? .5 : 1); chain(o, g, A.bwg); o.start(); me.push([o, g]); return o; }); feed(A.bwg, ...me);
+  // supercharger (sound.blower = impeller speed / crank speed): impeller tone + its 2nd harmonic, rising with the revs
+  A.scw = node('gain'); A.scw.connect(A.eng); const sw = []; A.scO = [0, 1].map(i => { const o = AC.createOscillator(), g = node('gain', 0, 0, i ? .35 : 1); o.type = i ? 'triangle' : 'sine'; chain(o, g, A.scw); o.start(); sw.push([o, g]); return o; }); feed(A.scw, ...sw);
   // ---- ambience ----
   A.amb = node('gain', 0, 0, 0); A.ambLP = node('lowpass', 20000, .5); chain(A.amb, A.ambLP, A.master);
   A.surfP = pan(0); A.surfP.connect(A.amb); const suF = node('lowpass', 650, .5); A.surf = feed(node('gain'), [b1, suF]); chain(b1, suF, A.surf, A.surfP);
@@ -131,6 +133,14 @@ export function updAudio() {
   }
   const wHz = v / (2 * Math.PI * sp.r), mm = sd.mesh || []; A.mesh.forEach((o, i) => st(o.frequency, Math.max(20, wHz * (mm[i] || 0)), .05));
   sg(A.bwg, sd.whine && mm.length ? sd.whine * .8 * Math.min(1, v / 15) * (.4 + .6 * (S.thrEff || 0)) * (S.c || 0) : 0, .1); // faint belt whir under drive, not a tone over the engine
+  // supercharger whine: impeller rev/s, louder with boost (∝ rpm²) and load; spins down with the crank after shut-off.
+  // Throttle snapped shut on boost: the compressor surges, the H2's bird-like chirp
+  if (sd.blower) {
+    const f = Math.max(20, offR / 60 * sd.blower), bo = Math.min(1, (offR / sp.red) ** 2), th = S.thrEff || 0;
+    st(A.scO[0].frequency, f, .03); st(A.scO[1].frequency, f * 2, .03);
+    sg(A.scw, offR > 200 ? (sd.boost ?? 1) * .028 * (.12 + .88 * bo) * (.35 + .65 * th) * (fp ? 1 : .8) : 0, .04);
+    if (run && scTh > .5 && th < .15 && bo > .2 && t > scT) { scT = t + .5; blip('chirp', bo); } scTh = th;
+  } else sg(A.scw, 0, .05);
   // ---- wind: rumble grows with v², the rush brightens with speed and gusts; louder with the head out in 1st person ----
   const gust = .8 + .4 * vnoise(t * .6, 3.1), wk = live ? (fp ? 1 : .3) * (1 - .35 * (S.thrEff || 0)) : 0, ws = Math.min(1, v * v / 1600); // engine stays on top: wind backs off on throttle
   sg(A.wLo, wk * ws * .25 * gust, .08); st(A.wLoF.frequency, 120 + v * 9, .1);
@@ -347,6 +357,7 @@ const SFX = {
   susp(t, a) { const k = Math.min(1, a * 2) * pv('thump'), h = pv('thumpHz'); tn(t, 110 * h, 55 * h, .16, .3 * k); nb(t, .08, 'lowpass', 500 * h, .7, .35 * k); tn(t + .01, rr(500, 800), 380, .18, .025 * k, 'triangle'); rattle(t, .1 * Math.min(1, a * 2)); }, // fork / shock hit a bump or bottom out
   joint(t, v) { const sp = ctx.spec, k = (.2 + .8 * Math.min(1, v / 25)) * pv('thump'), h = pv('thumpHz'), d = (sp ? sp.wb : 1.3) / Math.max(v, 3); [0, d].forEach((o, i) => { nb(t + o, .05, 'lowpass', 260 * h, .8, .16 * k * (i ? .8 : 1)); tn(t + o, 70 * h, 45 * h, .07, .18 * k * (i ? .8 : 1)); }); rattle(t, .05 * Math.min(1, v / 25)); }, // expansion joint: front wheel then rear
   pebble(t) { nb(t, rr(.012, .024), 'highpass', rr(2500, 5500), .7, rr(.02, .05)); },
+  chirp(t, a) { const g = .07 * Math.min(1, .4 + a) * (ctx.spec?.sound?.chirp ?? 1); for (let i = 0; i < 4; i++) { const o = t + i * .042, f = rr(2500, 2900) - i * 180; tn(o, f, f * .72, .045, g * (1 - i * .2), 'triangle'); nb(o, .03, 'bandpass', f * 1.3, 4, g * .5 * (1 - i * .2)); } }, // supercharger surge on a closed throttle
   tink(t) { const f = rr(2200, 3700) * pv('tinkHz'), g = pv('tink'); tn(t, f, f * .985, .35, .045 * g); tn(t, f * 2.7, f * 2.65, .2, .015 * g); }, // exhaust / engine cooling ping
   splash(t) { nb(t, .5, 'bandpass', 900, .6, .5); nb(t, .9, 'lowpass', 500, .6, .4); for (let i = 0; i < 4; i++) { const f = rr(300, 600); tn(t + .1 + i * rr(.05, .12), f, f * 2.2, .1, .06); } }, // into the sea
   clank(t, a) { const f = rr(500, 1400), k = .3 + .7 * a; [1, 2.76, 5.4].forEach((m, i) => tn(t, f * m, f * m * .99, .22 / (i + 1), .08 * k / (i + 1))); nb(t, .05, 'bandpass', 3000, 1, .1 * k); }, // loose metal bouncing on tarmac

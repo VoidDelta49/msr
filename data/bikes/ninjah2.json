@@ -1,0 +1,649 @@
+{
+ "id": "ninjah2",
+ "name": "Kawasaki Ninja H2",
+ "short": "Ninja H2",
+ "tag": "supercharged inline-4 \u00b7 6-speed \u00b7 quickshifter",
+ "blurb": "998 cc DOHC 16-valve inline-four (76.0 \u00d7 55.0 mm, 8.5:1) with a gear-driven centrifugal supercharger: the impeller spins at 9.2\u00d7 crank speed, up to ~130,000 rpm. 231 PS @ 11,500 rpm (243 PS with ram air), 141.7 Nm @ 11,000 rpm, 238 kg curb. 6-speed dog-ring gearbox (1 down, 5 up) with an up/down quickshifter and an assist & slipper clutch, 18/44 chain, green steel trellis frame, single-sided swingarm, dual 330 mm discs with radial 4-piston monoblocs. Solo seat.",
+ "model": "h2",
+ "cluster": "h2",
+ "drivetrain": "manual",
+ "chassis": {
+  "m": 306,
+  "r": 0.326,
+  "wb": 1.455,
+  "lf": 0.74,
+  "lr": 0.715,
+  "h": 0.67,
+  "I": 85,
+  "drag": 0.2,
+  "roll": 44,
+  "brake": 1.08,
+  "abs": true,
+  "travel": [
+   0.12,
+   0.135
+  ],
+  "pil": null,
+  "tc": true
+ },
+ "engine": {
+  "Ie": 0.026,
+  "idle": 1100,
+  "red": 14000,
+  "peakPS": 231,
+  "tachMax": 16000,
+  "torque": [
+   [
+    0,
+    30
+   ],
+   [
+    1000,
+    45
+   ],
+   [
+    2000,
+    60
+   ],
+   [
+    3000,
+    72
+   ],
+   [
+    4000,
+    84
+   ],
+   [
+    5000,
+    94
+   ],
+   [
+    6000,
+    104
+   ],
+   [
+    7000,
+    114
+   ],
+   [
+    8000,
+    124
+   ],
+   [
+    9000,
+    132
+   ],
+   [
+    10000,
+    138
+   ],
+   [
+    11000,
+    141.7
+   ],
+   [
+    11500,
+    141.1
+   ],
+   [
+    12000,
+    134
+   ],
+   [
+    13000,
+    122
+   ],
+   [
+    14000,
+    105
+   ],
+   [
+    14800,
+    88
+   ]
+  ],
+  "fric": [
+   3.6,
+   0.0014
+  ],
+  "fuel": {
+   "cap": 17,
+   "idle": 0.0006,
+   "k": 0.012
+  },
+  "ram": 0.052
+ },
+ "manual": {
+  "prim": 1.551,
+  "gears": [
+   0,
+   3.188,
+   2.526,
+   2.045,
+   1.727,
+   1.524,
+   1.348
+  ],
+  "eta": 0.9,
+  "clutchCap": 230,
+  "slipper": 55,
+  "qs": true,
+  "final": [
+   "rs",
+   "fs"
+  ]
+ },
+ "sound": {
+  "parts": {
+   "sq": 1.0,
+   "sqHz": 2200,
+   "hiss": 1.4,
+   "chain": 1.0,
+   "chainHz": 2800,
+   "lash": 0.85,
+   "clutch": 0.55,
+   "thump": 1.5,
+   "thumpHz": 0.7,
+   "rattle": 0,
+   "key": 0.9,
+   "keyHz": 0.8,
+   "tink": 1.5,
+   "tinkHz": 0.65,
+   "peg": 1.35
+  },
+  "blower": 9.2,
+  "boost": 1,
+  "chirp": 1,
+  "lp": 1.2,
+  "gain": 1.4,
+  "whine": 0,
+  "cyl": 4,
+  "pipe": 950,
+  "pq": 1.8,
+  "body": 260,
+  "bq": 1.1,
+  "punch": 1.15,
+  "rough": 0.05,
+  "crackle": 0.15,
+  "crackRpm": 6000,
+  "mech": 0.55,
+  "intake": 1.3,
+  "bright": 1.2,
+  "drive": 1.7,
+  "starter": 1.1
+ },
+ "parts": {
+  "exhaust": {
+   "l": "Exhaust",
+   "o": [
+    {
+     "n": "Stock",
+     "pow": 1,
+     "snd": 0
+    },
+    {
+     "n": "Slip-on megaphone (+2%)",
+     "pow": 1.02,
+     "snd": 1
+    },
+    {
+     "n": "Full titanium (+5%)",
+     "pow": 1.05,
+     "snd": 2
+    }
+   ]
+  },
+  "ecu": {
+   "l": "Power mode",
+   "o": [
+    {
+     "n": "Full"
+    },
+    {
+     "n": "Middle (~80%)",
+     "tqc": 0.8
+    },
+    {
+     "n": "Low (~50%)",
+     "tqc": 0.51
+    }
+   ]
+  },
+  "tires": {
+   "l": "Tires",
+   "o": [
+    {
+     "n": "Stock (hypersport)",
+     "mu": 1.12
+    },
+    {
+     "n": "Track day",
+     "mu": 1.22
+    },
+    {
+     "n": "Slicks",
+     "mu": 1.32
+    }
+   ]
+  },
+  "paint": {
+   "l": "Paint",
+   "o": [
+    {
+     "n": "Mirror chrome / black",
+     "c": "#c3c9d0",
+     "metal": 0.55,
+     "rough": 0.18,
+     "lv": "m",
+     "rim": "#3fae2a",
+     "hd": "#e9e9e4"
+    },
+    {
+     "n": "Matte mirror / carbon",
+     "c": "#5d636b",
+     "metal": 0.45,
+     "rough": 0.55,
+     "lv": "c",
+     "rim": "#3fae2a",
+     "hd": "#9aa0a8"
+    },
+    {
+     "n": "Gloss black / green",
+     "c": "#1b1d21",
+     "lv": "k",
+     "rim": "#3fae2a",
+     "hd": "#3fae2a"
+    }
+   ]
+  },
+  "flywheel": {
+   "l": "Flywheel",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Lightened (quicker revs)",
+     "ie": 0.8
+    },
+    {
+     "n": "Heavy (smoother)",
+     "ie": 1.3
+    }
+   ]
+  },
+  "brakes": {
+   "l": "Brake pads",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Sintered",
+     "brake": 1.08
+    },
+    {
+     "n": "Race compound",
+     "brake": 1.17
+    }
+   ]
+  },
+  "wheelcol": {
+   "l": "Wheel colour",
+   "o": [
+    {
+     "n": "Match paint"
+    },
+    {
+     "n": "Black",
+     "wc": "#16171a"
+    },
+    {
+     "n": "Gold",
+     "wc": "#c9a24a"
+    },
+    {
+     "n": "Silver",
+     "wc": "#b9bdc2"
+    },
+    {
+     "n": "Red",
+     "wc": "#c21d1d"
+    },
+    {
+     "n": "Blue",
+     "wc": "#1f4fbf"
+    },
+    {
+     "n": "White",
+     "wc": "#e9e9e4"
+    }
+   ]
+  },
+  "rimstripe": {
+   "l": "Rim stripe",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Gold",
+     "rim": "#c9a24a"
+    },
+    {
+     "n": "Red",
+     "rim": "#d42a2a"
+    },
+    {
+     "n": "White",
+     "rim": "#f1f1ec"
+    },
+    {
+     "n": "Cyan",
+     "rim": "#16b3cc"
+    }
+   ]
+  },
+  "cover": {
+   "l": "Engine cover",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Black",
+     "ec": "#1b1c1f"
+    },
+    {
+     "n": "Gold",
+     "ec": "#c9a24a"
+    },
+    {
+     "n": "Red",
+     "ec": "#a8161c"
+    },
+    {
+     "n": "Blue",
+     "ec": "#1f44d8"
+    }
+   ]
+  },
+  "cfbody": {
+   "l": "Body panels",
+   "g": "Carbon fiber",
+   "o": [
+    {
+     "n": "Stock (painted)"
+    },
+    {
+     "n": "Carbon (\u22123.5 kg)",
+     "dm": -3.5,
+     "cfb": 1
+    },
+    {
+     "n": "Tinted carbon (\u22123.5 kg)",
+     "dm": -3.5,
+     "cfb": 2
+    }
+   ]
+  },
+  "cffender": {
+   "l": "Front fender",
+   "g": "Carbon fiber",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Carbon (\u22120.4 kg)",
+     "dm": -0.4,
+     "cff": 1
+    }
+   ]
+  },
+  "cfwheel": {
+   "l": "Wheels",
+   "g": "Carbon fiber",
+   "o": [
+    {
+     "n": "Stock cast"
+    },
+    {
+     "n": "Carbon (\u22123.2 kg)",
+     "dm": -3.2,
+     "cfw": 1
+    }
+   ]
+  },
+  "cfexh": {
+   "l": "Muffler cover",
+   "g": "Carbon fiber",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Carbon (\u22120.5 kg)",
+     "dm": -0.5,
+     "cfx": 1
+    }
+   ]
+  },
+  "kit": {
+   "l": "Track kit",
+   "o": [
+    {
+     "n": "Street (stock)",
+     "var": 0
+    },
+    {
+     "n": "H2R-style track kit (310 PS, \u221222 kg)",
+     "var": 1,
+     "TQ": [
+      [
+       0,
+       32
+      ],
+      [
+       1000,
+       47
+      ],
+      [
+       2000,
+       63
+      ],
+      [
+       3000,
+       76
+      ],
+      [
+       4000,
+       88
+      ],
+      [
+       5000,
+       99
+      ],
+      [
+       6000,
+       110
+      ],
+      [
+       7000,
+       121
+      ],
+      [
+       8000,
+       132
+      ],
+      [
+       9000,
+       142
+      ],
+      [
+       10000,
+       151
+      ],
+      [
+       11000,
+       158
+      ],
+      [
+       12000,
+       163.5
+      ],
+      [
+       12500,
+       165
+      ],
+      [
+       13000,
+       163.5
+      ],
+      [
+       14000,
+       155.5
+      ],
+      [
+       14500,
+       147
+      ],
+      [
+       15000,
+       135
+      ]
+     ],
+     "peakPS": 310,
+     "red": 14500,
+     "dm": -22
+    }
+   ]
+  },
+  "frame": {
+   "l": "Frame colour",
+   "o": [
+    {
+     "n": "Stock green"
+    },
+    {
+     "n": "Black",
+     "fc": "#1b1c1f"
+    },
+    {
+     "n": "Silver",
+     "fc": "#b9bdc2"
+    },
+    {
+     "n": "Red",
+     "fc": "#b3161c"
+    }
+   ]
+  }
+ },
+ "sliders": [
+  {
+   "k": "pf",
+   "l": "Fork preload",
+   "min": -20,
+   "max": 20,
+   "u": " mm"
+  },
+  {
+   "k": "pr",
+   "l": "Shock preload",
+   "min": -20,
+   "max": 20,
+   "u": " mm"
+  },
+  {
+   "k": "yf",
+   "l": "Front ride height",
+   "min": -25,
+   "max": 25,
+   "step": 5,
+   "u": " mm"
+  },
+  {
+   "k": "yr",
+   "l": "Rear ride height",
+   "min": -25,
+   "max": 25,
+   "step": 5,
+   "u": " mm"
+  },
+  {
+   "k": "fs",
+   "l": "Front sprocket",
+   "min": 16,
+   "max": 19,
+   "u": "T"
+  },
+  {
+   "k": "rs",
+   "l": "Rear sprocket",
+   "min": 40,
+   "max": 46,
+   "u": "T"
+  },
+  {
+   "k": "kf",
+   "l": "Fork spring",
+   "min": 12,
+   "max": 28,
+   "u": " kN/m"
+  },
+  {
+   "k": "kr",
+   "l": "Shock spring",
+   "min": 16,
+   "max": 34,
+   "u": " kN/m"
+  },
+  {
+   "k": "damp",
+   "l": "Damping",
+   "min": 20,
+   "max": 90,
+   "u": "%"
+  }
+ ],
+ "toggles": [
+  {
+   "k": "qs",
+   "l": "Quickshifter (up/down)"
+  },
+  {
+   "k": "tc",
+   "l": "Traction control"
+  }
+ ],
+ "defaults": {
+  "pf": 0,
+  "pr": 0,
+  "exhaust": 0,
+  "ecu": 0,
+  "tires": 0,
+  "paint": 0,
+  "fs": 18,
+  "rs": 44,
+  "kf": 19,
+  "kr": 25,
+  "damp": 50,
+  "yf": 0,
+  "yr": 0,
+  "flywheel": 0,
+  "brakes": 0,
+  "wheelcol": 0,
+  "rimstripe": 0,
+  "cover": 0,
+  "cfbody": 0,
+  "cffender": 0,
+  "cfwheel": 0,
+  "cfexh": 0,
+  "qs": true,
+  "kit": 0,
+  "frame": 0,
+  "tc": true
+ },
+ "hint": "KEY on, pull the clutch, hold START. Clutch out in 1st to pull away; after that the quickshifter shifts up and down without the lever."
+}

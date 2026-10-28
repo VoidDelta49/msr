@@ -1,4 +1,11 @@
 [
+  { "v": "11.50", "d": "2026-10-28", "t": [
+    "New bike: Kawasaki Ninja H2. 998 cc supercharged inline-four with 231 PS, Kawasaki's published gear ratios, weights and dimensions, a green trellis frame, single-sided swingarm and the mirror-chrome body. 0-100 km/h in about 3.4 s, top speed around 323 km/h.",
+    "The H2 has an up/down quickshifter: once you're rolling in gear, shift without the clutch. Pulling away still needs the clutch. It also has traction control, power modes (Full, Middle, Low) and ram air that adds a little power at high speed. Quickshifter and traction control can be switched off in the garage.",
+    "H2 sound: its own engine and parts profile, plus the supercharger whine that climbs with the revs and the chirp when you snap the throttle shut.",
+    "H2 garage: an H2R-style track kit (310 PS, 22 kg lighter, carbon wings, taller screen, open megaphone, no mirrors or plate), slicks, three paints, frame colour and the usual exhaust, carbon and suspension parts.",
+    "New H2 gauge: analog tachometer with an LCD showing speed, gear, fuel and a supercharger boost bar."
+  ] },
   { "v": "11.49", "d": "2026-10-28", "t": [
     "Multiplayer: when someone gets off their bike, everyone now sees it. Their bike stays parked with nobody on it and they walk around as a standing figure, with their name tag above their head. Riders on an older version still see the old way until they update.",
     "Asking for a ride while you're on foot works now: walk up to a friend's bike, tap their name tag and hop on. Before, it left you half-walking with your bike hidden. GET OFF puts your own bike back down next to theirs.",

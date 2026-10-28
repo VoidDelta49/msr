@@ -43,7 +43,7 @@ function reset() {
   if (F.on) footOff(); // reset / bike swap while walking: back on the bike
   Object.assign(S, {
     x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: 0, running: false, key: false, kill: false, tip: false, cr: 0, cranking: false, cT: 0, keyT: 0, stT: 0, fi: 0, warm: S.warm || 0, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, leanV: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
-    fuel: S.fuel ?? ctx.spec.fuel.cap, wp: 0, wpv: 0, wA: 0, wAR: 0, ws: 0, lkF: false, lkR: false, ayu: 0, skid: 0, fxr: 0, surf: 1, cutT: 0, act: 0, shCD: 0, lim: false, padT: 0, hits: S.hits || 0, odo: S.odo || 0,
+    fuel: S.fuel ?? ctx.spec.fuel.cap, wp: 0, wpv: 0, wA: 0, wAR: 0, ws: 0, lkF: false, lkR: false, ayu: 0, skid: 0, fxr: 0, surf: 1, cutT: 0, act: 0, qbT: 0, shCD: 0, lim: false, padT: 0, hits: S.hits || 0, odo: S.odo || 0,
   });
   ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody();
 }

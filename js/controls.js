@@ -49,7 +49,7 @@ export function input(dt) {
   if (cvt) S.cl = 0;
   else { if (TC.cluId === null) TC.clu = appr(TC.clu, 0, 5 * dt); S.cl = K.Space ? appr(S.cl, 1, 8 * dt) : TC.cluId !== null ? TC.clu : appr(S.cl, TC.clu, 2.5 * dt); }
   S.back = !!(TC.back || K.KeyX);
-  S.shCD -= dt; S.cutT -= dt; S.act -= dt;
+  S.shCD -= dt; S.cutT -= dt; S.act -= dt; S.qbT -= dt;
 }
 
 // On foot (foot.js): WASD / arrows walk relative to the camera, Shift runs, Space jumps. Touch: the joystick (#joy, push it all the way to run)

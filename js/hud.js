@@ -92,6 +92,37 @@ function tft(g, sp) {
   if (!S.running) { g.fillStyle = '#ff4a3d'; g.fillText('ENGINE OFF', 130, 118); }
   else if (S.cl > .05) { g.fillStyle = '#ffb020'; g.fillText('CLUTCH ' + (S.cl * 100 | 0) + '%', 130, 118); }
 }
+/* h2: Ninja H2-style. Big analog tach (white needle, 0-16 with the red zone from the redline) beside a mono LCD: speed, gear,
+   supercharger boost bar (rpm² × load, like the real one rising with revs), fuel, clock, QS lamp */
+function h2(g, sp) {
+  const MAX = sp.tachMax, rpm = dispRpm(sp), now = phNow(), cx = 128, cy = 118, R = 100, a = v => PI * (.8 + 1.4 * v);
+  g.fillStyle = '#08090b'; rr(g, 4, 4, 504, 216, 30); g.fill(); g.strokeStyle = '#2b2f36'; g.lineWidth = 4; g.stroke();
+  g.fillStyle = '#111317'; g.beginPath(); g.arc(cx, cy, R, 0, 2 * PI); g.fill(); g.strokeStyle = '#4a5059'; g.lineWidth = 4; g.stroke();
+  g.strokeStyle = '#c22'; g.lineWidth = 9; g.beginPath(); g.arc(cx, cy, R - 10, a(sp.red / MAX), a(1)); g.stroke();
+  g.fillStyle = '#e6e9ee'; g.strokeStyle = '#e6e9ee'; g.font = 'bold 17px system-ui'; g.textAlign = 'center';
+  for (let k = 0; k <= MAX / 1000; k++) { const t = a(k * 1000 / MAX), big = k % 2 === 0; g.lineWidth = big ? 4 : 2; g.beginPath(); g.moveTo(cx + Math.cos(t) * (R - 6), cy + Math.sin(t) * (R - 6)); g.lineTo(cx + Math.cos(t) * (R - (big ? 20 : 14)), cy + Math.sin(t) * (R - (big ? 20 : 14))); g.stroke();
+    if (big) g.fillText(k, cx + Math.cos(t) * (R - 34), cy + Math.sin(t) * (R - 34) + 6); }
+  g.font = 'bold 11px system-ui'; g.fillStyle = '#8a929c'; g.fillText('x1000 r/min', cx, cy + 40);
+  const t = a(Math.min(rpm, MAX * 1.02) / MAX); g.strokeStyle = '#f4f6f8'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); g.moveTo(cx - Math.cos(t) * 12, cy - Math.sin(t) * 12); g.lineTo(cx + Math.cos(t) * (R - 12), cy + Math.sin(t) * (R - 12)); g.stroke(); g.lineCap = 'butt';
+  g.fillStyle = '#3fae2a'; g.beginPath(); g.arc(cx, cy, 10, 0, 2 * PI); g.fill();
+  // LCD
+  const lit = '#c9d6dc', dim = '#18222a'; g.fillStyle = '#0c151b'; rr(g, 248, 22, 248, 182, 14); g.fill();
+  g.textAlign = 'right'; g.font = 'bold 78px ui-monospace,Menlo,monospace'; g.fillStyle = lit; g.fillText(Math.round(Math.abs(S.v) * 3.6), 420, 104);
+  g.textAlign = 'left'; g.font = 'bold 16px system-ui'; g.fillStyle = '#7f949e'; g.fillText('km/h', 424, 104);
+  g.textAlign = 'center'; g.font = 'bold 50px system-ui'; g.fillStyle = S.gear ? lit : '#43e07a'; g.fillText(S.gear || 'N', 462, 168);
+  const bo = boostOf(sp); g.textAlign = 'left'; g.font = 'bold 13px system-ui'; g.fillStyle = '#7f949e'; g.fillText('BOOST', 262, 132);
+  for (let i = 0; i < 10; i++) { g.fillStyle = bo > (i + .5) / 10 ? (i > 7 ? '#ffb020' : lit) : dim; g.fillRect(316 + i * 10, 120, 7, 14); }
+  const fr = S.fuel / sp.fuel.cap; for (let i = 0; i < 6; i++) { g.fillStyle = fr > (i + .5) / 6 ? (fr < .18 ? '#ff4a3d' : lit) : dim; g.fillRect(262 + i * 13, 146, 10, 14); }
+  g.fillStyle = '#7f949e'; g.fillText('FUEL', 342, 159);
+  g.font = 'bold 17px ui-monospace,Menlo,monospace'; g.fillStyle = lit; g.fillText(String(now.h).padStart(2, '0') + ((now.s & 1) ? ':' : ' ') + String(now.m).padStart(2, '0'), 262, 192);
+  if (ctx.bcfg.qs !== false) { g.font = 'bold 14px system-ui'; g.fillStyle = '#43e07a'; g.fillText('QS', 340, 192); }
+  g.font = 'bold 15px system-ui';
+  if (!S.running) { g.fillStyle = '#ff4a3d'; g.fillText('ENGINE OFF', 262, 48); }
+  else if (S.lim && (performance.now() / 90 | 0) % 2) { g.fillStyle = '#ff3b2f'; g.fillText('SHIFT', 262, 48); }
+  else if (S.cl > .05) { g.fillStyle = '#ffb020'; g.fillText('CLUTCH ' + (S.cl * 100 | 0) + '%', 262, 48); }
+}
+// supercharger boost 0..1 for the gauge: a centrifugal compressor's pressure rise goes with impeller speed², scaled by throttle
+const boostOf = sp => S.running ? Math.min(1, (S.rpm / sp.red) ** 2) * (S.thrEff || 0) : 0;
 /* smash: Smash-style analog. Cream speedo dial with a red needle, N-1-2-3-4 gear lamps, fuel needle, drum odometer,
    FI check lamp (FI only: lit while the key is on and the engine isn't running) */
 function smash(g, sp) {
@@ -161,7 +192,7 @@ function tmx(g, sp) {
 }
 // key off: the dash is dead
 function dead(g) { g.fillStyle = '#05070a'; rr(g, 4, 4, 504, 216, 26); g.fill(); }
-const CLUSTERS = { sport, scooter, tft, smash, tmx };
+const CLUSTERS = { sport, scooter, tft, smash, tmx, h2 };
 // Redrawn only when something on it changes; the texture is uploaded to the GPU only while the in-world cluster can
 // be seen (1st person / garage). In 3rd person the same canvas is shown as the on-screen HUD, no upload needed.
 let cluKey = '', texDirty = true;
@@ -170,6 +201,7 @@ export function drawCluster(inWorld = true) {
   const key = [ctx.bike.id, Math.round(Math.abs(S.v) * 3.6), S.gear, S.key, S.running, S.keyT < 1.2, Math.ceil(dispRpm(sp) / sp.tachMax * 56), (S.fuel / sp.fuel.cap * 100 | 0), S.lim && bl, S.cl > .05 ? S.cl * 100 | 0 : -1,
     ctx.bike.cluster === 'tft' ? [now.m, now.s & 1, (S.odo / 100) | 0, ctx.bcfg.autoClutch, S.running && S.rpm >= sp.red - 600 && (performance.now() / 70 | 0) % 2].join() :
     ctx.bike.cluster === 'scooter' ? [now.m, now.s & 1, (S.odo / 100) | 0, S.running && Math.abs(S.v) > 2 && S.thrEff < .35, S.issOff && (performance.now() / 400 | 0) % 2, ctx.bcfg.iss, S.issOff].join() :
+    ctx.bike.cluster === 'h2' ? [now.m, now.s & 1, Math.round(boostOf(sp) * 10), ctx.bcfg.qs].join() :
     ctx.bike.cluster === 'smash' ? [(S.odo / 1000) | 0, sp.carb].join() : ''].join('|');
   if (key !== cluKey) { cluKey = key; gc.clearRect(0, 0, 512, 224); (S.key ? CLUSTERS[ctx.bike.cluster] : dead)(gc, sp); texDirty = true; }
   if (inWorld && texDirty) { cluTex.needsUpdate = true; texDirty = false; return true; }

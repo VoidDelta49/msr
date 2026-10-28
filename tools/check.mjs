@@ -94,7 +94,8 @@ const bikes = {};
     if (!(Array.isArray(ch.travel) && ch.travel.length === 2 && ch.travel.every(isNum))) err(A, 'chassis.travel must be [front, rear]');
     // pillion seat (js/ride.js, model.js pillionGeo, spec.js withPassenger): dz / dy = how far the rider mesh is shifted back / up onto the pillion
     // seat; x / h = where that passenger sits for the physics (m ahead of the rear axle, centre-of-mass height). node tools/pillion.mjs checks them against the real model
-    if (!(ch.pil && ['dz', 'dy', 'x', 'h'].every(k => isNum(ch.pil[k])))) err(A, 'chassis.pil must be { dz, dy, x, h } (pillion seat, see tools/pillion.mjs)');
+    if (ch.pil === null) { } // solo-seat bike (no pillion): ride.js offers no pillion seat
+    else if (!(ch.pil && ['dz', 'dy', 'x', 'h'].every(k => isNum(ch.pil[k])))) err(A, 'chassis.pil must be { dz, dy, x, h } or null for a solo seat (pillion seat, see tools/pillion.mjs)');
     else { const p = ch.pil; if (!(p.dz >= .2 && p.dz <= .45 && p.dy >= -.05 && p.dy <= .2 && p.x >= -.15 && p.x <= .5 && p.h >= 1 && p.h <= 1.5)) warn(A, `chassis.pil ${JSON.stringify(p)} looks off (dz .2-.45, dy -.05-.2, x -.15-.5, h 1-1.5)`); }
     for (const k of ['Ie', 'idle', 'red', 'peakPS', 'tachMax']) if (!(isNum(en[k]) && en[k] > 0)) err(A, `engine.${k} must be a positive number`);
     if (isNum(en.idle) && isNum(en.red) && en.idle >= en.red) err(A, 'engine.idle >= redline');
