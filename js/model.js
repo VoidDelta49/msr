@@ -641,7 +641,7 @@ function h2(ct, v) {
   B.frontW = wheelS(.25, .05, 1.2, .216, true, .165); B.slider.add(B.frontW);
   mk(arc(.315, .335, 1.35 + rake, 2.45 + rake, .13), MF, B.slider, 0, 0, 0);
   controls(st, -.003, .04, .34, .24, null);
-  clusterPlane(ct, 0, .975, -.49, -.55, .2);
+  clusterPlane(ct, 0, 1.01, -.44, -.38, .2, .012);                                                                // on the screen's rider-side face (the screen is a solid wedge: inside it the meter was hidden)
   rider(ct, [1.07, .133, -.7], [1.42, -.1], [.23, 1.075, -.22, -.77, .5], [[.17, .785, .14, -.56, .42, .14], [.19, .53, .132, -.7, .42, .11]]);
   B.cam = new THREE.Group(); B.cam.position.set(0, 1.34, -.08); ct.add(B.cam);
   B.exh = new THREE.Group(); ct.add(B.exh);
@@ -1079,8 +1079,8 @@ function nmax(ct, v) {
   mk(box(.035, .03, .02), MC, ct, 0, .705, -.78, .4);                                                          // centre emblem where the strips cross
   // windscreen: fixed to the body, raked back; meter under it
   mk(taper(prof([[-.6, .93], [-.46, v ? 1.2 : 1.16], [-.45, v ? 1.2 : 1.16], [-.59, .93]], .38, .004), null, [[.93, 1], [1.2, .72]]), MVisG, ct, 0, 0, 0);
-  mk(prof([[-.52, .98], [-.36, 1.02], [-.3, .98], [-.46, .93]], .3, .015), MK, ct, 0, 0, 0);                   // meter hood
-  clusterPlane(ct, 0, 1.0, -.41, -1.15, v ? .2 : .18, .03);
+  mk(prof([[-.5, .95], [-.47, 1.09], [-.45, 1.09], [-.31, 1.03], [-.3, 1.0], [-.46, .93]], .3, .015), MK, ct, 0, 0, 0); // meter hood: visor peak at the front, meter on the rear slope (a rear peak hid it from the rider); tall enough to swallow the bar riser cover
+  clusterPlane(ct, 0, 1.06, -.38, -1.166, v ? .24 : .22, .02);
   if (v) for (const s of [-1, 1]) {                                                                            // Tech MAX carbon-pattern inserts
     mk(prof([[-.5, .6], [-.38, .64], [-.33, .52], [-.44, .49]], .006, .002), MCF, ct, s * .252, 0, 0);
     mk(prof([[.2, .64], [.48, .69], [.45, .655], [.22, .61]], .006, .002), MCF, ct, s * .168, 0, 0);

@@ -1,4 +1,7 @@
 [
+  { "v": "11.53", "d": "2026-10-28", "t": [
+    "First person: the Ninja H2 and NMAX 155 gauges are visible again. The H2 meter sat inside the solid windscreen; it now sits on the screen's rider-side face. The NMAX meter hood peaked at the back and, with the handlebar riser cover, hid the display; the hood now has its visor edge at the front and the display is a little larger."
+  ] },
   { "v": "11.52", "d": "2026-10-28", "t": [
     "New bike: Yamaha NMAX 155 (2025), with Yamaha's published numbers: 155 cc liquid-cooled VVA single, 15.4 PS @ 8,000 rpm, 14.2 Nm @ 6,500, 1,340 mm wheelbase, 13-inch wheels, 230 mm discs front and rear with dual-channel ABS, traction control, Stop & Start. Modelled after the black PH unit: X-shaped LED face, tall smoked screen, flat floorboard, boomerang side panel, copper-tank twin shocks.",
     "Two variants in the garage DRIVE tab. Standard: belt CVT with rollers, springs and pulley to tune. Tech MAX: Yamaha's electronic CVT (YECVT) with T and S modes (S keeps the revs ~1,000 rpm higher) and the 3-level Y-Shift: tap ▼ (Q) for more revs and more engine braking, ▲ (E) to step back; it drops out by itself when you brake or let go of the throttle. The Tech MAX also gets a colour TFT showing the mode and Y-Shift level.",
