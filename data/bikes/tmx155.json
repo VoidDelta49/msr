@@ -92,6 +92,7 @@
     }
   },
   "manual": {
+    "pattern": "down",
     "prim": 3.35,
     "gears": [
       0,

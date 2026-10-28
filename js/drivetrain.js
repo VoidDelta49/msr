@@ -12,6 +12,9 @@ const manual = {
   spec(s, bike, b) {
     const M = bike.manual;
     s.prim = M.prim; s.g = M.gears; s.nG = M.gears.length - 1; s.eta = M.eta; s.cap = M.clutchCap;
+    // pattern (from the owner's manual): 'return' = 1 down, rest up (N between 1st and 2nd); 'down' = N on top, every gear below it
+    // (Honda TMX Supremo "five-down"): each toe press goes up one gear, each heel press down one, and 1st -> N is an ordinary click
+    s.pat = M.pattern || 'return';
     s.slipper = M.slipper || 0; s.eclutch = !!M.eclutch; s.qs = !!M.qs; // slipper: back-torque the clutch carries before it slips (Nm); eclutch: ECU works the clutch on shifts
     s.final = b[M.final[0]] / b[M.final[1]];
   },
@@ -43,7 +46,8 @@ const manual = {
     const ec = s.eclutch && b.autoClutch && S.cl < .6, qs = !ec && s.qs && b.qs !== false && S.cl < .6 && S.gear > 0 && Math.abs(S.v) > 2;
     if (S.shCD > 0) return; if (S.cl < .6 && !ec && !qs) { S.shCD = .3; say('Pull the clutch to shift', 900); blip('click'); return; }
     S.shCD = .15; let g = S.gear;
-    if (d > 0) g = g === 0 ? 2 : g === 1 ? (Math.abs(S.v) < .6 ? 0 : 2) : Math.min(s.nG, g + 1); else g = g <= 2 ? 1 : g - 1;
+    if (s.pat === 'down') g = clamp(g + (d > 0 ? 1 : -1), 0, s.nG);
+    else if (d > 0) g = g === 0 ? 2 : g === 1 ? (Math.abs(S.v) < .6 ? 0 : 2) : Math.min(s.nG, g + 1); else g = g <= 2 ? 1 : g - 1;
     if (g !== S.gear) {
       if (ec && S.gear && g) { if (g > S.gear) { S.act = .03; if (S.thr > .1) S.cutT = .1; } else S.act = .1; } else if (ec) S.act = .15;
       else if (qs) { if (g > S.gear) { S.act = .04; if (S.thr > .1) S.cutT = .06; } else { S.act = .08; S.qbT = .08; } }
@@ -54,7 +58,8 @@ const manual = {
   top(s) { return Math.min(kph(s, s.prim * s.g[s.nG] * s.final, s.red), topV(s)); },
   stats(s, b) {
     const f = s.final, top = this.top(s);
-    return `Final drive ${f.toFixed(2)} · redline ${s.red} rpm<br>1st tops out ${kph(s, s.prim * s.g[1] * f, s.red).toFixed(0)} km/h · ${s.nG}th gearing ${kph(s, s.prim * s.g[s.nG] * f, s.red).toFixed(0)} km/h<br>Est. top speed ≈ ${top.toFixed(0)} km/h`;
+    const pat = s.pat === 'down' ? `N-1-${Array.from({ length: s.nG - 1 }, (_, i) => i + 2).join('-')}, all down` : `1 down, ${s.nG - 1} up`;
+    return `${s.nG}-speed, ${pat} · primary ${s.prim.toFixed(3)} · final drive ${f.toFixed(2)} · redline ${s.red} rpm<br>1st tops out ${kph(s, s.prim * s.g[1] * f, s.red).toFixed(0)} km/h · ${s.nG}th gearing ${kph(s, s.prim * s.g[s.nG] * f, s.red).toFixed(0)} km/h<br>Est. top speed ≈ ${top.toFixed(0)} km/h`;
   },
 };
 
@@ -117,7 +122,7 @@ const rotary = {
     if (g !== S.gear) { S.gear = g; S.act = .18; blip('click'); } // pedal down: the linkage holds the clutch open
   },
   canStart() { },
-  stats(s, b) { return manual.stats.call(this, s, b) + `<br>Centrifugal clutch bites ${s.e0} rpm, locks ${s.e1} rpm`; },
+  stats(s, b) { return manual.stats.call(this, { ...s, pat: 'rotary' }, b).replace(/1 down, \d+ up/, 'rotary N-1-2-3-4-N') + `<br>Centrifugal clutch bites ${s.e0} rpm, locks ${s.e1} rpm`; },
 };
 
 export const DRIVES = { manual, cvt, rotary };

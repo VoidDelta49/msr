@@ -1,4 +1,9 @@
 [
+  { "v": "11.51", "d": "2026-10-28", "t": [
+    "Gearboxes now follow each bike's owner's manual. The Honda TMX Supremo has its real five-down pattern: neutral is at the top, every upshift is a press (N-1-2-3-4-5), and a downshift from 1st goes to neutral, even while rolling. The other manual bikes keep 1 down, rest up, and the Smash stays a 4-speed rotary.",
+    "Suzuki Raider R150 Fi: real FI gear ratios (taller overall, 6th is now an overdrive). It no longer hits the limiter in 6th and tops out around 138 km/h instead of 125.",
+    "The garage DRIVE stats now show the number of gears, the shift pattern and the primary ratio."
+  ] },
   { "v": "11.50", "d": "2026-10-28", "t": [
     "New bike: Kawasaki Ninja H2. 998 cc supercharged inline-four with 231 PS, Kawasaki's published gear ratios, weights and dimensions, a green trellis frame, single-sided swingarm and the mirror-chrome body. 0-100 km/h in about 3.4 s, top speed around 323 km/h.",
     "The H2 has an up/down quickshifter: once you're rolling in gear, shift without the clutch. Pulling away still needs the clutch. It also has traction control, power modes (Full, Middle, Low) and ram air that adds a little power at high speed. Quickshifter and traction control can be switched off in the garage.",

@@ -31,7 +31,7 @@ export function fuzzOne(id, seed, secs = 40) {
         if (!S.running && S.fuel > 0 && s.t - (S.lastQs || -9) > 2) { ign.quickStart(); S.lastQs = s.t; }
         if (sp.type === 'rotary') { if (S.shCD <= 0 && (S.gear === 0 || S.rpm > sp.red - 600 && S.gear < sp.nG)) sim.shift(1); }
         else if (sp.type === 'manual') {
-          if (S.shCD <= 0 && S.gear === 0) { S.cl = 1; sim.shift(-1); } else if (S.shCD <= 0 && S.rpm > sp.red - 600 && S.gear < sp.nG) { S.cl = 1; sim.shift(1); }
+          if (S.shCD <= 0 && S.gear === 0) { S.cl = 1; sim.shift(sp.pat === 'down' ? 1 : -1); } else if (S.shCD <= 0 && S.rpm > sp.red - 600 && S.gear < sp.nG) { S.cl = 1; sim.shift(1); }
           else if (S.gear > 0 && S.cl > 0 && S.shCD < .1) S.cl = Math.max(0, S.cl - 5 * TICK);
         }
       }

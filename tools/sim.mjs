@@ -21,7 +21,7 @@ function rider(sim, { rate = 2.5, thr = 1 } = {}) {
       else if (S.rpm >= sp.red - 500 && S.gear < sp.nG && S.shCD <= 0) sim.shift(1);
       return;
     }
-    if (ph === 'init') { S.cl = 1; S.thr = 0; if (S.gear !== 1 && S.shCD <= 0) sim.shift(-1); if (S.gear === 1) ph = 'launch'; }
+    if (ph === 'init') { S.cl = 1; S.thr = 0; if (S.gear !== 1 && S.shCD <= 0) sim.shift(S.gear === 0 && sp.pat === 'down' ? 1 : -1); if (S.gear === 1) ph = 'launch'; }
     else if (ph === 'launch') { S.cl = appr(S.cl, 0, rate * TICK); if (S.cl === 0) ph = 'drive'; }
     else if (ph === 'drive') { if (S.rpm >= sp.red - 500 && S.gear < sp.nG && S.v > .5) ph = 'pull'; }
     else if (ph === 'pull') { S.thr = 0; S.cl = appr(S.cl, 1, 10 * TICK); if (S.cl >= .99 && S.shCD <= 0) { sim.shift(1); ph = 'wait'; tm = .12; } }

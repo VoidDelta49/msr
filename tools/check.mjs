@@ -116,6 +116,7 @@ const bikes = {};
       for (const k of ['prim', 'eta', 'clutchCap']) if (!isNum(D[k])) err(A, `manual.${k} missing`);
       if (!(Array.isArray(D.gears) && D.gears[0] === 0 && D.gears.slice(1).every((g, i, a) => isNum(g) && g > 0 && (!i || g < a[i - 1])))) err(A, 'manual.gears must be [0, 1st, 2nd, ...] strictly falling ratios');
       if (!(Array.isArray(D.final) && D.final.length === 2 && D.final.every(k => k in (b.defaults || {})))) err(A, 'manual.final must name two keys present in defaults (e.g. ["rs","fs"])');
+      if ('pattern' in D && !['return', 'down'].includes(D.pattern)) err(A, "manual.pattern must be 'return' (1 down, rest up) or 'down' (N on top, all down)");
       if (b.drivetrain === 'rotary' && !(Array.isArray(D.cent) && D.cent.length === 2 && D.cent[0] < D.cent[1])) err(A, 'rotary needs manual.cent [bite, lock] rpm');
     }
     { const todo = []; JSON.stringify(b, (k, v) => { if (typeof v === 'string' && /TODO/.test(v)) todo.push(k); return v; }); if (todo.length) err(A, `unfinished: TODO left in ${todo.join(', ')}`); }
