@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { $, clamp } from './util.js';
 import { cfg, save, bikeCfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
-import { renderer, scene, camera, sun, GPU, API, FELL, AA, draw, warm, setDPR } from './renderer.js';
+import { renderer, scene, camera, sun, GPU, API, FELL, AA, MB, draw, warm, setDPR } from './renderer.js';
 import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad, LMF, OBBS } from './world.js';
 ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
@@ -125,7 +125,7 @@ function footTick(dt) {
 
 /* ---------- camera / animation ---------- */
 function toggleCam() {
-  ctx.camMode ^= 1; document.body.classList.toggle('cam3', ctx.camMode === 1);
+  ctx.camMode ^= 1; document.body.classList.toggle('cam3', ctx.camMode === 1); if (MB) MB.cut();
   if (ctx.camMode === 0) { B.cam.add(camera); camera.position.set(0, 0, 0); camera.rotation.set(-.3, 0, 0); } else scene.add(camera);
   B.rider.forEach(m => m.visible = ctx.camMode === 1); $('bCam').textContent = ctx.camMode ? 'CAM: 3RD' : 'CAM: 1ST';
 }
@@ -235,6 +235,13 @@ function interp(on) {
   return keep;
 }
 
+// motion blur (mblur.js): what moves with the camera (the bike, or the walker on foot) is masked out of the blur
+function mbState() {
+  MB.on = !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride; MB.amount = (cfg.mbAmt ?? 5) / 10;
+  if (F.on) { MB.focus.set(F.x, F.y + .9, F.z); MB.radius = 1.1; MB.speed = Math.hypot(F.vx, F.vz); }
+  else { MB.focus.set(S.x, S.zH + .75, S.z); MB.radius = 1.6; MB.speed = Math.abs(S.v); }
+}
+
 /* ---------- loop ---------- */
 let capT = 0, last = performance.now(), lastDraw = 0, fN = 0, fT = 0, crashCam = false;
 function loop(t) {
@@ -249,7 +256,7 @@ function loop(t) {
   else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; if (F.on) footTick(dt); else input(dt); if (RP.ok) tickRapier(dt); missions(dt); wpTick(); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } const D0 = performance.now(); renderer.info.reset(); if (!ctx.mapCover) { cull(camera); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } const D0 = performance.now(); if (MB) mbState(); renderer.info.reset(); if (!ctx.mapCover) { cull(camera); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.gpu = GPU; O.aa = AA; O.live = true; O.snap(); // options.js: what the loaded game was built with, to tell which changes still need a reload

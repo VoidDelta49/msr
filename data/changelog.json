@@ -1,4 +1,7 @@
 [
+  { "v": "11.54", "d": "2026-10-28", "t": [
+    "Motion blur (Options > Graphics > Look, on by default, with a strength slider). The world streaks as you ride, like a camera shutter; your own bike and rider stay sharp. Built for phones: the streak is gathered from a half-resolution Kawase-blurred copy of the frame (two small passes), so a few samples give a smooth trail, and it switches itself off (no extra passes) whenever the view is not moving."
+  ] },
   { "v": "11.53", "d": "2026-10-28", "t": [
     "First person: the Ninja H2 and NMAX 155 gauges are visible again. The H2 meter sat inside the solid windscreen; it now sits on the screen's rider-side face. The NMAX meter hood peaked at the back and, with the handlebar riser cover, hid the display; the hood now has its visor edge at the front and the display is a little larger."
   ] },

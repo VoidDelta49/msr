@@ -10,7 +10,7 @@ import { cfg, save, BUILD, GLOBAL_DEF, AA_MODES, QUALITY } from './config.js';
 export const O = { onPerf: null, setDPR: null, api: '', live: false, gpu: false, aa: null, snap };
 
 /* ---------- what needs a reload ---------- */
-const RELOAD = { gfx: 'Quality', aa: 'Anti-aliasing', ibl: 'Sky lighting', grade: 'Colour grading', nightFx: 'Night vision', n64: 'N64 filter', gpuCull: 'GPU culling', forceGL: 'Force WebGL' };
+const RELOAD = { gfx: 'Quality', aa: 'Anti-aliasing', ibl: 'Sky lighting', grade: 'Colour grading', nightFx: 'Night vision', n64: 'N64 filter', mblur: 'Motion blur', gpuCull: 'GPU culling', forceGL: 'Force WebGL' };
 let boot = null; // the RELOAD values the running game was built with
 function snap() { boot = {}; for (const k in RELOAD) boot[k] = cfg[k]; }
 const pending = () => O.live && boot ? Object.keys(RELOAD).filter(k => cfg[k] !== boot[k]) : [];
@@ -45,6 +45,7 @@ const SL = {
   sens: { min: 5, max: 20, get: () => cfg.sens, set: v => cfg.sens = v, fmt: v => (v / 10).toFixed(1) + '×' },
   ui: { min: 7, max: 14, get: () => cfg.ui ?? 10, set: v => { cfg.ui = v; applyUi(); }, fmt: v => (v / 10).toFixed(1) + '×' },
   fov: { min: 50, max: 110, get: () => cfg.fov ?? 72, set: v => cfg.fov = v, fmt: v => v + '°' },
+  mbAmt: { min: 1, max: 10, get: () => cfg.mbAmt ?? 5, set: v => cfg.mbAmt = v, fmt: v => v * 10 + '%' },
   vol: { min: 0, max: 100, get: () => Math.round((cfg.vol ?? .8) * 100), set: v => cfg.vol = v / 100, fmt: v => v + '%' },
 };
 const NUM = new Set(['retro', 'fpsCap']);
@@ -81,6 +82,8 @@ function tGfx() {
     sw('grade', 'Colour grading', 'Warm highlights, cool shadows, a soft contrast curve and a light vignette.') +
     sw('nightFx', 'Night vision', 'Dim areas lose their colour at night, as they do to your eyes.') +
     sw('n64', 'N64 colour filter', '15-bit colour with an ordered dither, like the N64 framebuffer.') +
+    sw('mblur', 'Motion blur', 'Streaks the world as you move, like a camera shutter. Costs nothing while you stand still.') +
+    slider('mbAmt', 'Motion blur strength', 'How long the shutter stays open: longer streaks at the same speed.', !cfg.mblur) +
     sec('ADVANCED') +
     sw('gpuCull', 'GPU culling', gpuOff ? 'WebGPU only (this session runs WebGL 2).' : 'Hides off-screen props on the GPU. WebGPU only.', gpuOff) +
     sw('forceGL', 'Force WebGL', 'Use WebGL 2 even where WebGPU works. Try it if the game glitches or crashes.');

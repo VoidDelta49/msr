@@ -107,9 +107,15 @@ export const AA = (() => {
   }
   return { mode: cfg.aa, ms, fx: w.fx || (w.ms > 0 && !ms), why, label: ms ? 'MSAA ' + ms + '×' + (w.fx ? ' + FXAA' : '') : w.fx || w.ms ? 'FXAA' : 'Off' };
 })();
+// Motion blur (mblur.js): reads the scene pass's colour and depth, so it runs on the linear frame before tone mapping
+// (bright lamps and the sun streak at full strength). MB = its per-frame controller, null when off.
+export let MB = null;
 let pipe = null, scenePass = null;
-if (AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx) {
-  const T = await import('three/tsl'); scenePass = T.pass(scene, camera, AA.ms ? { samples: AA.ms } : {}); AA.rt = scenePass.renderTarget.samples; /* what the target really carries (tools/options.mjs) */ let out = T.renderOutput(scenePass);
+if (AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx || cfg.mblur) {
+  const T = await import('three/tsl'); scenePass = T.pass(scene, camera, AA.ms ? { samples: AA.ms } : {}); AA.rt = scenePass.renderTarget.samples; /* what the target really carries (tools/options.mjs) */
+  let src = scenePass;
+  if (cfg.mblur) { const { motionBlur } = await import('./mblur.js'), m = motionBlur(scenePass, { gpu: !!renderer.backend.isWebGPUBackend, taps: Q.lite ? 5 : Q.shadow >= 2048 ? 8 : 6 }); MB = m.MB; src = m.node; }
+  let out = T.renderOutput(src);
   if (cfg.grade) {
     const G = GRADE; G.sh = T.uniform(new THREE.Color(.95, .98, 1.06)); G.hi = T.uniform(new THREE.Color(1.05, 1.02, .96)); G.con = T.uniform(.2); G.vib = T.uniform(.45); G.vig = T.uniform(.22);
     let c = out.rgb.clamp(0, 1); const L = T.vec3(.2126, .7152, .0722);
@@ -136,7 +142,7 @@ if (AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx) {
   }
   pipe = new THREE.RenderPipeline(renderer); pipe.outputColorTransform = false; pipe.outputNode = out;
 }
-export const draw = () => pipe ? pipe.render() : renderer.render(scene, camera);
+export const draw = () => { if (MB) MB.update(camera, performance.now()); pipe ? pipe.render() : renderer.render(scene, camera); };
 // Shader warm-up, during loading: build every material's shader/pipeline now instead of on first use (the first
 // crash, switching to 3rd person, a new area coming into view). Everything hidden is shown and frustum culling is off
 // for the duration. compileAsync links the programs in parallel where the driver allows (KHR_parallel_shader_compile on
