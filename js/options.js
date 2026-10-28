@@ -82,7 +82,7 @@ function tGfx() {
     sw('grade', 'Colour grading', 'Warm highlights, cool shadows, a soft contrast curve and a light vignette.') +
     sw('nightFx', 'Night vision', 'Dim areas lose their colour at night, as they do to your eyes.') +
     sw('n64', 'N64 colour filter', '15-bit colour with an ordered dither, like the N64 framebuffer.') +
-    sw('mblur', 'Motion blur', 'Streaks the world as you move, like a camera shutter. Costs nothing while you stand still.') +
+    sw('mblur', 'Motion blur', 'Speed blur when you ride fast, like GTA San Andreas: it fades in from 60 km/h and is full at 130. Costs nothing below that.') +
     slider('mbAmt', 'Motion blur strength', 'How long the shutter stays open: longer streaks at the same speed.', !cfg.mblur) +
     sec('ADVANCED') +
     sw('gpuCull', 'GPU culling', gpuOff ? 'WebGPU only (this session runs WebGL 2).' : 'Hides off-screen props on the GPU. WebGPU only.', gpuOff) +

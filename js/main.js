@@ -235,11 +235,10 @@ function interp(on) {
   return keep;
 }
 
-// motion blur (mblur.js): what moves with the camera (the bike, or the walker on foot) is masked out of the blur
+// motion blur (mblur.js): speed-gated by the bike's speed; the bike itself moves with the camera, so it is masked out
 function mbState() {
-  MB.on = !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride; MB.amount = (cfg.mbAmt ?? 5) / 10;
-  if (F.on) { MB.focus.set(F.x, F.y + .9, F.z); MB.radius = 1.1; MB.speed = Math.hypot(F.vx, F.vz); }
-  else { MB.focus.set(S.x, S.zH + .75, S.z); MB.radius = 1.6; MB.speed = Math.abs(S.v); }
+  MB.on = !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride && !F.on; MB.amount = (cfg.mbAmt ?? 5) / 10; // vehicles only (GTA SA style)
+  MB.focus.set(S.x, S.zH + .75, S.z); MB.radius = 1.6; MB.speed = Math.abs(S.v);
 }
 
 /* ---------- loop ---------- */

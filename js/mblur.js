@@ -1,6 +1,10 @@
-// Motion blur (Options > LOOK, reloads; strength is a live slider). Camera motion blur by depth reprojection: every
-// pixel's position is rebuilt from the scene pass's depth, projected with LAST frame's camera, and the screen-space
-// difference is the velocity. No velocity buffer (no MRT, no per-object matrices), so the scene pass costs nothing extra.
+// Motion blur (Options > LOOK, reloads; strength is a live slider). Speed blur in the spirit of GTA San Andreas'
+// SpeedFX: it only appears when the VEHICLE is fast (ramps in from SPEED[0] to full at SPEED[1]), never on foot, and
+// looking around, turning or a swinging camera do not trigger it. The streaks are a real shutter on the camera's
+// TRAVEL: every pixel's position is rebuilt from the scene pass's depth and projected with the camera moved back to
+// last frame's position but keeping this frame's rotation (and lens), so rotation and FOV changes give no velocity.
+// The result streaks outwards from the point you are heading for, near things far more than the horizon, which stays
+// sharp. No velocity buffer (no MRT, no per-object matrices), so the scene pass costs nothing extra.
 //
 // Kawase: the streak is gathered from a half-resolution Kawase-blurred copy of the frame (2 passes of 4 bilinear taps:
 // the first is also the 2x downsample). The source is already smooth, so 5-8 taps along the velocity read as a
@@ -21,6 +25,8 @@ import { RenderTarget, NodeMaterial, RendererUtils, QuadMesh, TempNode, NodeUpda
 import { Fn, If, uv, uniform, vec2, vec3, vec4, float, passTexture, texture, context, screenUV, screenSize, screenCoordinate, smoothstep, mix, fract, dot, min, max } from 'three/tsl';
 
 const quad = new QuadMesh(); let rstate;
+// vehicle speed (m/s) where the blur starts to appear and where it is at full strength: 60 and 130 km/h
+export const MB_SPEED = [60 / 3.6, 130 / 3.6];
 
 // Kawase blur chain: offsets[i] is pass i's tap distance in destination texels (+0.5); pass 0 reads the full-size
 // source, the rest ping-pong between two targets at `scale` of the source size.
@@ -82,25 +88,27 @@ export function motionBlur(scenePass, { gpu = false, taps = 6 } = {}) {
     return vec4(res, 1);
   })();
 
-  const VP = new THREE.Matrix4(), PVP = new THREE.Matrix4(), T = new THREE.Matrix4(), cp = new THREE.Vector3(), lp = new THREE.Vector3(), q = new THREE.Quaternion(), lq = new THREE.Quaternion(), sc = new THREE.Vector3(), p = new THREE.Vector4();
-  const TEST = []; for (const z of [-3, -400]) for (const y of [-.9, 0, .9]) for (const x of [-.9, 0, .9]) TEST.push([x, y, z]); // NDC x/y, view depth (m)
-  let fresh = true, lastT = 0;
+  const PVP = new THREE.Matrix4(), T = new THREE.Matrix4(), cp = new THREE.Vector3(), lp = new THREE.Vector3(), q = new THREE.Quaternion(), lq = new THREE.Quaternion(), sc = new THREE.Vector3(), p = new THREE.Vector4();
+  const SPEED = MB_SPEED, TEST = []; for (const z of [-3, -400]) for (const y of [-.9, 0, .9]) for (const x of [-.9, 0, .9]) TEST.push([x, y, z]); // NDC x/y, view depth (m)
+  const pp = new THREE.Vector3(); let fresh = true, lastT = 0;
   const MB = {
     amount: .5,             // shutter, 0..1 of a 1/30 s exposure (Options slider)
-    on: false,              // main.js: riding / walking, not the garage, menu or pause
+    on: false,              // main.js: riding, not on foot, the garage, menu or pause
     focus: new THREE.Vector3(), radius: 1.5, speed: 0, // world centre + radius of what moves with the camera; its speed (m/s)
     cut() { fresh = true; }, // camera cut (camera mode switch, respawn): no streak for one frame
     active: false,          // what the last update decided (tools, HUD)
     update(cam, now) {
       cam.updateWorldMatrix(true, false); cam.matrixWorldInverse.copy(cam.matrixWorld).invert();
-      VP.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse);
       const dt = Math.min(.1, Math.max(1 / 250, (now - lastT) / 1000)); lastT = now;
       cam.matrixWorld.decompose(cp, q, sc);
       // a jump the bike can't have made, or a sudden turn of the view: a cut, not motion
       if (!fresh && (cp.distanceTo(lp) > 1.5 + 2 * this.speed * dt || q.angleTo(lq) > 1.2)) fresh = true;
-      lp.copy(cp); lq.copy(q);
-      const k = this.on && !fresh && this.amount > 0 ? this.amount / 30 / dt : 0;
-      if (fresh) PVP.copy(VP);
+      lp.copy(cp); lq.copy(q); MB.gate = 0;
+      if (fresh) pp.copy(cp);
+      const g = this.on ? Math.min(1, Math.max(0, (this.speed - SPEED[0]) / (SPEED[1] - SPEED[0]))) : 0, gate = g * g * (3 - 2 * g); // smoothstep
+      const k = gate && !fresh && this.amount > 0 ? this.amount / 30 / dt * gate : 0;
+      // last frame's camera = this frame's rotation and projection at last frame's position (travel only)
+      T.copy(cam.matrixWorld).setPosition(pp).invert(); PVP.multiplyMatrices(cam.projectionMatrix, T);
       uR.value.multiplyMatrices(PVP, cam.matrixWorld); uPI.value.copy(cam.projectionMatrixInverse);
       uF.value.copy(this.focus).applyMatrix4(cam.matrixWorldInverse); uFR.value = this.radius;
       let px = 0;
@@ -112,8 +120,8 @@ export function motionBlur(scenePass, { gpu = false, taps = 6 } = {}) {
           px = Math.max(px, Math.hypot(x - p.x / p.w, y - p.y / p.w) * .5 * k * 1000);
         }
       }
-      MB.active = kw.on = px > 1; uK.value = MB.active ? k : 0;
-      PVP.copy(VP); fresh = false;
+      MB.gate = gate; MB.active = kw.on = px > 1; uK.value = MB.active ? k : 0;
+      pp.copy(cp); fresh = false;
     },
   };
   return { node, MB };

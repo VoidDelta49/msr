@@ -1,4 +1,7 @@
 [
+  { "v": "11.55", "d": "2026-10-28", "t": [
+    "Motion blur is now speed blur in the style of GTA San Andreas: it only appears when you ride fast (fades in from 60 km/h, full at 130), never on foot. Looking around, leaning, turning and the camera swinging no longer blur anything: the streaks come only from how far the camera travelled, so they fan out from the point you are heading for and the horizon stays sharp."
+  ] },
   { "v": "11.54", "d": "2026-10-28", "t": [
     "Motion blur (Options > Graphics > Look, on by default, with a strength slider). The world streaks as you ride, like a camera shutter; your own bike and rider stay sharp. Built for phones: the streak is gathered from a half-resolution Kawase-blurred copy of the frame (two small passes), so a few samples give a smooth trail, and it switches itself off (no extra passes) whenever the view is not moving."
   ] },
