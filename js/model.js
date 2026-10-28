@@ -155,7 +155,7 @@ function drawLivery(kind, paint, lv = '') {
   const k = kind + paint + lv; if (LIV.key === k) return; LIV.key = k; const g = LIV.g;
   g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = paint; g.fillRect(0, 0, LW, LH);
   g.setTransform(LW / (LZ1 - LZ0), 0, 0, -LH / (LY1 - LY0), -LZ0 * LW / (LZ1 - LZ0), LY1 * LH / (LY1 - LY0)); // draw in (z, y) metres
-  let poly = (col, ...p) => { g.fillStyle = col; g.beginPath(); g.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i], p[i + 1]); g.closePath(); g.fill(); };
+  const poly = (col, ...p) => { g.fillStyle = col; g.beginPath(); g.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) g.lineTo(p[i], p[i + 1]); g.closePath(); g.fill(); };
   const K = '#15161a';
   if (kind === 'supersport') { // CBR650R: graphics traced from Honda's side photos (R: red Tricolour photo px, Q: black photo px)
     const R = (col, ...p) => poly(col, ...p.map((v, i) => i % 2 ? (333 - v) / 232 : .72 - (v - 132) / 232));
@@ -229,16 +229,19 @@ function drawLivery(kind, paint, lv = '') {
     poly(A, .1, .6, .5, .69, .86, .8, .93, .84, .5, .73, .12, .64);                             // rear slash
     poly(A, -.5, .6, -.3, .67, -.24, .64, -.46, .56);                                           // apron slash
     poly(K, .3, .74, .62, .8, .62, .82, .3, .76);                                               // crease
-  } else if (kind === 'nmax' || kind === 'xmax') { // NMAX 155 (reference photos): black face + lower apron, big "boomerang" lower side panel from the skirt up under the
-    // seat (gunmetal on the black bike, black on the others), dark crease along the rear body. XMAX: the same layout on its stretched body
-    // (the nmax() builder's kz / ky)
+  } else if (kind === 'nmax') { // NMAX 155 (reference photos): black face + lower apron, big "boomerang" lower side panel from the skirt up under the
+    // seat (gunmetal on the black bike, black on the others), dark crease along the rear body
     const Bm = lv === 'k' ? '#3a3d42' : K;
-    if (kind === 'xmax') { const pz = 1.54 / 1.34, py = .795 / .765, p0 = poly; poly = (c, ...p) => p0(c, ...p.map((v, i) => v * (i % 2 ? py : pz))); }
     poly(K, -.8, .22, -.3, .22, -.3, .44, -.48, .46, -.62, .5, -.8, .52);                                   // lower apron
     poly(K, -.8, .52, -.72, .55, -.68, .7, -.62, .84, -.57, 1.0, -.8, 1.0);                                 // face edge
     poly(Bm, -.56, .22, .3, .22, .55, .32, .7, .5, .72, .6, .5, .6, .3, .54, .1, .5, -.1, .44, -.5, .4);     // boomerang panel
     poly(K, .2, .63, .56, .7, .9, .8, .9, .82, .56, .72, .2, .65);                                           // crease
     poly(K, .5, .3, .95, .3, .95, .52, .66, .46);                                                            // lower rear
+  } else if (kind === 'xmax') { // XMAX 300 (reference photos): the painted panels are separate parts; dark accent along the lower edge of the rear
+    // cover and a dark band on the shield's back edge (red bike: darker accents)
+    const D = lv === 'r' ? '#1d1f23' : '#2a2c30';
+    poly(D, .08, .615, .7, .69, 1.0, .755, 1.0, .775, .7, .71, .08, .64);
+    poly(D, -.45, 1.04, -.4, 1.04, -.36, .86, -.34, .45, -.39, .45, -.41, .86);
   } else if (kind === 'rouser') { // Rouser NS125 (reference photos): grey band + black lower on the shrouds, black side panel with a grey slash, black tail underside, black cowl edge
     const Gy = lv === 'g' ? '#4b4f55' : '#7d8288';
     poly(K, -.48, .62, -.08, .62, -.08, .8, -.3, .82, -.48, .78);                               // shroud lower
@@ -1046,11 +1049,8 @@ function rouser(ct) {
   };
 }
 
-/* ---------- maxi scooters (Yamaha NMAX 155 2025, x = 0 / XMAX 300 2023, x = 1) ---------- */
-// One builder for both MAX scooters: the XMAX is the same design family one size up, so its body is the NMAX side view
-// stretched to the XMAX's numbers (kz = 1,540 / 1,340 mm wheelbase, ky = 795 / 765 mm seat, kx = 795 / 740 mm width) with its
-// own wheels, face, tail lamp and taller screen. With x = 0 every helper below is the identity, so the NMAX is unchanged.
-// NMAX 155: 13" alloys (110/70-13 ≈ 0.242 m front, 130/70-13 ≈ 0.256 m rear), 1,340 mm wheelbase, ~26° rake, 765 mm seat, 1,935 mm long,
+/* ---------- maxi scooter (Yamaha NMAX 155, 2025) ---------- */
+// 13" alloys (110/70-13 ≈ 0.242 m front, 130/70-13 ≈ 0.256 m rear), 1,340 mm wheelbase, ~26° rake, 765 mm seat, 1,935 mm long,
 // 1,160 / 1,200 mm tall (Standard / Tech MAX screen). Reference photos (black, PH): tall apron with a black face, an X of thin LED
 // strips meeting in the middle, small projector lamps low at each side and amber signals at the lower corners, tuning-fork badge
 // on the apron side, tall smoked screen fixed to the body with the meter under it, exposed bar on a black riser, flat floorboard
@@ -1058,66 +1058,52 @@ function rouser(ct) {
 // bike), long stepped seat, loop grab rail, twin rear shocks with copper sub-tanks, liquid-cooled unit swing (radiator on the right),
 // big black muffler with a black guard on the right, black 5-twin-spoke wheels, 230 mm discs front and rear (ABS ring on the front).
 // v = 1: Tech MAX (taller screen, carbon-pattern inserts, gold stitching; the TFT is drawn by hud.js nmax()).
-// XMAX 300 (PH 2023, reference photos): 120/70-15 front (≈ 0.274 m) and 140/70-14 rear (≈ 0.276 m) on 10-spoke alloys, 267 / 245 mm
-// discs, 2,180 mm long, 1,410 mm tall with the screen up; twin LED headlamps side by side in the middle of the face under an X of DRL
-// strips, tall screen, X-shaped tail lamp, wider bar. Meter = 4.2" TFT (hud.js xmax()).
-function nmax(ct, v, x = 0) {
-  const kz = x ? 1.54 / 1.34 : 1, ky = x ? .795 / .765 : 1, kx = x ? .795 / .74 : 1;
-  const Z = z => x ? z * kz : z, Y = y => x ? y * ky : y, X = a => x ? a * kx : a, W = w => x ? w * kx : w;
-  const P = pts => x ? pts.map(([a, b]) => [a * kz, b * ky]) : pts, V = ([a, b, c]) => x ? [a * kx, b * ky, c * kz] : [a, b, c];
-  const TZ = r => r && x ? r.map(([a, f]) => [a * kz, f]) : r, TY = r => r && x ? r.map(([a, f]) => [a * ky, f]) : r;
-  const bx = (w, h, d) => box(W(w), x ? h * ky : h, x ? d * kz : d), m = (g, mt, par, px, py, pz, ...r) => mk(g, mt, par, X(px), Y(py), Z(pz), ...r);
-  const pf = (pts, w, b, seg) => prof(P(pts), W(w), b, seg), tb = (a, b, r, mt, par, seg) => tube(V(a), V(b), r, mt, par, seg);
-  const rw = x ? .276 : .256, fr = x ? .274 : .242, rake = .46, headY = Y(.9), fZ = Z(-.7), fork = (headY - fr) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
-  B.G = { rw, rearZ: Z(.64), fork, rake, pivotY: Y(.32), pivotZ: Z(.02), swingX: -.1 }; B.wheelCol = 0x141518; B.cargo = { y: Y(.86), z: Z(.55) }; B.decal = MDec;
+function nmax(ct, v) {
+  const rw = .256, fr = .242, rake = .46, headY = .9, fZ = -.7, fork = (headY - fr) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
+  B.G = { rw, rearZ: .64, fork, rake, pivotY: .32, pivotZ: .02, swingX: -.1 }; B.wheelCol = 0x141518; B.cargo = { y: .86, z: .55 }; B.decal = MDec;
   const wheel = (t, disc) => wheelG(.2, t, .16, 5, .022, true, disc, { sx: [.045], sr: .158, sw: .004 });
-  const xwheel = (R, t, rim, disc) => wheelG(R, t, rim, 10, .015, false, disc, { sx: [.05], sr: rim - .002, sw: .004 });
-  B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, Z(.64)); ct.add(B.rearH); B.rearW = x ? xwheel(.21, .066, .17, .122) : wheel(.056, .115); B.rearH.add(B.rearW);
-  mk(x ? arc(.29, .315, 1.3, 2.6, .15) : arc(.27, .295, 1.3, 2.6, .13), MF, B.rearH, 0, 0, 0);               // rear hugger
+  B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .64); ct.add(B.rearH); B.rearW = wheel(.056, .115); B.rearH.add(B.rearW);
+  mk(arc(.27, .295, 1.3, 2.6, .13), MF, B.rearH, 0, 0, 0);                                                    // rear hugger
   mk(box(.045, .065, .085), MK, B.rearH, .09, .06, -.06);                                                      // rear caliper (disc on the right)
-  B.swing = m(pf([[-.5, -.07], [-.5, .07], [-.2, .11], [.42, .09], [.52, .02], [.48, -.07], [.2, -.1]], .13, .015), MG, ct, -.1, .29, .33); // unit swing (CVT case left)
-  m(pf([[-.14, .19], [.06, .19], [.08, .39], [-.12, .41]], .17, .015), MG, ct, -.02, 0, 0);                   // cylinder + head
-  m(bx(.02, .16, .2), MGrl, ct, .145, .35, .08, -.35);                                                         // radiator louvres (right)
+  B.swing = mk(prof([[-.5, -.07], [-.5, .07], [-.2, .11], [.42, .09], [.52, .02], [.48, -.07], [.2, -.1]], .13, .015), MG, ct, -.1, .29, .33); // unit swing (CVT case left)
+  mk(prof([[-.14, .19], [.06, .19], [.08, .39], [-.12, .41]], .17, .015), MG, ct, -.02, 0, 0);                 // cylinder + head
+  mk(box(.02, .16, .2), MGrl, ct, .145, .35, .08, -.35);                                                       // radiator louvres (right)
   for (const s of [-1, 1]) {                                                                                   // twin shocks, copper sub-tanks
-    tb([s * .12, .31, .62], [s * .12, .64, .42], .013, MC, ct); tb([s * .12, .37, .585], [s * .12, .56, .47], .031, MB, ct, 8);
-    m(cyl(.021, .021, .1, 8), MCop, ct, s * .152, .57, .465, -1.03);
+    tube([s * .12, .31, .62], [s * .12, .64, .42], .013, MC, ct); tube([s * .12, .37, .585], [s * .12, .56, .47], .031, MB, ct, 8);
+    mk(cyl(.021, .021, .1, 8), MCop, ct, s * .152, .57, .465, -1.03);
   }
   // bodywork
-  m(pf([[-.36, .3], [.14, .3], [.16, .35], [-.36, .35]], .38, .012), MK, ct, 0, 0, 0); for (const s of [-1, 1]) m(bx(.13, .008, .42), MRib, ct, s * .1, .355, -.12); // flat floorboard + mats
-  m(pf([[-.56, .32], [-.44, .22], [.3, .22], [.42, .3], [.38, .37], [-.48, .38]], .4, .014), MP, ct, 0, 0, 0); // deep side skirt
-  m(pf([[-.32, .35], [-.12, .35], [-.08, .4], [-.3, .4]], .2, .02), MK, ct, 0, 0, 0);                         // low centre rise at the toe (fuel lid)
-  m(pf([[-.31, .98], [-.24, .96], [-.19, .66], [-.16, .35], [-.25, .35], [-.28, .66]], .42, .015), MK, ct, 0, 0, 0); // inner leg shield
-  m(taper(pf([[-.74, .56], [-.72, .66], [-.66, .78], [-.58, .9], [-.5, .98], [-.32, 1.0], [-.25, .76], [-.18, .4], [-.34, .35], [-.48, .4], [-.6, .46], [-.7, .5]], .5, .035), TZ([[-.76, .55], [-.55, 1]])), MP, ct, 0, 0, 0); // front apron (pointed nose)
-  m(taper(pf([[-.775, .54], [-.752, .66], [-.695, .78], [-.625, .89], [-.585, .89], [-.655, .74], [-.705, .58], [-.745, .5]], .3, .02), null, TY([[.5, .75], [.9, 1]])), MK, ct, 0, 0, 0); // black face
+  mk(prof([[-.36, .3], [.14, .3], [.16, .35], [-.36, .35]], .38, .012), MK, ct, 0, 0, 0); for (const s of [-1, 1]) mk(box(.13, .008, .42), MRib, ct, s * .1, .355, -.12); // flat floorboard + mats
+  mk(prof([[-.56, .32], [-.44, .22], [.3, .22], [.42, .3], [.38, .37], [-.48, .38]], .4, .014), MP, ct, 0, 0, 0); // deep side skirt
+  mk(prof([[-.32, .35], [-.12, .35], [-.08, .4], [-.3, .4]], .2, .02), MK, ct, 0, 0, 0);                      // low centre rise at the toe (fuel lid)
+  mk(prof([[-.31, .98], [-.24, .96], [-.19, .66], [-.16, .35], [-.25, .35], [-.28, .66]], .42, .015), MK, ct, 0, 0, 0); // inner leg shield
+  mk(taper(prof([[-.74, .56], [-.72, .66], [-.66, .78], [-.58, .9], [-.5, .98], [-.32, 1.0], [-.25, .76], [-.18, .4], [-.34, .35], [-.48, .4], [-.6, .46], [-.7, .5]], .5, .035), [[-.76, .55], [-.55, 1]]), MP, ct, 0, 0, 0); // front apron (pointed nose)
+  mk(taper(prof([[-.775, .54], [-.752, .66], [-.695, .78], [-.625, .89], [-.585, .89], [-.655, .74], [-.705, .58], [-.745, .5]], .3, .02), null, [[.5, .75], [.9, 1]]), MK, ct, 0, 0, 0); // black face
   for (const s of [-1, 1]) {
-    m(bx(.14, .013, .014), MHead, ct, s * .05, .7, -.765, .4, 0, s * .62);                                  // X of LED strips meeting mid-face
-    m(bx(.07, .013, .014), MHead, ct, s * .1, .81, -.71, .55, 0, -s * .3);                                       // upper DRL brows
-    if (x) m(bx(.075, .045, .02), MHead, ct, s * .05, .615, -.768, .3, s * .12, 0);                              // XMAX: twin headlamps side by side, mid-face
-    else m(box(.055, .035, .02), MHead, ct, s * .095, .6, -.758, .3, s * .3, 0);                                 // projector lamps
-    m(box(.035, .02, .02), MAmb, ct, s * .15, .555, -.735, .3, s * .45, 0);                                      // signals
-    m(cyl(.026, .026, .006, 12), MC, ct, s * .252, .86, -.45, 0, 0, PI / 2);                                     // tuning-fork badge (plain disc)
+    mk(box(.14, .013, .014), MHead, ct, s * .05, .7, -.765, .4, 0, s * .62);                               // X of LED strips meeting mid-face
+    mk(box(.07, .013, .014), MHead, ct, s * .1, .81, -.71, .55, 0, -s * .3);                                    // upper DRL brows
+    mk(box(.055, .035, .02), MHead, ct, s * .095, .6, -.758, .3, s * .3, 0);                                      // projector lamps
+    mk(box(.035, .02, .02), MAmb, ct, s * .15, .555, -.735, .3, s * .45, 0);                                      // signals
+    mk(cyl(.026, .026, .006, 12), MC, ct, s * .252, .86, -.45, 0, 0, PI / 2);                                    // tuning-fork badge (plain disc)
   }
-  m(box(.035, .03, .02), MC, ct, 0, .705, -.78, .4);                                                           // centre emblem where the strips cross
-  // windscreen: fixed to the body, raked back; meter under it (XMAX: the tall screen, raised)
-  const sTop = x ? 1.26 : v ? 1.2 : 1.16;
-  m(taper(pf([[-.6, .93], [-.46, sTop], [-.45, sTop], [-.59, .93]], .38, .004), null, TY([[.93, 1], [1.2, .72]])), MVisG, ct, 0, 0, 0);
-  m(pf([[-.5, .95], [-.47, 1.09], [-.45, 1.09], [-.31, 1.03], [-.3, 1.0], [-.46, .93]], .3, .015), MK, ct, 0, 0, 0); // meter hood: visor peak at the front, meter on the rear slope (a rear peak hid it from the rider); tall enough to swallow the bar riser cover
-  clusterPlane(ct, 0, Y(1.06), Z(-.38), x ? Math.atan2(.06 * ky, .14 * kz) - PI / 2 : -1.166, x || v ? .24 : .22, .02); // on the hood's rear slope
+  mk(box(.035, .03, .02), MC, ct, 0, .705, -.78, .4);                                                          // centre emblem where the strips cross
+  // windscreen: fixed to the body, raked back; meter under it
+  mk(taper(prof([[-.6, .93], [-.46, v ? 1.2 : 1.16], [-.45, v ? 1.2 : 1.16], [-.59, .93]], .38, .004), null, [[.93, 1], [1.2, .72]]), MVisG, ct, 0, 0, 0);
+  mk(prof([[-.5, .95], [-.47, 1.09], [-.45, 1.09], [-.31, 1.03], [-.3, 1.0], [-.46, .93]], .3, .015), MK, ct, 0, 0, 0); // meter hood: visor peak at the front, meter on the rear slope (a rear peak hid it from the rider); tall enough to swallow the bar riser cover
+  clusterPlane(ct, 0, 1.06, -.38, -1.166, v ? .24 : .22, .02);
   if (v) for (const s of [-1, 1]) {                                                                            // Tech MAX carbon-pattern inserts
-    m(pf([[-.5, .6], [-.38, .64], [-.33, .52], [-.44, .49]], .006, .002), MCF, ct, s * .252, 0, 0);
-    m(pf([[.2, .64], [.48, .69], [.45, .655], [.22, .61]], .006, .002), MCF, ct, s * .168, 0, 0);
+    mk(prof([[-.5, .6], [-.38, .64], [-.33, .52], [-.44, .49]], .006, .002), MCF, ct, s * .252, 0, 0);
+    mk(prof([[.2, .64], [.48, .69], [.45, .655], [.22, .61]], .006, .002), MCF, ct, s * .168, 0, 0);
   }
-  m(pf([[.04, .72], [.4, .74], [.74, .8], [.95, .84], [.98, .79], [.86, .68], [.6, .54], [.36, .48], [.14, .46], [.04, .56]], .33, .03), MP, ct, 0, 0, 0); // rear body
-  m(pf([[.12, .46], [.32, .44], [.54, .5], [.64, .4], [.5, .3], [.18, .3]], .28, .01), MK, ct, 0, 0, 0);     // lower rear cover
-  for (const s of [-1, 1]) m(new THREE.PlaneGeometry(.14, .035), MDec, ct, s * .168, .74, .72, 0, s * PI / 2, -.12 * s); // model badge (pseudo-letters)
-  m(pf([[-.02, .74], [.03, .775], [.36, .77], [.45, .8], [.78, .845], [.84, .825], [.8, .79], [.42, .76], [0, .72]], .34, .035, 2), MS, ct, 0, 0, 0); // stepped seat
-  if (v) for (const s of [-1, 1]) tb([s * .168, .765, .02], [s * .168, .775, .4], .004, MGold, ct, 4);         // gold stitching (Tech MAX)
-  for (const s of [-1, 1]) tb([s * .15, .82, .56], [s * .13, .86, .88], .015, MK, ct); tb([-.13, .86, .88], [.13, .86, .88], .015, MK, ct); // loop grab rail
-  if (x) for (const s of [-1, 1]) m(box(.2, .024, .03), MTail, ct, 0, .8, .975, .7, 0, s * .32);              // XMAX: X-shaped tail lamp
-  else m(box(.17, .04, .03), MTail, ct, 0, .8, .975, .7);
-  for (const s of [-1, 1]) m(box(.04, .03, .04), MAmb, ct, s * .1, .58, .9);
-  m(pf([[.8, .66], [.9, .68], [1.0, .42], [.96, .36], [.86, .44]], .11, .012), MK, ct, 0, 0, 0);              // plate hanger
-  m(box(.2, .12, .008), MPl, ct, 0, .4, 1.0, .35);
+  mk(prof([[.04, .72], [.4, .74], [.74, .8], [.95, .84], [.98, .79], [.86, .68], [.6, .54], [.36, .48], [.14, .46], [.04, .56]], .33, .03), MP, ct, 0, 0, 0); // rear body
+  mk(prof([[.12, .46], [.32, .44], [.54, .5], [.64, .4], [.5, .3], [.18, .3]], .28, .01), MK, ct, 0, 0, 0);   // lower rear cover
+  for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.14, .035), MDec, ct, s * .168, .74, .72, 0, s * PI / 2, -.12 * s); // model badge (pseudo-letters)
+  mk(prof([[-.02, .74], [.03, .775], [.36, .77], [.45, .8], [.78, .845], [.84, .825], [.8, .79], [.42, .76], [0, .72]], .34, .035, 2), MS, ct, 0, 0, 0); // stepped seat
+  if (v) for (const s of [-1, 1]) tube([s * .168, .765, .02], [s * .168, .775, .4], .004, MGold, ct, 4);       // gold stitching (Tech MAX)
+  for (const s of [-1, 1]) tube([s * .15, .82, .56], [s * .13, .86, .88], .015, MK, ct); tube([-.13, .86, .88], [.13, .86, .88], .015, MK, ct); // loop grab rail
+  mk(box(.17, .04, .03), MTail, ct, 0, .8, .975, .7); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .58, .9);
+  mk(prof([[.8, .66], [.9, .68], [1.0, .42], [.96, .36], [.86, .44]], .11, .012), MK, ct, 0, 0, 0);            // plate hanger
+  mk(box(.2, .12, .008), MPl, ct, 0, .4, 1.0, .35);
   // steering
   T0 = [headZ, headY]; RK = rake;
   const tilt = new THREE.Group(); tilt.position.set(0, headY, headZ); tilt.rotation.x = rake; ct.add(tilt);
@@ -1125,27 +1111,110 @@ function nmax(ct, v, x = 0) {
   for (const s of [-1, 1]) mk(cyl(.02, .02, .42), MC, st, s * .075, -.24, 0);
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
   for (const s of [-1, 1]) mk(cyl(.031, .028, .3, 8), MK, B.slider, s * .075, .15, 0);
-  B.frontW = x ? xwheel(.222, .052, .18, .133) : wheel(.042, .115); B.slider.add(B.frontW);
-  mk(x ? arc(.285, .31, .95 + rake, 2.6 + rake, .14) : arc(.265, .29, .95 + rake, 2.6 + rake, .12), MF, B.slider, 0, 0, 0); mk(box(.045, .07, .09), MK, B.slider, .085, .02, .06); // fender, caliper
+  B.frontW = wheel(.042, .115); B.slider.add(B.frontW);
+  mk(arc(.265, .29, .95 + rake, 2.6 + rake, .12), MF, B.slider, 0, 0, 0); mk(box(.045, .07, .09), MK, B.slider, .085, .02, .06); // fender, caliper
   mk(cyl(.05, .05, .008, 12), MAlu, B.slider, .07, 0, 0, 0, 0, PI / 2);                                         // ABS sensor ring
   mk(prof([[-.08, .03], [.06, .03], [.08, .1], [-.06, .12]], .2, .02), MK, st, 0, 0, 0);                        // bar riser cover
-  controls(st, .13, .03, x ? .36 : .34, x ? .25 : .24, [.31, .22, -.06]);
-  if (x) rider(ct, [1.1, .35, -.1], [1.46, .3], [.27, 1.15, -.05, -.38, .76], [[.15, .87, .14, -.05, .42, .14], [.17, .6, -.15, .1, .43, .11]]);
-  else rider(ct, [1.07, .33, -.1], [1.43, .28], [.26, 1.12, 0, -.42, .68], [[.15, .84, .12, -.05, .42, .14], [.17, .575, -.12, .1, .43, .11]]);
-  B.cam = new THREE.Group(); B.cam.position.set(0, x ? 1.42 : 1.39, x ? .25 : .22); ct.add(B.cam);
+  controls(st, .13, .03, .34, .24, [.31, .22, -.06]);
+  rider(ct, [1.07, .33, -.1], [1.43, .28], [.26, 1.12, 0, -.42, .68], [[.15, .84, .12, -.05, .42, .14], [.17, .575, -.12, .1, .43, .11]]);
+  B.cam = new THREE.Group(); B.cam.position.set(0, 1.39, .22); ct.add(B.cam);
   B.exh = new THREE.Group(); ct.add(B.exh);
   // stock: big black can angled up on the right with a black guard and end cap; aftermarket: shorter, louder cans
   B.buildExh = (s, cf) => {
-    B.exh.clear(); const col = [0x18191c, 0x111111, 0x6f7fa8][s], mt = cf ? MCF : xstd(col, .5, .45), L = [1, .85, .75][s];
-    tb([.05, .2, -.04], [.14, .24, .26], .024, MC, B.exh);
-    const Pe = [[.24, .36], [.24 + .44 * L, .47], [.32 + .46 * L, .45], [.32 + .46 * L, .3], [.32, .22], [.22, .26]];
-    m(pf(Pe, .12, .016), mt, B.exh, .18, 0, 0); m(cyl(.032, .032, .05, 8), MB, B.exh, .18, .38, .35 + .47 * L, PI / 2);
-    if (s === 0) m(pf([[.28, .41], [.66, .47], [.66, .37], [.28, .3]], .014, .004), MB, B.exh, .25, 0, 0); // black guard
+    B.exh.clear(); const col = [0x18191c, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, .5, .45), L = [1, .85, .75][s];
+    tube([.05, .2, -.04], [.14, .24, .26], .024, MC, B.exh);
+    const P = [[.24, .36], [.24 + .44 * L, .47], [.32 + .46 * L, .45], [.32 + .46 * L, .3], [.32, .22], [.22, .26]];
+    mk(prof(P, .12, .016), m, B.exh, .18, 0, 0); mk(cyl(.032, .032, .05, 8), MB, B.exh, .18, .38, .35 + .47 * L, PI / 2);
+    if (s === 0) mk(prof([[.28, .41], [.66, .47], [.66, .37], [.28, .3]], .014, .004), MB, B.exh, .25, 0, 0); // black guard
     batchExh();
   };
 }
 
-const MODELS = { sport, scooter, supersport, underbone, tmx, aerox, rouser, h2, nmax, xmax: (ct, v) => nmax(ct, v, 1), macho: (ct, v) => tmx(ct, v, 1) };
+/* ---------- big maxi scooter (Yamaha XMAX 300, PH 2023) ---------- */
+// Own builder (the XMAX is not a stretched NMAX): 120/70-15 front (≈ 0.274 m) and 140/70-14 rear (≈ 0.276 m), 1,540 mm wheelbase,
+// ~26.5° rake, 795 mm seat, 2,180 mm long, 1,410 mm tall with the screen up. Reference photos (light grey with bronze wheels, matte
+// dark grey, red): two-tone body. Painted: tall angular front side shields from the screen base down to the floor, a lower front
+// panel behind the front wheel, a sharp fin along the bottom of the front skirt, the rear side covers (crisp lower edge rising to
+// the tail) and the split grab rails. Dark gunmetal: the narrow face with two slim horizontal LED headlamps under an X of DRL
+// strips, the cowl under the screen, floor, lower skirt, the lower rear panel with its grille, the plate hanger. Tall CLEAR screen
+// on dark stays, light units at the top corners of the shields, bar on the fork top (exposed, black) with long mirror stalks,
+// meter in the cowl ahead of the bar, wide two-step seat, sharp tail lamp, exposed twin rear springs, grey engine case, black
+// muffler with a silver end cap on the right, 5 split-spoke wheels, single 267 mm front disc.
+function xmax(ct) {
+  const rw = .276, fr = .274, rake = .4625, headY = .92, fZ = -.8, fork = (headY - fr) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
+  B.G = { rw, rearZ: .74, fork, rake, pivotY: .3, pivotZ: 0, swingX: -.1 }; B.wheelCol = 0x141518; B.cargo = { y: .92, z: .62 }; B.decal = MDec;
+  const wheel = (R, t, rim, disc) => wheelG(R, t, rim, 5, .016, true, disc, { sx: [.05], sr: rim - .002, sw: .004 });
+  B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .74); ct.add(B.rearH); B.rearW = wheel(.21, .066, .17, .122); B.rearH.add(B.rearW);
+  mk(arc(.29, .315, 1.3, 2.6, .15), MF, B.rearH, 0, 0, 0);                                                     // rear hugger
+  mk(box(.045, .065, .085), MK, B.rearH, .1, .06, -.07);                                                       // rear caliper (disc on the right)
+  // engine + drive
+  B.swing = mk(prof([[-.55, -.07], [-.55, .08], [-.2, .12], [.5, .1], [.6, .02], [.56, -.08], [.2, -.11]], .14, .015), MEng, ct, -.1, .3, .36); // unit swing (CVT case left)
+  mk(prof([[-.16, .2], [.08, .2], [.1, .42], [-.14, .44]], .18, .015), MEng, ct, -.02, 0, 0);                // cylinder + head
+  for (const s of [-1, 1]) {                                                                                   // twin shocks, exposed springs
+    tube([s * .13, .32, .71], [s * .13, .67, .5], .013, MC, ct); tube([s * .13, .4, .665], [s * .13, .6, .545], .034, MK, ct, 8);
+  }
+  // body
+  mk(prof([[-.52, .36], [.06, .36], [.09, .42], [-.5, .42]], .42, .012), ME, ct, 0, 0, 0);                    // floorboard
+  for (const s of [-1, 1]) mk(box(.13, .008, .46), MRib, ct, s * .11, .425, -.2);                             // floor mats
+  mk(prof([[-.46, .42], [-.22, .42], [-.2, .48], [-.44, .5]], .16, .02), ME, ct, 0, 0, 0);                    // low centre rise at the toe
+  mk(cyl(.035, .035, .012, 10), MRd, ct, 0, .49, -.33, -.1);                                                   // fuel lid
+  mk(prof([[-.6, .4], [-.52, .24], [.0, .19], [.12, .3], [.06, .42], [-.52, .42]], .4, .014), ME, ct, 0, 0, 0); // lower skirt under the floor
+  mk(prof([[.0, .42], [.06, .62], [.36, .62], [.6, .66], [.64, .5], [.46, .34], [.12, .3]], .38, .014), ME, ct, 0, 0, 0); // lower rear panel
+  for (let i = 0; i < 4; i++) for (const s of [-1, 1]) mk(box(.006, .018, .14), MGrl, ct, s * .19, .44 + i * .035, .22 + i * .018, 0, 0, 0); // its grille slats
+  mk(prof([[-.5, .62], [-.36, .58], [-.4, .96], [-.5, 1.0]], .4, .015), ME, ct, 0, 0, 0);                    // inner leg shield
+  mk(taper(prof([[-.98, .72], [-.95, .84], [-.86, .96], [-.72, 1.03], [-.58, 1.06], [-.48, 1.0], [-.46, .74], [-.52, .58], [-.66, .54], [-.84, .58], [-.94, .64]], .38, .03),
+    [[-.98, .5], [-.72, 1]]), ME, ct, 0, 0, 0);                                                               // narrow dark face / nose
+  for (const s of [-1, 1]) {
+    mk(prof([[-.76, 1.03], [-.44, 1.04], [-.38, .86], [-.35, .45], [-.46, .44], [-.86, .72], [-.84, .84]], .05, .012), MP, ct, s * .205, 0, 0); // front side shield (lower edge: a diagonal from the nose down to the floor)
+    mk(prof([[-.76, .7], [-.5, .55], [-.46, .36], [-.56, .3], [-.68, .4], [-.76, .56]], .04, .01), MP, ct, s * .2, 0, 0); // lower front panel under the diagonal, beside the wheel
+    mk(prof([[-.58, .3], [-.44, .36], [-.12, .3], [.02, .21], [-.3, .2], [-.5, .24]], .03, .008), MP, ct, s * .205, 0, 0); // sharp fin along the skirt
+    mk(cyl(.028, .028, .006, 12), MC, ct, s * .232, .9, -.58, 0, 0, PI / 2);                                   // tuning-fork badge (plain disc)
+    mk(box(.06, .03, .05), MC, ct, s * .2, 1.03, -.7, .2);                                                     // clear light units at the shield tops
+    mk(box(.15, .042, .03), MHead, ct, s * .075, .84, -.93, .25, s * .25, 0);                                 // slim horizontal headlamp
+    mk(box(.11, .012, .014), MHead, ct, s * .045, .92, -.86, .45, 0, s * .6);                               // X of DRL strips above
+    mk(box(.035, .02, .02), MAmb, ct, s * .17, .7, -.86, .3, s * .45, 0);                                   // lower position / signal
+  }
+  mk(box(.03, .025, .02), MC, ct, 0, .92, -.87, .45);                                                          // where the DRL strips cross
+  // cowl under the screen (meter on its rear slope, ahead of the bar), tall clear screen on dark stays
+  mk(prof([[-.68, 1.0], [-.64, 1.12], [-.56, 1.15], [-.47, 1.1], [-.46, 1.02], [-.56, .98]], .34, .015), ME, ct, 0, 0, 0);
+  clusterPlane(ct, 0, 1.125, -.515, Math.atan2(.05, .09) - PI / 2, .22, .02);
+  mk(taper(prof([[-.7, 1.06], [-.58, 1.41], [-.55, 1.41], [-.67, 1.05]], .46, .004), null, [[1.05, .7], [1.41, 1]]), MGls, ct, 0, 0, 0);
+  for (const s of [-1, 1]) tube([s * .13, 1.0, -.62], [s * .15, 1.2, -.64], .008, MK, ct, 5);               // screen stays
+  // rear
+  mk(taper(prof([[.0, .6], [.0, .76], [.4, .78], [.62, .8], [.85, .86], [1.08, .9], [1.12, .86], [1.02, .76], [.7, .68], [.35, .62]], .36, .03), [[.8, 1], [1.12, .55]]), MP, ct, 0, 0, 0); // rear side covers + tail
+  for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.15, .036), MDec, ct, s * .182, .71, .82, 0, s * PI / 2, -.12 * s); // model badge (pseudo-letters)
+  mk(prof([[-.1, .76], [-.06, .815], [.3, .815], [.42, .845], [.5, .89], [.95, .92], [1.0, .895], [.95, .86], [.45, .82], [-.02, .75]], .37, .035, 2), MS, ct, 0, 0, 0); // two-step seat
+  for (const s of [-1, 1]) { tube([s * .15, .84, .5], [s * .15, .9, .62], .018, MP, ct); tube([s * .15, .9, .62], [s * .12, .93, 1.0], .018, MP, ct); } // split grab rails
+  mk(box(.2, .04, .04), MTail, ct, 0, .86, 1.11, .5);                                                          // sharp tail lamp
+  mk(prof([[.86, .66], [.96, .68], [1.1, .42], [1.05, .36], [.92, .46]], .1, .012), MK, ct, 0, 0, 0);          // plate hanger
+  for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .55, 1.03);                               // rear signals
+  mk(box(.2, .12, .008), MPl, ct, 0, .44, 1.08, .35);
+  // steering: bar on the fork top
+  T0 = [headZ, headY]; RK = rake;
+  const tilt = new THREE.Group(); tilt.position.set(0, headY, headZ); tilt.rotation.x = rake; ct.add(tilt);
+  const st = B.steer = new THREE.Group(); tilt.add(st);
+  for (const s of [-1, 1]) mk(cyl(.021, .021, .44), MC, st, s * .08, -.24, 0);
+  B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
+  for (const s of [-1, 1]) mk(cyl(.033, .03, .3, 8), MK, B.slider, s * .08, .15, 0);
+  B.frontW = wheel(.222, .052, .18, .133); B.slider.add(B.frontW);
+  mk(arc(.29, .315, .95 + rake, 2.6 + rake, .15), MF, B.slider, 0, 0, 0); mk(box(.045, .07, .09), MK, B.slider, .09, .02, .06); // fender, caliper
+  mk(cyl(.05, .05, .008, 12), MAlu, B.slider, .075, 0, 0, 0, 0, PI / 2);                                        // ABS sensor ring
+  mk(box(.2, .05, .07), MK, st, 0, .12, 0);                                                                     // top clamp
+  controls(st, .15, .0, .37, .26, [.34, .3, -.05]);
+  rider(ct, [1.1, .33, -.14], [1.46, .27], [.27, 1.145, -.065, -.33, .77], [[.15, .875, .1, -.05, .42, .14], [.17, .645, -.15, .15, .43, .11]]);
+  B.cam = new THREE.Group(); B.cam.position.set(0, 1.43, .24); ct.add(B.cam);
+  B.exh = new THREE.Group(); ct.add(B.exh);
+  // stock: black can on the right with a silver end cap; aftermarket: shorter, louder cans
+  B.buildExh = (s, cf) => {
+    B.exh.clear(); const col = [0x17181b, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, .5, .45), L = [1, .85, .75][s];
+    tube([.06, .2, -.02], [.15, .26, .3], .026, MC, B.exh);
+    mk(prof([[.28, .3], [.32 + .5 * L, .43], [.38 + .5 * L, .41], [.38 + .5 * L, .29], [.36, .23], [.26, .26]], .13, .018), m, B.exh, .2, 0, 0);
+    mk(cyl(.045, .045, .04, 10), s ? MB : MSil, B.exh, .2, .35, .4 + .5 * L, PI / 2 - .2);                       // end cap
+    batchExh();
+  };
+}
+
+const MODELS = { sport, scooter, supersport, underbone, tmx, aerox, rouser, h2, nmax, xmax, macho: (ct, v) => tmx(ct, v, 1) };
 export function buildModel(bike, spec) {
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;

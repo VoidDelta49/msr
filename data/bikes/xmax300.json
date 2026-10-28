@@ -4,28 +4,28 @@
  "short": "XMAX 300",
  "tag": "CVT automatic \u00b7 Blue Core 292 cc \u00b7 big maxi-scooter \u00b7 TCS + ABS",
  "class": "SCOOTER",
- "blurb": "292 cc liquid-cooled SOHC 4-valve Blue Core single (70.0 \u00d7 75.9 mm, 10.9:1), 20.6 kW (28 PS) @ 7,250 rpm, 29 Nm @ 5,750 rpm. V-belt CVT with a dry centrifugal clutch. 267 mm front and 245 mm rear discs with ABS, traction control, smart key, 15\" front / 14\" rear alloys (120/70-15, 140/70-14), 110 mm fork, twin rear shocks, 1,540 mm wheelbase, 795 mm seat, 2,180 mm long, 183 kg kerb, 13.2 L tank, 4.2\" TFT with a separate LCD. The NMAX's big brother: same family, about 50 kg heavier and nearly twice the power.",
+ "blurb": "292 cc liquid-cooled SOHC 4-valve Blue Core single (70.0 \u00d7 75.9 mm, 10.9:1), 20.6 kW (28 PS) @ 7,250 rpm, 29 Nm @ 5,750 rpm. V-belt CVT with a dry centrifugal clutch. 267 mm front and 245 mm rear discs with ABS, traction control, smart key, 15\" front / 14\" rear alloys (120/70-15, 140/70-14), 110 mm fork, twin rear shocks, 1,540 mm wheelbase, 795 mm seat, 2,180 mm long, 183 kg kerb, 13.2 L tank, 4.2\" TFT with a separate LCD. The NMAX's big brother: about 50 kg heavier and nearly twice the power.",
  "model": "xmax",
  "cluster": "xmax",
  "drivetrain": "cvt",
  "sidecar": {
   "struts": [
    [
-    0.11,
-    0.31,
-    -0.29,
+    0.12,
+    0.32,
+    -0.3,
     0.3
    ],
    [
     0.12,
-    0.3,
-    0.37,
+    0.31,
+    0.38,
     0.3
    ],
    [
-    0.11,
-    0.7,
-    0.34,
+    0.12,
+    0.74,
+    0.36,
     0.9
    ]
   ]
@@ -49,8 +49,8 @@
   "pil": {
    "dz": 0.36,
    "dy": 0.06,
-   "x": 0.03,
-   "h": 1.21
+   "x": 0.07,
+   "h": 1.22
   },
   "abs": 1,
   "tc": 1
@@ -323,39 +323,33 @@
    "l": "Paint",
    "o": [
     {
-     "n": "Black",
-     "c": "#16171a",
+     "n": "Light Gray",
+     "c": "#b7bdc2",
+     "lv": "g",
+     "rough": 0.4,
+     "metal": 0.25,
+     "wc": "#9a6a3a"
+    },
+    {
+     "n": "Matte Dark Gray",
+     "c": "#4a4d52",
      "lv": "k",
+     "rough": 0.75,
+     "wc": "#18191c"
+    },
+    {
+     "n": "Red",
+     "c": "#b01f1b",
+     "lv": "r",
      "rough": 0.35,
-     "wc": "#141518"
-    },
-    {
-     "n": "Matte Gray",
-     "c": "#6c7075",
-     "lv": "g",
-     "rough": 0.7,
-     "wc": "#141518"
-    },
-    {
-     "n": "Bronze",
-     "c": "#8a6a45",
-     "lv": "g",
-     "rough": 0.45,
-     "metal": 0.5,
-     "wc": "#141518"
-    },
-    {
-     "n": "Dark Blue",
-     "c": "#25344f",
-     "lv": "g",
-     "rough": 0.45,
      "metal": 0.3,
      "wc": "#141518"
     },
     {
-     "n": "White",
-     "c": "#e8e8e3",
-     "lv": "g",
+     "n": "Black",
+     "c": "#16171a",
+     "lv": "k",
+     "rough": 0.35,
      "wc": "#141518"
     }
    ]
