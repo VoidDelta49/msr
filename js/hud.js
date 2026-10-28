@@ -179,7 +179,7 @@ export function drawCluster(inWorld = true) {
 /* minimap */
 const mm = $('mini').getContext('2d'); let miniKey = '';
 export function drawMini(MAP, V) { // V = world.js MAPV {cx, cz, w metres, n px}
-  const P = at(), MI0 = ctx.MI, k = (P.x * 2 | 0) + ',' + (P.z * 2 | 0) + ',' + (P.psi * 100 | 0) + ',' + (MI0 ? MI0.pk : '') + (ctx.mpK || '');
+  const P = at(), MI0 = ctx.MI, k = (P.x * 2 | 0) + ',' + (P.z * 2 | 0) + ',' + (P.psi * 100 | 0) + ',' + (MI0 ? MI0.pk : '') + (ctx.mpK || '') + (ctx.wpK || '');
   if (k === miniKey) return; miniKey = k;
   mm.clearRect(0, 0, 140, 140); mm.save(); mm.beginPath(); mm.arc(70, 70, 68, 0, 7); mm.clip();
   const px = x => ((x - V.cx) / V.w + .5) * V.n, pz = z => ((z - V.cz) / V.w + .5) * V.n, u = px(P.x), v = pz(P.z), Z = 2.6;
@@ -201,8 +201,21 @@ export function drawMini(MAP, V) { // V = world.js MAPV {cx, cz, w metres, n px}
     const dx = (px(p.x) - u) * Z, dz = (pz(p.z) - v) * Z, X = dx * ca - dz * sa, Y = dx * sa + dz * ca, d = Math.hypot(X, Y), f = d > 60 ? 60 / d : 1;
     mm.fillStyle = '#3ad7ff'; mm.beginPath(); mm.arc(70 + X * f, 70 + Y * f, 3.5, 0, 7); mm.fill(); mm.strokeStyle = '#0b1a22'; mm.lineWidth = 1.2; mm.stroke();
   }
+  // waypoint (map.js): a pin while it is on the minimap, an arrow on the rim when it is further off; the distance sits at the bottom
+  const WP = ctx.WP;
+  if (WP && WP.on) {
+    const dx = (px(WP.x) - u) * Z, dz = (pz(WP.z) - v) * Z, X = dx * ca - dz * sa, Y = dx * sa + dz * ca, d = Math.hypot(X, Y), f = d > 54 ? 54 / d : 1, cx = 70 + X * f, cy = 70 + Y * f;
+    mm.fillStyle = '#a78bfa'; mm.strokeStyle = '#fff'; mm.lineWidth = 1.6;
+    if (f < 1) { mm.save(); mm.translate(cx, cy); mm.rotate(Math.atan2(Y, X)); mm.beginPath(); mm.moveTo(8, 0); mm.lineTo(-5, -6); mm.lineTo(-2, 0); mm.lineTo(-5, 6); mm.closePath(); mm.fill(); mm.stroke(); mm.restore(); }
+    else { mm.beginPath(); mm.arc(cx, cy, 5.5, 0, 7); mm.fill(); mm.stroke(); mm.fillStyle = '#fff'; mm.beginPath(); mm.arc(cx, cy, 1.8, 0, 7); mm.fill(); }
+    const m = Math.hypot(P.x - WP.x, P.z - WP.z), t = m < 1000 ? (m | 0) + ' m' : (m / 1000).toFixed(1) + ' km'; mm.font = 'bold 9px system-ui'; const w = mm.measureText(t).width + 12;
+    mm.fillStyle = 'rgba(10,12,16,.75)'; rr(mm, 70 - w / 2, 111, w, 15, 7.5); mm.fill(); mm.fillStyle = '#e9e3ff'; mm.fillText(t, 70, 118.8);
+  }
   mm.fillStyle = '#ffb020'; mm.beginPath(); mm.moveTo(70, 62); mm.lineTo(76, 76); mm.lineTo(70, 72); mm.lineTo(64, 76); mm.fill();
   mm.strokeStyle = 'rgba(255,255,255,.5)'; mm.lineWidth = 2; mm.beginPath(); mm.arc(70, 70, 68, 0, 7); mm.stroke();
+  // "tap to open the map" badge on the rim, bottom right
+  mm.fillStyle = 'rgba(10,12,16,.72)'; mm.beginPath(); mm.arc(113, 113, 9, 0, 7); mm.fill(); mm.strokeStyle = 'rgba(255,255,255,.85)'; mm.lineWidth = 1.6; mm.beginPath();
+  mm.moveTo(109, 117); mm.lineTo(117, 109); mm.moveTo(111.5, 109); mm.lineTo(117, 109); mm.lineTo(117, 114.5); mm.moveTo(108.5, 111.5); mm.lineTo(108.5, 117.5); mm.lineTo(114.5, 117.5); mm.stroke();
 }
 
 /* FPS / renderer readout */

@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no,interactive-widget=resizes-visual">
 <title>CPM Motor Edition</title>
-<link rel="stylesheet" href="css/style.css?v=11.47">
+<link rel="stylesheet" href="css/style.css?v=11.48">
 <!-- the import map must come before any module load (modulepreload counts): Firefox ignores a later one ("three" was not remapped) -->
-<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.47","./js/audio.js":"./js/audio.js?v=11.47","./js/config.js":"./js/config.js?v=11.47","./js/controls.js":"./js/controls.js?v=11.47","./js/drivetrain.js":"./js/drivetrain.js?v=11.47","./js/garage.js":"./js/garage.js?v=11.47","./js/studio.js":"./js/studio.js?v=11.47","./js/hud.js":"./js/hud.js?v=11.47","./js/main.js":"./js/main.js?v=11.47","./js/missions.js":"./js/missions.js?v=11.47","./js/model.js":"./js/model.js?v=11.47","./js/options.js":"./js/options.js?v=11.47","./js/perf.js":"./js/perf.js?v=11.47","./js/physics.js":"./js/physics.js?v=11.47","./js/tyre.js":"./js/tyre.js?v=11.47","./js/rapier.js":"./js/rapier.js?v=11.47","./js/renderer.js":"./js/renderer.js?v=11.47","./js/spec.js":"./js/spec.js?v=11.47","./js/state.js":"./js/state.js?v=11.47","./js/util.js":"./js/util.js?v=11.47","./js/world.js":"./js/world.js?v=11.47","./js/roads.js":"./js/roads.js?v=11.47","./js/tex.js":"./js/tex.js?v=11.47","./js/gpucull.js":"./js/gpucull.js?v=11.47","./js/net.js":"./js/net.js?v=11.47","./js/race.js":"./js/race.js?v=11.47","./js/ride.js":"./js/ride.js?v=11.47","./js/ignition.js":"./js/ignition.js?v=11.47","./js/daynight.js":"./js/daynight.js?v=11.47","./js/lights.js":"./js/lights.js?v=11.47","./js/batch.js":"./js/batch.js?v=11.47","./js/bikecard.js":"./js/bikecard.js?v=11.47","./js/layout.js":"./js/layout.js?v=11.47","./js/layoutcalc.js":"./js/layoutcalc.js?v=11.47","./js/foot.js":"./js/foot.js?v=11.47","./js/footfig.js":"./js/footfig.js?v=11.47","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.48","./js/audio.js":"./js/audio.js?v=11.48","./js/config.js":"./js/config.js?v=11.48","./js/controls.js":"./js/controls.js?v=11.48","./js/drivetrain.js":"./js/drivetrain.js?v=11.48","./js/garage.js":"./js/garage.js?v=11.48","./js/studio.js":"./js/studio.js?v=11.48","./js/hud.js":"./js/hud.js?v=11.48","./js/main.js":"./js/main.js?v=11.48","./js/missions.js":"./js/missions.js?v=11.48","./js/model.js":"./js/model.js?v=11.48","./js/options.js":"./js/options.js?v=11.48","./js/perf.js":"./js/perf.js?v=11.48","./js/physics.js":"./js/physics.js?v=11.48","./js/tyre.js":"./js/tyre.js?v=11.48","./js/rapier.js":"./js/rapier.js?v=11.48","./js/renderer.js":"./js/renderer.js?v=11.48","./js/spec.js":"./js/spec.js?v=11.48","./js/state.js":"./js/state.js?v=11.48","./js/util.js":"./js/util.js?v=11.48","./js/world.js":"./js/world.js?v=11.48","./js/roads.js":"./js/roads.js?v=11.48","./js/tex.js":"./js/tex.js?v=11.48","./js/gpucull.js":"./js/gpucull.js?v=11.48","./js/net.js":"./js/net.js?v=11.48","./js/race.js":"./js/race.js?v=11.48","./js/ride.js":"./js/ride.js?v=11.48","./js/ignition.js":"./js/ignition.js?v=11.48","./js/daynight.js":"./js/daynight.js?v=11.48","./js/lights.js":"./js/lights.js?v=11.48","./js/batch.js":"./js/batch.js?v=11.48","./js/bikecard.js":"./js/bikecard.js?v=11.48","./js/layout.js":"./js/layout.js?v=11.48","./js/layoutcalc.js":"./js/layoutcalc.js?v=11.48","./js/map.js":"./js/map.js?v=11.48","./js/foot.js":"./js/foot.js?v=11.48","./js/footfig.js":"./js/footfig.js?v=11.48","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
 <!-- start the heavy downloads at HTML parse, not after menu.js runs (same URLs as the importmap, so menu.js's fetches and import() reuse them) -->
 <link rel="modulepreload" href="./vendor/three/build/three.webgpu.js">
 <link rel="modulepreload" href="./vendor/three/build/three.core.js">
@@ -19,6 +19,13 @@
 <div id="msg"></div>
 <div id="perf"></div>
 <canvas id="mini" width="140" height="140"></canvas>
+<div id="bigmap" hidden>
+  <canvas id="bmc"></canvas>
+  <button class="b bmb" id="bmX" aria-label="Close map">✕</button>
+  <button class="b bmb" id="bmMe" aria-label="Centre on me">◎</button>
+  <div id="bmHint">Tap the map to drop a pin · drag to move · pinch to zoom</div>
+  <div id="bmCard"><div id="bmTx"><b id="bmT"></b><small id="bmD"></small></div><button class="b" id="bmClr" hidden>CLEAR</button><button class="b" id="bmSet" hidden>SET WAYPOINT</button></div>
+</div>
 <div id="tags"></div>
 <div id="race" hidden><span id="raceT"></span><button class="b hot" id="raceY">SPRINT</button><button class="b" id="raceP" hidden>📦 PARCEL</button><button class="b" id="raceF" hidden>🍔 FOOD</button><button class="b" id="raceX">✕</button></div>
 <div id="ride" hidden><span id="rideT"></span><button class="b hot" id="rideY">RIDE</button><button class="b" id="rideB" hidden>RACE</button><button class="b" id="rideX">✕</button></div>
@@ -99,7 +106,8 @@
         <b>E / Q</b><span>Manual bikes: shift up / down (1-N-2-3-4-5-6). Pull the clutch first, unless E-Clutch is on</span>
         <b>Space</b><span>Manual: clutch (hold to pull) · Scooter: rear brake lever</span>
         <b>R · C · G · O</b><span>Start engine (scooter: hold the brake) · camera · garage · options</span>
-        <b>Esc</b><span>Pause menu</span>
+        <b>M</b><span>Map: or tap the minimap. Tap the map to drop a pin, SET WAYPOINT to get a beacon and a pointer on the minimap</span>
+        <b>Esc</b><span>Pause menu (closes the map first)</span>
         <b>Touch</b><span>Turn the handlebar (bottom left), drag the throttle grip, hold BRAKE. Manual: drag CLUTCH down to pull, ▲▼ to shift</span>
       </div>
       <button class="mb sm" data-back>◀ BACK</button>
@@ -130,6 +138,6 @@
   <div id="oApply" hidden><span id="oApplyT"></span><button class="b" id="oReload">Apply &amp; reload</button></div>
 </div></div>
 
-<script type="module" src="js/menu.js?v=11.47"></script>
+<script type="module" src="js/menu.js?v=11.48"></script>
 </body>
 </html>

@@ -447,11 +447,24 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
 // ~9.3 m per pixel (the old 140 px over 1300 m), sized to the island; hud.js maps world -> pixels with MAPV
 const MPN=Math.ceil((2*EXT+120)/(1300/140)),MAPV={cx:ICX,cz:ICZ,w:MPN*1300/140,n:MPN};
 MAPV.gas=LMF.gas.map(F=>[F.x,F.z]); // red dots on the minimap (hud.js)
-const MAP=document.createElement('canvas');MAP.width=MAP.height=MPN;
-{const g=MAP.getContext('2d'),img=g.createImageData(MPN,MPN),W=MAPV.w;for(let j=0;j<MPN;j++)for(let i=0;i<MPN;i++){const x=ICX+(i/MPN-.5)*W,z=ICZ+(j/MPN-.5)*W,h=terr(x,z),k=(j*MPN+i)*4;
-  const c=lastCarve>.4||h<SEA?[31,120,150]:h<SEA+1.3?[226,210,162]:rd(x,z,TOWN)<1?[170,160,140]:h>115?[124,116,106]:h>14?[61,107,44]:[118,168,69];img.data.set([...c,235],k)}
-  g.putImageData(img,0,0);g.strokeStyle='#f4f1e8';g.lineCap='round';
+const MAP=document.createElement('canvas');MAP.width=MAP.height=MPN;const MAPT=document.createElement('canvas');MAPT.width=MAPT.height=MPN; // MAPT = the same image before the roads go on (the full-screen map draws its own, sharp ones)
+const T2=FEAT.find(f=>f.name==='town2'); // the second town's levelled rectangle is grey on the map too
+const mapCol=(x,z)=>{const h=terr(x,z);return lastCarve>.4||h<SEA?[31,120,150]:h<SEA+1.3?[226,210,162]:rd(x,z,TOWN)<1||(T2&&rd(x,z,T2)<1)?[170,160,140]:h>115?[124,116,106]:h>14?[61,107,44]:[118,168,69]};
+{const g=MAP.getContext('2d'),img=g.createImageData(MPN,MPN),W=MAPV.w;for(let j=0;j<MPN;j++)for(let i=0;i<MPN;i++){const x=ICX+(i/MPN-.5)*W,z=ICZ+(j/MPN-.5)*W,k=(j*MPN+i)*4;
+  const c=mapCol(x,z);img.data.set([...c,235],k)}
+  g.putImageData(img,0,0);MAPT.getContext('2d').drawImage(MAP,0,0);g.strokeStyle='#f4f1e8';g.lineCap='round';
   for(const r of ROADS){g.lineWidth=r.kind==='strip'?3:r.hwy?2:1.3;g.strokeStyle=r.kind==='strip'?'#c9c6bd':'#f4f1e8';g.beginPath();r.s.forEach((s,i)=>{const u=((s.x-ICX)/W+.5)*MPN,v=((s.z-ICZ)/W+.5)*MPN;i?g.lineTo(u,v):g.moveTo(u,v)});g.stroke()}}
+// Full-screen map (map.js): the same colours at 3x, filled in time slices on the first open, so loading pays nothing for it
+const MHN=MPN*3,mapHi={cv:null,n:MHN,row:0,done:false,t:0,
+  step(ms){if(this.done)return;if(!this.cv){this.cv=document.createElement('canvas');this.cv.width=this.cv.height=MHN;this.g=this.cv.getContext('2d');this.img=this.g.createImageData(MHN,48)}
+    const t0=performance.now(),W=MAPV.w,r0=this.row,d=this.img.data;let r=r0;
+    while(r<MHN&&r-r0<48&&performance.now()-t0<ms){const z=ICZ+((r+.5)/MHN-.5)*W;for(let i=0;i<MHN;i++){const c=mapCol(ICX+((i+.5)/MHN-.5)*W,z),k=((r-r0)*MHN+i)*4;d[k]=c[0];d[k+1]=c[1];d[k+2]=c[2];d[k+3]=235}r++}
+    if(r>r0)this.g.putImageData(this.img,0,r0,0,0,MHN,r-r0);this.row=r;if(r>=MHN){this.done=true;this.t=performance.now()}}};
+// names on the full-screen map: p = priority (2 always, 1 once zoomed in a little, 0 only when close)
+const LNM={airstrip:'Airstrip',paddy:'Rice paddies',town:'Poblacion',town2:'Poblacion Hilaga',islet:'The islet',resort:'Beach resort',harbor:'Harbor'};
+MAPV.lab=[...FEAT.filter(f=>f.type==='volcano').map(f=>({n:'Volcano',x:f.x,z:f.z,p:2})),...FEAT.filter(f=>f.type==='terraces').map(f=>({n:'Rice terraces',x:f.x,z:f.z,p:1})),
+  ...FEAT.filter(f=>f.type==='flat'&&LNM[f.name]).map(f=>({n:LNM[f.name],x:(f.x0+f.x1)/2,z:(f.z0+f.z1)/2,p:f.name==='town'||f.name==='town2'||f.name==='airstrip'?2:1}))];
+if(LMF.lot[0]){const w=LMF.lot[0].W(28,29);MAPV.lab.push({n:'Parking lot',x:w.x,z:w.z,p:0})}
 
 /* parking lot (block 0,0) + gas station (block -1,0) */
 const freeBays=[];
@@ -490,4 +503,4 @@ function zones(x,z,o){const inl=inland(x,z),dx=x-ICX,dz=z-ICZ,l=Math.hypot(dx,dz
   o.river=1-sstep(8,90,Math.sqrt(bd));o.rx=bx;o.rz=bz;o.town=1-sstep(0,130,rd(x,z,TOWN));
   o.paddy=1-sstep(0,90,rd(x,z,PADDY));
   const dv=Math.hypot(x-VOL.x,z-VOL.z);o.volc=1-sstep(60,420,dv);o.wild=(1-o.town)*sstep(0,50,inl)*(1-sstep(90,160,VOL.h*Math.exp(-Math.pow(dv/VOL.r,1.8))));return o}
-export { zones, atGas, LMF, GEN, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPV };
+export { zones, atGas, LMF, GEN, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPT, mapHi, MAPV };

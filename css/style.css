@@ -175,7 +175,8 @@ body.gar #race,body.gar #ride,body.gar #tags,body.menu #ride,body.menu #race,bod
    Options > left-handed mirrors the two clusters. */
 body{--k:1;--el:calc(12px + env(safe-area-inset-left));--er:calc(12px + env(safe-area-inset-right));--eb:calc(12px + env(safe-area-inset-bottom));--et:calc(8px + env(safe-area-inset-top));
   --w:calc(clamp(110px,38vh,160px) * var(--k));--tw:calc(clamp(96px,15vw,120px) * var(--k));--th:calc(clamp(104px,32vh,132px) * var(--k));--cw:calc(clamp(84px,17vw,130px) * var(--k));--mini:min(120px,26vh)}
-#mini{position:fixed;top:var(--et);left:calc(8px + env(safe-area-inset-left));width:var(--mini);height:var(--mini);pointer-events:none;z-index:4}
+#mini{position:fixed;top:var(--et);left:calc(8px + env(safe-area-inset-left));width:var(--mini);height:var(--mini);pointer-events:auto;border-radius:50%;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;z-index:4}
+#mini:active{filter:brightness(1.2)}
 #top{position:fixed;top:var(--et);right:calc(8px + env(safe-area-inset-right));display:flex;gap:6px;z-index:5}
 #top .b{min-width:0;min-height:0;padding:0 6px;white-space:nowrap;overflow:hidden}
 body.touch .b{min-height:44px}
@@ -316,3 +317,23 @@ body.foot #joy,body.foot #jumpB{display:block}
 #jumpB{background:var(--glass);border:2px solid rgba(255,176,32,.7);color:var(--hot);font:800 15px system-ui;letter-spacing:.04em}
 #jumpB:active,#jumpB.on{background:var(--hot);color:#1a1000}
 body.gar #bFoot,body.opt #bFoot,body.menu #bFoot{display:none}
+
+/* full-screen map (map.js): opens out of the minimap's circle (clip-path), north-up, game paused underneath */
+#bigmap{position:fixed;inset:0;z-index:12;background:#1f7896;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;overscroll-behavior:contain;will-change:clip-path}
+#bmc{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:grab;touch-action:none}
+#bmc.drag{cursor:grabbing}
+.bmb{position:absolute;width:46px;height:46px;min-height:0;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 20px system-ui}
+#bmX{top:calc(10px + var(--st));left:calc(10px + var(--sl))}
+#bmMe{top:calc(10px + var(--st));right:calc(10px + var(--sr))}
+#bmHint{position:absolute;left:50%;bottom:calc(16px + var(--sb));transform:translate(-50%,10px);max-width:calc(100% - 32px);padding:8px 14px;border-radius:999px;background:var(--glass);color:var(--ink);font:600 12px system-ui;text-align:center;opacity:0;pointer-events:none;transition:opacity .35s,transform .35s}
+#bmHint.on{opacity:1;transform:translate(-50%,0)}
+#bmCard{position:absolute;left:50%;bottom:calc(14px + var(--sb));width:min(460px,calc(100% - 24px - var(--sl) - var(--sr)));box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:10px 10px 10px 14px;border-radius:16px;background:rgba(10,12,16,.78);border:1px solid rgba(255,255,255,.18);color:var(--ink);transform:translate(-50%,28px);opacity:0;pointer-events:none;transition:transform .3s cubic-bezier(.2,.9,.3,1.15),opacity .2s}
+#bmCard.on{transform:translate(-50%,0);opacity:1;pointer-events:auto}
+#bmCard.bad{border-color:rgba(255,74,61,.7)}
+#bmTx{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+#bmT{font:800 15px system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#bmD{font:600 12px system-ui;color:var(--dim)}
+#bmCard .b{flex:none;white-space:nowrap}
+#bmSet{background:#a78bfa;color:#120a2a;border-color:#a78bfa;font-weight:800}
+#bmCard [hidden]{display:none}
+@media (prefers-reduced-motion:reduce){#bmCard,#bmHint{transition:none}}

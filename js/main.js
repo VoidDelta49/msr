@@ -18,6 +18,7 @@ import { actions, input, footInput, ptr, TC, WMAX } from './controls.js';
 import { F, footEnv, footStep, dismount, mount, nearBike, offBlock } from './foot.js';
 import { figBuild, figShow, figBody, figPose, footCam } from './footfig.js';
 import { missions, animMarker } from './missions.js';
+import { wpTick, wpAnim } from './map.js';
 import { G as GARAGE, buildGarage, garageFrame } from './garage.js';
 import { initStudio, enter as studioIn, leave as studioOut, studioFrame } from './studio.js';
 import { O, openOpts, closeOpts } from './options.js';
@@ -172,7 +173,7 @@ function visuals(dt, now) {
   dom('wg', 'rotate(' + (S.steer * WMAX() * 57.3).toFixed(1) + ')', (e, v) => e.setAttribute('transform', v)); dom('cluFill', (S.cl * 100).toFixed(0) + '%', (e, v) => e.style.height = v); dom('bKey', !!S.key, (e, v) => e.classList.toggle('on', v)); dom('bKill', !!S.kill, (e, v) => e.classList.toggle('on', v)); dom('brkFill', (S.brake * 100).toFixed(0) + '%', (e, v) => e.style.setProperty('--p', v)); dom('thrg', (S.thr * 36).toFixed(1) + 'px', (e, v) => e.style.backgroundPositionY = v);
   const fb = ctx.GAR || ctx.OPT || ctx.paused || ctx.ride || ctx.racing || S.crashed ? '' : F.on ? (nearBike() ? 'GET ON' : '') : !offBlock() ? 'GET OFF' : ''; // the touch button (F on a keyboard)
   dom('bFoot', fb, (e, v) => { e.textContent = v; e.hidden = !v; });
-  animMarker(now);
+  animMarker(now); wpAnim(now);
 }
 
 /* ---------- garage ---------- */
@@ -240,10 +241,10 @@ function loop(t) {
   if (t - fT > 1000) { const fps = Math.round(fN * 1000 / (t - fT)); setFps(fps); setPhys('Physics ' + pms.toFixed(2) + ' ms'); autoRes(fps, !ctx.paused && !ctx.GAR && !ctx.OPT); setGfx(renderer.info.render.drawCalls, resScale()); setJank(jankText()); updPerf(API); fN = 0; fT = t; }
   raceTick(dt);
   if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); if (RP.ok) tickRapier(dt); garageFrame(); }
-  else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; if (F.on) footTick(dt); else input(dt); if (RP.ok) tickRapier(dt); missions(dt); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
+  else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; if (F.on) footTick(dt); else input(dt); if (RP.ok) tickRapier(dt); missions(dt); wpTick(); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } const D0 = performance.now(); renderer.info.reset(); cull(camera); draw(); const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } const D0 = performance.now(); renderer.info.reset(); if (!ctx.mapCover) { cull(camera); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.gpu = GPU; O.aa = AA; O.live = true; O.snap(); // options.js: what the loaded game was built with, to tell which changes still need a reload
