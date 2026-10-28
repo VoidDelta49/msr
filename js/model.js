@@ -810,7 +810,14 @@ function underbone(ct, v) {
 // rail, wire grille on the bike side, spare-wheel cover on the back, stainless fender over its own wheel, chrome bumpers.
 const MSS = std(0xd3d7dc, .34, .55), MDia = std(0xb0b4ba, .55, .5), MGls = new THREE.MeshStandardMaterial({ color: 0x9fb4c4, roughness: .05, metalness: .2, transparent: true, opacity: .28, depthWrite: false }), MVin = std(0xc81c1c, .45, .05), MSil = std(0xb3b8bf, .35, .75),
   MDecY = new THREE.MeshStandardMaterial({ map: DEC, alphaTest: .5, roughness: .4, color: 0xf2b632 });
-function sidecar(ct) {
+// Generic: any bike whose data/bikes/<id>.json has a "sidecar" block and a part option with sc: 1 gets it. The body is
+// built in its own group, slid along z (dz) so it centres on the bike's wheelbase; the struts run from the bike's own
+// frame points (sidecar.struts: [x, y, z, y on the sidecar wall], ct coordinates) to the sidecar's bike-side wall.
+function sidecar(ct, mt, wb) {
+  const dz = mt.dz ?? (B.G.rearZ - wb / 2 + .033); B.scDz = dz; // .033: the body below is laid out round the TMX's wheelbase centre
+  const g = new THREE.Group(); g.position.z = dz; ct.add(g);
+  for (const [x, y, z, sy] of mt.struts) tube([x, y, z], [.5, sy, z], .022, MK, ct);
+  ct = g;
   const X0 = .5, X1 = 1.44, XC = (X0 + X1) / 2, W = X1 - X0, ZF = -.62, ZB = .56, NR = W / 2;
   mk(box(W, .05, ZB - ZF), MDia, ct, XC, .31, (ZF + ZB) / 2);                                                  // diamond-plate floor
   mk(new THREE.CylinderGeometry(NR, NR, .62, 10, 1, false, PI / 2, PI), MSS, ct, XC, .62, ZF);               // rounded nose
@@ -835,20 +842,19 @@ function sidecar(ct) {
   // bench + backrest, red vinyl
   mk(box(W - .08, .1, .36), MVin, ct, XC, .52, ZB - .23); mk(box(W - .08, .4, .08), MVin, ct, XC, .8, ZB - .06, -.12);
   mk(box(W - .08, .16, .3), MSS, ct, XC, .4, ZB - .23);                                                          // bench base
-  // its own wheel under a stainless fender (no brake), and the mounts to the bike's frame
+  // its own wheel under a stainless fender (no brake), its axle tube to the outer wall
   const wx = 1.5, wz = .08, wr = .28; mk(new THREE.TorusGeometry(wr - .04, .04, 6, 18), MR, ct, wx, wr, wz, 0, PI / 2); mk(cyl(.07, .07, .1, 8), MAlu, ct, wx, wr, wz, 0, 0, PI / 2);
   mk(arc(wr + .03, wr + .06, .25, 2.9, .18), MSS, ct, wx, wr, wz);
   tube([X1, .32, wz], [wx, wr, wz], .025, MK, ct);
-  for (const [a, b] of [[[.1, .32, -.25], [X0, .3, -.25]], [[.11, .34, .4], [X0, .3, .4]], [[.1, .78, .3], [X0, .9, .3]]]) tube(a, b, .022, MK, ct);
   // chrome bumpers, nose lamps
   for (const y of [.36, .45]) { tube([X0 + .05, y, ZB + .08], [X1 - .05, y, ZB + .08], .02, MC, ct); }
   for (const x of [X0 + .1, X1 - .1]) mk(cyl(.03, .03, .02, 8), MAmb, ct, x, .8, ZF - Math.sqrt(NR * NR - (x - XC) ** 2) - .005, PI / 2);
 }
 // m = 1: Rusi Macho 125 (CG-style budget classic, reference photos): 17" spokes (2.75-17, 3.00-17 ≈ 0.29 m), 1,260 mm wheelbase,
 // painted side covers with a stripe, chrome carrier, chrome fenders, rubber fork gaiters, bigger square lamp in a black visor
-function tmx(ct, v, m = 0) {
+function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see buildModel)
   const rw = m ? .29 : .31, rake = .47, headY = 1.0, fZ = m ? -.64 : -.686, fork = (headY - rw) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
-  B.G = { rw, rearZ: .62, fork, rake, pivotY: .37, pivotZ: .1, swingX: 0 }; B.wheelCol = 0xc3c8cd; B.cargo = { y: .97, z: .52 }; B.decal = MDec; B.sc = v ? 1 : 0;
+  B.G = { rw, rearZ: .62, fork, rake, pivotY: .37, pivotZ: .1, swingX: 0 }; B.wheelCol = 0xc3c8cd; B.cargo = { y: .97, z: .52 }; B.decal = MDec;
   const wheel = front => m ? wheelWire(.255, .035, .215, front ? .07 : .075, 0) : wheelWire(.27, .04, .23, front ? .078 : .082, 0);
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .62); ct.add(B.rearH); B.rearW = wheel(false); B.rearH.add(B.rearW);
   mk(cyl(.085, .085, .012, 10), MB, B.rearH, -.07, 0, 0, 0, 0, PI / 2);                                       // sprocket
@@ -901,7 +907,6 @@ function tmx(ct, v, m = 0) {
   controls(st, .17, .06, .36, .22, [.33, .3, -.02]);
   rider(ct, [1.17, .27, -.1], [1.54, .22], [.25, 1.25, -.01, -.45, .47], [[.15, .88, .11, -.35, .36, .14], [.17, .575, .035, -.42, .51, .11]]);
   B.cam = new THREE.Group(); B.cam.position.set(0, 1.44, .18); ct.add(B.cam);
-  if (v) sidecar(ct);
   B.exh = new THREE.Group(); ct.add(B.exh);
   // stock: chrome header round the front of the engine into a long chrome muffler with a heat shield; aftermarket: shorter, louder
   B.buildExh = (s, cf) => {
@@ -1124,7 +1129,9 @@ const MODELS = { sport, scooter, supersport, underbone, tmx, aerox, rouser, h2, 
 export function buildModel(bike, spec) {
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;
-  B.ct.clear(); B.fenderPaint = false; B.decal = null; B.sc = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model; setLiveryUV();
+  B.ct.clear(); B.fenderPaint = false; B.decal = null; B.sc = 0; B.scDz = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model;
+  if (spec?.sc && bike.sidecar) { B.sc = 1; sidecar(B.ct, bike.sidecar, bike.chassis.wb); } SC_BLOB.p.z = B.scDz; // any bike with sidecar mount data
+  setLiveryUV();
   const pc = bike.chassis.pil; // pillion seat (data/bikes/*.json chassis.pil): where the recoloured rider copy goes + the passenger's eye (ride.js)
   B.G.pil = pc ? { dz: pc.dz, dy: pc.dy, hip: B.hip, cam: { x: .1, y: B.cam.position.y + pc.dy + .08, z: B.cam.position.z + pc.dz } } : null;
   // rider: one mesh per material, still listed in B.rider (camera toggles visibility, crashes move them)
@@ -1168,7 +1175,7 @@ const BL = new Set();
 export const blobAdd = e => (BL.add(e), e), blobDel = e => { BL.delete(e); };
 // the player's own bike (studio.js sets ground / off while the garage is open)
 export const BLOB_ME = blobAdd({ b: B.body, p: new THREE.Vector3(), h0: .45, d: 1.3, w: .7, cores: 1, vis: () => !!B.skin, ground: null, off: false });
-blobAdd({ b: B.body, p: new THREE.Vector3(.97, -.15, 0), h0: .45, d: 1.9, w: 1.1, cores: 0, vis: () => !!B.skin && !!B.sc, ground: null, off: false }); // tricycle sidecar
+const SC_BLOB = blobAdd({ b: B.body, p: new THREE.Vector3(.97, -.15, 0), h0: .45, d: 1.9, w: 1.1, cores: 0, vis: () => !!B.skin && !!B.sc, ground: null, off: false }); // tricycle sidecar
 export function bikeBlob(e, G) { const s = G.sh; if (s) { e.p.set(0, -.15, s.zc); e.d = s.d; e.w = s.w; } return e; } // body-local: ct sits .6 below body
 const bp = new THREE.Vector3(), bf = new THREE.Vector3(), bu = new THREE.Vector3(), bm = new THREE.Matrix4(), bq = new THREE.Quaternion(), be = new THREE.Euler(0, 0, 0, 'YXZ'), bs = new THREE.Vector3();
 const sd = new THREE.Vector3();

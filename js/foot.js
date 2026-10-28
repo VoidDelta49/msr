@@ -40,7 +40,7 @@ export const footEnv = e => { env = e; };
 // bike footprint(s) as boxes in the OBB format of world.js: a lying capsule is ~.6 x 1.8 m; a sidecar adds a second box on the right
 export function bikeBoxes(b, sc) {
   const c = Math.cos(b.psi), s = -Math.sin(b.psi), lx = Math.cos(b.psi), lz = -Math.sin(b.psi), out = [{ cx: b.x, cz: b.z, hx: .32, hz: .95, c, s }];
-  if (sc) out.push({ cx: b.x + lx * sc * .95, cz: b.z + lz * sc * .95, hx: .5, hz: 1, c, s });
+  if (sc) out.push({ cx: b.x + lx * sc * (ctx.spec?.scX ?? .95), cz: b.z + lz * sc * (ctx.spec?.scX ?? .95), hx: .5, hz: 1, c, s });
   return out;
 }
 const bikeNow = () => bikeBoxes(S, ctx.spec && ctx.spec.sc);

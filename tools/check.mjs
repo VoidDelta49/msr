@@ -190,6 +190,13 @@ const bikes = {};
     for (const k of [...pk, ...(b.sliders || []).map(x => x.k), ...(b.toggles || []).map(x => x.k)]) if (!WHERE.has(k) && !k.startsWith('cf') && used[k].size === 1) warn(A, `key "${k}" is new and not in garage.js WHERE: it will show up on the PAINT tab`);
     for (const [k, p] of Object.entries(b.parts || {})) for (const o of p.o) for (const kk of Object.keys(o)) if (!readKeys.has(kk) && !SPEC_EXTRA.has(kk)) warn(A, `parts.${k} option key "${kk}" is never read by any js (typo?)`);
     for (const k of Object.keys(b.chassis || {})) if (!readKeys.has(k) && !SPEC_EXTRA.has(k)) warn(A, `chassis.${k} is never read by any js (typo?)`);
+    { // sidecar: a part option with sc needs the bike's own mount data (model.js sidecar())
+      const hasSc = Object.values(b.parts || {}).some(p => p.o.some(o => o.sc)), st = b.sidecar?.struts;
+      if (hasSc && !(Array.isArray(st) && st.length && st.every(a => Array.isArray(a) && a.length === 4 && a.every(isNum)))) err(A, 'sidecar part option without sidecar.struts ([[x, y, z, wall y], ...])');
+      if (b.sidecar && b.sidecar.dz !== undefined && !isNum(b.sidecar.dz)) err(A, 'sidecar.dz must be a number');
+      if (hasSc && !b.sound?.sc) warn(A, 'sidecar part without sound.sc overrides (sidecar thump/rattle use the plain-bike values)');
+      if (typeof b.class !== 'string') warn(A, 'no "class" label for the bike cards (shows BIKE)');
+    }
     if (b.chassis?.sc && !b.sound?.sc) warn(A, 'sidecar bike without sound.sc overrides (sidecar thump/rattle use the plain-bike values)');
     if (b.chassis?.sc) for (const k of ['scm', 'scX', 'scD', 'scW']) if (!isNum(b.chassis[k]) && !isNum(b.parts && 0)) { /* sc fields may live in a part option */ }
     const nm = b.name.replace(/\s*\/.*$/, '');

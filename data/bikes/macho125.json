@@ -3,10 +3,12 @@
   "name": "Rusi Macho 125",
   "short": "Macho 125",
   "tag": "5-speed manual · tricycle-ready",
+  "class": "WORKHORSE",
   "blurb": "The budget classic: 125 cc air-cooled SOHC 2-valve carb single, 9.66 hp @ 9,000 rpm, 8.3 Nm @ 7,500 rpm, CDI, electric + kick start. 5-speed return shift, chain drive, drum brakes front and rear, 17\" spoke wheels (2.75-17, 3.00-17), 1,260 mm wheelbase, 104 kg, 760 mm seat, 9.5 L tank. Takes the tricycle sidecar in Parts.",
   "model": "macho",
   "cluster": "tmx",
   "drivetrain": "manual",
+  "sidecar": {"struts": [[0.1, 0.32, -0.25, 0.3], [0.11, 0.34, 0.4, 0.3], [0.1, 0.78, 0.3, 0.9]]},
   "chassis": {
     "m": 169,
     "r": 0.29,
@@ -165,12 +167,10 @@
       "l": "Sidecar",
       "o": [
         {
-          "n": "Solo",
-          "var": 0
+          "n": "Solo"
         },
         {
           "n": "Tricycle sidecar (+110 kg)",
-          "var": 1,
           "sc": 1,
           "scm": 110,
           "dm": 110,

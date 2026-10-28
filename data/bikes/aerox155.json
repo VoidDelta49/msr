@@ -3,10 +3,12 @@
   "name": "Yamaha Aerox 155",
   "short": "Aerox 155",
   "tag": "CVT automatic · VVA · maxi-sport",
+  "class": "SCOOTER",
   "blurb": "155.09 cc liquid-cooled SOHC 4-valve single with VVA (58.0 × 58.7 mm, 11.6:1), 15.4 PS @ 8,000 rpm, 13.9 Nm @ 6,500 rpm. V-belt CVT (2.300–0.724) with a dry centrifugal clutch, 230 mm front disc (ABS on the S), 130 mm rear drum, 14\" alloys (110/80-14, 140/70-14), twin rear shocks, 1,350 mm wheelbase, 126 kg wet, 5.5 L tank, Stop & Start System.",
   "model": "aerox",
   "cluster": "scooter",
   "drivetrain": "cvt",
+  "sidecar": {"struts": [[0.1, 0.3, -0.25, 0.3], [0.11, 0.31, 0.34, 0.3], [0.1, 0.69, 0.3, 0.9]]},
   "chassis": {
     "m": 191,
     "r": 0.272,
@@ -123,6 +125,7 @@
     }
   },
   "sound": {
+    "sc": {"rattle": 1.8, "thump": 1.5, "thumpHz": 0.8, "peg": 0},
     "parts": {
       "sq": 0.9,
       "sqHz": 1600,
@@ -521,7 +524,8 @@
           "cfx": 1
         }
       ]
-    }
+    },
+    "sidecar": {"l": "Sidecar", "o": [{"n": "Solo"}, {"n": "Tricycle sidecar (+110 kg)", "sc": 1, "scm": 110, "dm": 110, "scW": 0.3, "scX": 0.95, "scD": 1.5, "drag": 0.62, "roll": 42, "brake": 0.95}]}
   },
   "sliders": [
     {
@@ -583,6 +587,7 @@
     }
   ],
   "defaults": {
+    "sidecar": 0,
     "pf": 0,
     "pr": 0,
     "rollers": 2,

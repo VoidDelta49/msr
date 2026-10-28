@@ -1,4 +1,8 @@
 [
+  { "v": "11.57", "d": "2026-10-28", "t": [
+    "Every bike can now take the tricycle sidecar: fit it under Parts on any of the ten bikes. The sidecar is no longer tied to the TMX and Macho models; each bike's data file says where the sidecar's struts bolt to its frame, and the sidecar centres itself on that bike's wheelbase. The sidecar also no longer shares the model-variant slot, so it combines freely with other parts that change the model (H2R kit, Tech MAX, Smash wheels).",
+    "Bike card class labels (SCOOTER, SPORT, ...) now come from each bike's data file."
+  ] },
   { "v": "11.56", "d": "2026-10-28", "t": [
     "Speed blur gets San Andreas-style ghost trails and a speed vignette. Above 60 km/h a fading echo of the last frames trails behind the fast-moving road edges and roadside (the faster a spot streaks, the stronger its trail), while the point you are heading for and your bike stay crisp; the screen edges dim and lose a little colour as speed builds. The strength slider sets both the streak length and how long the trails linger. Phone-friendly: the trails are kept at half resolution and add one small pass, and nothing extra runs below 60 km/h."
   ] },

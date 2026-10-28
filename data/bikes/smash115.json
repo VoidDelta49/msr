@@ -3,10 +3,12 @@
   "name": "Suzuki Smash 115 / Fi",
   "short": "Smash 115",
   "tag": "4-speed rotary · auto clutch",
+  "class": "UNDERBONE",
   "blurb": "Step-through underbone, two engines in one: switch Fuel system in Parts. Carb: 109.7 cc SOHC 2-valve, 5.6 kW @ 7,000 rpm, 9.0 Nm @ 4,000 rpm. Fi: 113 cc, 6.4 kW @ 8,000 rpm, 9.0 Nm @ 4,000 rpm. 4-speed rotary gearbox with an automatic centrifugal clutch (no clutch lever), chain drive, 17\" wheels, 99 kg.",
   "model": "underbone",
   "cluster": "smash",
   "drivetrain": "rotary",
+  "sidecar": {"struts": [[0.1, 0.3, -0.25, 0.3], [0.11, 0.34, 0.36, 0.3], [0.1, 0.67, 0.3, 0.9]]},
   "chassis": {
     "m": 167,
     "r": 0.285,
@@ -57,6 +59,7 @@
     "final": ["rs", "fs"]
   },
   "sound": {
+    "sc": {"rattle": 1.8, "thump": 1.5, "thumpHz": 0.8, "peg": 0, "lash": 1.7},
     "parts": {"sq": 0.8, "sqHz": 1300, "hiss": 0.7, "chain": 1.4, "chainHz": 2200, "lash": 1.5, "clutch": 1.2, "thump": 1, "thumpHz": 1.15, "rattle": 0.6, "key": 1, "keyHz": 0.9, "tink": 1.2, "tinkHz": 0.85, "peg": 0.8},
     "lp": 0.9,
     "gain": 0.85,
@@ -233,7 +236,8 @@
         { "n": "Stock" },
         { "n": "Carbon (−0.3 kg)", "dm": -0.3, "cfx": 1 }
       ]
-    }
+    },
+    "sidecar": {"l": "Sidecar", "o": [{"n": "Solo"}, {"n": "Tricycle sidecar (+110 kg)", "sc": 1, "scm": 110, "dm": 110, "scW": 0.3, "scX": 0.95, "scD": 1.5, "drag": 0.62, "roll": 42, "brake": 0.95}]}
   },
   "sliders": [
     {
@@ -304,6 +308,7 @@
   ],
   "toggles": [],
   "defaults": {
+    "sidecar": 0,
     "fuelsys": 0,
     "trim": 0,
     "tune": 0,

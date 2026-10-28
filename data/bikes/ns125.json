@@ -3,10 +3,12 @@
   "name": "Kawasaki Rouser NS125 Fi",
   "short": "Rouser NS125",
   "tag": "5-speed manual · fuel injected",
+  "class": "SPORT",
   "blurb": "124 cc air-cooled single with fuel injection, 12 PS @ 8,500 rpm, peak torque (≈10.8 Nm) @ 6,500 rpm. 5-speed return shift with a wet multi-plate clutch, chain drive, 240 mm front disc, 130 mm rear drum, 17\" alloys (80/100-17, 100/90-17), twin gas rear shocks, split seat, 10.5 L tank, about 140 kg. Built by Bajaj and sold by Kawasaki in the Philippines.",
   "model": "rouser",
   "cluster": "sport",
   "drivetrain": "manual",
+  "sidecar": {"struts": [[0.1, 0.3, -0.25, 0.3], [0.11, 0.37, 0.38, 0.3], [0.1, 0.83, 0.3, 0.9]]},
   "chassis": {
     "m": 205,
     "r": 0.3,
@@ -117,6 +119,7 @@
     ]
   },
   "sound": {
+    "sc": {"rattle": 1.8, "thump": 1.5, "thumpHz": 0.8, "peg": 0, "lash": 1.7},
     "parts": {
       "sq": 1,
       "sqHz": 1700,
@@ -428,7 +431,8 @@
           "cfx": 1
         }
       ]
-    }
+    },
+    "sidecar": {"l": "Sidecar", "o": [{"n": "Solo"}, {"n": "Tricycle sidecar (+110 kg)", "sc": 1, "scm": 110, "dm": 110, "scW": 0.3, "scX": 0.95, "scD": 1.5, "drag": 0.62, "roll": 42, "brake": 0.95}]}
   },
   "sliders": [
     {
@@ -504,6 +508,7 @@
     }
   ],
   "defaults": {
+    "sidecar": 0,
     "pf": 0,
     "pr": 0,
     "exhaust": 0,

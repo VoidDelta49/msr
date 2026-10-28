@@ -49,7 +49,7 @@ function reset() {
 }
 // a part that changes the model's shape (B.var, e.g. spoke vs mag wheels) rebuilds it
 function recompute() {
-  ctx.spec = computeSpec(ctx.bike, ctx.bcfg); if ((ctx.spec.var | 0) !== B.var) { buildModel(ctx.bike, ctx.spec); attachCam(); } applyLook(ctx.spec);
+  ctx.spec = computeSpec(ctx.bike, ctx.bcfg); if ((ctx.spec.var | 0) !== B.var || (ctx.spec.sc && ctx.bike.sidecar ? 1 : 0) !== B.sc) { buildModel(ctx.bike, ctx.spec); attachCam(); } applyLook(ctx.spec);
   document.body.classList.toggle('ysh', !!ctx.spec.yec); // YECVT: the scooter gets the ▲▼ Y-Shift buttons back (layoutcalc.js o.ysh)
   $('brkT').textContent = ctx.bike.drivetrain === 'cvt' ? (ctx.spec.abs ? 'BRAKE · ABS' : 'BRAKE · CBS') : 'BRAKE';
 }

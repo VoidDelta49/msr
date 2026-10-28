@@ -3,10 +3,12 @@
  "name": "Kawasaki Ninja H2",
  "short": "Ninja H2",
  "tag": "supercharged inline-4 \u00b7 6-speed \u00b7 quickshifter",
+ "class": "HYPERBIKE",
  "blurb": "998 cc DOHC 16-valve inline-four (76.0 \u00d7 55.0 mm, 8.5:1) with a gear-driven centrifugal supercharger: the impeller spins at 9.2\u00d7 crank speed, up to ~130,000 rpm. 231 PS @ 11,500 rpm (243 PS with ram air), 141.7 Nm @ 11,000 rpm, 238 kg curb. 6-speed dog-ring gearbox (1 down, 5 up) with an up/down quickshifter and an assist & slipper clutch, 18/44 chain, green steel trellis frame, single-sided swingarm, dual 330 mm discs with radial 4-piston monoblocs. Solo seat.",
  "model": "h2",
  "cluster": "h2",
  "drivetrain": "manual",
+ "sidecar": {"struts": [[0.1, 0.3, -0.25, 0.3], [0.11, 0.43, 0.44, 0.3], [0.1, 0.71, 0.3, 0.9]]},
  "chassis": {
   "m": 306,
   "r": 0.326,
@@ -134,6 +136,7 @@
   ]
  },
  "sound": {
+  "sc": {"rattle": 1.8, "thump": 1.5, "thumpHz": 0.8, "peg": 0, "lash": 1.7},
   "parts": {
    "sq": 1.0,
    "sqHz": 2200,
@@ -538,7 +541,8 @@
      "fc": "#b3161c"
     }
    ]
-  }
+  },
+  "sidecar": {"l": "Sidecar", "o": [{"n": "Solo"}, {"n": "Tricycle sidecar (+110 kg)", "sc": 1, "scm": 110, "dm": 110, "scW": 0.3, "scX": 0.95, "scD": 1.5, "drag": 0.62, "roll": 42, "brake": 0.95}]}
  },
  "sliders": [
   {
@@ -618,6 +622,7 @@
   }
  ],
  "defaults": {
+  "sidecar": 0,
   "pf": 0,
   "pr": 0,
   "exhaust": 0,

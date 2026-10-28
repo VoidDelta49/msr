@@ -79,7 +79,7 @@ export function setMass() { if (!RP.ok || !ctx.spec) return; const sp = ctx.spec
 export function syncBody() {
   if (!RP.ok || !ctx.spec) return; const sp = ctx.spec; if (S.crashed) endCrash();
   setMass();
-  S.chair = S.chairV = 0; const sx = (sp.sc || 0) * .95; scap.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); sbox.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); scap.setEnabled(!!sp.sc); sbox.setEnabled(false);
+  S.chair = S.chairV = 0; const sx = (sp.sc || 0) * (sp.scX ?? .95); scap.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); sbox.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); scap.setEnabled(!!sp.sc); sbox.setEnabled(false);
   stream(true); body.setTranslation({ x: S.x, y: S.zH + Y0, z: S.z }, true); body.setRotation(qYX(S.psi, S.th || 0), true);
   S.hF = H(S.x - Math.sin(S.psi) * sp.lf, S.z - Math.cos(S.psi) * sp.lf); S.hR = H(S.x + Math.sin(S.psi) * sp.lr, S.z + Math.cos(S.psi) * sp.lr);
   body.setLinvel({ x: -Math.sin(S.psi) * S.v, y: 0, z: -Math.cos(S.psi) * S.v }, true); body.setAngvel({ x: 0, y: 0, z: 0 }, true);

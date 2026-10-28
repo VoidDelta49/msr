@@ -3,10 +3,12 @@
   "name": "Honda CBR650R",
   "short": "CBR650R",
   "tag": "inline-4 · 6-speed · E-Clutch",
+  "class": "BIG BIKE",
   "blurb": "649 cc DOHC 16-valve inline-four (67.0 × 46.0 mm, 11.6:1). 95 PS @ 12,000 rpm, 63 Nm @ 9,500 rpm, 208 kg. 6-speed with an assist/slipper clutch, Honda E-Clutch (clutchless starts and shifts), 15/42 chain, Showa SFF-BP fork, dual 310 mm discs.",
   "model": "supersport",
   "cluster": "tft",
   "drivetrain": "manual",
+  "sidecar": {"struts": [[0.1, 0.3, -0.25, 0.3], [0.11, 0.475, 0.58, 0.3], [0.1, 0.65, 0.3, 0.9]]},
   "chassis": {
     "m": 276,
     "r": 0.315,
@@ -128,6 +130,7 @@
     ]
   },
   "sound": {
+    "sc": {"rattle": 1.8, "thump": 1.5, "thumpHz": 0.8, "peg": 0, "lash": 1.7},
     "parts": {"sq": 1.1, "sqHz": 2400, "hiss": 1.3, "chain": 0.8, "chainHz": 3200, "lash": 0.6, "clutch": 0.5, "thump": 1.4, "thumpHz": 0.75, "rattle": 0, "key": 0.9, "keyHz": 0.8, "tink": 1.3, "tinkHz": 0.7, "peg": 1.3},
     "lp": 1.3,
     "gain": 1.3,
@@ -363,7 +366,8 @@
           "cfx": 1
         }
       ]
-    }
+    },
+    "sidecar": {"l": "Sidecar", "o": [{"n": "Solo"}, {"n": "Tricycle sidecar (+110 kg)", "sc": 1, "scm": 110, "dm": 110, "scW": 0.3, "scX": 0.95, "scD": 1.5, "drag": 0.62, "roll": 42, "brake": 0.95}]}
   },
   "sliders": [
     {
@@ -439,6 +443,7 @@
     }
   ],
   "defaults": {
+    "sidecar": 0,
     "pf": 0,
     "pr": 0,
     "exhaust": 0,

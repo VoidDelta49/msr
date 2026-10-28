@@ -3,10 +3,12 @@
   "name": "Suzuki Raider R150 Fi",
   "short": "Raider 150 Fi",
   "tag": "6-speed manual · wet clutch",
+  "class": "SPORT",
   "blurb": "147 cc DOHC underbone. 6-speed return shift (1-N-2-3-4-5-6), wet multiplate clutch, chain final drive.",
   "model": "sport",
   "cluster": "sport",
   "drivetrain": "manual",
+  "sidecar": {"struts": [[0.1, 0.3, -0.25, 0.3], [0.11, 0.39, 0.38, 0.3], [0.1, 0.71, 0.3, 0.9]]},
   "chassis": {
     "m": 175,
     "r": 0.29,
@@ -56,6 +58,7 @@
     ]
   },
   "sound": {
+    "sc": {"rattle": 1.8, "thump": 1.5, "thumpHz": 0.8, "peg": 0, "lash": 1.7},
     "parts": {"sq": 1.1, "sqHz": 1800, "hiss": 1, "chain": 1.1, "chainHz": 2800, "lash": 1.1, "clutch": 1, "thump": 1, "thumpHz": 1, "rattle": 0.3, "key": 1, "keyHz": 1, "tink": 1, "tinkHz": 1.1, "peg": 1},
     "lp": 1,
     "gain": 1,
@@ -199,7 +202,8 @@
         { "n": "Stock" },
         { "n": "Carbon (−0.4 kg)", "dm": -0.4, "cfx": 1 }
       ]
-    }
+    },
+    "sidecar": {"l": "Sidecar", "o": [{"n": "Solo"}, {"n": "Tricycle sidecar (+110 kg)", "sc": 1, "scm": 110, "dm": 110, "scW": 0.3, "scX": 0.95, "scD": 1.5, "drag": 0.62, "roll": 42, "brake": 0.95}]}
   },
   "sliders": [
     { "k": "pf", "l": "Fork preload", "min": -20, "max": 20, "u": " mm" },
@@ -216,6 +220,7 @@
     { "k": "autoClutch", "l": "Anti-stall clutch" }
   ],
   "defaults": {
+    "sidecar": 0,
     "pf": 0,
     "pr": 0,
     "exhaust": 0,
