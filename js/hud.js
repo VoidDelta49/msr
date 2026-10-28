@@ -191,10 +191,11 @@ function tmx(g, sp) {
   if (!S.running) { g.fillStyle = '#ff4a3d'; g.font = 'bold 12px system-ui'; g.fillText('OFF', 256, 160); }
 }
 /* nmax: NMAX 155. Tech MAX = 4.2" colour TFT (tach arc across the top, big speed, T / S mode, Y-Shift level, TCS, Stop & Start,
-   fuel, clock, odometer); Standard = the same layout as a negative LCD, no mode or Y-Shift */
-function nmax(g, sp) {
-  const tft = !!sp.yec, MAX = sp.tachMax, rpm = dispRpm(sp), now = phNow(), N = 40, blink = (performance.now() / 400 | 0) % 2;
-  const bg = tft ? '#06080c' : '#0b1a22', lit = tft ? '#ffffff' : '#bfefff', dim = tft ? '#1a2029' : '#13303b', acc = tft ? '#2fa8ff' : lit, sub = tft ? '#8b96a5' : '#7fb2c4';
+   fuel, clock, odometer); Standard = the same layout as a negative LCD, no mode or Y-Shift.
+   x = 1: XMAX 300 (2023): 4.2" colour TFT in the same family layout, amber accent, no YECVT so no mode badge or Y-Shift */
+function nmax(g, sp, x = 0) {
+  const tft = x || !!sp.yec, MAX = sp.tachMax, rpm = dispRpm(sp), now = phNow(), N = 40, blink = (performance.now() / 400 | 0) % 2;
+  const bg = tft ? '#06080c' : '#0b1a22', lit = tft ? '#ffffff' : '#bfefff', dim = tft ? '#1a2029' : '#13303b', acc = x ? '#ffb347' : tft ? '#2fa8ff' : lit, sub = tft ? '#8b96a5' : '#7fb2c4';
   g.fillStyle = '#05070a'; rr(g, 4, 4, 504, 216, 30); g.fill(); g.strokeStyle = '#2a2f36'; g.lineWidth = 4; g.stroke();
   g.fillStyle = bg; rr(g, 16, 14, 480, 196, 22); g.fill();
   for (let i = 0; i < N; i++) { // tach: segments along a shallow arc
@@ -212,20 +213,20 @@ function nmax(g, sp) {
   for (let i = 0; i < 6; i++) { g.fillStyle = fr > (i + .5) / 6 ? (fr < .18 ? '#ff4a3d' : lit) : dim; g.fillRect(420 + i * 11, 176 - i * 4, 8, 20 + i * 4); }
   g.fillStyle = sub; g.font = 'bold 12px system-ui'; g.fillText('E', 408, 196); g.fillText('F', 486, 160);
   g.font = 'bold 16px system-ui';
-  if (tft) { // T / S mode badge, Y-Shift level pips
+  if (tft && !x) { // T / S mode badge, Y-Shift level pips
     const m = ctx.bcfg.ysp ? 'S' : 'T'; g.fillStyle = m === 'S' ? '#ff6a2a' : '#2fa8ff'; rr(g, 36, 134, 34, 30, 7); g.fill(); g.fillStyle = '#05070a'; g.font = 'bold 22px system-ui'; g.textAlign = 'center'; g.fillText(m, 53, 157);
     g.textAlign = 'left'; g.font = 'bold 13px system-ui'; g.fillStyle = sub; g.fillText('Y-SHIFT', 80, 146);
     for (let i = 0; i < 3; i++) { g.fillStyle = S.ysh > i ? '#ffb020' : dim; g.fillRect(80 + i * 20, 152, 16, 10); }
   }
   g.font = 'bold 14px system-ui'; g.textAlign = 'left';
   if (sp.tc) { g.fillStyle = ctx.bcfg.tc === false ? '#ffb020' : S.tcF < .95 ? (blink ? '#ffb020' : dim) : dim; g.fillText(ctx.bcfg.tc === false ? 'TCS OFF' : 'TCS', 410, 122); }
-  g.fillStyle = S.issOff ? (blink ? '#43e07a' : dim) : ctx.bcfg.iss ? (tft ? '#2d5a3a' : '#3d6b7a') : dim; g.fillText('S/S', 360, 122);
+  if (!x) { g.fillStyle = S.issOff ? (blink ? '#43e07a' : dim) : ctx.bcfg.iss ? (tft ? '#2d5a3a' : '#3d6b7a') : dim; g.fillText('S/S', 360, 122); } // XMAX: no Stop & Start
   if (!S.running && !S.issOff) { g.fillStyle = '#ff4a3d'; g.fillText('ENGINE OFF', 140, 122); }
   else if (S.lim && (performance.now() / 90 | 0) % 2) { g.fillStyle = '#ff3b2f'; g.fillText('FI', 140, 122); }
 }
 // key off: the dash is dead
 function dead(g) { g.fillStyle = '#05070a'; rr(g, 4, 4, 504, 216, 26); g.fill(); }
-const CLUSTERS = { sport, scooter, tft, smash, tmx, h2, nmax };
+const CLUSTERS = { sport, scooter, tft, smash, tmx, h2, nmax, xmax: (g, sp) => nmax(g, sp, 1) };
 // Redrawn only when something on it changes; the texture is uploaded to the GPU only while the in-world cluster can
 // be seen (1st person / garage). In 3rd person the same canvas is shown as the on-screen HUD, no upload needed.
 let cluKey = '', texDirty = true;
@@ -235,7 +236,7 @@ export function drawCluster(inWorld = true) {
     ctx.bike.cluster === 'tft' ? [now.m, now.s & 1, (S.odo / 100) | 0, ctx.bcfg.autoClutch, S.running && S.rpm >= sp.red - 600 && (performance.now() / 70 | 0) % 2].join() :
     ctx.bike.cluster === 'scooter' ? [now.m, now.s & 1, (S.odo / 100) | 0, S.running && Math.abs(S.v) > 2 && S.thrEff < .35, S.issOff && (performance.now() / 400 | 0) % 2, ctx.bcfg.iss, S.issOff].join() :
     ctx.bike.cluster === 'h2' ? [now.m, now.s & 1, Math.round(boostOf(sp) * 10), ctx.bcfg.qs].join() :
-    ctx.bike.cluster === 'nmax' ? [now.m, now.s & 1, (S.odo / 100) | 0, S.ysh, ctx.bcfg.ysp, sp.yec, ctx.bcfg.tc, (S.tcF ?? 1) < .95 && (performance.now() / 400 | 0) % 2, S.issOff && (performance.now() / 400 | 0) % 2, ctx.bcfg.iss, S.issOff].join() :
+    ctx.bike.cluster === 'nmax' || ctx.bike.cluster === 'xmax' ? [now.m, now.s & 1, (S.odo / 100) | 0, S.ysh, ctx.bcfg.ysp, sp.yec, ctx.bcfg.tc, (S.tcF ?? 1) < .95 && (performance.now() / 400 | 0) % 2, S.issOff && (performance.now() / 400 | 0) % 2, ctx.bcfg.iss, S.issOff].join() :
     ctx.bike.cluster === 'smash' ? [(S.odo / 1000) | 0, sp.carb].join() : ''].join('|');
   if (key !== cluKey) { cluKey = key; gc.clearRect(0, 0, 512, 224); (S.key ? CLUSTERS[ctx.bike.cluster] : dead)(gc, sp); texDirty = true; }
   if (inWorld && texDirty) { cluTex.needsUpdate = true; texDirty = false; return true; }
