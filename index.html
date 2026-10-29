@@ -37,6 +37,8 @@
 <div id="mis" hidden><span id="misT"></span><button class="b" id="misNext" hidden>Next</button><button class="b" id="misX">✕</button></div>
 <div id="top"><button class="b" id="bMenu" aria-label="Menu">☰</button><button class="b" id="bCam">CAM</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button><button class="b" id="bOpt" aria-label="Options">⚙</button></div>
 <button class="b" id="bFoot" hidden>GET OFF</button>
+<button class="b" id="bHud" aria-label="HUD opacity and hide" aria-expanded="false" aria-controls="hudQ">&#128065;</button>
+<div id="hudQ" hidden><label>HUD opacity<output id="hudQo">100%</output><input id="hudQs" type="range" min="20" max="100" step="5" value="100" aria-label="HUD opacity"></label><button class="b" id="hudQh">HIDE HUD</button></div>
 
 <div id="tc">
   <div id="joy"><i id="joyK"></i></div><button id="jumpB">JUMP</button>
@@ -115,6 +117,7 @@
         <b>E / Q</b><span>Manual bikes: shift up / down (1-N-2-3-4-5-6). Pull the clutch first, unless E-Clutch is on</span>
         <b>Space</b><span>Manual: clutch (hold to pull) · Scooter: rear brake lever</span>
         <b>R · C · G · O</b><span>Start engine (scooter: hold the brake) · camera · garage · options</span>
+        <b>H · [ · ]</b><span>Hide / show the HUD · HUD less / more opaque (also the eye button at the top, or Options &gt; Game)</span>
         <b>M</b><span>Map: or tap the minimap. Tap the map to drop a pin, SET WAYPOINT to get a beacon and a pointer on the minimap</span>
         <b>Esc</b><span>Pause menu (closes the map first)</span>
         <b>Touch</b><span>Turn the handlebar (bottom left), drag the throttle grip, hold BRAKE. Manual: drag CLUTCH down to pull, ▲▼ to shift</span>

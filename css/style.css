@@ -377,3 +377,18 @@ body.gar #shop,body.menu #shop,body.opt #shop,body.gar #soc,body.menu #soc{displ
 #mpFr{display:flex;flex-direction:column;gap:6px;margin:8px 0}#mpFr[hidden]{display:none}
 #mpFr .fr{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:8px;padding:6px 8px}
 #mpFr .fr span{flex:1;min-width:0;display:flex;flex-direction:column}#mpFr .fr small{color:#9aa3ad}
+
+/* HUD opacity / hide (options.js applyHud: --hud-op, body.hudoff). Hide is visual only: the touch controls keep working, the
+   top buttons and minimap stop taking taps. The eye button (#bHud) and its popover (#hudQ) stay reachable, faintly, so the HUD can always come back. */
+body{--hud-op:1}
+#top,#mini,#perf,#gauge,#mis,#tc>*{opacity:var(--hud-op);transition:opacity .2s}
+body.hudoff #top,body.hudoff #mini,body.hudoff #perf,body.hudoff #gauge,body.hudoff #tc>*{opacity:0}
+body.hudoff #top,body.hudoff #mini{pointer-events:none}
+#bHud{position:fixed;top:var(--et);left:50%;transform:translateX(-50%);z-index:8;width:36px;height:36px;min-width:0;min-height:0;padding:0;border-radius:50%;font-size:17px;line-height:1;opacity:.4;transition:opacity .2s}
+body.touch #bHud{min-height:0}
+#bHud:hover,#bHud[aria-expanded=true],body.hudoff #bHud:active{opacity:.95}
+#hudQ{position:fixed;top:calc(var(--et) + 44px);left:50%;transform:translateX(-50%);z-index:8;display:flex;flex-direction:column;gap:8px;width:min(240px,86vw);padding:10px 12px;border-radius:12px;background:var(--glass);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(6px)}
+#hudQ label{display:grid;grid-template-columns:1fr auto;gap:6px 8px;align-items:center;font:700 12px system-ui;letter-spacing:.06em}
+#hudQ input{grid-column:1/3;width:100%;accent-color:var(--hot);height:28px}
+#hudQ .b{min-height:40px}
+body.gar #bHud,body.gar #hudQ,body.opt #bHud,body.opt #hudQ,body.menu #bHud,body.menu #hudQ,body.foot.menu #bHud{display:none}

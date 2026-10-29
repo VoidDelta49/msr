@@ -22,6 +22,32 @@ let PK = []; // pending() as of the last render
 function applyUi() { document.body.style.setProperty('--k', (cfg.ui ?? 10) / 10); document.body.classList.toggle('lefty', !!cfg.lefty); }
 applyUi();
 
+/* ---------- HUD opacity and hide ---------- */
+// live: cfg.hudOp (20-100 %) sets --hud-op, cfg.hudHide adds body.hudoff (style.css). Reachable while riding from the eye button
+// (#bHud, popover #hudQ), the H / [ / ] keys and Options > Game. Hiding is visual only, so the touch controls keep working.
+let hudNote = 0;
+function hudSay(t) { const m = $('msg'); if (!m) return; m.textContent = t; m.classList.add('on'); clearTimeout(hudNote); hudNote = setTimeout(() => m.classList.remove('on'), 1100); }
+function applyHud() {
+  const op = Math.max(20, Math.min(100, cfg.hudOp ?? 100)), hide = !!cfg.hudHide;
+  document.body.style.setProperty('--hud-op', op / 100); document.body.classList.toggle('hudoff', hide);
+  const s = $('hudQs'), o = $('hudQo'), h = $('hudQh'); if (!s) return;
+  s.value = op; o.textContent = op + '%'; h.textContent = hide ? 'SHOW HUD' : 'HIDE HUD'; h.classList.toggle('on', hide); s.disabled = hide;
+}
+export function hudToggle() { cfg.hudHide = !cfg.hudHide; save(); applyHud(); hudSay(cfg.hudHide ? 'HUD hidden: H or the eye button brings it back' : 'HUD shown'); if (ctx.OPT) build(true); }
+export function hudStep(d) {
+  cfg.hudOp = Math.max(20, Math.min(100, (cfg.hudOp ?? 100) + d)); if (cfg.hudHide) cfg.hudHide = false; save(); applyHud(); hudSay('HUD opacity ' + cfg.hudOp + '%'); if (ctx.OPT) build(true);
+}
+applyHud();
+{
+  const b = $('bHud'), q = $('hudQ'), s = $('hudQs');
+  const shut = () => { q.hidden = true; b.setAttribute('aria-expanded', 'false'); };
+  b.onclick = e => { e.stopPropagation(); q.hidden = !q.hidden; b.setAttribute('aria-expanded', String(!q.hidden)); };
+  s.oninput = () => { cfg.hudOp = +s.value; save(); applyHud(); };
+  $('hudQh').onclick = () => { cfg.hudHide = !cfg.hudHide; save(); applyHud(); };
+  addEventListener('pointerdown', e => { if (!q.hidden && !q.contains(e.target) && e.target !== b) shut(); }, true);
+  addEventListener('keydown', e => { if (e.code === 'Escape' && !q.hidden) shut(); });
+}
+
 /* ---------- choices ---------- */
 const GFX = [['low', 'Low'], ['med', 'Medium'], ['high', 'High']];
 const RES = [[0, 'Off'], [480, '480p'], [360, '360p'], [240, '240p']]; // render height cap, upscaled with crisp pixels
@@ -46,6 +72,7 @@ const presetOf = () => (PRESETS.find(([, , v]) => Object.entries(v).every(([k, x
 const SL = {
   sens: { min: 5, max: 20, get: () => cfg.sens, set: v => cfg.sens = v, fmt: v => (v / 10).toFixed(1) + '×' },
   ui: { min: 7, max: 14, get: () => cfg.ui ?? 10, set: v => { cfg.ui = v; applyUi(); }, fmt: v => (v / 10).toFixed(1) + '×' },
+  hudOp: { min: 20, max: 100, get: () => cfg.hudOp ?? 100, set: v => { cfg.hudOp = v; applyHud(); }, fmt: v => v + '%' },
   fov: { min: 50, max: 110, get: () => cfg.fov ?? 72, set: v => cfg.fov = v, fmt: v => v + '°' },
   mbAmt: { min: 1, max: 10, get: () => cfg.mbAmt ?? 5, set: v => cfg.mbAmt = v, fmt: v => v * 10 + '%' },
   vol: { min: 0, max: 100, get: () => Math.round((cfg.vol ?? .8) * 100), set: v => cfg.vol = v / 100, fmt: v => v + '%' },
@@ -112,6 +139,8 @@ const tGame = () => sec('WORLD') +
   sw('tough', 'Tough Biker mode', 'No falls: walls only stop you, and flips and hard landings are survived.') +
   sw('wc', 'Wheelie control', 'The ECU trims torque near the lift point. Turn it off to wheelie.') +
   sec('SCREEN') +
+  slider('hudOp', 'HUD opacity', 'How solid the buttons, gauges and minimap are. While riding: [ and ] keys, or the eye button at the top.', !!cfg.hudHide) +
+  sw('hudHide', 'Hide HUD', 'Hides the on-screen HUD (touch controls still work). H key, or the eye button at the top, brings it back.') +
   sw('showFps', 'Show FPS', 'Frame rate, physics time and the hitch meter.') +
   sw('showApi', 'Show renderer', 'Which renderer is running, in the corner.');
 const tSys = () => {
@@ -146,6 +175,7 @@ function setTab(id) { tab = id; try { sessionStorage.setItem('cpmOptTab', id); }
 function set(k, v) {
   cfg[k] = v; save();
   if (k === 'lefty') applyUi();
+  if (k === 'hudHide') applyHud();
   if (k === 'retro' && O.setDPR) O.setDPR();
   if (!(k in RELOAD) && O.onPerf) O.onPerf();
   build(true);
@@ -156,7 +186,7 @@ function resetAll() {
   if (!rstT) { rstT = setTimeout(() => { rstT = 0; if (ctx.OPT) build(true); }, 3500); build(true); return; }
   clearTimeout(rstT); rstT = 0;
   for (const k of Object.keys(GLOBAL_DEF)) if (!KEEP.has(k)) cfg[k] = GLOBAL_DEF[k];
-  save(); applyUi(); if (O.setDPR) O.setDPR(); if (O.onPerf) O.onPerf(); build(true);
+  save(); applyUi(); applyHud(); if (O.setDPR) O.setDPR(); if (O.onPerf) O.onPerf(); build(true);
 }
 
 export function showOpts(id) { if (TABS.some(t => t[0] === id)) { tab = id; try { sessionStorage.setItem('cpmOptTab', id); } catch (e) { } } openOpts(); const b = $('oBody').querySelector('[data-act=bench]'), h = b && b.parentElement.previousElementSibling.previousElementSibling; if (h) h.scrollIntoView({ block: 'start' }); } // (heading, note, buttons: land on the heading) // main.js: the benchmark's report
