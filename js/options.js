@@ -167,18 +167,22 @@ function build(keep) {
   PK = pending(); const body = $('oBody'), y = keep ? body.scrollTop : 0;
   $('oTabs').innerHTML = TABS.map(([id, l]) => `<button role=tab id=ot_${id} aria-selected=${id === tab} tabindex=${id === tab ? 0 : -1} aria-controls=oBody data-tab=${id}>${l}</button>`).join('');
   body.innerHTML = TABS.find(t => t[0] === tab)[2](); body.setAttribute('aria-labelledby', 'ot_' + tab); body.scrollTop = y;
+  // entrance motion only for a fresh render (open / tab change); a live setting change rebuilds the rows without replaying it
+  body.classList.toggle('oin', !keep); $('oTabs').classList.toggle('oin', !keep);
+  if (!keep) [...body.children].slice(0, 16).forEach((c, i) => c.style.setProperty('--i', i));
   const t = $('oTabs'), s = t.querySelector('[aria-selected=true]'); // narrow portrait: the tab row scrolls, keep the picked tab in view
   if (t.scrollWidth > t.clientWidth) t.scrollLeft = s.getBoundingClientRect().left - t.getBoundingClientRect().left + t.scrollLeft - (t.clientWidth - s.offsetWidth) / 2;
   $('oApply').hidden = !PK.length; $('oApplyT').textContent = PK.length ? 'Reload to apply: ' + PK.map(k => RELOAD[k]).join(', ') : '';
 }
 function setTab(id) { tab = id; try { sessionStorage.setItem('cpmOptTab', id); } catch (e) { } build(); }
+function pop(k) { const el = $('oBody').querySelector(`[data-sw="${k}"],[data-sg="${k}"][aria-checked=true]`); if (el) el.classList.add('pop'); }
 function set(k, v) {
   cfg[k] = v; save();
   if (k === 'lefty') applyUi();
   if (k === 'hudHide') applyHud();
   if (k === 'retro' && O.setDPR) O.setDPR();
   if (!(k in RELOAD) && O.onPerf) O.onPerf();
-  build(true);
+  build(true); pop(k);
 }
 let rstT = 0; // the two-tap "reset everything" confirmation
 const KEEP = new Set(['bike', 'name', 'room', 'mpUrl', 'builds']); // not options: the chosen bike, the multiplayer identity, saved builds
@@ -198,7 +202,7 @@ $('opts').onclick = e => {
   const b = e.target.closest('button'); if (!b || b.disabled) return; const d = b.dataset;
   if (d.tab) return setTab(d.tab);
   if (d.sw) return set(d.sw, b.getAttribute('aria-checked') !== 'true');
-  if (d.sg === 'preset') { Object.assign(cfg, PRESETS.find(p => p[0] === d.v)[2]); save(); return build(true); }
+  if (d.sg === 'preset') { Object.assign(cfg, PRESETS.find(p => p[0] === d.v)[2]); save(); build(true); return pop('preset'); }
   if (d.sg) return set(d.sg, parse(d.sg, d.v));
   if (d.act === 'reset') return resetAll();
   if (d.act === 'copy') { const t = LOG.join('\n') || 'No errors logged'; const done = ok => { b.textContent = ok ? 'Copied' : 'Copy failed'; }; try { navigator.clipboard.writeText(t).then(() => done(true), () => done(false)); } catch (x) { done(false); } return; }
@@ -208,7 +212,7 @@ $('opts').onclick = e => {
 };
 $('opts').oninput = e => {
   const el = e.target.closest('input[data-sl]'); if (!el) return; const d = SL[el.dataset.sl], v = +el.value;
-  d.set(v); save(); el.style.setProperty('--p', (v - d.min) / (d.max - d.min) * 100 + '%'); el.closest('.oi').querySelector('output').textContent = d.fmt(v);
+  d.set(v); save(); el.style.setProperty('--p', (v - d.min) / (d.max - d.min) * 100 + '%'); const o = el.closest('.oi').querySelector('output'); o.textContent = d.fmt(v); o.classList.remove('bump'); void o.offsetWidth; o.classList.add('bump');
 };
 // arrow keys move between tabs (the tab list is one tab stop)
 $('oTabs').onkeydown = e => {

@@ -47,6 +47,15 @@ $('mHelp').onclick = () => show('mHelpP');
 $('mOpt').onclick = () => openOpts();
 $('mFoot').textContent = 'Build ' + BUILD;
 
+/* ---------- how to ride: pressing a key lights its keycap ---------- */
+{
+  const caps = [...document.querySelectorAll('#mHelpP .keys b')].map(b => [b, b.textContent.split(/\s*[\/·]\s*/).map(x => x.trim().toUpperCase())]);
+  const name = c => c === 'Space' ? 'SPACE' : c === 'Escape' ? 'ESC' : c === 'BracketLeft' ? '[' : c === 'BracketRight' ? ']' : c.replace(/^Key/, '');
+  const lit = (e, on) => { if (on && $('mHelpP').hidden) return; const n = name(e.code); for (const [b, ks] of caps) if (ks.includes(n)) b.classList.toggle('hit', on); };
+  addEventListener('keydown', e => lit(e, true)); addEventListener('keyup', e => lit(e, false));
+  addEventListener('blur', () => caps.forEach(([b]) => b.classList.remove('hit')));
+}
+
 /* ---------- patch notes + update check ---------- */
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 let seen = ''; try { seen = localStorage.getItem('cpm-seen') || ''; } catch (e) {}
