@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no,interactive-widget=resizes-visual">
 <title>CPM Motor Edition</title>
-<link rel="stylesheet" href="css/style.css?v=11.64">
+<link rel="stylesheet" href="css/style.css?v=11.65">
 <!-- the import map must come before any module load (modulepreload counts): Firefox ignores a later one ("three" was not remapped) -->
-<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.64","./js/audio.js":"./js/audio.js?v=11.64","./js/config.js":"./js/config.js?v=11.64","./js/controls.js":"./js/controls.js?v=11.64","./js/drivetrain.js":"./js/drivetrain.js?v=11.64","./js/garage.js":"./js/garage.js?v=11.64","./js/studio.js":"./js/studio.js?v=11.64","./js/hud.js":"./js/hud.js?v=11.64","./js/main.js":"./js/main.js?v=11.64","./js/missions.js":"./js/missions.js?v=11.64","./js/model.js":"./js/model.js?v=11.64","./js/options.js":"./js/options.js?v=11.64","./js/perf.js":"./js/perf.js?v=11.64","./js/physics.js":"./js/physics.js?v=11.64","./js/tyre.js":"./js/tyre.js?v=11.64","./js/rapier.js":"./js/rapier.js?v=11.64","./js/renderer.js":"./js/renderer.js?v=11.64","./js/spec.js":"./js/spec.js?v=11.64","./js/state.js":"./js/state.js?v=11.64","./js/util.js":"./js/util.js?v=11.64","./js/world.js":"./js/world.js?v=11.64","./js/roads.js":"./js/roads.js?v=11.64","./js/tex.js":"./js/tex.js?v=11.64","./js/gpucull.js":"./js/gpucull.js?v=11.64","./js/net.js":"./js/net.js?v=11.64","./js/race.js":"./js/race.js?v=11.64","./js/ride.js":"./js/ride.js?v=11.64","./js/ignition.js":"./js/ignition.js?v=11.64","./js/daynight.js":"./js/daynight.js?v=11.64","./js/lights.js":"./js/lights.js?v=11.64","./js/batch.js":"./js/batch.js?v=11.64","./js/bikecard.js":"./js/bikecard.js?v=11.64","./js/layout.js":"./js/layout.js?v=11.64","./js/layoutcalc.js":"./js/layoutcalc.js?v=11.64","./js/map.js":"./js/map.js?v=11.64","./js/foot.js":"./js/foot.js?v=11.64","./js/mblur.js":"./js/mblur.js?v=11.64","./js/footfig.js":"./js/footfig.js?v=11.64","./js/radio.js":"./js/radio.js?v=11.64","./js/radiogen.js":"./js/radiogen.js?v=11.64","./js/radiosynth.js":"./js/radiosynth.js?v=11.64","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.65","./js/audio.js":"./js/audio.js?v=11.65","./js/config.js":"./js/config.js?v=11.65","./js/controls.js":"./js/controls.js?v=11.65","./js/drivetrain.js":"./js/drivetrain.js?v=11.65","./js/garage.js":"./js/garage.js?v=11.65","./js/studio.js":"./js/studio.js?v=11.65","./js/hud.js":"./js/hud.js?v=11.65","./js/main.js":"./js/main.js?v=11.65","./js/missions.js":"./js/missions.js?v=11.65","./js/model.js":"./js/model.js?v=11.65","./js/options.js":"./js/options.js?v=11.65","./js/perf.js":"./js/perf.js?v=11.65","./js/physics.js":"./js/physics.js?v=11.65","./js/tyre.js":"./js/tyre.js?v=11.65","./js/rapier.js":"./js/rapier.js?v=11.65","./js/renderer.js":"./js/renderer.js?v=11.65","./js/spec.js":"./js/spec.js?v=11.65","./js/state.js":"./js/state.js?v=11.65","./js/util.js":"./js/util.js?v=11.65","./js/world.js":"./js/world.js?v=11.65","./js/roads.js":"./js/roads.js?v=11.65","./js/tex.js":"./js/tex.js?v=11.65","./js/gpucull.js":"./js/gpucull.js?v=11.65","./js/net.js":"./js/net.js?v=11.65","./js/race.js":"./js/race.js?v=11.65","./js/ride.js":"./js/ride.js?v=11.65","./js/ignition.js":"./js/ignition.js?v=11.65","./js/daynight.js":"./js/daynight.js?v=11.65","./js/lights.js":"./js/lights.js?v=11.65","./js/batch.js":"./js/batch.js?v=11.65","./js/bikecard.js":"./js/bikecard.js?v=11.65","./js/layout.js":"./js/layout.js?v=11.65","./js/layoutcalc.js":"./js/layoutcalc.js?v=11.65","./js/map.js":"./js/map.js?v=11.65","./js/foot.js":"./js/foot.js?v=11.65","./js/mblur.js":"./js/mblur.js?v=11.65","./js/footfig.js":"./js/footfig.js?v=11.65","./js/radio.js":"./js/radio.js?v=11.65","./js/radiogen.js":"./js/radiogen.js?v=11.65","./js/radiosynth.js":"./js/radiosynth.js?v=11.65","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
 <!-- start the heavy downloads at HTML parse, not after menu.js runs (same URLs as the importmap, so menu.js's fetches and import() reuse them) -->
 <link rel="modulepreload" href="./vendor/three/build/three.webgpu.js">
 <link rel="modulepreload" href="./vendor/three/build/three.core.js">
@@ -43,14 +43,10 @@
   <div id="lb"><button id="bKey">KEY</button><button id="bKill">KILL</button><button id="bStart">START</button><button id="bBack">◀ BACK</button></div>
   <div id="shift"><button id="bUp" aria-label="Shift up">▲</button><button id="bDn" aria-label="Shift down">▼</button></div>
   <div id="clu"><div id="cluFill"></div><small>CLUTCH<br>drag ↓ to pull</small></div>
-  <div id="wheel"><svg viewBox="-62 -62 124 124"><circle r="54" fill="rgba(10,12,16,.35)" stroke="rgba(255,255,255,.16)" stroke-width="2" stroke-dasharray="4 5"/><g id="wg" stroke-linecap="round" fill="none">
-    <path d="M-27 -3 L-36 -27 M27 -3 L36 -27" stroke="#8a929b" stroke-width="2.5"/><ellipse cx="-38" cy="-31" rx="10" ry="6" fill="#20252b" stroke="#aab2bb" stroke-width="2"/><ellipse cx="38" cy="-31" rx="10" ry="6" fill="#20252b" stroke="#aab2bb" stroke-width="2"/>
-    <path d="M-36 3 L-52 -6 M36 3 L52 -6" stroke="#aab2bb" stroke-width="3.5"/>
-    <path d="M-40 7 Q-20 -1 0 -1 Q20 -1 40 7" stroke="#cfd4da" stroke-width="6"/>
-    <path d="M-57 12 L-40 7 M57 12 L40 7" stroke="#16181b" stroke-width="12"/><path d="M-56 12 L-41 7.5 M56 12 L41 7.5" stroke="#3a3f45" stroke-width="12" stroke-dasharray="1.5 2.5"/>
-    <path d="M-17 -4 H17 L12 15 H-12 Z" fill="#2a2f36" stroke="#59616a" stroke-width="2"/><circle cx="-10" cy="4" r="4" fill="#8a929b"/><circle cx="10" cy="4" r="4" fill="#8a929b"/>
-    <rect x="-12" y="-21" width="24" height="15" rx="5" fill="#0d1013" stroke="#59616a" stroke-width="2"/><path d="M-7 -10 A7 7 0 0 1 7 -10" stroke="#ffb020" stroke-width="2"/>
-    <rect x="-4" y="-60" width="8" height="12" rx="2" fill="#ffb020" stroke="none"/></g></svg></div>
+  <div id="wheel"><svg viewBox="-62 -62 124 124"><circle r="54" fill="none" stroke="rgba(255,255,255,.18)" stroke-width="1.5"/><g id="wg" stroke-linecap="round" fill="none">
+    <path d="M-46 4 Q-23 -2 0 -2 Q23 -2 46 4" stroke="rgba(255,255,255,.85)" stroke-width="5"/>
+    <circle cy="0" r="7" fill="rgba(10,12,16,.55)" stroke="rgba(255,255,255,.5)" stroke-width="1.5"/>
+    <circle cx="0" cy="-52" r="3.5" fill="#ffb020" stroke="none"/></g></svg></div>
   <div id="brk"><div id="brkFill"></div><small id="brkT">BRAKE</small></div>
   <div id="thr"><div id="thrg"></div><small>THROTTLE ↓</small></div>
 </div>
@@ -145,6 +141,6 @@
   <div id="oApply" hidden><span id="oApplyT"></span><button class="b" id="oReload">Apply &amp; reload</button></div>
 </div></div>
 
-<script type="module" src="js/menu.js?v=11.64"></script>
+<script type="module" src="js/menu.js?v=11.65"></script>
 </body>
 </html>

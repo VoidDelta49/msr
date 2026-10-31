@@ -1,4 +1,7 @@
 [
+  { "v": "11.65", "d": "2026-11-01", "t": [
+    "Cleaner, more minimal look. Touch controls: a thin ring and bar for the handlebar, a quiet ridged strip for the throttle, neutral glass pads for brake and clutch with a single-colour fill, hairline borders on every button. Menus, bike cards, options and the garage lose the slide, shine, shimmer and bounce effects and get flat keycaps; amber is now the only accent colour."
+  ] },
   { "v": "11.64", "d": "2026-10-31", "t": [
     "Radio. Press N (next) or B (previous) to tune in: Off, then four made-up stations that the game plays live, with no recordings. Isla FM 93.3 (island pop), Takbo FM 107.1 (night-drive synthwave), Lo-Fi Lot 88.5 (chill beats with vinyl crackle) and Radyo Barangay 810 AM (old-time waltz ballads through a tinny AM radio). Each song is composed from a random seed when it starts (its own key, tempo, chord loop and tune), has a title, and the next one is different. There is a radio button next to the HUD eye button at the top (station, track, volume) and a Radio section in Options > Audio. The radio fades down a little at speed and on the throttle so the engine stays on top, goes muffled in a crash and stays quiet in the pause menu. Off by default."
   ] },
