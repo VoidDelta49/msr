@@ -12,6 +12,7 @@ import { B, buildModel, applyLook, snapshot, releaseSkin, blobTick, lamps, ledTi
 import { step } from './physics.js';
 import { dayNight } from './daynight.js';
 import { initAudio, updAudio, blip } from './audio.js';
+import { radioTick, RAD } from './radio.js';
 import { say, drawCluster, drawMini, updPerf, setFps, setPhys, setGfx, setJank } from './hud.js';
 import { RP, TICK, initRapier, tickR, syncBody, crashVisual, bounce } from './rapier.js';
 import { actions, input, footInput, ptr, TC, WMAX } from './controls.js';
@@ -215,6 +216,7 @@ Object.assign(actions, {
 });
 O.onPerf = () => updPerf(API);
 benchInit({ reset, toggleCam, startEngine, sync: syncBody, say, done: () => showOpts('sys') }); // bench.js (Options > System > BENCHMARK)
+RAD.say = say; // radio.js shows the station name through the HUD message
 $('bGar').onclick = openGarage; $('bCam').onclick = () => F.on ? footCamToggle() : toggleCam(); $('bFoot').onclick = () => actions.foot(); $('bReset').onclick = () => { if (ctx.rideExit) ctx.rideExit(); reset(); say('Back at the lot'); };
 function goFS() { const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => { })).catch(() => { }); }
 addEventListener('pointerdown', () => { if (!ctx.paused && !ctx.GAR && !ctx.OPT) goFS(); });
@@ -278,10 +280,10 @@ function loop(t) {
   if (BN.on) benchDrive(dt); const P1 = performance.now(); // benchmark: this frame's scripted pose (bench.js); P1..P3, C1 = stage stamps for it
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); npcFrame(dt, t); blobTick(H); bikeFx(dt); const P2 = performance.now(); updAudio(); const P3 = performance.now(); const fp = ctx.camMode === 0 || ctx.GAR; if (t - lastDraw > (fp ? 100 : 50)) { const hold = fp && sun.shadow.needsUpdate; if (!hold) lastDraw = t; hudUp = drawCluster(fp, hold); drawMini(MAP, MAPV); } /* never upload the dash in the frame that redraws the shadow map (two GPU bursts in one frame): it goes next frame */ const D0 = performance.now(); if (MB) mbState(); renderer.info.reset(); let shRef = sun.shadow.needsUpdate; if (BX.noShadow) { shRef = false; sun.shadow.needsUpdate = false; } let C1 = D0; /* benchmark: no shadow-map pass */ if (!ctx.mapCover) { cull(camera); grassFrame(camera, F.on ? [GPB, (GPF.x = F.x, GPF.z = F.z, GPF)] : [GPB], !ctx.inside && !(ctx.ug && ctx.ug.on)); fxTick(camera); C1 = performance.now(); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0); if (BN.on) benchFrame(t, J0, P1, P2, P3, D0, C1, J1, hudUp, shRef);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); npcFrame(dt, t); blobTick(H); bikeFx(dt); const P2 = performance.now(); updAudio(); radioTick(); const P3 = performance.now(); const fp = ctx.camMode === 0 || ctx.GAR; if (t - lastDraw > (fp ? 100 : 50)) { const hold = fp && sun.shadow.needsUpdate; if (!hold) lastDraw = t; hudUp = drawCluster(fp, hold); drawMini(MAP, MAPV); } /* never upload the dash in the frame that redraws the shadow map (two GPU bursts in one frame): it goes next frame */ const D0 = performance.now(); if (MB) mbState(); renderer.info.reset(); let shRef = sun.shadow.needsUpdate; if (BX.noShadow) { shRef = false; sun.shadow.needsUpdate = false; } let C1 = D0; /* benchmark: no shadow-map pass */ if (!ctx.mapCover) { cull(camera); grassFrame(camera, F.on ? [GPB, (GPF.x = F.x, GPF.z = F.z, GPF)] : [GPB], !ctx.inside && !(ctx.ug && ctx.ug.on)); fxTick(camera); C1 = performance.now(); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0); if (BN.on) benchFrame(t, J0, P1, P2, P3, D0, C1, J1, hudUp, shRef);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.gpu = GPU; O.aa = AA; O.live = true; O.snap(); // options.js: what the loaded game was built with, to tell which changes still need a reload
 if (ctx.mpWant) { const w = ctx.mpWant; ctx.mpWant = null; netJoin(w.room, w.name, w.url); } // MULTIPLAYER > JOIN before the game had loaded
 O.api = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { BUNDLE, NPC, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };
+window.__cpm = { RAD, BUNDLE, NPC, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };
