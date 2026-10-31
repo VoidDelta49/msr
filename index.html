@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover,user-scalable=no,interactive-widget=resizes-visual">
 <title>CPM Motor Edition</title>
-<link rel="stylesheet" href="css/style.css?v=11.63">
+<link rel="stylesheet" href="css/style.css?v=11.64">
 <!-- the import map must come before any module load (modulepreload counts): Firefox ignores a later one ("three" was not remapped) -->
-<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.63","./js/audio.js":"./js/audio.js?v=11.63","./js/config.js":"./js/config.js?v=11.63","./js/controls.js":"./js/controls.js?v=11.63","./js/drivetrain.js":"./js/drivetrain.js?v=11.63","./js/garage.js":"./js/garage.js?v=11.63","./js/studio.js":"./js/studio.js?v=11.63","./js/hud.js":"./js/hud.js?v=11.63","./js/main.js":"./js/main.js?v=11.63","./js/missions.js":"./js/missions.js?v=11.63","./js/model.js":"./js/model.js?v=11.63","./js/options.js":"./js/options.js?v=11.63","./js/perf.js":"./js/perf.js?v=11.63","./js/physics.js":"./js/physics.js?v=11.63","./js/tyre.js":"./js/tyre.js?v=11.63","./js/rapier.js":"./js/rapier.js?v=11.63","./js/renderer.js":"./js/renderer.js?v=11.63","./js/spec.js":"./js/spec.js?v=11.63","./js/state.js":"./js/state.js?v=11.63","./js/util.js":"./js/util.js?v=11.63","./js/world.js":"./js/world.js?v=11.63","./js/roads.js":"./js/roads.js?v=11.63","./js/tex.js":"./js/tex.js?v=11.63","./js/gpucull.js":"./js/gpucull.js?v=11.63","./js/net.js":"./js/net.js?v=11.63","./js/race.js":"./js/race.js?v=11.63","./js/ride.js":"./js/ride.js?v=11.63","./js/ignition.js":"./js/ignition.js?v=11.63","./js/daynight.js":"./js/daynight.js?v=11.63","./js/lights.js":"./js/lights.js?v=11.63","./js/batch.js":"./js/batch.js?v=11.63","./js/bikecard.js":"./js/bikecard.js?v=11.63","./js/layout.js":"./js/layout.js?v=11.63","./js/layoutcalc.js":"./js/layoutcalc.js?v=11.63","./js/map.js":"./js/map.js?v=11.63","./js/foot.js":"./js/foot.js?v=11.63","./js/mblur.js":"./js/mblur.js?v=11.63","./js/footfig.js":"./js/footfig.js?v=11.63","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
+<script type="importmap">{"imports":{"./js/menu.js":"./js/menu.js?v=11.64","./js/audio.js":"./js/audio.js?v=11.64","./js/config.js":"./js/config.js?v=11.64","./js/controls.js":"./js/controls.js?v=11.64","./js/drivetrain.js":"./js/drivetrain.js?v=11.64","./js/garage.js":"./js/garage.js?v=11.64","./js/studio.js":"./js/studio.js?v=11.64","./js/hud.js":"./js/hud.js?v=11.64","./js/main.js":"./js/main.js?v=11.64","./js/missions.js":"./js/missions.js?v=11.64","./js/model.js":"./js/model.js?v=11.64","./js/options.js":"./js/options.js?v=11.64","./js/perf.js":"./js/perf.js?v=11.64","./js/physics.js":"./js/physics.js?v=11.64","./js/tyre.js":"./js/tyre.js?v=11.64","./js/rapier.js":"./js/rapier.js?v=11.64","./js/renderer.js":"./js/renderer.js?v=11.64","./js/spec.js":"./js/spec.js?v=11.64","./js/state.js":"./js/state.js?v=11.64","./js/util.js":"./js/util.js?v=11.64","./js/world.js":"./js/world.js?v=11.64","./js/roads.js":"./js/roads.js?v=11.64","./js/tex.js":"./js/tex.js?v=11.64","./js/gpucull.js":"./js/gpucull.js?v=11.64","./js/net.js":"./js/net.js?v=11.64","./js/race.js":"./js/race.js?v=11.64","./js/ride.js":"./js/ride.js?v=11.64","./js/ignition.js":"./js/ignition.js?v=11.64","./js/daynight.js":"./js/daynight.js?v=11.64","./js/lights.js":"./js/lights.js?v=11.64","./js/batch.js":"./js/batch.js?v=11.64","./js/bikecard.js":"./js/bikecard.js?v=11.64","./js/layout.js":"./js/layout.js?v=11.64","./js/layoutcalc.js":"./js/layoutcalc.js?v=11.64","./js/map.js":"./js/map.js?v=11.64","./js/foot.js":"./js/foot.js?v=11.64","./js/mblur.js":"./js/mblur.js?v=11.64","./js/footfig.js":"./js/footfig.js?v=11.64","./js/radio.js":"./js/radio.js?v=11.64","./js/radiogen.js":"./js/radiogen.js?v=11.64","./js/radiosynth.js":"./js/radiosynth.js?v=11.64","@dimforge/rapier3d-compat":"./vendor/rapier/rapier.mjs","three":"./vendor/three/build/three.webgpu.js","three/webgpu":"./vendor/three/build/three.webgpu.js","three/tsl":"./vendor/three/build/three.tsl.js","three/addons/":"./vendor/three/examples/jsm/"}}</script>
 <!-- start the heavy downloads at HTML parse, not after menu.js runs (same URLs as the importmap, so menu.js's fetches and import() reuse them) -->
 <link rel="modulepreload" href="./vendor/three/build/three.webgpu.js">
 <link rel="modulepreload" href="./vendor/three/build/three.core.js">
@@ -34,6 +34,8 @@
 <div id="top"><button class="b" id="bMenu" aria-label="Menu">☰</button><button class="b" id="bCam">CAM</button><button class="b" id="bGar">GARAGE</button><button class="b" id="bReset">RESET</button><button class="b" id="bOpt" aria-label="Options">⚙</button></div>
 <button class="b" id="bFoot" hidden>GET OFF</button>
 <button class="b" id="bHud" aria-label="HUD opacity and hide" aria-expanded="false" aria-controls="hudQ">&#128065;</button>
+<button class="b" id="bRad" aria-label="Radio" aria-expanded="false" aria-controls="radQ">&#128251;</button>
+<div id="radQ" hidden><div id="radH"><b id="radN">Radio off</b><small id="radT">N or ▶ to tune in</small></div><div id="radB"><button class="b" id="radPrev" aria-label="Previous station">◀</button><button class="b" id="radPow">ON</button><button class="b" id="radNext" aria-label="Next station">▶</button></div><label>Radio volume<output id="radVo">60%</output><input id="radVs" type="range" min="0" max="100" step="5" value="60" aria-label="Radio volume"></label></div>
 <div id="hudQ" hidden><label>HUD opacity<output id="hudQo">100%</output><input id="hudQs" type="range" min="20" max="100" step="5" value="100" aria-label="HUD opacity"></label><button class="b" id="hudQh">HIDE HUD</button></div>
 
 <div id="tc">
@@ -109,6 +111,7 @@
         <b>E / Q</b><span>Manual bikes: shift up / down (1-N-2-3-4-5-6). Pull the clutch first, unless E-Clutch is on</span>
         <b>Space</b><span>Manual: clutch (hold to pull) · Scooter: rear brake lever</span>
         <b>R · C · G · O</b><span>Start engine (scooter: hold the brake) · camera · garage · options</span>
+        <b>N / B</b><span>Radio: next / previous station (Off, Isla FM, Takbo FM, Lo-Fi Lot, Radyo Barangay). Also the radio button at the top, or Options &gt; Audio</span>
         <b>H · [ · ]</b><span>Hide / show the HUD · HUD less / more opaque (also the eye button at the top, or Options &gt; Game)</span>
         <b>M</b><span>Map: or tap the minimap. Tap the map to drop a pin, SET WAYPOINT to get a beacon and a pointer on the minimap</span>
         <b>Esc</b><span>Pause menu (closes the map first)</span>
@@ -142,6 +145,6 @@
   <div id="oApply" hidden><span id="oApplyT"></span><button class="b" id="oReload">Apply &amp; reload</button></div>
 </div></div>
 
-<script type="module" src="js/menu.js?v=11.63"></script>
+<script type="module" src="js/menu.js?v=11.64"></script>
 </body>
 </html>

@@ -12,6 +12,7 @@ import { B, buildModel, applyLook, snapshot, releaseSkin, blobTick } from './mod
 import { step } from './physics.js';
 import { dayNight } from './daynight.js';
 import { initAudio, updAudio, blip } from './audio.js';
+import { radioTick, RAD } from './radio.js';
 import { say, drawCluster, drawMini, updPerf, setFps, setPhys, setGfx, setJank } from './hud.js';
 import { RP, TICK, initRapier, tickR, syncBody, crashVisual, bounce } from './rapier.js';
 import { actions, input, footInput, ptr, TC, WMAX } from './controls.js';
@@ -195,6 +196,7 @@ Object.assign(actions, {
   opts: () => ctx.OPT ? closeOpts() : openOpts(), closeOpts,
 });
 O.onPerf = () => updPerf(API);
+RAD.say = say; // radio.js shows the station name through the HUD message
 $('bGar').onclick = openGarage; $('bCam').onclick = () => F.on ? footCamToggle() : toggleCam(); $('bFoot').onclick = () => actions.foot(); $('bReset').onclick = () => { if (ctx.rideExit) ctx.rideExit(); reset(); say('Back at the lot'); };
 function goFS() { const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => { })).catch(() => { }); }
 addEventListener('pointerdown', () => { if (!ctx.paused && !ctx.GAR && !ctx.OPT) goFS(); });
@@ -255,10 +257,10 @@ function loop(t) {
   else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; if (F.on) footTick(dt); else input(dt); if (RP.ok) tickRapier(dt); missions(dt); wpTick(); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } const D0 = performance.now(); if (MB) mbState(); renderer.info.reset(); if (!ctx.mapCover) { cull(camera); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); updAudio(); radioTick(); if (t - lastDraw > (ctx.camMode === 0 || ctx.GAR ? 100 : 50)) { lastDraw = t; hudUp = drawCluster(ctx.camMode === 0 || ctx.GAR); drawMini(MAP, MAPV); } const D0 = performance.now(); if (MB) mbState(); renderer.info.reset(); if (!ctx.mapCover) { cull(camera); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.gpu = GPU; O.aa = AA; O.live = true; O.snap(); // options.js: what the loaded game was built with, to tell which changes still need a reload
 if (ctx.mpWant) { const w = ctx.mpWant; ctx.mpWant = null; netJoin(w.room, w.name, w.url); } // MULTIPLAYER > JOIN before the game had loaded
 O.api = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };
+window.__cpm = { RAD, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };

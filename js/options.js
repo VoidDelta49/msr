@@ -6,6 +6,7 @@
 import { $, LOG } from './util.js';
 import { ctx } from './state.js';
 import { cfg, save, BUILD, GLOBAL_DEF, AA_MODES, QUALITY } from './config.js';
+import { STATIONS } from './radiogen.js';
 
 export const O = { onPerf: null, setDPR: null, api: '', live: false, gpu: false, aa: null, snap };
 
@@ -74,8 +75,9 @@ const SL = {
   fov: { min: 50, max: 110, get: () => cfg.fov ?? 72, set: v => cfg.fov = v, fmt: v => v + '°' },
   mbAmt: { min: 1, max: 10, get: () => cfg.mbAmt ?? 5, set: v => cfg.mbAmt = v, fmt: v => v * 10 + '%' },
   vol: { min: 0, max: 100, get: () => Math.round((cfg.vol ?? .8) * 100), set: v => cfg.vol = v / 100, fmt: v => v + '%' },
+  rvol: { min: 0, max: 100, get: () => Math.round((cfg.rvol ?? .6) * 100), set: v => cfg.rvol = v / 100, fmt: v => v + '%' },
 };
-const NUM = new Set(['retro', 'fpsCap']);
+const NUM = new Set(['retro', 'fpsCap', 'radio']);
 const parse = (k, v) => k === 'tod' ? (v === 'live' ? 'live' : +v) : NUM.has(k) ? +v : v;
 
 /* ---------- row builders ---------- */
@@ -125,7 +127,10 @@ const tCtl = () => sec('TOUCH') +
 const tAud = () => sec('SOUND') +
   sw('sound', 'Sound', 'Engine, effects and ambience.') +
   sw('amb', 'Ambient sounds', 'Surf, wind, wildlife and town noise by location.', !cfg.sound) +
-  slider('vol', 'Volume', '', !cfg.sound);
+  slider('vol', 'Volume', '', !cfg.sound) +
+  sec('RADIO') +
+  seg('radio', 'Station', 'Four made-up stations, played live by the game (no recordings). N / B on a keyboard, or the radio button at the top.', [[0, 'Off'], ...STATIONS.map((s, i) => [i + 1, s.name])], cfg.radio | 0, !cfg.sound) +
+  slider('rvol', 'Radio volume', 'Fades down a little at speed so the engine stays on top.', !cfg.sound || !cfg.radio);
 const tGame = () => sec('WORLD') +
   seg('tod', 'Time of day', 'Live follows the clock in the Philippines.', TOD, cfg.tod ?? 'live') +
   sec('RIDING') +

@@ -5,6 +5,7 @@ import { cfg } from './config.js';
 import { initAudio } from './audio.js';
 import { F } from './foot.js';
 import { hudToggle, hudStep } from './options.js';
+import { radioStep } from './radio.js';
 
 export const actions = {};
 export const K = {}, TC = { back: 0, st: 0, stId: null, thr: 0, thrId: null, brk: 0, brkId: null, clu: 0, wa: 0, cluId: null, rev: 0, jump: 0 };
@@ -17,6 +18,7 @@ addEventListener('keydown', e => {
     if (e.code === 'KeyR') A.start(1); if (e.code === 'KeyK') A.key(); if (e.code === 'KeyT') A.kill(); if (e.code === 'KeyC') A.cam(); if (e.code === 'KeyG') A.garage();
   }
   if (e.code === 'KeyH') hudToggle(); else if (e.code === 'BracketLeft') hudStep(-10); else if (e.code === 'BracketRight') hudStep(10); // HUD hide / opacity (options.js)
+  if (e.code === 'KeyN' && !ctx.OPT) radioStep(1); else if (e.code === 'KeyB' && !ctx.OPT) radioStep(-1); // radio: next / previous station, through Off (radio.js)
   if (e.code === 'KeyO') A.opts(); else if (e.code === 'Escape') A.closeOpts();
   if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
 });

@@ -38,6 +38,9 @@ function noiseBuf(brown) {
 function loop(buf) { const s = AC.createBufferSource(); s.buffer = buf; s.loop = true; s.start(0, Math.random() * 2.5); return s; }
 const pan = v => { if (!AC.createStereoPanner) return node('gain', 0, 0, 1); const p = AC.createStereoPanner(); p.pan.value = v; return p; };
 
+// the radio (radio.js) plays into the same master bus, so Sound off, the master volume and the crash muffle apply to it too
+export const bus = () => AC && A.master ? { AC, out: A.master } : null;
+
 export function initAudio() {
   if (AC) { if (AC.state === 'suspended') AC.resume(); return; }
   try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { } // iOS: play with the silent switch on

@@ -1,4 +1,7 @@
 [
+  { "v": "11.64", "d": "2026-10-31", "t": [
+    "Radio. Press N (next) or B (previous) to tune in: Off, then four made-up stations that the game plays live, with no recordings. Isla FM 93.3 (island pop), Takbo FM 107.1 (night-drive synthwave), Lo-Fi Lot 88.5 (chill beats with vinyl crackle) and Radyo Barangay 810 AM (old-time waltz ballads through a tinny AM radio). Each song is composed from a random seed when it starts (its own key, tempo, chord loop and tune), has a title, and the next one is different. There is a radio button next to the HUD eye button at the top (station, track, volume) and a Radio section in Options > Audio. The radio fades down a little at speed and on the throttle so the engine stays on top, goes muffled in a crash and stays quiet in the pause menu. Off by default."
+  ] },
   { "v": "11.63", "d": "2026-10-30", "t": [
     "Livelier menus. Main menu: the island backdrop now moves (sea glints drift, the sun pulses, palms sway, the volcano smokes, birds fly past), the title shimmers, PLAY has a light sweep, panes and buttons slide in one after another and buttons slide on hover. How to ride: keys look like keycaps and light up when you press them. Options: the panel pops in, each tab's rows cascade in, switches spring with a glow, the picked choice pops, and slider values bump as you drag. All motion is off when the device asks for reduced motion."
   ] },
