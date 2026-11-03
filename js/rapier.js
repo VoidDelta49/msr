@@ -39,7 +39,7 @@ function stream(force) {
   const ci = Math.floor(S.x / CELL), cj = Math.floor(S.z / CELL), key = cellKey(ci, cj); if (!force && key === lastCell) return; lastCell = key; stamp++;
   for (let i = ci - 1; i <= ci + 1; i++) for (let j = cj - 1; j <= cj + 1; j++) for (const b of CELLS.get(cellKey(i, j)) || []) {
     b.st = stamp; if (b.col) continue;
-    b.col = world.createCollider(R.ColliderDesc.cuboid(b.hx, 4, b.hz).setTranslation(b.cx, H(b.cx, b.cz) + 1, b.cz).setRotation(qYX(b.ry, 0)).setCollisionGroups(G_STATIC).setFriction(.4)); live.add(b);
+    b.col = world.createCollider(R.ColliderDesc.cuboid(b.hx, 4, b.hz).setTranslation(b.cx, b.y ?? H(b.cx, b.cz) + 1, b.cz).setRotation(qYX(b.ry, 0)).setCollisionGroups(G_STATIC).setFriction(.4)); live.add(b);
   }
   for (const b of live) if (b.st !== stamp) { world.removeCollider(b.col, false); b.col = null; live.delete(b); }
 }

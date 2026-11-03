@@ -172,3 +172,11 @@ export function grille() { // radiator: dark core with silver honeycomb-ish mesh
 export function ribs() { // rubber floor mat ribs
   return paint(8, 16, (x, y) => y % 4 < 2 ? [58, 60, 64] : [24, 25, 27]);
 }
+
+/* curtain-wall tower: 4 x 4 glass bays per 64 px tile (a bay = one floor high, 16 px). Hash only, never rnd(): the seeded texture sequence must not shift. */
+export function tower() {
+  const hs = (a, b) => { let h = Math.imul(a * 73 + b * 151 + 11, 2654435761) >>> 0; h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0; return ((h ^ (h >>> 13)) >>> 0) / 4294967296; };
+  const cv = paint(64, 64, (x, y) => { const lx = x & 15, ly = y & 15; if (lx < 2 || ly < 2) return [176, 180, 184]; return ly === 2 ? [196, 220, 236] : hs(x >> 4, y >> 4) < .5 ? [64, 104, 136] : [48, 82, 112]; });
+  cv.glow = paint(64, 64, (x, y) => { const lx = x & 15, ly = y & 15; return lx < 2 || ly < 2 || ly === 2 || hs((x >> 4) + 5, (y >> 4) + 9) > .42 ? [0, 0, 0] : hs(x >> 4, y >> 4) < .2 ? [150, 200, 255] : [255, 222, 150]; });
+  return cv;
+}

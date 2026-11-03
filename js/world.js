@@ -38,18 +38,24 @@ const ISL=(MD.islands||[]).filter(o=>o.pts&&o.pts.length>2).map(o=>{const S=loop
 function islD(x,z,S){let d=1e18,ins=false;for(let i=0,j=S.length-1;i<S.length;j=i++){const[ax,az]=S[j],[bx,bz]=S[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)ins=!ins;
   const ex=bx-ax,ez=bz-az,t=clamp(((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez||1),0,1),dx=ax+ex*t-x,dz=az+ez*t-z,q=dx*dx+dz*dz;if(q<d)d=q}return ins?Math.sqrt(d):-Math.sqrt(d)}
 const inland=(x,z)=>{let v=coastR(Math.atan2(z-ICZ,x-ICX))-Math.hypot(x-ICX,z-ICZ);for(const I of ISL)if(x>I.x0-220&&x<I.x1+220&&z>I.z0-220&&z<I.z1+220){const d=islD(x,z,I.S);if(d>v)v=d}return v};
+// Terrain grid = a square (5 m vertices, 280 m tiles) round the bounding box of all land + 80 m of sea; tiles, LOD, road chunks, props, minimap follow it.
+const TS=5,TILE=280,LB=(()=>{let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(let i=0;i<720;i++){const t=i/720*2*PI,r=coastR(t),x=ICX+Math.cos(t)*r,z=ICZ+Math.sin(t)*r;x0=Math.min(x0,x);x1=Math.max(x1,x);z0=Math.min(z0,z);z1=Math.max(z1,z)}
+  for(const I of ISL){x0=Math.min(x0,I.x0);x1=Math.max(x1,I.x1);z0=Math.min(z0,I.z0);z1=Math.max(z1,I.z1)}return{x0,x1,z0,z1}})();
+const EXT=Math.max(LB.x1-LB.x0,LB.z1-LB.z0)/2,TSZ=Math.ceil((2*EXT+160)/TILE)*TILE,TN=TSZ/TS,GX=Math.round((LB.x0+LB.x1)/2/TS)*TS,GZ=Math.round((LB.z0+LB.z1)/2/TS)*TS;
 const rectD=(x,z,hx,hz,cx=0,cz=0)=>Math.hypot(Math.max(Math.abs(x-cx)-hx,0),Math.max(Math.abs(z-cz)-hz,0));
 const rd=(x,z,r,pad=0)=>rectD(x,z,(r.x1-r.x0)/2+pad,(r.z1-r.z0)/2+pad,(r.x0+r.x1)/2,(r.z0+r.z1)/2); // distance to a {x0,z0,x1,z1} rect
 const TOWN=MD.town,PADDY=MD.paddy,FEAT=MD.features,HL=MD.hills,PROPS=MD.props;
+const RF=FEAT.filter(f=>f.type==='rough'),roughMax=(x,z)=>{let m=0;for(const f of RF)m=Math.max(m,roughW(f,x,z));return m},CITY=FEAT.find(f=>f.name==='city');
 const VOL=FEAT.find(f=>f.type==='volcano')||{x:1e6,z:1e6,h:0,r:1,crater:0,craterR:1},TERR=FEAT.find(f=>f.type==='terraces')||{x:1e6,z:1e6,r:0};
 for(const f of FEAT)if(f.type==='ridge'){const p=f.pts;f.bb=[Math.min(...p.map(q=>q[0]))-3*f.w,Math.max(...p.map(q=>q[0]))+3*f.w,Math.min(...p.map(q=>q[1]))-3*f.w,Math.max(...p.map(q=>q[1]))+3*f.w]}
 // distance to a polyline; PD.h = the 3rd coordinate (if any) interpolated at the nearest point (ridge crest heights)
 const PD={d:0,h:0};
 function polyD(x,z,P){let bd=1e18,bh=0;for(let i=1;i<P.length;i++){const[ax,az,ah=0]=P[i-1],[bx,bz,bh2=0]=P[i],ex=bx-ax,ez=bz-az,t=clamp(((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez),0,1),dx=ax+ex*t-x,dz=az+ez*t-z,d=dx*dx+dz*dz;if(d<bd){bd=d;bh=ah+(bh2-ah)*t}}PD.d=Math.sqrt(bd);PD.h=bh;return PD}
 // Terrain = coast profile + rolling hills inland, then each feature in file order:
-//  volcano {x,z,h,r,crater,craterR} · terraces {x,z,r,h,step} (stepped rice terraces) · ridge {pts:[[x,z,crest h]...],w}
+//  hill {x,z,h,r,p?} (gaussian mound, h<0 digs a pit) · rough {x,z,r,amp,sc} (ridged bumpy rock field) · volcano {x,z,h,r,crater,craterR} · terraces {x,z,r,h,step} (stepped rice terraces) · ridge {pts:[[x,z,crest h]...],w}
 //  (a mountain range along a polyline, crest height per point, gaussian cross-section of half-width w) · flat {x0,z0,x1,z1,h,blend} (levelled to height h,
 //  blending back over 'blend' metres: town, paddies, airstrip).
+const roughW=(f,x,z)=>{const d=Math.hypot(x-f.x,z-f.z);return d<f.r?1-sstep(f.r*.55,f.r,d):0};
 function terrBase(x,z){
   const inl=inland(x,z);
   let h=inl>0?SEA+.2+Math.min(inl,60)*.045:Math.max(-10,SEA-.2+inl*.06);
@@ -58,6 +64,8 @@ function terrBase(x,z){
     if(t==='volcano'){const dv=Math.hypot(x-f.x,z-f.z);h+=f.h*Math.exp(-Math.pow(dv/f.r,1.8))-f.crater*Math.exp(-((dv/f.craterR)**2))}
     else if(t==='terraces'){const dt=Math.hypot(x-f.x,z-f.z);if(dt<f.r+260){/* was r+40: the hill gaussian ended in a 2.5 m step on a circle */h+=f.h*Math.exp(-((dt/100)**2));const w=1-sstep(f.r-40,f.r,dt),q=h/f.step,fr=q-Math.floor(q);h+=((Math.floor(q)+sstep(.7,1,fr))*f.step-h)*w*.85}}
     else if(t==='ridge'){if(x>f.bb[0]&&x<f.bb[1]&&z>f.bb[2]&&z<f.bb[3]){const p=polyD(x,z,f.pts);h+=p.h*Math.exp(-((p.d/f.w)**2))*sstep(0,80,inl)*(1+.18*(fbm(x*.02+3,z*.02)-.5))}}
+    else if(t==='hill'){const d=Math.hypot(x-f.x,z-f.z);if(d<f.r*2.5)h+=f.h*Math.exp(-Math.pow(d/f.r,f.p||2))}
+    else if(t==='rough'){const w=roughW(f,x,z);if(w>0)h+=w*f.amp*(1-Math.abs(2*fbm(x*f.sc+f.x*.013,z*f.sc+f.z*.017)-1))} // ridged rock: crests and gullies for off-roaders
     else if(t==='flat'){const w=1-sstep(0,f.blend,rd(x,z,f));if(w>0)h+=(f.h-h)*w}}
   return h}
 const RIVER=MD.river.pts,RW0=MD.river.w0,RW1=MD.river.w1;
@@ -92,7 +100,7 @@ const {ROADS,nearRoad,bumpAt,BUMPS}=buildRoads(MD,terrBase);
 // triangle exactly like the PlaneGeometry. (The analytic terrain has detail and shoulder curves the mesh can't show.)
 // Map size follows the coast: the terrain grid is centred on the island and covers its widest radius + 80 m of sea,
 // rounded up to whole tiles. Terrain tiles, LOD, road chunks, prop culling and physics heights all derive from it.
-const CMAX=Math.max(...CR),EXT=Math.max(CMAX,...ISL.map(I=>I.R)),TS=5,TILE=280,TSZ=Math.ceil((2*EXT+160)/TILE)*TILE,TN=TSZ/TS,GX=Math.round(ICX/TS)*TS,GZ=Math.round(ICZ/TS)*TS;
+const CMAX=Math.max(...CR);
 const GRD=groundModel({terr,carve:()=>lastCarve,nearRoad,bumpAt,GX,GZ,TSZ,TS}),HA=GRD.HA,meshH=GRD.meshH,H=GRD.H; // roads.js: drawn mesh + physics ground next to roads
 const roadH=(x,z)=>H(x,z);
 // Lowest / highest DRAWN ground under a footprint (centre, corners, edge midpoints). Props are placed on this, not on
@@ -105,7 +113,7 @@ function foot(x,z,hx,hz,ry=0){const c=Math.cos(ry),s=Math.sin(ry);let lo=1e9,hi=
 
 /* collision footprints: oriented boxes (Rapier makes colliders from these) */
 const OBBS=[];
-function addOBB(cx,cz,hx,hz,ry=0){const b={cx,cz,hx,hz,ry,c:Math.cos(ry),s:-Math.sin(ry)};OBBS.push(b)}
+function addOBB(cx,cz,hx,hz,ry=0,y){const b={cx,cz,hx,hz,ry,c:Math.cos(ry),s:-Math.sin(ry),y};OBBS.push(b)} // y: height of the box centre (default: the ground there + 1), for guardrails on a high bridge
 function addBox(x0,z0,x1,z1){addOBB((x0+x1)/2,(z0+z1)/2,(x1-x0)/2,(z1-z0)/2)}
 const dummy=new THREE.Object3D(),CELL=700; // CELL: power-wire chunk size
 // Instanced props, split into static 700 m chunks (one InstancedMesh per type per chunk). Buffers never change after
@@ -149,6 +157,7 @@ const TIN=[0xa8492f,0x2f5f9a,0x3d7a4a,0xb9bcc0,0x8a2f2f,0xc96f2a];
 const tDet=mkTex(T.detail(),260,{aniso:ANISO});
 const tRoad=mkTex(T.roadSt(),0,{aniso:ANISO}),tHwy=mkTex(T.roadHwy(),0,{aniso:ANISO});
 const WC=[1,2,3].map(n=>T.walls(n)),tW=WC.map(c=>mkTex(c)),tWG=WC.map(c=>mkTex(c.glow)),tTin=mkTex(T.tin()),tBark=mkTex(T.bark()),tFrond=mkTex(T.frond()),tLeaf=mkTex(T.leaves()),tJeep=mkTex(T.jeep());
+const TWC=T.tower(),tTower=mkTex(TWC),tTowerG=mkTex(TWC.glow);
 // materials for AO'd instanced geometry (vertexColors = the baked gradient; instance colour still tints)
 const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:mt,map:map||null,vertexColors:true});
 {
@@ -160,11 +169,13 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     if(lastCarve>.4)c.copy(C.bed);
     else if(h<SEA+1.3&&inl<90)c.copy(C.sand);
     else if(rd(x,z,TOWN,10)<1)c.copy(C.town).lerp(C.grass,n*.35);
+    else if(CITY&&rd(x,z,CITY,6)<1)c.copy(C.town).lerp(C.rock,.3+n*.25);
     else if(dt<TERR.r-30)c.copy((Math.floor(h/2.4)&1)?C.rice:C.rice2);
     else if(h>115||dv<45)c.copy(dv<30?C.ash:C.rock).lerp(C.forest,sstep(140,110,h)*.5);
     else if(h>14)c.copy(C.forest).lerp(C.grass2,n*.5);
     else c.copy(C.grass).lerp(C.grass2,n);
     if(h>SEA+1.3&&h<60&&lastCarve<.4){const dp=sstep(.55,.75,fbm(x*.008+3,z*.008));c.lerp(C.dry,dp*.6)} // sun-dried grass patches
+    {const rw=RF.length?roughMax(x,z):0;if(rw>0&&h>SEA+1.3&&lastCarve<.4)c.lerp(fbm(x*.07+5,z*.07)>.5?C.rock:C.dirt,rw*.8)} // rocky off-road fields
     if(h<SEA+.7&&inl<90)c.lerp(C.wet,.5); // wet sand at the waterline
     const q=nearRoad(x,z);if(q&&lastCarve<.4){const k=1-sstep(q.w/2,q.w/2+2.6,q.d);if(k>0)c.lerp(C.dirt,k*.65)} // worn dirt shoulders
     if(cutAmt>.15)c.lerp(cutAmt>3?C.rock:C.dirt,sstep(.15,2,cutAmt)*.75); // graded cut bank beside a road: bare earth, so the road reads against the grass
@@ -204,13 +215,15 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     r.s.forEach((s,i)=>{if(i)L+=Math.hypot(s.x-r.s[i-1].x,s.z-r.s[i-1].z);const nx=-s.tz,nz=s.tx,hw=r.w/2;B.p.push(s.x+nx*hw,s.h+.04,s.z+nz*hw,s.x-nx*hw,s.h+.04,s.z-nz*hw);if(SR)B.u.push(0,L/6,r.w/6,L/6);else B.u.push(0,L/4.5,1,L/4.5);
       if(i)B.i.push(base+(i-1)*2,base+i*2,base+(i-1)*2+1,base+(i-1)*2+1,base+i*2,base+i*2+1);
       const ry=Math.atan2(-s.tz,s.tx);
-      if(!SR&&i%2===0&&terr(s.x,s.z)<s.h-1.2){deck.push({x:s.x,y:s.h-.3,z:s.z,ry,sx:2.2,sy:.6,sz:r.w+.6});
-        for(const sd of[-1,1]){rail.push({x:s.x+nx*sd*(hw+.15),y:s.h+.55,z:s.z+nz*sd*(hw+.15),ry,sx:2.1,sy:.12,sz:.15},{x:s.x+nx*sd*(hw+.15),y:s.h+.3,z:s.z+nz*sd*(hw+.15),ry,sx:.15,sy:.6,sz:.15});addOBB(s.x+nx*sd*(hw+.2),s.z+nz*sd*(hw+.2),1.1,.12,ry)}
-        if(i%10===0)pil.push({x:s.x,y:SEA-2,z:s.z,sy:s.h-SEA+1.6})}
+      if(!SR&&i%2===0&&terr(s.x,s.z)<s.h-1.2){const up=clamp((s.h-SEA-6)/14,0,1),dk=.6+up*1.3; // a high bridge gets a deeper girder and stouter piers
+        deck.push({x:s.x,y:s.h+.3-dk,z:s.z,ry,sx:2.2,sy:dk,sz:r.w+.6});
+        for(const sd of[-1,1]){const o=nearRoad(s.x+nx*sd*(hw+.15),s.z+nz*sd*(hw+.15));if(o&&o.i!==r.id&&o.d-o.w/2<.4)continue; // no rail across another road's mouth (the ramp off the ocean bridge)
+          rail.push({x:s.x+nx*sd*(hw+.15),y:s.h+.55,z:s.z+nz*sd*(hw+.15),ry,sx:4.3,sy:.12,sz:.15},{x:s.x+nx*sd*(hw+.15),y:s.h+.3,z:s.z+nz*sd*(hw+.15),ry,sx:.15,sy:.6,sz:.15});addOBB(s.x+nx*sd*(hw+.2),s.z+nz*sd*(hw+.2),2.2,.12,ry,s.h+1)}
+        if(i%(up>0?20:10)===0)pil.push({x:s.x,y:SEA-2,z:s.z,sx:1+up*2.4,sz:1+up*2.4,sy:s.h-SEA+1.6})}
       if(SR){const ry=Math.atan2(-s.tz,s.tx),E=r.s.length-1,ed=Math.min(i,E-i)*2; // runway paint: centre dashes, threshold bars near both ends
         if(ed>30&&i%15===0)rwy.push({x:s.x,y:s.h+.06,z:s.z,ry,sx:12,sz:.9,g:1});
         if(ed>=8&&ed<10)for(let k=-5;k<=5;k++)if(k)rwy.push({x:s.x,y:s.h+.06,z:s.z+0,ry,sx:22,sz:1.5,...(o=>({x:s.x+nx*o,z:s.z+nz*o}))(k*2.3)})}
-      if(!SR&&(r.hwy||r.w===7)&&i%16===0&&i>0&&i<r.s.length-1&&lastCarve<.2){const px=s.x+nx*(hw+1.8),pz=s.z+nz*(hw+1.8),ph=H(px,pz);if(!nearLM(px,pz)){poles.push({x:px,y:ph,z:pz,ry,r});addOBB(px,pz,.2,.2)}}});
+      if(!SR&&!r.bridge&&(r.hwy||r.w===7)&&i%16===0&&i>0&&i<r.s.length-1&&lastCarve<.2){const px=s.x+nx*(hw+1.8),pz=s.z+nz*(hw+1.8),ph=H(px,pz);if(!nearLM(px,pz)){poles.push({x:px,y:ph,z:pz,ry,r});addOBB(px,pz,.2,.2)}}});
     B.base=0}
   // road ribbons split into terrain-tile-sized chunks so they get frustum + distance culled like everything else
   for(const[k,B]of Object.entries(rb)){const mat=new THREE.MeshStandardMaterial({map:k==='hwy'?tHwy:k==='strip'?tCon:tRoad,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2}),ch=new Map();
@@ -226,6 +239,13 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
       for(let k=1;k<=6;k++){const t=k/6,x=a.x+ox+(b.x+ox2-a.x-ox)*t,z=a.z+oz+(b.z+oz2-a.z-oz)*t,y=a.y+7.7+(b.y-a.y)*t-Math.sin(PI*t)*.7;wires.push(px,py,pz,x,y,z);px=x;py=y;pz=z}}}
   {const wm=new THREE.LineBasicMaterial({color:0x1a1a1a}),wc=new Map();for(let i=0;i<wires.length;i+=6){const k=Math.floor(wires[i]/CELL)*1000+Math.floor(wires[i+2]/CELL);if(!wc.has(k))wc.set(k,[]);wc.get(k).push(...wires.slice(i,i+6))}
     for(const w of wc.values()){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(w,3));const l=freeze(new THREE.LineSegments(g,wm));scene.add(l);cullFar(l,FAR.mid)}}
+  // cable-stayed pylons on the ocean bridge (island.json 'pylons': [{road: id, t: 0..1 along it, h: m above the deck}]): two legs, cross bars, cables fanned to the deck edges
+  {const PY=[],cab=[];for(const p of MD.pylons||[]){const r=ROADS[MD.roads.findIndex(q=>q.id===p.road)];if(!r)continue;const i=Math.round(p.t*(r.n-1)),s=r.s[i],ry=Math.atan2(-s.tz,s.tx),nx=-s.tz,nz=s.tx,hw=r.w/2+1.6;
+    for(const sd of[-1,1]){PY.push({x:s.x+nx*hw*sd,y:s.h-2,z:s.z+nz*hw*sd,ry,sx:2,sy:p.h+2,sz:2});
+      for(const dir of[-1,1])for(let k=1;k<=9;k++){const q=r.s[i+dir*k*6];if(!q)break;cab.push(s.x+nx*hw*sd,s.h+p.h-k*1.3,s.z+nz*hw*sd,q.x-q.tz*(r.w/2+.2)*sd,q.h+.6,q.z+q.tx*(r.w/2+.2)*sd)}}
+    for(const y of[p.h-2,p.h*.55])PY.push({x:s.x,y:s.h+y,z:s.z,ry,sx:1.6,sy:1.4,sz:r.w+5.2})}
+    if(PY.length){inst(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),std(0xf2efe8,.6),PY,true,FAR.big);
+      const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(cab,3));const l=freeze(new THREE.LineSegments(g,new THREE.LineBasicMaterial({color:0xe9e5dc})));scene.add(l);cullFar(l,FAR.big)}}
   for(const o of rwy)o.y=H(o.x,o.z)+.03; // on the drawn surface (the strip end meets the taxiway ribbon)
   if(rwy.length)inst(new THREE.BoxGeometry(1,.012,1),new THREE.MeshBasicMaterial({color:0xeeeeea}),rwy,false,FAR.mid);
   inst(new THREE.BoxGeometry(7,.07,.7),std(0xe0b41a,.7),BUMPS.map(b=>({x:b.x,y:.06,z:b.z,ry:b.ax==='z'?0:PI/2})),false,FAR.small);
@@ -248,8 +268,8 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   // ----- building variations (Build 11.45): house2 bahay bunga sari chapel lighthouse warehouse stall cottage resort -----
   // [type, x, z, ry, w, d] like 'house' (front = +z rotated by ry); BD = default w, d. No rand(): colours come from the position hash, so
   // editing one never reshuffles the island. They reuse the shophouse lists (bl = lit windows, roofs, awn) and add a few of their own.
-  const BD={house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12]};
-  const PL=[],PR=[],GL=[],DK=[],TH=[],LHB=[],LHL=[],LHC=[],TINM=new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),WH=[];
+  const BD={house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12],tower:[20,20],cave:[56,44]};
+  const TW=[[],[],[],[]],RK=[],SM=[],SK=[],CRY=[],PL=[],PR=[],GL=[],DK=[],TH=[],LHB=[],LHL=[],LHC=[],TINM=new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),WH=[];
   const nb=(L,x,y,z,ry,sx,sy,sz,c)=>L.push({x,y,z,ry,sx,sy,sz,c}); // box standing on y
   const at=(x,z,ry,a,d)=>({x:x+Math.cos(ry)*a+Math.sin(ry)*d,z:z-Math.sin(ry)*a+Math.cos(ry)*d}); // a along the width, d towards the front
   for(const b of BLD){const t=b[0],D=BD[t];if(!D)continue;const[,x,z,ry=0,w=D[0],d=D[1]]=b,[q,q2]=hq(x,z),f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo;if(sl>=2.4)continue;
@@ -289,6 +309,20 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     else if(t==='cottage'){const h=2.6,fr=P(0,d/2+.5);
       nb(PL,x,lo-.05,z,ry,w+.8,.55,d+.8,0x9c7a4c);bl[0].push({x,y:lo+.5,z,ry,sx:w,sy:h,sz:d,c:col});
       TH.push({x,y:lo+.5+h,z,ry,sx:(w+1.6)/1.414,sy:2.3,sz:(d+1.6)/1.414,c:0xc9a96b});nb(PL,fr.x,lo,fr.z,ry,1.6,.3,.8,0x8a6a40);addOBB(x,z,w/2+.4,d/2+.4,ry)}
+    else if(t==='tower'){const fl=b[6]||13,k=fl<=10?0:fl<=16?1:fl<=24?2:3,h=[8,13,20,30][k]*3.3,tint=new THREE.Color().setHSL(.5+q*.1,.25,.72+q2*.22),pw=w*1.4,pd=d*1.4;
+      TW[k].push({x,y,z,ry,sx:w/20,sy:1,sz:d/20,c:tint});nb(PL,x,y,z,ry,pw,6.4,pd,0x9b9a94);nb(PL,x,y+h,z,ry,w*.5,3,d*.5,0x8f959b);if(k>1)nb(PL,x,y+h+3,z,ry,.4,k*4,.4,0xd0d0d0);addOBB(x,z,pw/2,pd/2,ry)}
+    else if(t==='cave'){ // sunken rock hall: roofed, a mouth at the front and one at the back, pillars, stalagmites, glowing crystals, a pool. The floor is the terrain (a levelled 'flat' basin round it)
+      const Hh=10,Ws=w/2,Ds=d/2,G=6,rk=(a,dd,sw,sd,hg,y0=lo,c=0xcfc4b0,r2=0)=>{const m=P(a,dd);nb(RK,m.x,y0,m.z,ry+r2,sw,hg,sd,c);if(hg>=4&&y0===lo)addOBB(m.x,m.z,sw/2,sd/2,ry)},
+        seg=(a0,a1,dd,th)=>rk((a0+a1)/2,dd,a1-a0,th,Hh),hv=n=>hash2(Math.round(x*10)+n*17,Math.round(z*10)-n*5);
+      seg(-Ws,-G,Ds-2.5,5);seg(G,Ws,Ds-2.5,5);seg(-Ws,Ws/2-G,-Ds+2.5,5);seg(Ws/2+G,Ws,-Ds+2.5,5);rk(-Ws+2.5,0,5,d-10,Hh);rk(Ws-2.5,0,5,d-10,Hh);
+      const hx=-Ws*.25; // roof with a 12 m skylight
+      rk((-Ws-1+hx-6)/2,0,hx-6+Ws+1,d+2,1.8,lo+Hh,0xb2aa9c);rk((hx+6+Ws+1)/2,0,Ws+1-hx-6,d+2,1.8,lo+Hh,0xb2aa9c);rk(hx,(6+Ds+1)/2,12,Ds+1-6,1.8,lo+Hh,0xb2aa9c);rk(hx,-(6+Ds+1)/2,12,Ds+1-6,1.8,lo+Hh,0xb2aa9c);
+      rk(0,0,w*.8,d*.8,4,lo+Hh+1.8,0xcfc4b0,.1);rk(-Ws*.15,Ds*.1,w*.5,d*.5,4,lo+Hh+5.8,0xd8cdb8,.5);rk(Ws*.1,0,w*.28,d*.3,3.5,lo+Hh+9.8,0xb2aa9c,.9);
+      for(const[a,dd]of[[-Ws*.55,-8],[-Ws*.1,12],[Ws*.35,-10],[Ws*.55,10],[-Ws*.6,14],[0,-18]])rk(a,dd,3.4,3.4,Hh,lo,0xd8cdb8,hv(a)-.5);
+      for(let n=0;n<16;n++){const a=(hv(n)-.5)*(w-14),dd=(hv(n+40)-.5)*(d-14);if(Math.abs(a-(Ws/2*(Ds-dd)/(2*Ds)))<5||Math.hypot(a-hx,dd)<7)continue; // keep the line between the mouths clear
+        const m=P(a,dd),sc=hv(n+80);if(n%2){SM.push({x:m.x,y:lo,z:m.z,sx:1.1+sc*1.2,sy:2+sc*3.5,sz:1.1+sc*1.2,c:0xd6cdbd});addOBB(m.x,m.z,.7,.7,ry)}else SK.push({x:m.x,y:lo+Hh,z:m.z,sx:.8+sc,sy:2+sc*3,sz:.8+sc,c:0xcfc4b0})}
+      for(const[a,dd,c]of[[-Ws*.5,-4,0x7de8ff],[-Ws*.62,2,0x9d8cff],[-Ws*.3,-12,0x7de8ff],[Ws*.4,4,0x9d8cff],[Ws*.7,-2,0x7de8ff],[G+2,Ds-3,0x7de8ff],[-G-2,Ds-3,0x7de8ff],[Ws/2+G+2,-Ds+3,0x9d8cff],[Ws/2-G-2,-Ds+3,0x9d8cff]]){const m=P(a,dd);CRY.push({x:m.x,y:lo,z:m.z,ry:hv(a*3)*6,sx:.6,sy:1.6+hv(dd)*1.6,sz:.6,c});CRY.push({x:m.x+.7,y:lo,z:m.z-.4,ry:hv(a)*6,sx:.4,sy:1+hv(a+dd)*1.2,sz:.4,c})}
+      const pm=P(-Ws*.45,-4);nb(PL,pm.x,lo+.02,pm.z,ry,16,.12,11,0x2fb7e8)}
     else if(t==='resort'){const h=6.6+S,fr=P(0,d/2+1.6),sg=P(0,d/2+.1),pl=P(0,d/2+10),pd=P(0,d/2+10);
       bl[1].push({x,y,z,ry,sx:w,sy:h,sz:d,c:col});roofs.push({x,y:y+h,z,ry,sx:w+.8,sy:.32,sz:d+.8,c:0xd9d4c8});
       awn.push({x:fr.x,y:lo+3.2,z:fr.z,ry,sx:7,sy:.16,sz:3.4,c:0xf4f4f0});awn.push({x:sg.x,y:y+h+.9,z:sg.z,ry,sx:w*.42,sy:1.3,sz:.16,c:0x18a0a0});
@@ -298,6 +332,10 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   nbi(PL,()=>aoGeo(ub(),.62,0,.6),()=>vstd(0xffffff,.85),true,FAR.tree);nbi(DK,ub,()=>std(0x1d1f22,.9),false,FAR.mid);nbi(GL,ub,()=>lampMat([1.6,1.35,.85],[.35,.4,.5]),false,FAR.mid);
   nbi(PR,()=>prism(1,1.6,1),()=>TINM,true,FAR.tree);nbi(WH,ub,()=>TINM,true,FAR.big);nbi(TH,()=>new THREE.ConeGeometry(1,1,4).rotateY(PI/4).translate(0,.5,0),()=>std(0xffffff,1),true,FAR.tree);
   nbi(LHB,()=>new THREE.CylinderGeometry(1,.93,1,16).translate(0,.5,0),()=>std(0xffffff,.6),true,FAR.big);nbi(LHL,()=>new THREE.CylinderGeometry(1,1,1,12).translate(0,.5,0),()=>lampMat([2.4,2,1.1],[.5,.5,.5]),false,FAR.big);
+  const TWM=glowMat(vstd(0xffffff,.45,.15,tTower),tTowerG);
+  TW.forEach((L,k)=>nbi(L,()=>{const F=[8,13,20,30][k],g=new THREE.BoxGeometry(20,F*3.3,20).translate(0,F*1.65,0),uv=g.attributes.uv;for(let i=0;i<uv.count;i++){if((i>>2)===2||(i>>2)===3)uv.setXY(i,.01,.99);else uv.setY(i,uv.getY(i)*F/4)}return aoGeo(g,.6,0,F*3.3,.5)},()=>TWM,true,FAR.big)); // glass towers: 4 height classes, the window texture tiles per floor
+  nbi(RK,()=>aoGeo(ub(),.7,0,1,.5),()=>vstd(0xffffff,.95),true,FAR.big);nbi(SM,()=>new THREE.ConeGeometry(1,1,6).translate(0,.5,0),()=>std(0xffffff,.95),true,FAR.mid);nbi(SK,()=>new THREE.ConeGeometry(1,1,6).rotateX(PI).translate(0,-.5,0),()=>std(0xffffff,.95),false,FAR.mid);
+  nbi(CRY,()=>new THREE.OctahedronGeometry(1,0).scale(1,1.5,1).translate(0,1.5,0),()=>new THREE.MeshBasicMaterial({color:0xffffff}),false,FAR.mid); // crystals glow day and night
   nbi(LHC,()=>new THREE.ConeGeometry(1,1,12).translate(0,.5,0),()=>std(0xffffff,.7),true,FAR.big);
   [1,2,3].forEach((n,i)=>inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6/(n)),glowMat(vstd(0xffffff,.85,0,tW[i]),tWG[i]),bl[i]));
   inst(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),roofs);inst(new THREE.BoxGeometry(1,1,1),std(0xffffff,.7),awn,false,FAR.small);
@@ -383,6 +421,11 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     const fr=(I.x1-I.x0)*(I.z1-I.z0)/(4*CMAX*CMAX),nt=Math.round(TP.max*fr);for(let k=0,c=0;k<TP.tries*fr&&c<nt;k++){const x=I.x0+rand()*(I.x1-I.x0),z=I.z0+rand()*(I.z1-I.z0),h=terr(x,z);if(h<10||h>150||lastCarve>.05||islD(x,z,I.S)<0)continue;
       const q=nearRoad(x,z);if(q&&q.d<q.w/2+3)continue;const sc=.7+rand()*.8;c++;trees.push({x,y:foot(x,z,.3*sc,.3*sc).lo-.2,z,sx:sc,sy:sc*(.8+rand()*.5),sz:sc,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)});if(q&&q.d<20)addOBB(x,z,.3,.3)}}
   inst(...pair({g:aoGeo(new THREE.CylinderGeometry(.2,.28,3,5).translate(0,1.5,0),.45),m:vstd(0x9a7a5a,.9,0,tBark)},{g:aoGeo(new THREE.IcosahedronGeometry(2.4,0).translate(0,4.4,0),.45,2.2,6.8,.8),m:vstd(0xffffff,.9,0,tLeaf)}),trees,false,FAR.tree);
+  // boulders on the rough fields (feature.rocks = how many): flat-shaded rocks, the big ones solid
+  {const rocks=[];for(const f of RF){const n=f.rocks||0;for(let k=0,c=0;k<n*5&&c<n;k++){const a=rand()*2*PI,rr=Math.sqrt(rand())*f.r,x=f.x+Math.cos(a)*rr,z=f.z+Math.sin(a)*rr,sc=.8+rand()*rand()*3.2;
+      if(terr(x,z)<SEA+1.5||lastCarve>.05||inland(x,z)<8)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+sc+2)continue;if(inBld(x,z))continue;c++;
+      const g=.45+rand()*.25;rocks.push({x,y:foot(x,z,sc*.6,sc*.6).lo-sc*.25,z,ry:rand()*PI,sx:sc*(1+rand()*.5),sy:sc*(.6+rand()*.4),sz:sc,c:new THREE.Color(g,g*.96,g*.9)});if(sc>1.5)addOBB(x,z,sc*.65,sc*.65,0)}}
+    if(rocks.length)inst(aoGeo(new THREE.IcosahedronGeometry(1,0).translate(0,.45,0),.5),vstd(0xffffff,.95,0,tDet),rocks,true,FAR.tree)}
   // lot + gas station paving
   const tLot=tAsph.clone();tLot.repeat.set(17,17);tLot.needsUpdate=true;
   for(const F of LMF.lot){const lot=mesh(new THREE.PlaneGeometry(70,70).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tLot,roughness:.9}),40,.015,40,F);lot.receiveShadow=true;scene.add(freeze(lot));cullFar(lot,FAR.mid)}
@@ -445,25 +488,26 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
 }
 /* minimap base image */
 // ~9.3 m per pixel (the old 140 px over 1300 m), sized to the island; hud.js maps world -> pixels with MAPV
-const MPN=Math.ceil((2*EXT+120)/(1300/140)),MAPV={cx:ICX,cz:ICZ,w:MPN*1300/140,n:MPN};
+const MPN=Math.ceil((2*EXT+120)/(1300/140)),MAPV={cx:GX,cz:GZ,w:MPN*1300/140,n:MPN};
 MAPV.gas=LMF.gas.map(F=>[F.x,F.z]); // red dots on the minimap (hud.js)
 const MAP=document.createElement('canvas');MAP.width=MAP.height=MPN;const MAPT=document.createElement('canvas');MAPT.width=MAPT.height=MPN; // MAPT = the same image before the roads go on (the full-screen map draws its own, sharp ones)
 const T2=FEAT.find(f=>f.name==='town2'); // the second town's levelled rectangle is grey on the map too
-const mapCol=(x,z)=>{const h=terr(x,z);return lastCarve>.4||h<SEA?[31,120,150]:h<SEA+1.3?[226,210,162]:rd(x,z,TOWN)<1||(T2&&rd(x,z,T2)<1)?[170,160,140]:h>115?[124,116,106]:h>14?[61,107,44]:[118,168,69]};
-{const g=MAP.getContext('2d'),img=g.createImageData(MPN,MPN),W=MAPV.w;for(let j=0;j<MPN;j++)for(let i=0;i<MPN;i++){const x=ICX+(i/MPN-.5)*W,z=ICZ+(j/MPN-.5)*W,k=(j*MPN+i)*4;
+const mapCol=(x,z)=>{const h=terr(x,z);return lastCarve>.4||h<SEA?[31,120,150]:h<SEA+1.3?[226,210,162]:rd(x,z,TOWN)<1||(T2&&rd(x,z,T2)<1)||(CITY&&rd(x,z,CITY)<1)?[170,160,140]:h>115?[124,116,106]:h>14?[61,107,44]:[118,168,69]};
+{const g=MAP.getContext('2d'),img=g.createImageData(MPN,MPN),W=MAPV.w;for(let j=0;j<MPN;j++)for(let i=0;i<MPN;i++){const x=GX+(i/MPN-.5)*W,z=GZ+(j/MPN-.5)*W,k=(j*MPN+i)*4;
   const c=mapCol(x,z);img.data.set([...c,235],k)}
   g.putImageData(img,0,0);MAPT.getContext('2d').drawImage(MAP,0,0);g.strokeStyle='#f4f1e8';g.lineCap='round';
-  for(const r of ROADS){g.lineWidth=r.kind==='strip'?3:r.hwy?2:1.3;g.strokeStyle=r.kind==='strip'?'#c9c6bd':'#f4f1e8';g.beginPath();r.s.forEach((s,i)=>{const u=((s.x-ICX)/W+.5)*MPN,v=((s.z-ICZ)/W+.5)*MPN;i?g.lineTo(u,v):g.moveTo(u,v)});g.stroke()}}
+  for(const r of ROADS){g.lineWidth=r.kind==='strip'?3:r.hwy?2:1.3;g.strokeStyle=r.kind==='strip'?'#c9c6bd':'#f4f1e8';g.beginPath();r.s.forEach((s,i)=>{const u=((s.x-GX)/W+.5)*MPN,v=((s.z-GZ)/W+.5)*MPN;i?g.lineTo(u,v):g.moveTo(u,v)});g.stroke()}}
 // Full-screen map (map.js): the same colours at 3x, filled in time slices on the first open, so loading pays nothing for it
 const MHN=MPN*3,mapHi={cv:null,n:MHN,row:0,done:false,t:0,
   step(ms){if(this.done)return;if(!this.cv){this.cv=document.createElement('canvas');this.cv.width=this.cv.height=MHN;this.g=this.cv.getContext('2d');this.img=this.g.createImageData(MHN,48)}
     const t0=performance.now(),W=MAPV.w,r0=this.row,d=this.img.data;let r=r0;
-    while(r<MHN&&r-r0<48&&performance.now()-t0<ms){const z=ICZ+((r+.5)/MHN-.5)*W;for(let i=0;i<MHN;i++){const c=mapCol(ICX+((i+.5)/MHN-.5)*W,z),k=((r-r0)*MHN+i)*4;d[k]=c[0];d[k+1]=c[1];d[k+2]=c[2];d[k+3]=235}r++}
+    while(r<MHN&&r-r0<48&&performance.now()-t0<ms){const z=GZ+((r+.5)/MHN-.5)*W;for(let i=0;i<MHN;i++){const c=mapCol(GX+((i+.5)/MHN-.5)*W,z),k=((r-r0)*MHN+i)*4;d[k]=c[0];d[k+1]=c[1];d[k+2]=c[2];d[k+3]=235}r++}
     if(r>r0)this.g.putImageData(this.img,0,r0,0,0,MHN,r-r0);this.row=r;if(r>=MHN){this.done=true;this.t=performance.now()}}};
 // names on the full-screen map: p = priority (2 always, 1 once zoomed in a little, 0 only when close)
-const LNM={airstrip:'Airstrip',paddy:'Rice paddies',town:'Poblacion',town2:'Poblacion Hilaga',islet:'The islet',resort:'Beach resort',harbor:'Harbor'};
+const LNM={airstrip:'Airstrip',paddy:'Rice paddies',town:'Poblacion',town2:'Poblacion Hilaga',islet:'The islet',resort:'Beach resort',harbor:'Harbor',city:'Ciudad Nueva'};
 MAPV.lab=[...FEAT.filter(f=>f.type==='volcano').map(f=>({n:'Volcano',x:f.x,z:f.z,p:2})),...FEAT.filter(f=>f.type==='terraces').map(f=>({n:'Rice terraces',x:f.x,z:f.z,p:1})),
-  ...FEAT.filter(f=>f.type==='flat'&&LNM[f.name]).map(f=>({n:LNM[f.name],x:(f.x0+f.x1)/2,z:(f.z0+f.z1)/2,p:f.name==='town'||f.name==='town2'||f.name==='airstrip'?2:1}))];
+  ...FEAT.filter(f=>f.label).map(f=>({n:f.label,x:f.x??(f.x0+f.x1)/2,z:f.z??(f.z0+f.z1)/2,p:f.lp??1})), // any feature can carry a map name: "label", "lp" (priority)
+  ...FEAT.filter(f=>f.type==='flat'&&LNM[f.name]&&!f.label).map(f=>({n:LNM[f.name],x:(f.x0+f.x1)/2,z:(f.z0+f.z1)/2,p:f.name==='town'||f.name==='town2'||f.name==='airstrip'||f.name==='city'?2:1}))];
 if(LMF.lot[0]){const w=LMF.lot[0].W(28,29);MAPV.lab.push({n:'Parking lot',x:w.x,z:w.z,p:0})}
 
 /* parking lot (block 0,0) + gas station (block -1,0) */
@@ -498,7 +542,7 @@ export const GPU_TYPES=finishGpuInst(scene);
 marker.visible=arrow.visible=false;liteMaterials(scene);scene.add(marker,arrow);
 
 // ambience weights for audio.js (0..1 each) plus direction vectors to the sea (sx, sz) and the nearest river point (rx, rz)
-function zones(x,z,o){const inl=inland(x,z),dx=x-ICX,dz=z-ICZ,l=Math.hypot(dx,dz)||1;o.coast=1-sstep(10,170,inl);o.sx=dx/l;o.sz=dz/l;
+function zones(x,z,o){const inl=inland(x,z),gx=inland(x+20,z)-inland(x-20,z),gz=inland(x,z+20)-inland(x,z-20),l=Math.hypot(gx,gz)||1;o.coast=1-sstep(10,170,inl);o.sx=-gx/l;o.sz=-gz/l; // sea = downhill of the land distance
   let bd=1e18,bx=0,bz=0;for(let i=1;i<RIVER.length;i++){const[ax,az]=RIVER[i-1],[cx,cz]=RIVER[i],ex=cx-ax,ez=cz-az,t=clamp(((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez),0,1),px=ax+ex*t,pz=az+ez*t,d=(px-x)**2+(pz-z)**2;if(d<bd){bd=d;bx=px-x;bz=pz-z}}
   o.river=1-sstep(8,90,Math.sqrt(bd));o.rx=bx;o.rz=bz;o.town=1-sstep(0,130,rd(x,z,TOWN));
   o.paddy=1-sstep(0,90,rd(x,z,PADDY));

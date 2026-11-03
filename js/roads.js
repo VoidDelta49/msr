@@ -19,9 +19,9 @@ function crSample(r) {
   const P = r.pts, n = P.length, out = [], get = i => r.closed ? P[(i + n) % n] : P[clamp(i, 0, n - 1)];
   for (let i = 0; i < (r.closed ? n : n - 1); i++) {
     const p0 = get(i - 1), p1 = get(i), p2 = get(i + 1), p3 = get(i + 2), L = Math.hypot(p2[0] - p1[0], p2[1] - p1[1]), k = Math.max(1, Math.round(L / 2));
-    for (let j = 0; j < k; j++) { const t = j / k, t2 = t * t, t3 = t2 * t, f = (a, b, c, d) => .5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3); out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1])]) }
+    for (let j = 0; j < k; j++) { const t = j / k, t2 = t * t, t3 = t2 * t, f = (a, b, c, d) => .5 * (2 * b + (-a + c) * t + (2 * a - 5 * b + 4 * c - d) * t2 + (-a + 3 * b - 3 * c + d) * t3); out.push([f(p0[0], p1[0], p2[0], p3[0]), f(p0[1], p1[1], p2[1], p3[1]), f(p0[2] || 0, p1[2] || 0, p2[2] || 0, p3[2] || 0)]) }
   }
-  out.push(r.closed ? out[0] : P[n - 1]); return out;
+  out.push(r.closed ? out[0] : [P[n - 1][0], P[n - 1][1], P[n - 1][2] || 0]); return out;
 }
 
 // terrain-following height per sample: box-smoothed, then limited to the road's grade (wrapping round for a closed road)
@@ -29,6 +29,7 @@ function profile(r, terrBase) {
   const S = crSample(r), cl = r.closed, n = cl ? S.length - 1 : S.length; // a closed road's last sample repeats its first
   const h = new Array(n), ok = k => cl || (k >= 0 && k < n), ix = k => ((k % n) + n) % n;
   for (let i = 0; i < n; i++) h[i] = terrBase(S[i][0], S[i][1]);
+  if (r.lift) for (let i = 0; i < n; i++) h[i] = Math.max(h[i], S[i][2]); // pts [x, z, h]: at least this high (a bridge deck over the sea)
   for (let pass = 0; pass < 3; pass++) { const a = h.slice(); for (let i = 0; i < n; i++) { let s = 0, c = 0; for (let j = -12; j <= 12; j++) { const k = i + j; if (ok(k)) { s += a[ix(k)]; c++ } } h[i] = s / c } }
   const G = r.grade || .13, dl = new Array(n).fill(0); // max grade per metre; dl[i] = distance from sample i-1 to i
   for (let i = cl ? 0 : 1; i < n; i++) { const p = S[ix(i - 1)], q = S[i]; dl[i] = Math.hypot(q[0] - p[0], q[1] - p[1]) }
@@ -52,7 +53,7 @@ function runsOf(f, n, cl, gap = 8) {
 }
 
 export function buildRoads(MD, terrBase) {
-  const ROADS = MD.roads.map((r, id) => ({ id, pts: r.pts, w: r.w, closed: !!r.closed, hwy: !!r.hwy, kind: r.kind || '', grade: r.grade }));
+  const ROADS = MD.roads.map((r, id) => ({ id, pts: r.pts, w: r.w, closed: !!r.closed, hwy: !!r.hwy, kind: r.kind || '', grade: r.grade, lift: r.pts.some(p => p[2] > 0), bridge: !!r.bridge }));
   for (const r of ROADS) profile(r, terrBase);
   for (const r of ROADS) { // tangents (round the seam for a closed road) and distance along the road
     const m = r.s.length;
@@ -132,20 +133,20 @@ export function buildRoads(MD, terrBase) {
   // ---- surface lookup: road segments in 20 m cells ----
   const SEGG = new Map(), BUMPS = [];
   for (const r of ROADS) for (let i = 1; i < r.s.length; i++) {
-    const A = r.s[i - 1], B = r.s[i], sg = { id: r.id, ax: A.x, az: A.z, bx: B.x, bz: B.z, ha: A.h, hb: B.h, w: r.w, hw: r.w / 2, l2: Math.max(1e-6, (B.x - A.x) ** 2 + (B.z - A.z) ** 2) }, m = r.w / 2 + 9;
+    const A = r.s[i - 1], B = r.s[i], sg = { id: r.id, ax: A.x, az: A.z, bx: B.x, bz: B.z, ha: A.h, hb: B.h, w: r.w, hw: r.w / 2, br: r.bridge, l2: Math.max(1e-6, (B.x - A.x) ** 2 + (B.z - A.z) ** 2) }, m = r.w / 2 + 9;
     for (let gx = Math.floor((Math.min(A.x, B.x) - m) / 20); gx <= Math.floor((Math.max(A.x, B.x) + m) / 20); gx++) for (let gz = Math.floor((Math.min(A.z, B.z) - m) / 20); gz <= Math.floor((Math.max(A.z, B.z) + m) / 20); gz++) { const k = gx * 1000 + gz; if (!SEGG.has(k)) SEGG.set(k, []); SEGG.get(k).push(sg) }
   }
   for (const [x, z, ax] of MD.bumps || []) BUMPS.push({ x, z, ax });
-  const NR = { d: 0, h: 0, w: 0, i: -1 };
+  const NR = { d: 0, h: 0, w: 0, i: -1, br: false };
   // the road whose EDGE is nearest (inside any road's surface is always found); NR.d = distance to that road's centre line
   function nearRoad(x, z) {
     const L = SEGG.get(Math.floor(x / 20) * 1000 + Math.floor(z / 20)); if (!L) return null;
-    let be = 1e18, bd = 0, bh = 0, bw = 0, bi = -1;
+    let be = 1e18, bd = 0, bh = 0, bw = 0, bi = -1, bb = false;
     for (const s of L) {
       const ex = s.bx - s.ax, ez = s.bz - s.az, t = clamp(((x - s.ax) * ex + (z - s.az) * ez) / s.l2, 0, 1), px = s.ax + ex * t - x, pz = s.az + ez * t - z, d = Math.sqrt(px * px + pz * pz), e = d - s.hw;
-      if (e < be) { be = e; bd = d; bh = s.ha + (s.hb - s.ha) * t; bw = s.w; bi = s.id }
+      if (e < be) { be = e; bd = d; bh = s.ha + (s.hb - s.ha) * t; bw = s.w; bi = s.id; bb = s.br }
     }
-    NR.d = bd; NR.h = bh; NR.w = bw; NR.i = bi; return NR;
+    NR.d = bd; NR.h = bh; NR.w = bw; NR.i = bi; NR.br = bb; return NR;
   }
   // every road whose surface contains the point (tools/roads.mjs: where several do, they must agree on the height)
   function roadsAt(x, z) {
@@ -172,6 +173,7 @@ export function groundModel({ terr, carve, nearRoad, bumpAt, GX, GZ, TSZ, TS }) 
   const TN = TSZ / TS, W = TN + 1; let MH = null, trimmed = 0;
   function HA(x, z, mesh) {
     trimmed = 0; const t = terr(x, z), q = nearRoad(x, z); if (!q) return t; const hw = q.w / 2;
+    if (q.br && q.h - t > 2.5) return q.d < hw && !mesh ? q.h + bumpAt(x, z) : t; // bridge deck well above the ground: no causeway under it
     if (q.d < hw) return mesh ? q.h - .25 : q.h + bumpAt(x, z);
     if (carve() > .25) return t;
     const e = q.d - hw, b = sst(e / 8); let v = q.h - .05 + (t - q.h + .05) * b;
@@ -189,7 +191,7 @@ export function groundModel({ terr, carve, nearRoad, bumpAt, GX, GZ, TSZ, TS }) 
     if (mesh || !MH) return HA(x, z, mesh);
     const q = nearRoad(x, z); if (q && q.d < q.w / 2) return q.h + bumpAt(x, z);
     const qh = q ? q.h : 0, e = q ? q.d - q.w / 2 : 9; // nearRoad() returns one shared object: copy before anything else looks a road up
-    const m = meshH(x, z); if (q && e < 1.2) return Math.max(m, qh - .25 * e / 1.2); return m;
+    const m = meshH(x, z); if (q && e < 1.2 && !(q.br && qh - m > 2.5)) return Math.max(m, qh - .25 * e / 1.2); return m;
   }
   return { HA, H, meshH, setMH: a => { MH = a }, trimmed: () => trimmed };
 }

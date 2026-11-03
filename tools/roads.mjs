@@ -22,7 +22,7 @@ const MD = JSON.parse(readFileSync(mapArg ? path.resolve(mapArg) : path.join(ROO
 // terrBase(): the terrain block of world.js, evaluated here (it needs only MD + a few maths helpers)
 const src = readFileSync(path.join(ROOT, 'js/world.js'), 'utf8'), b = src.indexOf('// @terrain-begin'), e = src.indexOf('// @terrain-end');
 if (b < 0 || e < b) { console.log('FAIL roads: the // @terrain-begin / // @terrain-end markers are missing from js/world.js (tools/roads.mjs needs them)'); process.exit(1); }
-const TB = new Function('MD', 'PI', 'clamp', 'sstep', 'fbm', 'rand', 'hash2', 'addOBB', src.slice(b, e) + '\nreturn { terrBase, terr, carve: () => lastCarve, CR, ICX, ICZ, ISL };')(MD, PI, clamp, sstep, fbm, rand, hash2, () => { });
+const TB = new Function('MD', 'PI', 'clamp', 'sstep', 'fbm', 'rand', 'hash2', 'addOBB', src.slice(b, e) + '\nreturn { terrBase, terr, carve: () => lastCarve, CR, ICX, ICZ, ISL, GX, GZ, TSZ };')(MD, PI, clamp, sstep, fbm, rand, hash2, () => { });
 
 const terrBase = TB.terrBase, { ROADS, nearRoad, roadsAt, bumpAt, BUMPS, JUNCTIONS } = buildRoads(MD, terrBase);
 const problems = [], name = r => `r${r.id}${MD.roads[r.id].id ? ' (' + MD.roads[r.id].id + ')' : ''}`;
@@ -65,7 +65,7 @@ if (stepHits.length) {
 
 // CORRIDOR (11.42): the DRAWN mesh (5 m grid, built the way world.js builds it) and the physics ground H() beside every road.
 //   mesh poking above the ribbon inside the strip, or a wall right at the road edge, hid the road (terrace road: up to 6 m of grass over it)
-const TS = 5, EXT = Math.max(Math.max(...TB.CR), ...TB.ISL.map(I => I.R)), TSZ = Math.ceil((2 * EXT + 160) / 280) * 280, TN = TSZ / TS, GX = Math.round(TB.ICX / TS) * TS, GZ = Math.round(TB.ICZ / TS) * TS;
+const TS = 5, { TSZ, GX, GZ } = TB, TN = TSZ / TS;
 const GRD = groundModel({ terr: TB.terr, carve: TB.carve, nearRoad, bumpAt, GX, GZ, TSZ, TS }), mc = new Map();
 GRD.setMH(new Proxy({}, { get: (_, k) => { k = +k; let v = mc.get(k); if (v === undefined) { const i = k % (TN + 1), j = (k - i) / (TN + 1); mc.set(k, v = GRD.HA(GX - TSZ / 2 + i * TS, GZ - TSZ / 2 + j * TS, true)) } return v } }));
 let cor = { up: 0, at: null, edge: 0, eat: null, bad: 0, n: 0 }, hp = { up: 0, n: 0, spots: new Set() };
