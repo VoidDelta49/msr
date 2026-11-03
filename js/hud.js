@@ -289,4 +289,6 @@ export function drawMini(MAP, V) { // V = world.js MAPV {cx, cz, w metres, n px}
 let fpsV = 0, physV = '', gfxV = ''; export const setFps = v => { fpsV = v; }; export const setPhys = v => { physV = v; };
 export let jankV = ''; export const setJank = v => { jankV = v; };
 export const setGfx = (draws, res) => { gfxV = draws + ' draws' + (res < 1 ? ' · res ' + Math.round(res * 100) + '%' : ''); };
-export function updPerf(API) { const p = []; if (cfg.showApi) p.push(API); if (cfg.showFps) p.push(fpsV + ' fps'); if (cfg.showFps && physV) p.push(physV); if (cfg.showFps && gfxV) p.push(gfxV); if (cfg.showFps && jankV) p.push(jankV); $('perf').textContent = p.join(' · '); $('perf').hidden = !p.length; }
+export function updPerf(API) { // up to 4 lines (the layout reserves room for them): API + fps / physics + draws + res / cpu / hitches
+  const f = cfg.showFps, a = [], b = []; if (cfg.showApi) a.push(API); if (f) a.push(fpsV + ' fps'); if (f && physV) b.push(physV); if (f && gfxV) b.push(gfxV);
+  const L = [a.join(' · '), b.join(' · ')]; if (f && jankV) L.push(...jankV.split('\n')); const t = L.filter(Boolean).join('\n'); $('perf').textContent = t; $('perf').hidden = !t; }

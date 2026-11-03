@@ -1,4 +1,7 @@
 [
+  { "v": "11.68", "d": "2026-11-03", "t": [
+    "Fixed the FPS readout being cut off: the box was sized for the old short text, so physics time, draws, the cpu line and the hitch meter were clipped. It now shows up to four lines (API and fps, physics, draws and resolution, cpu, hitches) and the layout reserves room for them."
+  ] },
   { "v": "11.67", "d": "2026-11-03", "t": [
     "More LOD: nipa huts drop their stilts past ~110 m (60 vertices instead of 204), and the terrain gets a fourth, 40 m detail level past 900 m (High graphics draw distance)."
   ] },

@@ -42,7 +42,10 @@ function build(W, H, ins, o, f, mode, tier) {
   const top = topSize(tr.top, por);
   r.top = { x: W - ins.r - T - top.w, y: my, w: top.w, h: top.h };
   const mb = my + mini + 4; // first free y under the minimap
-  if (o.perf) r.perf = por ? { x: mx, y: mb, w: Math.min(190, .5 * W), h: 42 } : { x: W - ins.r - T - Math.min(220, .4 * W), y: my + top.h + 4, w: Math.min(220, .4 * W), h: 42 };
+  // readout: up to 4 lines of 11 px mono (hitch line = 40 chars ≈ 265 px). Portrait narrows to the space left of the button column when that sits beside it,
+  // and then reserves 6 lines because the physics and hitch lines wrap.
+  const pw = Math.min(280, (mb < r.top.y + r.top.h ? r.top.x - T : W - ins.r - T) - mx);
+  if (o.perf) r.perf = por ? { x: mx, y: mb, w: pw, h: pw < 272 ? 84 : 56 } : { x: W - ins.r - T - Math.min(280, .5 * W), y: my + top.h + 4, w: Math.min(280, .5 * W), h: 56 };
   let ban; // [x0, x1, y0] candidates, best (lowest bottom edge) wins; "beside" is preferred on ties
   if (por) {
     const y0 = (r.perf ? r.perf.y + r.perf.h : mb) + 4, xr = W - ins.r - T;

@@ -181,7 +181,7 @@ body{--k:1;--el:calc(12px + env(safe-area-inset-left));--er:calc(12px + env(safe
 #top{position:fixed;top:var(--et);right:calc(8px + env(safe-area-inset-right));display:flex;gap:6px;z-index:5}
 #top .b{min-width:0;min-height:0;padding:0 6px;white-space:nowrap;overflow:hidden}
 body.touch .b{min-height:44px}
-#perf{position:fixed;top:calc(58px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));font:700 11px/14px ui-monospace,monospace;color:rgba(255,255,255,.75);text-shadow:0 1px 2px #000;pointer-events:none;text-align:right;overflow:hidden;overflow-wrap:anywhere}
+#perf{position:fixed;top:calc(58px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));font:700 11px/14px ui-monospace,monospace;color:rgba(255,255,255,.75);text-shadow:0 1px 2px #000;pointer-events:none;text-align:right;overflow:hidden;overflow-wrap:anywhere;white-space:pre-line}
 /* quest / race / ride banner: js/layout.js pins it into the zone layoutcalc.js reserves and sets the --bn* / --bw* sizes (bannerH() models this wrapping); text first (two lines at most), buttons after it */
 #mis,#race,#ride{position:fixed;top:calc(58px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--glass);padding:var(--bnp,8px);border-radius:10px;display:flex;flex-wrap:wrap;gap:var(--bng,8px);align-items:center;z-index:5;max-width:calc(100vw - 2 * var(--mini) - 40px);font-size:var(--bnf,13px);line-height:var(--bnl,15px);overflow:hidden}
 #misT,#raceT,#rideT{flex:1 1 var(--bntw,150px);min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2;overflow:hidden;overflow-wrap:anywhere}

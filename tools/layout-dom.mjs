@@ -37,7 +37,7 @@ const PASS = async ({ notchOpts, only }) => {
   const rect = el => { const r = el.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height }; };
   const vis = el => el.getClientRects().length > 0;
   const shown = (el, on) => { el.hidden = !on; };
-  $('perf').textContent = 'WebGPU · 60 fps · phys 8.3 ms · 1234 draws · res 75% · jank 3 (12%)';
+  $('perf').textContent = 'WebGPU · 60 fps\nPhysics 8.30 ms · 1234 draws · res 75%\ncpu 2.1+3.4/12 ms\n3 hitches/10s (gc0 hud1 js0 draw1 gpu1)';
   for (const notch of notchOpts) for (const [sc, cls] of Object.entries(SC)) for (const lefty of [false, true]) for (const cam3 of [false, true]) for (const k of [7, 10, 14]) for (const perf of [true, false]) for (const ban of BAN) {
     if (only && (only.sc !== sc || only.cam3 !== cam3 || only.ban !== ban || lefty || k !== 10 || !perf || notch)) continue; // screenshots: exactly one scenario, left on screen
     cfg.ui = k; cfg.lefty = lefty; LAYOUT.ins = notch ? (W <= H ? { l: 0, r: 0, t: 47, b: 34 } : { l: 47, r: 47, t: 0, b: 21 }) : { l: 0, r: 0, t: 0, b: 0 };

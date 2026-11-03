@@ -105,7 +105,7 @@ export function jankEnd(t, jsMs, hud, drMs = 0) { // after draw(): jsMs = this c
   if (JK.skip > 0) return; JK.n++; JK.js += jsMs; JK.dr += drMs; if (jsMs > JK.jsMax) JK.jsMax = jsMs; JK.pJs = jsMs; JK.pDr = drMs; JK.pHud = hud;
   if (MEM) { const h = MEM.usedJSHeapSize; JK.pGc = JK.h - h > 524288; JK.h = h; }
   if (t - JK.t0 > 10000) {
-    if (JK.t0) { const c = JK.c, n = c.gc + c.hud + c.js + c.draw + c.gpu; JK.text = 'cpu ' + ((JK.js - JK.dr) / JK.n).toFixed(1) + '+' + (JK.dr / JK.n).toFixed(1) + '/' + JK.jsMax.toFixed(0) + ' ms · ' + (n ? n + ' hitches/10s (gc' + c.gc + ' hud' + c.hud + ' js' + c.js + ' draw' + c.draw + ' gpu' + c.gpu + ')' : 'no hitches'); }
+    if (JK.t0) { const c = JK.c, n = c.gc + c.hud + c.js + c.draw + c.gpu; JK.text = 'cpu ' + ((JK.js - JK.dr) / JK.n).toFixed(1) + '+' + (JK.dr / JK.n).toFixed(1) + '/' + JK.jsMax.toFixed(0) + ' ms\n' + (n ? n + ' hitches/10s (gc' + c.gc + ' hud' + c.hud + ' js' + c.js + ' draw' + c.draw + ' gpu' + c.gpu + ')' : 'no hitches'); }
     JK.t0 = t; JK.n = JK.js = JK.dr = JK.jsMax = 0; JK.c = { gc: 0, hud: 0, js: 0, draw: 0, gpu: 0 };
   }
 }
