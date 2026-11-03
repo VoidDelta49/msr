@@ -1,4 +1,7 @@
 [
+  { "v": "11.66", "d": "2026-11-03", "t": [
+    "WebGPU gets the palm and tree LOD too: the GPU culling pass now sends each palm and rainforest tree to either its full-detail or its low-detail version by distance (past ~160 m), so WebGPU draws about a third as many palm vertices at a typical spot, like WebGL 2 since 11.65."
+  ] },
   { "v": "11.65", "d": "2026-11-03", "t": [
     "Performance round for the bigger map: palms and rainforest trees switch to low-detail versions past ~110 m (about a third fewer triangles per frame, same draw calls), road pieces past the draw distance are no longer drawn, and the island builds faster at load (terrain generation about 3x quicker, same terrain)."
   ] },

@@ -5,6 +5,8 @@
 // Shadow casters near the bike pass too, so a tree behind you still casts its shadow into view.
 // Instance order changes from frame to frame, so flat decals (lane lines) stay on the CPU path (they would z-fight).
 // WebGL keeps the chunked path in world.js; nothing here runs there.
+// LOD (11.66): a prop with a low-detail twin is two types over the same list, band +1 (full detail) and -1 (the twin): each
+// instance goes to exactly one of them by its distance to the camera (LOD_D), so nothing is drawn twice or dropped.
 import * as THREE from 'three';
 import { Fn, If, storage, uniform, uniformArray, instanceIndex, atomicAdd, atomicStore, uint, float, dot } from 'three/tsl';
 import { renderer, sun } from './renderer.js';
@@ -12,7 +14,8 @@ import { cullUpdate } from './perf.js';
 import { batchCull } from './batch.js';
 
 const TYPES = [];
-export const gpuInst = (geo, mat, list, shadow, far) => TYPES.push({ geo, mat, list, shadow, far });
+export const gpuInst = (geo, mat, list, shadow, far, band = 0) => TYPES.push({ geo, mat, list, shadow, far, band });
+const LOD_D = 160; // m, instance centre to camera (batch.js switches whole 140 m cells from 110 m to their nearest point: about the same)
 
 const PL = [0, 1, 2, 3, 4, 5].map(() => uniform(new THREE.Vector4())); // frustum planes (normal, constant)
 const CAM = uniform(new THREE.Vector2()), SHC = uniform(new THREE.Vector2());
@@ -54,7 +57,7 @@ function finishOnePass(scene) {
     ARGS.array[k * 5] = g.index ? g.index.count : g.attributes.position.count; // firstInstance: indexed layout [count, inst, firstIndex, baseVertex, firstInst], non-indexed [count, inst, firstVertex, firstInst]
     ARGS.array[k * 5 + (g.index ? 4 : 3)] = off; g.setIndirect(ARGS, k * 20);
     m.frustumCulled = false; m.castShadow = t.shadow; m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m);
-    par.push(new THREE.Vector4(t.far, t.shadow && cast ? 1 : 0, off, 0)); off += N;
+    par.push(new THREE.Vector4(t.far, t.shadow && cast ? 1 : 0, off, t.band * LOD_D)); off += N;
   });
   const A = storage(ARGS, 'uint', n * 5).toAtomic(), P = uniformArray(par, 'vec4');
   const src = storage(new THREE.StorageBufferAttribute(sM, 16), 'mat4', T).toReadOnly(), sph = storage(new THREE.StorageBufferAttribute(sS, 4), 'vec4', T).toReadOnly();
@@ -64,7 +67,8 @@ function finishOnePass(scene) {
     const i = instanceIndex;
     If(i.lessThan(uint(T)), () => {
       const k = typ.element(i).toVar(), q = P.element(k).toVar(), s = sph.element(i).toVar(), p = s.xyz, r = s.w, d = p.xz.sub(CAM), f = q.x.add(r);
-      const ok = dot(d, d).lessThan(f.mul(f)).toVar();
+      const d2 = dot(d, d), ok = d2.lessThan(f.mul(f)).toVar(), b = q.w;
+      ok.assign(ok.and(b.equal(0).or(b.greaterThan(0).and(d2.lessThan(b.mul(b)))).or(b.lessThan(0).and(d2.greaterThanEqual(b.mul(b))))));
       for (const L of PL) ok.assign(ok.and(dot(L.xyz, p).add(L.w).greaterThan(r.negate())));
       const e = p.xz.sub(SHC), sr = float(SH_R).add(r); ok.assign(ok.or(q.y.greaterThan(.5).and(dot(e, e).lessThan(sr.mul(sr)))));
       If(ok, () => {
@@ -103,7 +107,8 @@ function finishPerType(scene) {
       const i = instanceIndex;
       If(i.lessThan(uint(N)), () => {
         const s = sph.element(i).toVar(), p = s.xyz, r = s.w, d = p.xz.sub(CAM), f = far.add(r);
-        const ok = dot(d, d).lessThan(f.mul(f)).toVar();
+        const d2 = dot(d, d), ok = d2.lessThan(f.mul(f)).toVar(), b2 = LOD_D * LOD_D;
+        if (t.band > 0) ok.assign(ok.and(d2.lessThan(b2))); else if (t.band < 0) ok.assign(ok.and(d2.greaterThanEqual(b2)));
         for (const P of PL) ok.assign(ok.and(dot(P.xyz, p).add(P.w).greaterThan(r.negate())));
         if (cast) { const e = p.xz.sub(SHC), q = float(SH_R).add(r); ok.assign(ok.or(dot(e, e).lessThan(q.mul(q)))); }
         If(ok, () => {

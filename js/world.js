@@ -131,8 +131,8 @@ const CHUNK=700;
 // WebGPU + Options > GPU culling: per-instance culling in a compute pass instead (gpucull.js). Tiny lists and flat
 // decals stay here.
 const GCULL=GPU&&cfg.gpuCull!==false;
-function inst(geo,mat,list,shadow=true,far=FAR.big,lo){ // lo: low-detail twin geometry (batch.js LOD; the fallback paths draw geo only)
-  if(GCULL&&list.length>=8&&!mat.transparent){geo.computeBoundingBox();const b=geo.boundingBox;if(b.max.y-b.min.y>.05){gpuInst(geo,mat,list,shadow,Math.min(far,DRAW));return}}
+function inst(geo,mat,list,shadow=true,far=FAR.big,lo){ // lo: low-detail twin geometry (LOD in batch.js and gpucull.js; the chunked fallback draws geo only)
+  if(GCULL&&list.length>=8&&!mat.transparent){geo.computeBoundingBox();const b=geo.boundingBox;if(b.max.y-b.min.y>.05){const f=Math.min(far,DRAW);gpuInst(geo,mat,list,shadow,f,lo?1:0);if(lo)gpuInst(lo,mat,list,false,f,-1);return}}
   if(MULTI){batchInst(geo,mat,list,shadow,far,lo);return} // WebGL 2 + multi-draw: one draw per material for the whole island (batch.js)
   const mkI=(L,m,cs)=>{const o=new THREE.InstancedMesh(geo,m,L.length);
     L.forEach((o2,i)=>{dummy.position.set(o2.x,o2.y||0,o2.z);dummy.rotation.set(0,o2.ry||0,0);dummy.scale.set(o2.sx||1,o2.sy||1,o2.sz||1);dummy.updateMatrix();o.setMatrixAt(i,dummy.matrix);if(cs&&o2.c!==undefined)o.setColorAt(i,new THREE.Color(o2.c))});
