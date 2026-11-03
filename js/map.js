@@ -27,7 +27,7 @@ export function wpAnim(now) { if (WP.on) { const k = 1 + Math.sin(now * 3) * .06
 const dist = (x, z) => { const P = at(); return Math.hypot(P.x - x, P.z - z); };
 const fmt = m => m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km';
 const eta = m => { const s = m / 11; return s < 60 ? Math.max(5, Math.round(s / 5) * 5) + ' s' : Math.round(s / 60) + ' min'; }; // straight line at ~40 km/h
-const QNAME = { P: 'Parking challenge', B: 'Parcel delivery', F: 'Food delivery', G: 'Gate rush', O: 'Orb rush', S: 'Speed trap', T: 'Stunt run' };
+const QNAME = { P: 'Parking challenge', B: 'Parcel delivery', F: 'Food delivery', G: 'Gate rush', O: 'Orb rush', S: 'Speed trap', T: 'Stunt run', R: 'Roguelite run', X: 'Speed bomb', M: 'Meteor storm', H: 'Catch the hare' };
 
 /* ---------- view ---------- */
 const el = $('bigmap'), cv = $('bmc'), g = cv.getContext('2d'), mini = $('mini'), card = $('bmCard'), hint = $('bmHint');
