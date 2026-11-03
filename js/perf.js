@@ -34,7 +34,7 @@ export function cullFar(o, far) {
 // same for a piece that is not an object (a BatchedMesh instance): o = anything with a visible setter, s = its world sphere
 export function cullFarSphere(o, s, far) { ITEMS.push({ o, x: s.center.x, z: s.center.z, r: s.radius, far: Math.min(far, DRAW) }); }
 // terrain tile: levels[0] full detail ... levels[n] coarsest, picked by distance to the tile's rectangle
-export const LOD_D = [200, 480];
+export const LOD_D = [200, 480, 900];
 export function addLOD(levels, x0, z0, x1, z1) { LODS.push({ levels, x0, z0, x1, z1, cur: -2 }); }
 
 let frame = 0;
@@ -44,7 +44,7 @@ export function cullUpdate(camera) {
   for (const it of ITEMS) { const dx = it.x - cx, dz = it.z - cz, f = it.far + it.r; it.o.visible = dx * dx + dz * dz < f * f; }
   for (const t of LODS) {
     const ex = Math.max(t.x0 - cx, 0, cx - t.x1), ez = Math.max(t.z0 - cz, 0, cz - t.z1), d = Math.sqrt(ex * ex + ez * ez);
-    const k = d > DRAW ? -1 : d < LOD_D[0] ? 0 : d < LOD_D[1] ? 1 : 2;
+    const k = d > DRAW ? -1 : d < LOD_D[0] ? 0 : d < LOD_D[1] ? 1 : d < LOD_D[2] ? 2 : 3;
     if (k !== t.cur) { t.cur = k; t.levels.forEach((m, i) => m.visible = i === k); }
   }
 }

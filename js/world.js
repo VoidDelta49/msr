@@ -194,7 +194,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   {const W=N+1,ao=new Float32Array(pos.count);for(let j=0;j<W;j++)for(let i=0;i<W;i++){const k=i+W*j;let s=0,c=0;for(const[a,b]of[[-2,0],[2,0],[0,-2],[0,2],[-2,-2],[2,2],[-2,2],[2,-2]]){const ii=i+a,jj=j+b;if(ii>=0&&jj>=0&&ii<W&&jj<W){s+=MH[ii+W*jj];c++}}
     ao[k]=clamp(1-(s/c-MH[k])*.07,.7,1.08)}for(let i=0;i<pos.count;i++){col[i*3]*=ao[i];col[i*3+1]*=ao[i];col[i*3+2]*=ao[i]}}
   geo.computeVertexNormals();
-  // Drawn as 7x7 tiles of 200 m (frustum-culled), each at 3 detail levels (5/10/20 m grid) picked by distance.
+  // Drawn as tiles of 280 m (frustum-culled), each at 4 detail levels (5/10/20/40 m grid) picked by distance (perf.js LOD_D).
   // Coarse levels sample the full-res vertices (same heights, colours, normals, uvs), and every tile hangs a skirt
   // down from its edges so the cracks between neighbours at different levels are never see-through.
   const P=pos.array,NM=geo.attributes.normal.array,UV=geo.attributes.uv.array,W=N+1,TT=TILE/TS,tmat=new THREE.MeshStandardMaterial({vertexColors:true,map:tDet,roughness:.95});
@@ -208,10 +208,10 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(p,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(nr,3));
     g.setAttribute('color',new THREE.Float32BufferAttribute(cc,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(ix);return g}
   // Build 11.43: every tile at every level is one piece of ONE BatchedMesh (one multi-draw for all the ground in view, sorted
-  // front to back); perf.js switches a tile's level by showing one piece and hiding the other two.
-  const TL=[],TG=[];for(let tj=0;tj<N/TT;tj++)for(let ti=0;ti<N/TT;ti++){const x0=ti*TT*TS-SZ/2+GX,z0=tj*TT*TS-SZ/2+GZ;TL.push([x0,z0]);for(const st of[1,2,4])TG.push(tile(ti*TT,tj*TT,st))}
+  // front to back); perf.js switches a tile's level by showing one piece and hiding the others.
+  const TL=[],TG=[];for(let tj=0;tj<N/TT;tj++)for(let ti=0;ti<N/TT;ti++){const x0=ti*TT*TS-SZ/2+GX,z0=tj*TT*TS-SZ/2+GZ;TL.push([x0,z0]);for(const st of[1,2,4,8])TG.push(tile(ti*TT,tj*TT,st))}
   {const{b,ids}=staticBatch(TG,tmat);b.receiveShadow=true;b.name='terrain';scene.add(b);
-    TL.forEach(([x0,z0],i)=>addLOD([0,1,2].map(l=>{const id=ids[i*3+l];return{set visible(v){b.setVisibleAt(id,v)}}}),x0,z0,x0+TT*TS,z0+TT*TS))}
+    TL.forEach(([x0,z0],i)=>addLOD([0,1,2,3].map(l=>{const id=ids[i*4+l];return{set visible(v){b.setVisibleAt(id,v)}}}),x0,z0,x0+TT*TS,z0+TT*TS))}
   geo.dispose();
   const sea=new THREE.Mesh(new THREE.PlaneGeometry(8000,8000).rotateX(-PI/2),new THREE.MeshStandardMaterial({color:0x2a88a6,map:mkTex(T.sea(),400),roughness:.2,metalness:.15,transparent:true,opacity:.9}));sea.position.y=SEA;scene.add(freeze(sea));
   // rice paddies: patchwork texture with dikes
@@ -406,8 +406,9 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   // roof in the hut's instance space (hut scale 4.5/2.6/4.2, roof 4.4/2.4/4.4 sitting 2.6 m up); its colour divided by the
   // hut's instance tint, which now multiplies it too
   const NT=new THREE.Color(0xb59a5e),nrm=std(new THREE.Color(0x9c8350).multiply(new THREE.Color(1/NT.r,1/NT.g,1/NT.b)),1);
-  inst(...pair({g:aoGeo(mergeGeometries([new THREE.BoxGeometry(1,.62,1).translate(0,.69,0),...[[-.42,-.42],[.42,-.42],[-.42,.42],[.42,.42]].map(([a,b])=>new THREE.BoxGeometry(.05,.4,.05).translate(a,.2,b))]),.55),m:vstd(0xffffff,.9)},
-    {g:new THREE.ConeGeometry(.78,1,4).rotateY(PI/4).translate(0,.5,0).scale(4.4/4.5,2.4/2.6,4.4/4.2).translate(0,1,0),m:nrm}),nipa,true,FAR.tree);
+  {const roof=()=>new THREE.ConeGeometry(.78,1,4).rotateY(PI/4).translate(0,.5,0).scale(4.4/4.5,2.4/2.6,4.4/4.2).translate(0,1,0); // LOD twin: no stilts, the walls reach the ground (60 vertices instead of 204)
+    const[g,m,lo]=pair({g:aoGeo(mergeGeometries([new THREE.BoxGeometry(1,.62,1).translate(0,.69,0),...[[-.42,-.42],[.42,-.42],[-.42,.42],[.42,.42]].map(([a,b])=>new THREE.BoxGeometry(.05,.4,.05).translate(a,.2,b))]),.55),m:vstd(0xffffff,.9)},{g:roof(),m:nrm},
+      [aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.55),roof()]);inst(g,m,nipa,true,FAR.tree,lo)}
   // palms on the beaches and lowlands, rainforest on the hills
   // LOD twins (batch.js, past ~110 m): 3-sided open trunk, fronds as two-sided flat blades: 132 vertices instead of 468
   const bend=g=>{const p=g.attributes.position;for(let i=0;i<p.count;i++){const y=p.getY(i);p.setX(i,p.getX(i)+(y/8)**2*1.3)}return g};
