@@ -133,9 +133,9 @@ function wheelG(R, t, rim, spokes, sw, twin, disc = .11, ex = {}) {
 // sport wheel: fat tyre (torus squashed to width wx), rim with paint pinstripes (MRS), 5 split "Y" spokes, floating discs
 // (front: twin 310 mm, rear: 240 mm on the right)
 const MRS = std(0x15161a, .4, .3), MGold = std(0xc39a45, .3, .85), MEng = std(0x3e4249, .5, .6), MCov = std(0x60656d, .4, .7);
-function wheelS(R, t, wx, rim, front, dr = front ? .155 : .12) {
+function wheelS(R, t, wx, rim, front, dr = front ? .155 : .12, one = false) {
   const g = new THREE.Group(); mk(new THREE.TorusGeometry(R, t, 6, 22).scale(1, 1, wx), MR, g, 0, 0, 0, 0, PI / 2);
-  wheelFaces(g, { rim, lip: .014, n: 5, w: .028, to: .14, r0: .045, r1: rim - .005, sc: 'R', hub: .055, hc: 'R', sx: [-.045, .045], sr: rim - .002, sw: .006, plates: front ? [[-.075, dr, 'disc'], [.075, dr, 'disc']] : [[.072, dr, 'disc']] });
+  wheelFaces(g, { rim, lip: .014, n: 5, w: .028, to: .14, r0: .045, r1: rim - .005, sc: 'R', hub: .055, hc: 'R', sx: [-.045, .045], sr: rim - .002, sw: .006, plates: front && !one ? [[-.075, dr, 'disc'], [.075, dr, 'disc']] : [[front ? .075 : .072, dr, 'disc']] });
   return g;
 }
 const MVis = std(0x0c0f14, .1, .6), MVisG = std(0x2c3036, .15, .5), MAlu = std(0xb9bec4, .32, .75), MCop = std(0xb8682c, .35, .6),
@@ -181,6 +181,16 @@ function drawLivery(kind, paint, lv = '') {
     poly(Gr, -.86, .735, -.6, .77, -.36, .835, -.36, .825, -.6, .76, -.86, .725);                                      // wing edge line
     poly(Gr, .32, .675, .56, .75, .72, .85, .93, .96, .93, .95, .72, .84, .56, .74, .32, .665);                        // tail line
     if (lv === 'k') poly(Gr, .2, .835, .05, .895, -.12, .92, -.3, .87, -.3, .86, -.12, .91, .05, .885, .2, .825);       // tank line
+  } else if (kind === 'sniper') { // Sniper 155R (reference photos): black belly + lower shroud, two swept stripes along the shroud (white/silver, cyan on
+    // the matte bike), a long block-shaped slash on the side cowl (shapes only, no lettering), black grab-rail seam under the tail
+    const W = lv === 'c' ? '#16b3cc' : '#eef2f6', Sv = lv === 'c' ? '#7d8a96' : '#a9b4c0';
+    poly(K, -.42, .3, .1, .3, .1, .6, -.06, .56, -.2, .5, -.42, .55);                          // lower shroud + radiator area
+    poly(W, -.36, .78, -.2, .85, -.06, .86, .0, .8, -.08, .78, -.2, .78, -.34, .72);           // upper stripe on the shroud
+    poly(Sv, -.34, .7, -.18, .76, -.04, .76, -.1, .72, -.2, .71, -.32, .64);                   // lower stripe
+    poly(W, .12, .735, .5, .79, .62, .82, .62, .795, .5, .765, .12, .71);                      // cowl slash (block)
+    poly(Sv, .12, .69, .42, .74, .42, .725, .12, .675);                                        // slash underline
+    poly(K, .56, .8, .8, .85, .9, .88, .9, .86, .6, .79);                                      // tail underside seam
+    poly(K, -.8, .7, -.52, .84, -.36, .88, -.3, .93, -.3, .7);                                 // cowl lower edge
   } else if (kind === 'sport' && lv === 'gb') { // Raider R150 Fi matte grey/blue (reference photos): grey shroud + belly pan, black tank band,
     // black side panel and tail with grey jagged camo and blue fades, dark "R150" plate on the shroud, black cowl with a blue edge
     const Bl = '#1f48d8', D = '#3d4045', G = '#8d9197';
@@ -410,6 +420,74 @@ function sport(ct) {
     if (s === 0) { // heat shield: a silver wedge over the lower outside of the can, running down to the header
       const Q = (t, n) => [a[2] + d[2] * t + Math.sin(an) * n, a[1] + d[1] * t - Math.cos(an) * n];
       mk(prof([Q(-.1, .02), Q(.06, .085), Q(.44, .055), Q(.5, 0), Q(.1, -.02)], .016, .004), MAlu, B.exh, .155 + Rr, 0, 0); mk(box(.03, .05, .08), MB, B.exh, .14, .4, .42);
+    }
+    batchExh();
+  };
+}
+
+/* ---------- sport underbone (Yamaha Sniper 155R) ---------- */
+// Reference photos (blue PH unit): pointed blue fairing with a small smoked screen and twin slit LEDs low on the nose,
+// the radiator mesh showing between the fairing blades, a big angular blue shroud over a black belly, a stepped black
+// seat that rises to a blue tail cowl, a black upswept grab loop, a slim black can with a silver shield, blue 5-spoke
+// mags (fat 120/70-17 rear, 90/80-17 front) with a gold front caliper and a single front disc.
+function sniper(ct) {
+  B.G = { rw: .3, rearZ: .67, fork: .73, rake: .436, pivotY: .43, pivotZ: .09, swingX: 0 }; B.wheelCol = 0x1f44d8; B.cargo = { y: .93, z: .5 }; B.fenderPaint = true;
+  B.rearH = new THREE.Group(); B.rearH.position.set(0, .3, .67); ct.add(B.rearH); B.rearW = wheelS(.255, .045, 1.35, .21, false, .115); B.rearH.add(B.rearW);
+  mk(cyl(.075, .075, .012, 10), MB, B.rearH, -.065, 0, 0, 0, 0, PI / 2);                                       // sprocket
+  mk(box(.03, .06, .07), MGold, B.rearH, .095, .1, -.09);                                                      // rear caliper
+  mk(arc(.31, .335, 1.35, 2.6, .12), MF, B.rearH, 0, 0, 0);                                                   // inner rear fender
+  // double-sided box swingarm + chain (one mesh, stretched pivot->axle each frame)
+  B.swing = mk(mergeGeometries([box(.03, .065, 1).translate(.1, 0, 0), box(.03, .065, 1).translate(-.1, 0, 0), box(.012, .012, 1).translate(-.065, .045, 0), box(.012, .012, 1).translate(-.065, -.04, 0), box(.2, .04, .05).translate(0, 0, -.46)]), MK, ct, 0, .365, .38);
+  // engine: crankcase, forward cylinder with fins, covers
+  mk(prof([[-.06, .5], [.16, .5], [.22, .4], [.18, .24], [-.02, .2], [-.12, .3]], .26, .02), ME, ct, 0, 0, 0);
+  mk(prof([[-.28, .47], [-.06, .51], [-.06, .32], [-.26, .34]], .18, .015), MG, ct, 0, 0, 0);
+  for (const z of [-.1, -.15, -.2]) mk(box(.21, .17, .012), MG, ct, 0, .42, z);
+  mk(cyl(.085, .085, .03, 10), MC, ct, .145, .36, .05, 0, 0, PI / 2); mk(prof([[-.04, .42], [.14, .44], [.18, .32], [.02, .28]], .02, .005), MAlu, ct, -.145, 0, 0);
+  mk(box(.22, .25, .035), MGrl, ct, 0, .52, -.4, .08);                                                        // radiator, visible between the fairing blades
+  mk(prof([[-.37, .58], [-.2, .44], [-.16, .35], [-.38, .36]], .27, .008), MGrl, ct, 0, 0, 0);               // radiator side cover (silver mesh, under the shroud wedge)
+  // bodywork
+  mk(prof([[-.31, .93], [-.14, .92, .02, .86], [.08, .8], [.05, .72], [-.18, .72], [-.3, .8]], .22, .02), MP, ct, 0, 0, 0); // tank cover (paint)
+  mk(taper(prof([[-.40, .7], [-.34, .86], [-.2, .91], [-.04, .87], [.05, .74], [0, .6], [-.06, .46], [-.2, .42], [-.38, .55]], .32, .022), [[-.42, .5], [-.22, .85], [0, 1]]), MP, ct, 0, 0, 0); // shroud: pointed forward wedge
+  mk(prof([[-.05, .47], [.03, .4], [-.03, .28], [-.16, .15], [-.22, .17], [-.22, .33], [-.17, .42]], .29, .02), MK, ct, 0, 0, 0); // belly pan
+  mk(prof([[.04, .8], [.34, .82], [.6, .88], [.66, .86], [.5, .74], [.3, .64], [.12, .6], [.04, .62]], .25, .02), MP, ct, 0, 0, 0); // side cowl
+  mk(taper(prof([[.56, .88], [.8, .94], [.92, .965], [.94, .935], [.84, .84], [.62, .8], [.54, .82]], .16, .02), [[.54, 1], [.94, .7]]), MP, ct, 0, 0, 0); // tail
+  mk(prof([[.04, .66], [.34, .7], [.4, .58], [.3, .48], [.08, .48]], .2, .01), MK, ct, 0, 0, 0);            // frame cover
+  mk(prof([[.02, .815], [.06, .85], [.28, .84], [.38, .88], [.62, .925], [.66, .9], [.44, .8], [.06, .79]], .25, .025, 2), MS, ct, 0, 0, 0); // stepped seat
+  for (const s of [-1, 1]) { tube([s * .1, .9, .5], [s * .1, .94, .78], .014, MK, ct); tube([s * .1, .94, .78], [s * .05, .95, .84], .014, MK, ct); } // grab loop
+  tube([-.1, .94, .78], [.1, .94, .78], .013, MK, ct);                                                         // loop cross bar
+  mk(box(.12, .03, .035), MTail, ct, 0, .925, .93, .7);                                                        // LED tail lamp
+  mk(prof([[.86, .84], [.92, .85], [.99, .66], [.96, .62], [.9, .68]], .08, .01), MK, ct, 0, 0, 0);           // plate hanger
+  mk(box(.2, .12, .008), MPl, ct, 0, .59, .995, .35); for (const s of [-1, 1]) mk(box(.05, .028, .045), MAmb, ct, s * .1, .8, .95);
+  for (const s of [-1, 1]) { mk(box(.09, .02, .035), MB, ct, s * .17, .33, .18); mk(box(.025, .08, .06), MAlu, ct, s * .13, .37, .2); mk(box(.07, .02, .03), MB, ct, s * .15, .42, .52); } // pegs + hangers
+  // steering: fork, fairing, screen, lamps, bars
+  T0 = [-.32, .95]; RK = .436;
+  const tilt = new THREE.Group(); tilt.position.set(0, .95, -.32); tilt.rotation.x = .436; ct.add(tilt);
+  const st = B.steer = new THREE.Group(); tilt.add(st);
+  for (const s of [-1, 1]) mk(cyl(.021, .021, .46), MC, st, s * .08, -.18, 0);
+  mk(box(.22, .03, .08), MB, st, 0, .04, 0); mk(box(.2, .025, .07), MB, st, 0, -.13, 0);                    // yokes
+  B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -.73;
+  for (const s of [-1, 1]) mk(cyl(.031, .028, .34, 8), MAlu, B.slider, s * .08, .17, 0);
+  B.frontW = wheelS(.246, .042, 1.05, .204, true, .13, true); B.slider.add(B.frontW);
+  mk(arc(.295, .32, 1.05 + .436, 2.5 + .436, .1), MF, B.slider, 0, 0, 0);                                     // front fender (paint)
+  mk(box(.05, .075, .1), MGold, B.slider, .09, .03, .07);                                                    // gold caliper
+  mk(profSt([[-.3, 1.1], [-.44, 1.09], [-.58, 1.0], [-.66, .9], [-.62, .82], [-.52, .8], [-.4, .86], [-.3, .96]], .3, .02), MP, st, 0, 0, 0); // fairing
+  mk(profSt([[-.48, 1.0], [-.62, .9], [-.66, .86], [-.6, .82], [-.52, .86]], .15, .012), MK, st, 0, 0, 0);    // black nose
+  mk(profSt([[-.31, 1.1], [-.43, 1.085], [-.5, 1.04], [-.45, 1.13], [-.33, 1.17]], .2, .008), MVisG, st, 0, 0, 0); // small smoked screen
+  for (const s of [-1, 1]) { mkSt(box(.085, .032, .02), MHead, s * .085, -.645, .895, .85, 0, s * .22); mkSt(box(.05, .012, .02), MHead, s * .1, -.6, .965, .85, 0, s * .4); mkSt(box(.03, .03, .07), MAmb, s * .15, -.5, .93); } // twin slit LEDs, DRLs, signals
+  clusterPlane(st, 0, .2, -.08, -.9);
+  controls(st, .16, .07, .28, .2, [.29, .2, -.08]);
+  rider(ct, [1.12, .3, -.35], [1.48, .14], [.22, 1.18, 0, .6, .45], [[.15, .9, .2, .2, .45, .14], [.18, .58, .02, -.2, .42, .11]]);
+  B.cam = new THREE.Group(); B.cam.position.set(0, 1.36, .1); ct.add(B.cam);
+  B.exh = new THREE.Group(); ct.add(B.exh);
+  // stock: black header under the engine into a slim black can with a silver heat shield; aftermarket: shorter, louder cans
+  B.buildExh = (s, cf) => {
+    B.exh.clear(); const L = [.46, .38, .32][s], Rr = [.058, .052, .048][s], col = [0x17181b, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, s ? .35 : .55, s ? .8 : .3);
+    tube([.04, .33, -.26], [.07, .16, -.1], .022, MB, B.exh); tube([.07, .16, -.1], [.13, .2, .3], .024, MB, B.exh);
+    const an = .5, a = [.15, .23, .32], d = [0, Math.sin(an), Math.cos(an)], at = t => a.map((v, i) => v + d[i] * t), b = at(L);
+    tube(a, b, Rr, m, B.exh, 8); tube(b, at(L + .06), Rr * .85, s ? MB : MAlu, B.exh, 8);                     // can + end cap
+    if (s === 0) {
+      const Q = (t, n) => [a[2] + d[2] * t + Math.sin(an) * n, a[1] + d[1] * t - Math.cos(an) * n];
+      mk(prof([Q(-.1, .02), Q(.06, .08), Q(.36, .05), Q(.42, 0), Q(.1, -.02)], .016, .004), MAlu, B.exh, .155 + Rr, 0, 0);
     }
     batchExh();
   };
@@ -1214,7 +1292,7 @@ function xmax(ct) {
   };
 }
 
-const MODELS = { sport, scooter, supersport, underbone, tmx, aerox, rouser, h2, nmax, xmax, macho: (ct, v) => tmx(ct, v, 1) };
+const MODELS = { sport, sniper, scooter, supersport, underbone, tmx, aerox, rouser, h2, nmax, xmax, macho: (ct, v) => tmx(ct, v, 1) };
 export function buildModel(bike, spec) {
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;
