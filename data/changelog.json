@@ -1,4 +1,7 @@
 [
+  { "v": "11.65", "d": "2026-11-03", "t": [
+    "Performance round for the bigger map: palms and rainforest trees switch to low-detail versions past ~110 m (about a third fewer triangles per frame, same draw calls), road pieces past the draw distance are no longer drawn, and the island builds faster at load (terrain generation about 3x quicker, same terrain)."
+  ] },
   { "v": "11.64", "d": "2026-11-03", "t": [
     "Big map expansion. Ciudad Nueva: a city island south of the main island with a street grid, glass towers up to 32 floors (lit windows at night), a plaza, church and market. Ocean highway: a 750 m arched cable-stayed bridge (two 38 m pylons) sweeping from the south-east coast over open sea to the city, with a ramp down to Isla Bato. New islets: Isla Bato (rock-garden off-road island with boulders), Parola Peak (a cone island with a spiral road up to a lighthouse), Stunt Atoll (kickers, a bowl and a loop track) and a pier from the old islet to the city. Off-road: Batuhan Rocks and Bukirin Whoops, ridged rocky bumpy terrain with boulders. Underground: the Underground River Cave, a sunken roofed rock hall with two mouths, a skylight, pillars, stalagmites, glowing crystals and a pool. Map tech: new hill and rough terrain features, road points with heights and a bridge flag (deck over open water leaves the sea floor alone), tower and cave buildings, map labels on any feature, terrain grid now follows the bounding box of all land."
   ] },

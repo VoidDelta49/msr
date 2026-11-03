@@ -34,10 +34,16 @@ function coastR(th){const f=(((th/(2*PI))%1)+1)%1*CN,i=Math.floor(f),t=f-i,g=k=>
 function loopS(P,st){const n=P.length,out=[];for(let i=0;i<n;i++){const p0=P[(i-1+n)%n],p1=P[i],p2=P[(i+1)%n],p3=P[(i+2)%n],k=Math.max(1,Math.round(Math.hypot(p2[0]-p1[0],p2[1]-p1[1])/st));
   for(let j=0;j<k;j++){const t=j/k,t2=t*t,t3=t2*t,f=(a,b,c,d)=>.5*(2*b+(-a+c)*t+(2*a-5*b+4*c-d)*t2+(-a+3*b-3*c+d)*t3);out.push([f(p0[0],p1[0],p2[0],p3[0]),f(p0[1],p1[1],p2[1],p3[1])])}}return out}
 const ISL=(MD.islands||[]).filter(o=>o.pts&&o.pts.length>2).map(o=>{const S=loopS(o.pts,8),xs=S.map(p=>p[0]),zs=S.map(p=>p[1]);let per=0;for(let i=0;i<S.length;i++)per+=Math.hypot(S[i][0]-S[(i+1)%S.length][0],S[i][1]-S[(i+1)%S.length][1]);
-  return{S,per,cx:xs.reduce((a,b)=>a+b)/S.length,cz:zs.reduce((a,b)=>a+b)/S.length,x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs),R:Math.max(...S.map(p=>Math.hypot(p[0]-ICX,p[1]-ICZ)))+40}});
-function islD(x,z,S){let d=1e18,ins=false;for(let i=0,j=S.length-1;i<S.length;j=i++){const[ax,az]=S[j],[bx,bz]=S[i];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)ins=!ins;
-  const ex=bx-ax,ez=bz-az,t=clamp(((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez||1),0,1),dx=ax+ex*t-x,dz=az+ez*t-z,q=dx*dx+dz*dz;if(q<d)d=q}return ins?Math.sqrt(d):-Math.sqrt(d)}
-const inland=(x,z)=>{let v=coastR(Math.atan2(z-ICZ,x-ICX))-Math.hypot(x-ICX,z-ICZ);for(const I of ISL)if(x>I.x0-220&&x<I.x1+220&&z>I.z0-220&&z<I.z1+220){const d=islD(x,z,I.S);if(d>v)v=d}return v};
+  return{S,F:Float64Array.from(S.flat()),per,cx:xs.reduce((a,b)=>a+b)/S.length,cz:zs.reduce((a,b)=>a+b)/S.length,x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs),R:Math.max(...S.map(p=>Math.hypot(p[0]-ICX,p[1]-ICZ)))+40}});
+// signed distance to an island outline (I.F = flat x,z pairs; hot: runs for every terrain vertex near an island)
+function islD(x,z,I){const F=I.F,n=F.length;let d=1e18,ins=false;for(let i=0,j=n-2;i<n;j=i,i+=2){const ax=F[j],az=F[j+1],bx=F[i],bz=F[i+1];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)ins=!ins;
+  const ex=bx-ax,ez=bz-az;let t=((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez||1);t=t<0?0:t>1?1:t;const dx=ax+ex*t-x,dz=az+ez*t-z,q=dx*dx+dz*dz;if(q<d)d=q}return ins?Math.sqrt(d):-Math.sqrt(d)}
+// an island can only win when it is nearer than the coast: outside its box by g, its distance is at most -g (exact skip).
+// One-entry memo: the terrain build asks twice per vertex (height + colour).
+let iX=NaN,iZ=NaN,iV=0;
+const inland=(x,z)=>{if(x===iX&&z===iZ)return iV;let v=coastR(Math.atan2(z-ICZ,x-ICX))-Math.hypot(x-ICX,z-ICZ);
+  for(const I of ISL)if(x>I.x0-220&&x<I.x1+220&&z>I.z0-220&&z<I.z1+220){const gx=Math.max(I.x0-x,0,x-I.x1),gz=Math.max(I.z0-z,0,z-I.z1),g=Math.sqrt(gx*gx+gz*gz);if(g>0&&-g<=v)continue;const d=islD(x,z,I);if(d>v)v=d}
+  iX=x;iZ=z;return iV=v};
 // Terrain grid = a square (5 m vertices, 280 m tiles) round the bounding box of all land + 80 m of sea; tiles, LOD, road chunks, props, minimap follow it.
 const TS=5,TILE=280,LB=(()=>{let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(let i=0;i<720;i++){const t=i/720*2*PI,r=coastR(t),x=ICX+Math.cos(t)*r,z=ICZ+Math.sin(t)*r;x0=Math.min(x0,x);x1=Math.max(x1,x);z0=Math.min(z0,z);z1=Math.max(z1,z)}
   for(const I of ISL){x0=Math.min(x0,I.x0);x1=Math.max(x1,I.x1);z0=Math.min(z0,I.z0);z1=Math.max(z1,I.z1)}return{x0,x1,z0,z1}})();
@@ -56,17 +62,20 @@ function polyD(x,z,P){let bd=1e18,bh=0;for(let i=1;i<P.length;i++){const[ax,az,a
 //  (a mountain range along a polyline, crest height per point, gaussian cross-section of half-width w) · flat {x0,z0,x1,z1,h,blend} (levelled to height h,
 //  blending back over 'blend' metres: town, paddies, airstrip).
 const roughW=(f,x,z)=>{const d=Math.hypot(x-f.x,z-f.z);return d<f.r?1-sstep(f.r*.55,f.r,d):0};
+// box outside which a feature adds nothing (volcano: everywhere); cached on the feature, checked before any maths
+const FBOX=f=>{const t=f.type,R=t==='hill'?f.r*2.5:t==='terraces'?f.r+260:t==='rough'?f.r:0;
+  return t==='volcano'?[-1e18,1e18,-1e18,1e18]:t==='ridge'?f.bb:t==='flat'?[f.x0-f.blend,f.x1+f.blend,f.z0-f.blend,f.z1+f.blend]:[f.x-R,f.x+R,f.z-R,f.z+R]};
 function terrBase(x,z){
   const inl=inland(x,z);
   let h=inl>0?SEA+.2+Math.min(inl,60)*.045:Math.max(-10,SEA-.2+inl*.06);
   const hl=sstep(HL.inl0,HL.inl1,inl);h+=(fbm(x*HL.scale+7,z*HL.scale)*HL.amp+HL.off)*hl;if(inl>60)h=Math.max(h,SEA+3); // hollows in the hills would fill with sea water (the sea plane is everywhere)
-  for(const f of FEAT){const t=f.type;
+  for(const f of FEAT){const b=f.box||(f.box=FBOX(f));if(x<b[0]||x>b[1]||z<b[2]||z>b[3])continue;const t=f.type;
     if(t==='volcano'){const dv=Math.hypot(x-f.x,z-f.z);h+=f.h*Math.exp(-Math.pow(dv/f.r,1.8))-f.crater*Math.exp(-((dv/f.craterR)**2))}
     else if(t==='terraces'){const dt=Math.hypot(x-f.x,z-f.z);if(dt<f.r+260){/* was r+40: the hill gaussian ended in a 2.5 m step on a circle */h+=f.h*Math.exp(-((dt/100)**2));const w=1-sstep(f.r-40,f.r,dt),q=h/f.step,fr=q-Math.floor(q);h+=((Math.floor(q)+sstep(.7,1,fr))*f.step-h)*w*.85}}
     else if(t==='ridge'){if(x>f.bb[0]&&x<f.bb[1]&&z>f.bb[2]&&z<f.bb[3]){const p=polyD(x,z,f.pts);h+=p.h*Math.exp(-((p.d/f.w)**2))*sstep(0,80,inl)*(1+.18*(fbm(x*.02+3,z*.02)-.5))}}
     else if(t==='hill'){const d=Math.hypot(x-f.x,z-f.z);if(d<f.r*2.5)h+=f.h*Math.exp(-Math.pow(d/f.r,f.p||2))}
     else if(t==='rough'){const w=roughW(f,x,z);if(w>0)h+=w*f.amp*(1-Math.abs(2*fbm(x*f.sc+f.x*.013,z*f.sc+f.z*.017)-1))} // ridged rock: crests and gullies for off-roaders
-    else if(t==='flat'){const w=1-sstep(0,f.blend,rd(x,z,f));if(w>0)h+=(f.h-h)*w}}
+    else if(t==='flat'){if(x<=f.x0-f.blend||x>=f.x1+f.blend||z<=f.z0-f.blend||z>=f.z1+f.blend)continue;const w=1-sstep(0,f.blend,rd(x,z,f));if(w>0)h+=(f.h-h)*w}}
   return h}
 const RIVER=MD.river.pts,RW0=MD.river.w0,RW1=MD.river.w1;
 const RLEN=[0];for(let i=1;i<RIVER.length;i++)RLEN.push(RLEN[i-1]+Math.hypot(RIVER[i][0]-RIVER[i-1][0],RIVER[i][1]-RIVER[i-1][1]));
@@ -122,9 +131,9 @@ const CHUNK=700;
 // WebGPU + Options > GPU culling: per-instance culling in a compute pass instead (gpucull.js). Tiny lists and flat
 // decals stay here.
 const GCULL=GPU&&cfg.gpuCull!==false;
-function inst(geo,mat,list,shadow=true,far=FAR.big){
+function inst(geo,mat,list,shadow=true,far=FAR.big,lo){ // lo: low-detail twin geometry (batch.js LOD; the fallback paths draw geo only)
   if(GCULL&&list.length>=8&&!mat.transparent){geo.computeBoundingBox();const b=geo.boundingBox;if(b.max.y-b.min.y>.05){gpuInst(geo,mat,list,shadow,Math.min(far,DRAW));return}}
-  if(MULTI){batchInst(geo,mat,list,shadow,far);return} // WebGL 2 + multi-draw: one draw per material for the whole island (batch.js)
+  if(MULTI){batchInst(geo,mat,list,shadow,far,lo);return} // WebGL 2 + multi-draw: one draw per material for the whole island (batch.js)
   const mkI=(L,m,cs)=>{const o=new THREE.InstancedMesh(geo,m,L.length);
     L.forEach((o2,i)=>{dummy.position.set(o2.x,o2.y||0,o2.z);dummy.rotation.set(0,o2.ry||0,0);dummy.scale.set(o2.sx||1,o2.sy||1,o2.sz||1);dummy.updateMatrix();o.setMatrixAt(i,dummy.matrix);if(cs&&o2.c!==undefined)o.setColorAt(i,new THREE.Color(o2.c))});
     o.computeBoundingSphere();freeze(o);scene.add(o);return o};
@@ -139,18 +148,18 @@ const SHCH=140,SHM=new THREE.MeshBasicMaterial();
 // Two prop parts placed by the same list (palm trunk + fronds, tree trunk + crown, jeepney body + wheels, nipa hut +
 // roof) become ONE instanced type: merged geometry, and one material that keeps each part's own texture (picked per
 // vertex by 'tsel'), base colour (baked into the vertex colours), roughness and metalness. Halves those types' draws.
-// a/b = {g, m}; b's geometry must already be in a's instance space.
-function pair(a,b){
+// a/b = {g, m}; b's geometry must already be in a's instance space. lo = [a's, b's] low-detail geometries: returned third, same attributes.
+function pair(a,b,lo){
   const pre=(o,k)=>{let g=o.g.clone();const n=g.attributes.position.count,c=new Float32Array(n*3),bc=o.m.color,vc=o.m.vertexColors&&g.attributes.color;
     for(let i=0;i<n;i++){const f=vc?vc.getX(i):1;c[i*3]=bc.r*f;c[i*3+1]=bc.g*(vc?vc.getY(i):1);c[i*3+2]=bc.b*(vc?vc.getZ(i):1)}
     g.setAttribute('color',new THREE.BufferAttribute(c,3));g.setAttribute('tsel',new THREE.BufferAttribute(new Float32Array(n).fill(k),1));
     for(const a2 of Object.keys(g.attributes))if(!['position','normal','uv','color','tsel'].includes(a2))g.deleteAttribute(a2);return g};
-  let ga=pre(a,0),gb=pre(b,1);if(!ga.index||!gb.index){if(ga.index)ga=ga.toNonIndexed();if(gb.index)gb=gb.toNonIndexed()}
-  const geo=mergeGeometries([ga,gb]),t=attribute('tsel','float').greaterThan(.5),u=uv();
+  const mg=(ga,gb)=>{if(!ga.index||!gb.index){if(ga.index)ga=ga.toNonIndexed();if(gb.index)gb=gb.toNonIndexed()}return mergeGeometries([ga,gb])};
+  const geo=mg(pre(a,0),pre(b,1)),lgeo=lo&&mg(pre({g:lo[0],m:a.m},0),pre({g:lo[1],m:b.m},1)),t=attribute('tsel','float').greaterThan(.5),u=uv();
   const tx=m=>m.map?texture(m.map,u.mul(vec2(m.map.repeat.x,m.map.repeat.y))).rgb:vec3(1);
   const mat=Q.lite?new THREE.MeshLambertNodeMaterial({vertexColors:true}):new THREE.MeshStandardNodeMaterial({vertexColors:true});
   mat.colorNode=select(t,tx(b.m),tx(a.m));mat.userData.pair=[a.m,b.m]; // batch.js folds untextured pairs into its shared materialif(!Q.lite){mat.roughnessNode=select(t,float(b.m.roughness),float(a.m.roughness));mat.metalnessNode=select(t,float(b.m.metalness),float(a.m.metalness))}
-  return[geo,mat]}
+  return lo?[geo,mat,lgeo]:[geo,mat]}
 function prism(w,h,len){const s=new THREE.Shape();s.moveTo(-w/2,0);s.lineTo(w/2,0);s.lineTo(0,h);s.lineTo(-w/2,0);return new THREE.ExtrudeGeometry(s,{depth:len,bevelEnabled:false}).translate(0,0,-len/2)}
 const pastel=()=>new THREE.Color().setHSL(rand(),.35+rand()*.3,.62+rand()*.18);
 const TIN=[0xa8492f,0x2f5f9a,0x3d7a4a,0xb9bcc0,0x8a2f2f,0xc96f2a];
@@ -230,7 +239,8 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     for(let t=0;t<B.i.length;t+=3){const a=B.i[t],b=B.i[t+1],c=B.i[t+2],key=Math.floor((B.p[a*3]+B.p[b*3]+B.p[c*3])/3/TILE)*1000+Math.floor((B.p[a*3+2]+B.p[b*3+2]+B.p[c*3+2])/3/TILE);
       let C=ch.get(key);if(!C)ch.set(key,C={p:[],u:[],i:[],map:new Map()});for(const v of[a,b,c]){let n=C.map.get(v);if(n===undefined){n=C.p.length/3;C.map.set(v,n);C.p.push(B.p[v*3],B.p[v*3+1],B.p[v*3+2]);C.u.push(B.u[v*2],B.u[v*2+1])}C.i.push(n)}}
     const RG=[...ch.values()].map(C=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(C.p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(C.u,2));g.setIndex(C.i);g.computeVertexNormals();return g});
-    if(RG.length){const{b}=staticBatch(RG,mat);b.receiveShadow=true;b.name='roads-'+k;scene.add(b)}}
+    if(RG.length){const S=RG.map(g=>(g.computeBoundingSphere(),g.boundingSphere.clone())),{b,ids}=staticBatch(RG,mat);b.receiveShadow=true;b.name='roads-'+k;scene.add(b);
+      ids.forEach((id,i)=>cullFarSphere({set visible(v){b.setVisibleAt(id,v)}},S[i],FAR.big))}}
   inst(new THREE.BoxGeometry(1,1,1),std(0xb5b1a8,.8),deck);inst(new THREE.BoxGeometry(1,1,1),std(0xe8e4da,.6),rail,true,FAR.mid);inst(aoGeo(new THREE.CylinderGeometry(.6,.7,1,8).translate(0,.5,0),.55),vstd(0x9a968c,.8),pil);
   // power poles + sagging wires
   inst(aoGeo(mergeGeometries([new THREE.CylinderGeometry(.11,.15,8,6).translate(0,4,0),new THREE.BoxGeometry(.12,.12,1.7).translate(0,7.6,0)]),.55,0,4),vstd(0x8d887e,.8),poles,false,FAR.mid);
@@ -399,8 +409,11 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   inst(...pair({g:aoGeo(mergeGeometries([new THREE.BoxGeometry(1,.62,1).translate(0,.69,0),...[[-.42,-.42],[.42,-.42],[-.42,.42],[.42,.42]].map(([a,b])=>new THREE.BoxGeometry(.05,.4,.05).translate(a,.2,b))]),.55),m:vstd(0xffffff,.9)},
     {g:new THREE.ConeGeometry(.78,1,4).rotateY(PI/4).translate(0,.5,0).scale(4.4/4.5,2.4/2.6,4.4/4.2).translate(0,1,0),m:nrm}),nipa,true,FAR.tree);
   // palms on the beaches and lowlands, rainforest on the hills
-  const trunk=new THREE.CylinderGeometry(.14,.22,8,6,4).translate(0,4,0);{const p=trunk.attributes.position;for(let i=0;i<p.count;i++){const y=p.getY(i);p.setX(i,p.getX(i)+(y/8)**2*1.3)}}
-  const fronds=mergeGeometries(Array.from({length:8},(_,i)=>new THREE.BoxGeometry(.55,.04,3.6).translate(0,0,1.8).rotateX(.45+(i%2)*.25).rotateY(i*PI/4).translate(1.3,8,0)));
+  // LOD twins (batch.js, past ~110 m): 3-sided open trunk, fronds as two-sided flat blades: 132 vertices instead of 468
+  const bend=g=>{const p=g.attributes.position;for(let i=0;i<p.count;i++){const y=p.getY(i);p.setX(i,p.getX(i)+(y/8)**2*1.3)}return g};
+  const trunk=bend(new THREE.CylinderGeometry(.14,.22,8,6,4).translate(0,4,0)),trunkLo=bend(new THREE.CylinderGeometry(.14,.22,8,3,2,true).translate(0,4,0));
+  const frondsOf=blade=>mergeGeometries(Array.from({length:8},(_,i)=>blade().translate(0,0,1.8).rotateX(.45+(i%2)*.25).rotateY(i*PI/4).translate(1.3,8,0)));
+  const fronds=frondsOf(()=>new THREE.BoxGeometry(.55,.04,3.6)),frondsLo=frondsOf(()=>{const t=new THREE.PlaneGeometry(.55,3.6).rotateX(-PI/2);return mergeGeometries([t,t.clone().rotateZ(PI)])});
   const palms=[],trees=[];
   const inBld=(x,z)=>OBBS.some(b=>{const dx=x-b.cx,dz=z-b.cz;return Math.abs(dx*b.c+dz*b.s)<b.hx+.6&&Math.abs(dz*b.c-dx*b.s)<b.hz+.6}); // no palm grows through a building (checked after the palm's random numbers are drawn, so the layout does not reshuffle)
   const PP=PROPS.palms,TP=PROPS.trees;
@@ -409,18 +422,19 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     const pm={x,y:foot(x,z,.3,.3).lo-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4};if(inBld(x,z))continue;palms.push(pm);addOBB(x,z,.25,.25)}
   // extra islands: palms along each outline (trees below); only when the map has islands, so rand's sequence is unchanged otherwise
   for(const I of ISL){const n=Math.round(PP.max*I.per/(2*PI*CMAX));for(let k=0,c=0;k<n*6&&c<n;k++){const p=I.S[(rand()*I.S.length)|0],dx=I.cx-p[0],dz=I.cz-p[1],l=Math.hypot(dx,dz)||1,o=8+rand()*rand()*PP.band,x=p[0]+dx/l*o,z=p[1]+dz/l*o,h=terr(x,z);
-      if(islD(x,z,I.S)<4||h<SEA+.4||h>12||lastCarve>.05)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+2.5)continue;c++;
+      if(islD(x,z,I)<4||h<SEA+.4||h>12||lastCarve>.05)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+2.5)continue;c++;
       const pm={x,y:foot(x,z,.3,.3).lo-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4};if(inBld(x,z))continue;palms.push(pm);addOBB(x,z,.25,.25)}
   }
-  inst(...pair({g:aoGeo(trunk,.55,0,5),m:vstd(0xd8c8b0,.9,0,tBark)},{g:aoGeo(fronds,.7,6.4,8.4),m:vstd(0xffffff,.8,0,tFrond)}),palms,false,FAR.tree);
+  {const[g,m,lo]=pair({g:aoGeo(trunk,.55,0,5),m:vstd(0xd8c8b0,.9,0,tBark)},{g:aoGeo(fronds,.7,6.4,8.4),m:vstd(0xffffff,.8,0,tFrond)},[aoGeo(trunkLo,.55,0,5),aoGeo(frondsLo,.7,6.4,8.4)]);inst(g,m,palms,false,FAR.tree,lo)}
   for(let i=0;i<TP.tries&&trees.length<TP.max;i++){const x=ICX+(rand()-.5)*2*CMAX,z=ICZ+(rand()-.5)*2*CMAX,h=terr(x,z);if(h<10||h>150||lastCarve>.05)continue;
     if(Math.hypot(x-TERR.x,z-TERR.z)<TERR.r-20)continue;if(hg.some(o=>Math.hypot(x-o.x,z-o.z)<22))continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+3)continue;const s=.7+rand()*.8;
     trees.push({x,y:foot(x,z,.3*s,.3*s).lo-.2,z,sx:s,sy:s*(.8+rand()*.5),sz:s,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)});if(q&&q.d<20)addOBB(x,z,.3,.3)}
   // extra islands: trees inland
   for(const I of ISL){
-    const fr=(I.x1-I.x0)*(I.z1-I.z0)/(4*CMAX*CMAX),nt=Math.round(TP.max*fr);for(let k=0,c=0;k<TP.tries*fr&&c<nt;k++){const x=I.x0+rand()*(I.x1-I.x0),z=I.z0+rand()*(I.z1-I.z0),h=terr(x,z);if(h<10||h>150||lastCarve>.05||islD(x,z,I.S)<0)continue;
+    const fr=(I.x1-I.x0)*(I.z1-I.z0)/(4*CMAX*CMAX),nt=Math.round(TP.max*fr);for(let k=0,c=0;k<TP.tries*fr&&c<nt;k++){const x=I.x0+rand()*(I.x1-I.x0),z=I.z0+rand()*(I.z1-I.z0),h=terr(x,z);if(h<10||h>150||lastCarve>.05||islD(x,z,I)<0)continue;
       const q=nearRoad(x,z);if(q&&q.d<q.w/2+3)continue;const sc=.7+rand()*.8;c++;trees.push({x,y:foot(x,z,.3*sc,.3*sc).lo-.2,z,sx:sc,sy:sc*(.8+rand()*.5),sz:sc,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)});if(q&&q.d<20)addOBB(x,z,.3,.3)}}
-  inst(...pair({g:aoGeo(new THREE.CylinderGeometry(.2,.28,3,5).translate(0,1.5,0),.45),m:vstd(0x9a7a5a,.9,0,tBark)},{g:aoGeo(new THREE.IcosahedronGeometry(2.4,0).translate(0,4.4,0),.45,2.2,6.8,.8),m:vstd(0xffffff,.9,0,tLeaf)}),trees,false,FAR.tree);
+  {const[g,m,lo]=pair({g:aoGeo(new THREE.CylinderGeometry(.2,.28,3,5).translate(0,1.5,0),.45),m:vstd(0x9a7a5a,.9,0,tBark)},{g:aoGeo(new THREE.IcosahedronGeometry(2.4,0).translate(0,4.4,0),.45,2.2,6.8,.8),m:vstd(0xffffff,.9,0,tLeaf)},
+    [aoGeo(new THREE.CylinderGeometry(.2,.28,3,3,1,true).translate(0,1.5,0),.45),aoGeo(new THREE.OctahedronGeometry(2.5,0).translate(0,4.4,0),.45,2.2,6.8,.8)]);inst(g,m,trees,false,FAR.tree,lo)} // LOD twin: 42 vertices instead of 120
   // boulders on the rough fields (feature.rocks = how many): flat-shaded rocks, the big ones solid
   {const rocks=[];for(const f of RF){const n=f.rocks||0;for(let k=0,c=0;k<n*5&&c<n;k++){const a=rand()*2*PI,rr=Math.sqrt(rand())*f.r,x=f.x+Math.cos(a)*rr,z=f.z+Math.sin(a)*rr,sc=.8+rand()*rand()*3.2;
       if(terr(x,z)<SEA+1.5||lastCarve>.05||inland(x,z)<8)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+sc+2)continue;if(inBld(x,z))continue;c++;

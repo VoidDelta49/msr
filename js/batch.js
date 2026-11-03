@@ -9,6 +9,8 @@
 //    (both tin roofs). All shadow casters share one shadow-only proxy batch on layer 1 (one draw for the whole shadow pass).
 //    Culling is per 140 m cell and distance class (small / mid / tree / big, as before), done here every frame, so three's
 //    per-instance loop only runs when a cell's visibility flips.
+//  - LOD (Build 11.65): a prop list can bring a low-detail twin geometry (palms, rainforest trees: most of the island's prop
+//    vertices). Both go into the batch; a cell whose nearest point is past LOD_FAR shows the twins instead.
 // Props use this on WebGL 2 with WEBGL_multi_draw only: on WebGPU three issues one draw per instance for a BatchedMesh, and
 // without multi-draw WebGL does the same; there world.js keeps its chunked InstancedMesh path (and gpucull.js on WebGPU).
 import * as THREE from 'three';
@@ -33,7 +35,8 @@ export function staticBatch(geos, mat, { sort = true } = {}) {
 
 /* ---------- props ---------- */
 const REQ = [];
-export function batchInst(geo, mat, list, shadow, far) { if (list.length) REQ.push({ geo, mat, list, shadow, far: Math.min(far, DRAW) }); }
+export function batchInst(geo, mat, list, shadow, far, lo) { if (list.length) REQ.push({ geo, mat, list, shadow, far: Math.min(far, DRAW), lo }); }
+const LOD_FAR = 110; // m from the camera to a cell's nearest point before its props switch to their low-detail twins
 const SHM = new THREE.MeshBasicMaterial(); // shadow-only proxy material (only the shadow pass draws layer 1)
 
 // The material a prop list is drawn with, plus what moves out of it: mul = colour that goes into every instance's colour,
@@ -84,25 +87,27 @@ function cellsOf(b, items, size) {
   const M = new Map();
   for (const it of items) {
     const k = it.far + '|' + Math.floor(it.x / size) + '|' + Math.floor(it.z / size); let c = M.get(k);
-    if (!c) M.set(k, c = { ids: [], far: it.far, x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9, z0: 1e9, z1: -1e9, vis: true });
-    c.ids.push(it.id); c.x0 = Math.min(c.x0, it.x - it.r); c.x1 = Math.max(c.x1, it.x + it.r); c.y0 = Math.min(c.y0, it.y - it.r); c.y1 = Math.max(c.y1, it.y + it.r); c.z0 = Math.min(c.z0, it.z - it.r); c.z1 = Math.max(c.z1, it.z + it.r);
+    if (!c) M.set(k, c = { ids: [], hi: [], lo: [], far: it.far, x0: 1e9, x1: -1e9, y0: 1e9, y1: -1e9, z0: 1e9, z1: -1e9, vis: true });
+    if (it.lid === undefined) c.ids.push(it.id); else { c.hi.push(it.id); c.lo.push(it.lid); } c.x0 = Math.min(c.x0, it.x - it.r); c.x1 = Math.max(c.x1, it.x + it.r); c.y0 = Math.min(c.y0, it.y - it.r); c.y1 = Math.max(c.y1, it.y + it.r); c.z0 = Math.min(c.z0, it.z - it.r); c.z1 = Math.max(c.z1, it.z + it.r);
   }
-  return [...M.values()].map(c => ({ ids: Int32Array.from(c.ids), far: c.far, vis: true, x: (c.x0 + c.x1) / 2, y: (c.y0 + c.y1) / 2, z: (c.z0 + c.z1) / 2, r: Math.hypot(c.x1 - c.x0, c.y1 - c.y0, c.z1 - c.z0) / 2 }));
+  return [...M.values()].map(c => ({ ids: Int32Array.from(c.ids), hi: Int32Array.from(c.hi), lo: Int32Array.from(c.lo), far: c.far, vis: 1, x: (c.x0 + c.x1) / 2, y: (c.y0 + c.y1) / 2, z: (c.z0 + c.z1) / 2, r: Math.hypot(c.x1 - c.x0, c.y1 - c.y0, c.z1 - c.z0) / 2 }));
 }
 
 function build(scene, mat, entries, names, cellSize, opt) {
-  let nv = 0, ni = 0; const geos = entries.map(e => { const g = norm(e.geo, names, e.fill); nv += g.attributes.position.count; ni += e.list.length; return g; });
+  let nv = 0, ni = 0; const geos = entries.map(e => { const g = norm(e.geo, names, e.fill); e.lg = e.lo && norm(e.lo, names, e.fill); nv += g.attributes.position.count + (e.lg ? e.lg.attributes.position.count : 0); ni += e.list.length * (e.lg ? 2 : 1); return g; });
   const b = new THREE.BatchedMesh(ni, nv, 0, mat); b.sortObjects = false; b.perObjectFrustumCulled = false; b.matrixAutoUpdate = false;
   const items = [], tint = entries.some(e => e.mul || e.list.some(o => o.c !== undefined));
   entries.forEach((e, gi) => {
     const gid = b.addGeometry(geos[gi]); geos[gi].computeBoundingSphere(); const gs = geos[gi].boundingSphere;
+    const lgeo = e.lg, lg = lgeo && b.addGeometry(lgeo);
     for (const o of e.list) {
-      const id = b.addInstance(gid), sx = o.sx || 1, sy = o.sy || 1, sz = o.sz || 1;
+      const id = b.addInstance(gid), lid = lgeo ? b.addInstance(lg) : undefined, sx = o.sx || 1, sy = o.sy || 1, sz = o.sz || 1;
       dummy.position.set(o.x, o.y || 0, o.z); dummy.rotation.set(0, o.ry || 0, 0); dummy.scale.set(sx, sy, sz); dummy.updateMatrix(); b.setMatrixAt(id, dummy.matrix);
       if (tint) { col.set(o.c !== undefined && opt.color ? o.c : 0xffffff); if (e.mul) col.multiply(e.mul); b.setColorAt(id, col); }
-      sph.copy(gs).applyMatrix4(dummy.matrix); items.push({ id, x: sph.center.x, y: sph.center.y, z: sph.center.z, r: sph.radius, far: e.far });
+      if (lgeo) { b.setMatrixAt(lid, dummy.matrix); if (tint) b.setColorAt(lid, col); b.setVisibleAt(lid, false); }
+      sph.copy(gs).applyMatrix4(dummy.matrix); items.push({ id, lid, x: sph.center.x, y: sph.center.y, z: sph.center.z, r: sph.radius, far: e.far });
     }
-    geos[gi].dispose();
+    geos[gi].dispose(); if (lgeo) lgeo.dispose();
   });
   b.computeBoundingBox(); b.computeBoundingSphere(); b.updateMatrixWorld(true); scene.add(b);
   Object.assign(b, opt.flags); if (opt.layer) b.layers.set(opt.layer);
@@ -118,7 +123,7 @@ export function finishBatches(scene) {
     let fill = null;
     if (c.rm) { const [ro, me] = c.rm; fill = (geo, n) => { const a = geo.attributes.rm.array; for (let i = 0; i < n; i++) { a[i * 2] = ro; a[i * 2 + 1] = me; } }; }
     else if (c.pair) { const P = c.pair; fill = (geo, n) => { const a = geo.attributes.rm.array, t = geo.attributes.tsel.array; for (let i = 0; i < n; i++) { const m = P[t[i] > .5 ? 1 : 0]; a[i * 2] = m.roughness; a[i * 2 + 1] = m.metalness; } }; }
-    g.push({ geo: r.geo, list: r.list, mul: c.mul, far: r.far, fill });
+    g.push({ geo: r.geo, list: r.list, mul: c.mul, far: r.far, fill, lo: r.lo });
     if (r.shadow && Q.shadow > 0) SH.push({ geo: r.geo, list: r.list, far: r.far });
   }
   for (const [mat, E] of G) {
@@ -133,6 +138,13 @@ export function finishBatches(scene) {
   return BATCHES.length;
 }
 
+// cell state: 0 hidden, 1 full detail, 2 low-detail twins (cells without twins never get 2). Only the instances that change flip.
+function setCell(b, c, v) {
+  const was = c.vis; c.vis = v;
+  if (!was !== !v) for (const id of c.ids) b.setVisibleAt(id, v > 0);
+  for (const id of c.hi) b.setVisibleAt(id, v === 1);
+  for (const id of c.lo) b.setVisibleAt(id, v === 2);
+}
 // every frame, from gpucull.cull(): main batches against the camera frustum + each cell's draw distance, the shadow batch by
 // distance to the shadow camera's centre. Only flipped cells touch their instances. A batch with no cell in view (or a night-only
 // one by day: halos) is hidden as a whole, so three skips it instead of setting up an empty multi-draw.
@@ -146,9 +158,9 @@ export function batchCull(camera) {
     let n = 0;
     for (const c of B.cells) {
       let v;
-      if (B.shadow) { const dx = c.x - tx, dz = c.z - tz, f = SH_R + c.r; v = dx * dx + dz * dz < f * f; }
-      else { const dx = c.x - cx, dz = c.z - cz, f = c.far + c.r; v = dx * dx + dz * dz < f * f && fr.intersectsSphere(sp.set(sp.center.set(c.x, c.y, c.z), c.r)); }
-      if (v !== c.vis) { c.vis = v; for (const id of c.ids) B.b.setVisibleAt(id, v); }
+      if (B.shadow) { const dx = c.x - tx, dz = c.z - tz, f = SH_R + c.r; v = dx * dx + dz * dz < f * f ? 1 : 0; }
+      else { const dx = c.x - cx, dz = c.z - cz, d2 = dx * dx + dz * dz, f = c.far + c.r, l = LOD_FAR + c.r; v = d2 < f * f && fr.intersectsSphere(sp.set(sp.center.set(c.x, c.y, c.z), c.r)) ? (c.lo.length && d2 > l * l ? 2 : 1) : 0; }
+      if (v !== c.vis) setCell(B.b, c, v);
       if (v) n++;
     }
     B.b.visible = n > 0 && (!B.night || night);
