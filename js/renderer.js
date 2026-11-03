@@ -34,7 +34,7 @@ export const scene = new THREE.Scene(); scene.background = new THREE.Color(SKY);
 export const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .03, Q.fog + 150);
 // Day/night (daynight.js): the dome colours come from uniforms (horizon/zenith gradient, cloud mask, sun glow + disc,
 // moon disc, stars) so the sky changes with no texture uploads. Dome moved to the camera in the vertex shader,
-// drawn first, never culled, no fog.
+// drawn after the other opaques at the far plane (see vertexNode), never culled, no fog.
 export const SKYU = {};
 {
   const T = await import('three/tsl'), { clouds } = await import('./tex.js');
@@ -44,6 +44,10 @@ export const SKYU = {};
     sd = U('sun', new THREE.Vector3(0, 1, 0)), md = U('moon', new THREE.Vector3(0, -1, 0)), sv = U('sunVis', 1), mv = U('moonVis', 0), nt = U('night', 0);
   const m = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, fog: false, depthWrite: false });
   m.positionNode = T.positionLocal.add(T.cameraPosition);
+  // Drawn LAST of the opaques, pinned to the far plane (clip z = w, the classic skybox trick): the depth test then skips every
+  // pixel the ground, buildings and trees already covered, so the sky shader (texture, pows, star hash) only runs on the sky
+  // itself instead of on the whole screen before being painted over. It writes no depth, so motion blur still reads "far".
+  const clip = T.cameraProjectionMatrix.mul(T.cameraViewMatrix).mul(T.vec4(m.positionNode, 1)); m.vertexNode = T.vec4(clip.xy, clip.w.mul(.9999999), clip.w);
   const dir = T.positionLocal.normalize(), up = T.uv().y.mul(2).sub(1).clamp(0, 1), c = T.texture(t, T.uv()), w = c.r, open = w.oneMinus(), above = T.step(0, dir.y);
   const base = T.mix(hor, zen, T.pow(up, .7)), s = T.dot(dir, sd).max(0), mo = T.dot(dir, md).max(0);
   let col = T.mix(base, cl.mul(c.g.mul(.075).add(.925)), w);
@@ -53,7 +57,7 @@ export const SKYU = {};
   const cell = T.floor(dir.mul(170)), h = T.fract(T.sin(T.dot(cell, T.vec3(12.9898, 78.233, 37.719))).mul(43758.5453));
   col = col.add(T.vec3(T.step(.9965, h).mul(h.sub(.9965).mul(220).add(.25)).mul(nt).mul(open).mul(T.smoothstep(.03, .2, dir.y)))); // stars
   m.colorNode = T.vec4(col, 1);
-  const dg = new THREE.SphereGeometry(Q.fog * .9, 24, 12), d = new THREE.Mesh(dg, m); d.frustumCulled = false; d.renderOrder = -1; d.matrixAutoUpdate = false; scene.add(d);
+  const dg = new THREE.SphereGeometry(Q.fog * .9, 24, 12), d = new THREE.Mesh(dg, m); d.frustumCulled = false; d.renderOrder = 1e9; d.matrixAutoUpdate = false; scene.add(d);
   // environment copy (IBL bake only): the same sky at 55 % saturation, so ambient light is airy rather than zenith blue
   const em = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, fog: false, depthWrite: false }); em.positionNode = m.positionNode;
   em.colorNode = T.vec4(T.mix(T.vec3(T.dot(col, T.vec3(.2126, .7152, .0722))), col, .55), 1); SKYU.envMat = em; SKYU.geo = dg;

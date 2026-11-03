@@ -1,4 +1,9 @@
 [
+  { "v": "11.69", "d": "2026-11-03", "t": [
+    "Fewer GPU hitches: the shadow map is redrawn about 4x less often. It now sits ahead of the camera and re-centres every 8 m instead of every 3 m, snapped to its own texel grid so shadow edges stay still, and it no longer redraws every 2 s while parked just because the sun crept a fraction of a degree.",
+    "The first-person dashboard no longer rebuilds its mipmaps on every refresh (on WebGPU that was 9 extra render passes up to 10 times a second), and it never refreshes in the same frame as a shadow redraw.",
+    "The sky is drawn after the ground and buildings, so it is only shaded where you can actually see it instead of over the whole screen first."
+  ] },
   { "v": "11.68", "d": "2026-11-03", "t": [
     "Fixed the FPS readout being cut off: the box was sized for the old short text, so physics time, draws, the cpu line and the hitch meter were clipped. It now shows up to four lines (API and fps, physics, draws and resolution, cpu, hitches) and the layout reserves room for them."
   ] },

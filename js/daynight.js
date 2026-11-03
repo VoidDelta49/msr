@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { clamp, sstep } from './util.js';
 import { gameMs, Q } from './config.js';
 import { S, ctx } from './state.js';
-import { renderer, scene, sun, hemi, head, SKYU, GRADE, IBL, ENVG, bakeEnv } from './renderer.js';
+import { renderer, scene, camera, sun, hemi, head, SKYU, GRADE, IBL, ENVG, bakeEnv } from './renderer.js';
 import { setLamps } from './lights.js';
 import { F, at } from './foot.js';
 
@@ -62,7 +62,8 @@ function key(el, i, out) {
   return a[i] + (b[i] - a[i]) * t;
 }
 
-const SHK = new Float64Array(6).fill(NaN); sun.shadow.autoUpdate = false;
+sun.shadow.autoUpdate = false; const LEAD = 10, REBASE = 8, UP = new THREE.Vector3(0, 1, 0);
+const SHL = { x: NaN, z: NaN, y: NaN, d: new THREE.Vector3(0, -1, 0), r: new THREE.Vector3(), u: new THREE.Vector3(), c: new THREE.Vector3() }; // shadow window: the point it was centred for + latched light direction
 let last = -1e9, gate = 0, bakeEl = 1e9, bakeT = 0;
 export function dayNight() {
   const ms = gameMs();
@@ -83,13 +84,21 @@ export function dayNight() {
   if (useMoon) { tv.copy(MOON.y > .05 ? MOON : tv.set(.3, 1, .2).normalize()); sun.color.setHex(0x9fb2ff); sun.intensity = .55 * (.15 + .85 * SKY.phase) * moonUp * sstep(-6, -10, el); }
   else { tv.copy(SUN); key(el, 5, sun.color); sun.intensity = key(el, 6) * sstep(-1, 2, el); }
   if (tv.y < .3) { tv.y = 0; tv.normalize().multiplyScalar(.954); tv.y = .3; } // light never below ~17°: grazing light gives shadow acne over the whole ground
-  // Shadow map on demand: nothing moving casts into it (bikes and riders use contact blobs, model.js), so it only changes when the
-  // light moves. The light follows the bike in whole steps of ~3 m (a multiple of a shadow texel, so the static shadows don't
-  // shimmer when it steps) and the shadow pass is redrawn only on a step or a sun/moon move (every 2 s of game time at most).
-  // Parked: no shadow pass at all; at 200 km/h ~18 a second instead of every frame. Before, it re-rendered every frame.
-  const ms0 = Q.shadow || 1024, tx = 56 / ms0, st = tx * Math.round(3 / tx), P = at(), cx = Math.round(P.x / st) * st, cz = Math.round(P.z / st) * st, cy = Math.round((F.on ? F.y : S.zH || 0) / 4) * 4; // follows the walker when on foot
-  sun.target.position.set(cx, cy, cz); sun.position.set(cx + tv.x * 90, cy + tv.y * 90, cz + tv.z * 90);
-  const K = SHK; if (K[0] !== cx || K[1] !== cz || K[2] !== cy || K[3] !== tv.x || K[4] !== tv.y || K[5] !== tv.z || sun.userData.shDirty) { K[0] = cx; K[1] = cz; K[2] = cy; K[3] = tv.x; K[4] = tv.y; K[5] = tv.z; sun.userData.shDirty = false; sun.shadow.needsUpdate = true; }
+  // Shadow map on demand (cached): nothing moving casts into it (bikes and riders use contact blobs, model.js), so it only has to
+  // be redrawn when its window or the light moves. The ±28 m window sits LEAD m ahead of the camera and is re-centred only once
+  // that point has drifted REBASE m from the window's centre (every 8 m of riding, before 11.69 every 3 m: ~2.7x fewer shadow
+  // passes, which were the periodic GPU spike), so at least 30 m ahead and 20 m to the sides are always covered.
+  // The centre is snapped to the shadow texel grid IN LIGHT SPACE (stable shadow maps, as in cascaded-shadow engines), so a
+  // re-centre moves the map by whole texels and static shadow edges don't crawl. The light direction is latched too: it only
+  // follows the sun/moon once that has turned ~0.3° (about a minute of real sun), instead of a shadow pass every 2 s parked.
+  const P = at(), e = camera.matrixWorld.elements, fl = Math.hypot(e[8], e[10]) || 1, ix = P.x - e[8] / fl * LEAD, iz = P.z - e[10] / fl * LEAD;
+  const cy = Math.round((F.on ? F.y : S.zH || 0) / 4) * 4, L = SHL;
+  if (!(Math.hypot(ix - L.x, iz - L.z) <= REBASE) || cy !== L.y || L.d.angleTo(tv) > .005 || sun.userData.shDirty) {
+    const tx = 56 / (Q.shadow || 1024), d = L.d.copy(tv).normalize(), r = L.r.crossVectors(UP, d).normalize(), u = L.u.crossVectors(d, r);
+    const c = L.c.set(ix, cy, iz), a = Math.round(c.dot(r) / tx) * tx, b = Math.round(c.dot(u) / tx) * tx, w = c.dot(d);
+    c.copy(r).multiplyScalar(a).addScaledVector(u, b).addScaledVector(d, w); L.x = ix; L.z = iz; L.y = cy; sun.userData.shDirty = false; sun.shadow.needsUpdate = true;
+    sun.target.position.copy(c); sun.position.copy(c).addScaledVector(d, 90);
+  }
   setLamps(sstep(3, -3, el)); // street lamps, lit windows and signs come on around sunset (el 3° .. −3°)
   renderer.toneMappingExposure = 1 + .5 * night;                                     // a bit of "eye adaptation" so night stays playable
   // headlight: on with the engine from dusk to dawn (real bikes have it always on, but in daylight it adds nothing)

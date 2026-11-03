@@ -9,7 +9,10 @@ import { at } from './foot.js';
 export function say(t, ms = 1600) { const m = $('msg'); m.textContent = t; m.classList.add('on'); clearTimeout(say.t); say.t = setTimeout(() => m.classList.remove('on'), ms); }
 
 const gaugeCv = $('gauge'), gc = gaugeCv.getContext('2d');
-export const cluTex = new THREE.CanvasTexture(gaugeCv); cluTex.colorSpace = THREE.SRGBColorSpace;
+// No mipmaps: the dash is re-uploaded up to 10x a second in 1st person, and on WebGPU every upload rebuilt the whole
+// chain (9 render passes + its own queue submit), a GPU burst that landed on the next frame. Seen from the saddle it
+// is never minified more than ~2x, where plain bilinear still reads fine.
+export const cluTex = new THREE.CanvasTexture(gaugeCv); cluTex.colorSpace = THREE.SRGBColorSpace; cluTex.generateMipmaps = false; cluTex.minFilter = THREE.LinearFilter;
 function rr(g, x, y, w, h, r) { g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h); }
 
 /* sport: Raider-style sweeping LED tach, big digital speed, gear indicator */
@@ -230,7 +233,7 @@ const CLUSTERS = { sport, scooter, tft, smash, tmx, h2, nmax, xmax: (g, sp) => n
 // Redrawn only when something on it changes; the texture is uploaded to the GPU only while the in-world cluster can
 // be seen (1st person / garage). In 3rd person the same canvas is shown as the on-screen HUD, no upload needed.
 let cluKey = '', texDirty = true;
-export function drawCluster(inWorld = true) {
+export function drawCluster(inWorld = true, hold = false) { // hold: redraw the canvas but leave the upload for a later frame
   const sp = ctx.spec, bl = (performance.now() / 90 | 0) % 2, now = phNow();
   const key = [ctx.bike.id, Math.round(Math.abs(S.v) * 3.6), S.gear, S.key, S.running, S.keyT < 1.2, Math.ceil(dispRpm(sp) / sp.tachMax * 56), (S.fuel / sp.fuel.cap * 100 | 0), S.lim && bl, S.cl > .05 ? S.cl * 100 | 0 : -1,
     ctx.bike.cluster === 'tft' ? [now.m, now.s & 1, (S.odo / 100) | 0, ctx.bcfg.autoClutch, S.running && S.rpm >= sp.red - 600 && (performance.now() / 70 | 0) % 2].join() :
@@ -239,7 +242,7 @@ export function drawCluster(inWorld = true) {
     ctx.bike.cluster === 'nmax' || ctx.bike.cluster === 'xmax' ? [now.m, now.s & 1, (S.odo / 100) | 0, S.ysh, ctx.bcfg.ysp, sp.yec, ctx.bcfg.tc, (S.tcF ?? 1) < .95 && (performance.now() / 400 | 0) % 2, S.issOff && (performance.now() / 400 | 0) % 2, ctx.bcfg.iss, S.issOff].join() :
     ctx.bike.cluster === 'smash' ? [(S.odo / 1000) | 0, sp.carb].join() : ''].join('|');
   if (key !== cluKey) { cluKey = key; gc.clearRect(0, 0, 512, 224); (S.key ? CLUSTERS[ctx.bike.cluster] : dead)(gc, sp); texDirty = true; }
-  if (inWorld && texDirty) { cluTex.needsUpdate = true; texDirty = false; return true; }
+  if (inWorld && texDirty && !hold) { cluTex.needsUpdate = true; texDirty = false; return true; }
   return false;
 }
 
