@@ -47,12 +47,16 @@ TMX Supremo, Aerox 155, Rouser NS125 and Macho 125 use the figures quoted in eac
 
 The hub layout is seeded by the date (Philippine day, UTC+8): everyone gets the same hubs, types and bike locks on the same day, and it all reshuffles at midnight (reload to pick it up).
 
-Quest hubs are coloured beacons in the world and pins on the minimap (pins in view, plus the three nearest at its rim). The parking hub stays in the lot (the only place with bays); 14 delivery hubs (parcel or food, rolled at random each load) sit on random roads all over the island, at least 140 m apart, three of them in town. Ride into one and hold still for a moment to take the job; the pin then becomes the drop-off. ✕ in the panel cancels, and after a job you have to leave the hub before it can trigger again. A finished or failed delivery hub moves somewhere else with a new type; a cancelled one stays.
+Quest hubs are coloured beacons in the world and pins on the minimap (pins in view, plus the three nearest at its rim). The parking hub stays in the lot (the only place with bays); 14 job hubs (parcel, food, gates, orbs, radar or stunt, rolled at random each load) sit on random roads all over the island, at least 140 m apart, three of them in town. Ride into one and hold still for a moment to take the job; the pin then becomes the drop-off. ✕ in the panel cancels, and after a job you have to leave the hub before it can trigger again. A finished or failed delivery hub moves somewhere else with a new type; a cancelled one stays.
 
 About a third of delivery hubs are **bike-locked** (red outline on the map and a second red ring): taking one switches you to that bike where you stand (full tank, same position and heading), and the time limit is 15% tighter. Changing bikes during the job cancels it.
 
 - **Parking challenge** (blue P): park in the green bay. Stars for time and hits. *Next* gives another bay.
 - **Parcel delivery** (tan B): the parcel rides on the pillion seat. A crash, a hard wall hit (> 7 m/s, also with Tough Biker on) or a swim and it falls off: game over. Stars for time and hits.
+- **Gate rush** (gold G): 8 gates in a chain (next one previewed), start 28 s, each gate adds time by its distance (min 4 s). Time out ends the run: stars by gates cleared (8 / 7+ / 4+); not game over.
+- **Orb rush** (cyan O): 10 orbs within 170 m of the hub, 45 s, +1 s per orb. Stars by orbs (all / 8+ / 5+).
+- **Speed trap** (orange S): a halo 250-650 m away; your speed as you enter it is clocked and the record is kept per bike (localStorage). Stars vs the record.
+- **Stunt run** (purple T): 45 s; distance ridden in a wheelie, stoppie or jump scores, multiplied by the combo (up to x3 after 6 s). A crash ends the run with your points. Stars at 150 / 400 pts.
 - **Food delivery** (pink F): quality starts at 100% and drops with bumps, hard braking, hard acceleration, fast lean changes, strong cornering and walls; heat drops steadily to 0 at the time limit (about 7.5 m/s average over the straight-line distance, plus 30 s). A crash, a swim or heat 0 is game over; quality 0 is not, you still deliver (for one star).
 
 Counts, spacing and the bike-lock share are the constants at the top of `js/missions.js` (`NHUB`, `SEP`, `BIKE_P`, `HARD`), as is the spoilage table `K`.

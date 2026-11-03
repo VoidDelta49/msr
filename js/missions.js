@@ -4,6 +4,10 @@
 // A finished or failed hub moves somewhere else. The parking hub stays in the lot (the only place with bays).
 //   parking: park in the green bay.
 //   parcel:  carry the parcel to the drop-off. A crash, a hard wall hit or a swim and it falls off: game over.
+//   gates:   Gate rush: thread a chain of gold gates, every gate buys time; the clock running out ends the run with what you got.
+//   orbs:    Orb rush: grab the cyan orbs scattered around the hub before time is up.
+//   radar:   Speed trap: blast through the orange halo as fast as you can; beat your own record on that bike.
+//   stunt:   Stunt run: wheelies, stoppies and jumps score distance for 45 s; a crash ends the run with your points.
 //   food:    deliver before it goes cold; bumps, hard braking and sudden turns spoil it (still deliverable at 0%), a crash spills it.
 import * as THREE from 'three';
 import { $ } from './util.js';
@@ -18,7 +22,12 @@ const TYPE = {
   park: { c: 0x3da5ff, css: '#3da5ff', g: 'P', name: 'Parking challenge' },
   parcel: { c: 0xd9a066, css: '#d9a066', g: 'B', name: 'Parcel delivery' },
   food: { c: 0xff5fa2, css: '#ff5fa2', g: 'F', name: 'Food delivery' },
+  gates: { c: 0xffd23f, css: '#ffd23f', g: 'G', name: 'Gate rush' },
+  orbs: { c: 0x3ad7ff, css: '#3ad7ff', g: 'O', name: 'Orb rush' },
+  radar: { c: 0xff8a1f, css: '#ff8a1f', g: 'S', name: 'Speed trap' },
+  stunt: { c: 0xd35bff, css: '#d35bff', g: 'T', name: 'Stunt run' },
 };
+const KIND = ['parcel', 'food', 'gates', 'orbs', 'radar', 'stunt'], NGATE = 8, NORB = 10, ORB_R = 4, STUNT_T = 45; // hub job types, gates / orbs per run, orb pickup radius (m), stunt run length (s)
 const NHUB = 14, TOWN_HUBS = 3, SEP = 140, SEE = 800, HARD = .85, BIKE_P = .35; // delivery hubs, how many start in town, min spacing (m), beacon draw range, time factor of bike-locked jobs, share of them
 const HUBS = [{ id: 'park', ...LMF.lot[0].W(28, 29), y: LMF.lot[0].y }];
 for (let i = 0; i < NHUB; i++) HUBS.push({ id: 'parcel', x: 0, z: 0, y: 0, placed: false });
@@ -42,7 +51,7 @@ export function beacon(c, r) {
   ring.position.y = .1; g.add(ring, new THREE.Mesh(beamG, new THREE.MeshBasicMaterial({ ...pm, opacity: .3 })));
   g.visible = false; scene.add(g); return g;
 }
-const destB = beacon(0x43e07a, DR);
+const destB = beacon(0x43e07a, DR), nextB = beacon(0xffd23f, DR), orbB = Array.from({ length: NORB }, () => beacon(0x3ad7ff, ORB_R));
 const PO = { polygonOffset: true, polygonOffsetFactor: -2 }, bm = (c, o, x) => new THREE.MeshBasicMaterial({ color: c, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: o, ...x });
 const ringG = new THREE.RingGeometry(HR - .6, HR, 40).rotateX(-Math.PI / 2), hardG = new THREE.RingGeometry(HR + .6, HR + 1.3, 40).rotateX(-Math.PI / 2);
 // Every hub slot's ring, beam and red outer ring (bike-locked jobs) live in two BatchedMeshes (Build 11.43): all the rings in
@@ -87,7 +96,7 @@ function place(h, town) { // a random road spot, away from the other hubs
 }
 function setup(h, town) { // roll position, job type and bike requirement
   const ids = Object.keys(ctx.bikes); h.placed = false; place(h, town); if (!h.placed) place(h, false);
-  h.id = rng() < .5 ? 'parcel' : 'food'; h.bike = rng() < BIKE_P && ids.length > 1 ? ids[(rng() * ids.length) | 0] : null;
+  h.id = KIND[(rng() * KIND.length) | 0]; h.bike = rng() < BIKE_P && ids.length > 1 ? ids[(rng() * ids.length) | 0] : null;
   Object.assign(h, TYPE[h.id]); h.b.place(h.x, h.y, h.z, h.id, h.bike);
 }
 function init() { // needs road samples / ground height, so not at import time
@@ -140,6 +149,13 @@ function start(h) {
     marker.material.color.set(0x43e07a); arrow.material.color.set(0x43e07a); marker.visible = arrow.visible = true; destB.visible = false;
     pins([{ x: b.x, z: b.z, c: '#43e07a', g: '' }]); say('Park in the green bay'); return;
   }
+  if (id === 'gates' || id === 'orbs' || id === 'stunt') return startArcade(q, h);
+  if (id === 'radar') { // a runway to build speed on, then the trap
+    const d = q.dest = pickDest(h, 250, 650), gy = d.h ?? H(d.x, d.z); q.t = 0; q.rec = +(localStorage.getItem('cpm.radar.' + ctx.bike.id) || 0);
+    destB.position.set(d.x, gy, d.z); destB.visible = true; arrow.position.set(d.x, gy + 2.2, d.z); MI.ay = gy; arrow.material.color.set(TYPE.radar.c); arrow.visible = true; marker.visible = false;
+    destB.children.forEach(m => m.material.color.set(TYPE.radar.c)); pins([{ x: d.x, z: d.z, c: TYPE.radar.css, g: '' }]);
+    say('Speed trap! Hit the orange halo flat out' + (q.rec ? ' · record ' + q.rec + ' km/h' : ''), 2800); return;
+  }
   const food = id === 'food', d = q.dest = pickDest(h, food ? 120 : 150, food ? 520 : 800), gy = d.h ?? H(d.x, d.z), hf = h.bike ? HARD : 1;
   q.d0 = Math.hypot(d.x - S.x, d.z - S.z); q.limit = (30 + q.d0 * 1.5 / 7.5) * hf; q.par = (20 + q.d0 * 1.35 / 9) * hf; // seconds: food gets cold / parcel three-star time
   Object.assign(q, foodNew(), { heat: 100, lx: S.x, lz: S.z });
@@ -148,11 +164,23 @@ function start(h) {
   pins([{ x: d.x, z: d.z, c: '#43e07a', g: '' }]);
   say((food ? 'Food picked up! Deliver it hot and in one piece' : 'Parcel loaded! Don\'t drop it') + (h.bike ? ' · ' + bikeName(h.bike) + ' job, tighter time' : ''), 2800);
 }
+const gate = (b, p, c) => { b.position.set(p.x, p.h ?? H(p.x, p.z), p.z); b.children.forEach(m => m.material.color.set(c)); b.visible = true; };
+function startArcade(q, h) { // gates / orbs / stunt share one entry: a clock, a score and (gates, orbs) glowing targets
+  const id = q.type, hf = h.bike ? HARD : 1; q.t = q.score = 0; q.best = 0;
+  if (id === 'gates') {
+    q.left = 28 * hf; q.pts = [h]; for (let i = 0; i < NGATE; i++) q.pts.push(pickDest(q.pts[i], 90, 200));
+    q.pts.shift(); q.n = 0; gate(destB, q.pts[0], TYPE.gates.c); gate(nextB, q.pts[1], 0xfff1a8); arrow.position.set(q.pts[0].x, (q.pts[0].h ?? H(q.pts[0].x, q.pts[0].z)) + 2.2, q.pts[0].z); arrow.material.color.set(TYPE.gates.c); arrow.visible = true;
+    pins(q.pts.slice(0, 2).map(p => ({ x: p.x, z: p.z, c: TYPE.gates.css, g: '' }))); say('Gate rush! Every gate buys time', 2500);
+  } else if (id === 'orbs') {
+    q.left = 45 * hf; q.pts = []; for (let i = 0; i < NORB; i++) { const p = pickDest(h, 15, 170); q.pts.push(p); gate(orbB[i], p, TYPE.orbs.c); }
+    q.got = 0; pins(q.pts.map(p => ({ x: p.x, z: p.z, c: TYPE.orbs.css, g: '' }))); say('Orb rush! Grab them all', 2500);
+  } else { q.left = STUNT_T * hf; q.run = q.air = 0; q.lx = S.x; q.lz = S.z; pins([]); say('Stunt run! Wheelies, stoppies and jumps score', 2500); }
+}
 function endQuest() {
   const q = MI.q; if (!q) return;
   if (q.item && q.phase === 'on') { dropItem(q.item); say('Job cancelled'); }
   if (q.item && q.phase === 'done') dropItem(q.item);
-  marker.visible = arrow.visible = destB.visible = false; pnl.hidden = true; MI.q = null; MI.arm = false;
+  marker.visible = arrow.visible = destB.visible = nextB.visible = false; orbB.forEach(b => b.visible = false); destB.children.forEach(m => m.material.color.set(0x43e07a)); pnl.hidden = true; MI.q = null; MI.arm = false;
   if (q.hub !== HUBS[0] && q.phase !== 'on') { rng = mul(DAY * 2654435761 + HUBS.indexOf(q.hub) * 40503 + (q.hub.n = (q.hub.n | 0) + 1) * 7919); setup(q.hub, false); } // a finished job's hub moves elsewhere (a cancelled one stays)
   pins(null);
 }
@@ -181,7 +209,7 @@ export function foodJolt(q, dt) { // jolts measured at 30 Hz so they don't depen
 }
 ctx.onHit = dv => { // rapier.js: a wall / object bump of dv m/s (a crash with Tough Biker off is caught through S.crashed instead)
   if (ctx.raceHit) ctx.raceHit(dv);
-  const q = MI.q; if (!q || q.phase !== 'on' || q.type === 'park') return;
+  const q = MI.q; if (!q || q.phase !== 'on' || !q.item) return;
   if (dv > 7) return fail(q.type === 'food' ? 'Food everywhere! Game over' : 'The parcel flew off! Game over');
   if (q.type === 'food') { q.quality = Math.max(0, q.quality - K.hit - dv * K.kH); say('Ouch! The food took a hit', 700); }
 };
@@ -226,11 +254,48 @@ function deliveryTick(q, dt) {
     say('DELIVERED! ' + st, 2500); blip('ok'); dropItem(q.item); arrow.visible = destB.visible = false; pins([]);
   }
 }
+function finish(q, head, st, say2) { q.phase = 'done'; MI.res = `${head} ${st} · ${say2}`; say(head + '! ' + st, 2500); blip('ok'); arrow.visible = destB.visible = nextB.visible = false; orbB.forEach(b => b.visible = false); pins([]); }
+const stars = (v, a, b) => v >= a ? '★★★' : v >= b ? '★★☆' : '★☆☆';
+function arcadeTick(q, dt) { // gates, orbs, stunt (radar is a delivery-style dash, see below)
+  if (q.phase !== 'on') return panel(MI.res, false, 'OK');
+  q.t += dt; q.left -= dt; const id = q.type, near = p => Math.hypot(S.x - p.x, S.z - p.z) < (id === 'orbs' ? ORB_R : DR);
+  if (id === 'gates') {
+    const g = q.pts[q.n]; panel(`GATES ${q.n}/${NGATE} · ${Math.max(0, q.left).toFixed(1)}s · ${Math.hypot(S.x - g.x, S.z - g.z).toFixed(0)} m`, false, '✕');
+    if (near(g)) {
+      q.n++; const bonus = Math.max(4, Math.hypot(g.x - (q.pts[q.n - 2] || q.hub).x, g.z - (q.pts[q.n - 2] || q.hub).z) / 14); q.left += bonus; blip('ok'); say(`Gate ${q.n}! +${bonus.toFixed(0)}s`, 700);
+      if (q.n >= NGATE) return finish(q, 'ALL GATES', '★★★', `${q.t.toFixed(1)}s`);
+      gate(destB, q.pts[q.n], TYPE.gates.c); const nx = q.pts[q.n + 1]; nextB.visible = !!nx; if (nx) gate(nextB, nx, 0xfff1a8);
+      arrow.position.x = q.pts[q.n].x; arrow.position.z = q.pts[q.n].z; MI.ay = q.pts[q.n].h ?? H(q.pts[q.n].x, q.pts[q.n].z); pins(q.pts.slice(q.n, q.n + 2).map(p => ({ x: p.x, z: p.z, c: TYPE.gates.css, g: '' })));
+    } else if (q.left <= 0) return finish(q, 'TIME UP', stars(q.n, 7, 4), `${q.n} gates`);
+  } else if (id === 'orbs') {
+    for (let i = 0; i < NORB; i++) if (q.pts[i] && near(q.pts[i])) { q.pts[i] = null; orbB[i].visible = false; q.got++; q.left += 1; blip('ok'); say(`Orb ${q.got}/${NORB}! +1s`, 500); pins(q.pts.filter(Boolean).map(p => ({ x: p.x, z: p.z, c: TYPE.orbs.css, g: '' }))); }
+    panel(`ORBS ${q.got}/${NORB} · ${Math.max(0, q.left).toFixed(1)}s`, false, '✕');
+    if (q.got >= NORB) return finish(q, 'ALL ORBS', '★★★', `${q.t.toFixed(1)}s`);
+    if (q.left <= 0) return finish(q, 'TIME UP', stars(q.got, 8, 5), `${q.got}/${NORB} orbs`);
+  } else {
+    const d = Math.hypot(S.x - q.lx, S.z - q.lz); q.lx = S.x; q.lz = S.z;
+    const trick = S.air ? 'JUMP' : (S.wp || 0) > .12 ? 'WHEELIE' : (S.wp || 0) < -.12 ? 'STOPPIE' : ''; // a clean trick scores its distance, and the longer the combo the bigger the multiplier
+    if (trick) { q.run += dt; q.score += d * (1 + Math.min(q.run, 6) / 3); q.last = trick; } else if (q.run) { if (q.run > 1.5) say(`${q.last} combo x${(1 + Math.min(q.run, 6) / 3).toFixed(1)}!`, 900); q.run = 0; }
+    panel(`STUNT ${q.score | 0} pts · ${Math.max(0, q.left).toFixed(0)}s` + (trick ? ` · ${trick} x${(1 + Math.min(q.run, 6) / 3).toFixed(1)}` : ''), false, '✕');
+    if (S.crashed) return finish(q, 'WIPEOUT', stars(q.score, 400, 150), `${q.score | 0} pts`);
+    if (q.left <= 0) finish(q, 'STUNT RUN', stars(q.score, 400, 150), `${q.score | 0} pts`);
+  }
+}
+function radarTick(q, dt) {
+  if (q.phase !== 'on') return panel(MI.res, false, 'OK');
+  q.t += dt; const kmh = Math.abs(S.v) * 3.6, d = Math.hypot(S.x - q.dest.x, S.z - q.dest.z);
+  if (S.crashed) return fail('Wiped out before the radar! Game over');
+  panel(`SPEED TRAP · ${kmh | 0} km/h · ${d.toFixed(0)} m` + (q.rec ? ` · record ${q.rec}` : ''), false, '✕');
+  if (d < DR) {
+    const k = Math.round(kmh), rec = q.rec; if (k > rec) try { localStorage.setItem('cpm.radar.' + ctx.bike.id, k); } catch (e) {}
+    finish(q, rec && k > rec ? 'NEW RECORD' : 'CLOCKED', rec ? stars(k, rec, rec * .9) : '★★☆', `${k} km/h` + (rec && k <= rec ? ` (record ${rec})` : ''));
+  }
+}
 export function missions(dt) {
   const fuelCap = ctx.spec.fuel.cap;
   if (atGas(S.x, S.z) && Math.abs(S.v) < .2 && S.fuel < fuelCap) { S.fuel = Math.min(fuelCap, S.fuel + .5 * dt); say('Refueling... ' + (S.fuel / fuelCap * 100 | 0) + '%', 400); }
   fallTick(dt); const q = MI.q;
-  if (!q) idle(dt); else if (q.type === 'park') parkTick(q, dt); else deliveryTick(q, dt);
+  if (!q) idle(dt); else if (q.type === 'park') parkTick(q, dt); else if (q.type === 'radar') radarTick(q, dt); else if (q.item) deliveryTick(q, dt); else arcadeTick(q, dt);
 }
 export function animMarker(now) {
   if (!ready) init();

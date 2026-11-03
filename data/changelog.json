@@ -1,4 +1,7 @@
 [
+  { "v": "11.62", "d": "2026-11-03", "t": [
+    "Four new hub challenges on the same halos: Gate rush (gold G: thread a chain of 8 gates, each buys time), Orb rush (cyan O: grab 10 orbs around the hub before the clock runs out), Speed trap (orange S: hit the halo flat out, beat your record per bike) and Stunt run (purple T: wheelies, stoppies and jumps score points for 45 s with a growing combo). Hubs now roll across all six job types."
+  ] },
   { "v": "11.61", "d": "2026-10-28", "t": [
     "The browser's own right-click / touch-and-hold menu is switched off everywhere (game, menus, garage, map): no context menu, no link or image drag, no text-selection handles or magnifier. Name, room code and server fields still allow paste."
   ] },
