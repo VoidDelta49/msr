@@ -1,4 +1,9 @@
 [
+  { "v": "11.70", "d": "2026-11-04", "t": [
+    "New: Isla Bantay, a big crescent island that wraps the whole north half of the main island across a 110 m channel, reached by three bridges (west, north with cable pylons, east). A scenic coast highway runs its full length with esses. Along it: Bundok Alon (a mountain range), Laguna Bughaw (a lake with a lakeside loop road), Talampas Mesa (spiral road up a flat-topped mesa with a circuit on top), Kalbaryo Badlands (rocky off-road field), Cabo Hangin (spiral road up a cliff to a lighthouse), jungle hills, and beach resorts and fishing villages at the tips.",
+    "Ciudad Nueva is bigger: about 17% wider and 27% deeper, with two more avenues, a new southern street and avenue extensions, and 12 more towers.",
+    "The map grows from about 2.2 km to 3.1 km across. Extra islands can now set a coarser outline step and fewer palms, and palms no longer sprout along the seams between joined island pieces."
+  ] },
   { "v": "11.69", "d": "2026-11-03", "t": [
     "Fewer GPU hitches: the shadow map is redrawn about 4x less often. It now sits ahead of the camera and re-centres every 8 m instead of every 3 m, snapped to its own texel grid so shadow edges stay still, and it no longer redraws every 2 s while parked just because the sun crept a fraction of a degree.",
     "The first-person dashboard no longer rebuilds its mipmaps on every refresh (on WebGPU that was 9 extra render passes up to 10 times a second), and it never refreshes in the same frame as a shadow redraw.",

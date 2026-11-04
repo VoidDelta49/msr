@@ -33,8 +33,8 @@ function coastR(th){const f=(((th/(2*PI))%1)+1)%1*CN,i=Math.floor(f),t=f-i,g=k=>
 // outline (+ inside). inland() takes the larger of the main coast and any island, so beaches, hills and sea depth follow.
 function loopS(P,st){const n=P.length,out=[];for(let i=0;i<n;i++){const p0=P[(i-1+n)%n],p1=P[i],p2=P[(i+1)%n],p3=P[(i+2)%n],k=Math.max(1,Math.round(Math.hypot(p2[0]-p1[0],p2[1]-p1[1])/st));
   for(let j=0;j<k;j++){const t=j/k,t2=t*t,t3=t2*t,f=(a,b,c,d)=>.5*(2*b+(-a+c)*t+(2*a-5*b+4*c-d)*t2+(-a+3*b-3*c+d)*t3);out.push([f(p0[0],p1[0],p2[0],p3[0]),f(p0[1],p1[1],p2[1],p3[1])])}}return out}
-const ISL=(MD.islands||[]).filter(o=>o.pts&&o.pts.length>2).map(o=>{const S=loopS(o.pts,8),xs=S.map(p=>p[0]),zs=S.map(p=>p[1]);let per=0;for(let i=0;i<S.length;i++)per+=Math.hypot(S[i][0]-S[(i+1)%S.length][0],S[i][1]-S[(i+1)%S.length][1]);
-  return{S,F:Float64Array.from(S.flat()),per,cx:xs.reduce((a,b)=>a+b)/S.length,cz:zs.reduce((a,b)=>a+b)/S.length,x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs),R:Math.max(...S.map(p=>Math.hypot(p[0]-ICX,p[1]-ICZ)))+40}});
+const ISL=(MD.islands||[]).filter(o=>o.pts&&o.pts.length>2).map(o=>{const S=loopS(o.pts,o.step||8),xs=S.map(p=>p[0]),zs=S.map(p=>p[1]);let per=0;for(let i=0;i<S.length;i++)per+=Math.hypot(S[i][0]-S[(i+1)%S.length][0],S[i][1]-S[(i+1)%S.length][1]);
+  return{S,pd:o.pd??1,F:Float64Array.from(S.flat()),per,cx:xs.reduce((a,b)=>a+b)/S.length,cz:zs.reduce((a,b)=>a+b)/S.length,x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs),R:Math.max(...S.map(p=>Math.hypot(p[0]-ICX,p[1]-ICZ)))+40}});
 // signed distance to an island outline (I.F = flat x,z pairs; hot: runs for every terrain vertex near an island)
 function islD(x,z,I){const F=I.F,n=F.length;let d=1e18,ins=false;for(let i=0,j=n-2;i<n;j=i,i+=2){const ax=F[j],az=F[j+1],bx=F[i],bz=F[i+1];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)ins=!ins;
   const ex=bx-ax,ez=bz-az;let t=((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez||1);t=t<0?0:t>1?1:t;const dx=ax+ex*t-x,dz=az+ez*t-z,q=dx*dx+dz*dz;if(q<d)d=q}return ins?Math.sqrt(d):-Math.sqrt(d)}
@@ -422,7 +422,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     if(h<SEA+.4||h>12||lastCarve>.05)continue;if(hg.some(o=>Math.hypot(x-o.x,z-o.z)<22))continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+2.5)continue;if(rd(x,z,TOWN)<1&&rand()<.85)continue;
     const pm={x,y:foot(x,z,.3,.3).lo-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4};if(inBld(x,z))continue;palms.push(pm);addOBB(x,z,.25,.25)}
   // extra islands: palms along each outline (trees below); only when the map has islands, so rand's sequence is unchanged otherwise
-  for(const I of ISL){const n=Math.round(PP.max*I.per/(2*PI*CMAX));for(let k=0,c=0;k<n*6&&c<n;k++){const p=I.S[(rand()*I.S.length)|0],dx=I.cx-p[0],dz=I.cz-p[1],l=Math.hypot(dx,dz)||1,o=8+rand()*rand()*PP.band,x=p[0]+dx/l*o,z=p[1]+dz/l*o,h=terr(x,z);
+  for(const I of ISL){const n=Math.round(PP.max*I.per*I.pd/(2*PI*CMAX));for(let k=0,c=0;k<n*6&&c<n;k++){const p=I.S[(rand()*I.S.length)|0];if(inland(p[0],p[1])>12)continue;const dx=I.cx-p[0],dz=I.cz-p[1],l=Math.hypot(dx,dz)||1,o=8+rand()*rand()*PP.band,x=p[0]+dx/l*o,z=p[1]+dz/l*o,h=terr(x,z);
       if(islD(x,z,I)<4||h<SEA+.4||h>12||lastCarve>.05)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+2.5)continue;c++;
       const pm={x,y:foot(x,z,.3,.3).lo-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4};if(inBld(x,z))continue;palms.push(pm);addOBB(x,z,.25,.25)}
   }
