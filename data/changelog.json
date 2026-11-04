@@ -1,7 +1,11 @@
 [
+  { "v": "11.71", "d": "2026-11-04", "t": [
+    "Fix Ciudad Nueva: widening it east pushed the Bato bridge deck over the new avenues and buildings, lifting streets above the houses next to them. The city now grows west and south only (about 45% wider to the west, 27% deeper, new avenues, a south street, 11 more towers) and the bridge lands as before.",
+    "New buildings on Isla Bantay are no longer placed on top of roads (a cottage on the west bridge, a shop on the lake loop, huts on the cape road)."
+  ] },
   { "v": "11.70", "d": "2026-11-04", "t": [
     "New: Isla Bantay, a big crescent island that wraps the whole north half of the main island across a 110 m channel, reached by three bridges (west, north with cable pylons, east). A scenic coast highway runs its full length with esses. Along it: Bundok Alon (a mountain range), Laguna Bughaw (a lake with a lakeside loop road), Talampas Mesa (spiral road up a flat-topped mesa with a circuit on top), Kalbaryo Badlands (rocky off-road field), Cabo Hangin (spiral road up a cliff to a lighthouse), jungle hills, and beach resorts and fishing villages at the tips.",
-    "Ciudad Nueva is bigger: about 17% wider and 27% deeper, with two more avenues, a new southern street and avenue extensions, and 12 more towers.",
+    "Ciudad Nueva is bigger, with more avenues, a southern street and more towers.",
     "The map grows from about 2.2 km to 3.1 km across. Extra islands can now set a coarser outline step and fewer palms, and palms no longer sprout along the seams between joined island pieces."
   ] },
   { "v": "11.69", "d": "2026-11-03", "t": [
