@@ -21,7 +21,7 @@ const TABS = [
   ['look', 'PAINT', { spin: 1, el: .2, r: 3.6, ty: .7, tz: 0 }], ['carbon', 'CARBON', { spin: 1, el: .18, r: 3.3, ty: .7, tz: 0 }],
   ['stats', 'STATS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }], ['builds', 'BUILDS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }],
 ];
-const WHERE = { exhaust: 'engine', ecu: 'engine', fuelsys: 'engine', tune: 'engine', trim: 'wheels', intake: 'engine', flywheel: 'engine', rollers: 'drive', cspring: 'drive', clspring: 'drive', pulley: 'drive', fs: 'drive', rs: 'drive', autoClutch: 'drive', iss: 'drive', qs: 'drive', tc: 'drive', ver: 'drive', ysp: 'drive', kit: 'engine', frame: 'look',
+const WHERE = { exhaust: 'engine', ecu: 'engine', fuelsys: 'engine', tune: 'engine', trim: 'wheels', intake: 'engine', flywheel: 'engine', rollers: 'drive', cspring: 'drive', clspring: 'drive', pulley: 'drive', fs: 'drive', rs: 'drive', autoClutch: 'drive', iss: 'drive', qs: 'drive', tc: 'drive', ver: 'drive', ysp: 'drive', kit: 'engine', frame: 'look', plug: 'engine', cam: 'engine', battery: 'engine', clutch: 'drive', chain: 'drive', belt: 'drive', lines: 'wheels',
   pf: 'susp', pr: 'susp', yf: 'susp', yr: 'susp', kf: 'susp', kr: 'susp', damp: 'susp', tires: 'wheels', brakes: 'wheels', wheelcol: 'wheels', rimstripe: 'wheels' };
 const where = k => WHERE[k] || (k.startsWith('cf') ? 'carbon' : 'look');
 const has = t => t === 'look' || t === 'wheels' || t === 'stats' || t === 'builds' || Object.keys(ctx.bike.parts).some(k => where(k) === t) || ctx.bike.sliders.some(s => where(s.k) === t) || ctx.bike.toggles.some(s => where(s.k) === t);
@@ -79,6 +79,8 @@ function delta(k, i) {
   d(Math.round((s.mu / a.mu - 1) * 100), v => v + '% grip', 1); d(Math.round((s.brake / a.brake - 1) * 100), v => v + '% braking', 1);
   d(Math.round((s.red - a.red) / 50) * 50, v => v + ' rpm limit', 1); d(Math.round((s.ie / a.ie - 1) * 100), v => v + '% flywheel', 0);
   d(Math.round(DRIVES[s.type].top(s) - DRIVES[a.type].top(a)), v => v + ' km/h top', 1);
+  d(Math.round((s.cap / a.cap - 1) * 100), v => v + '% clutch hold', 1); d(Math.round((s.eta / a.eta - 1) * 1000) / 10, v => v + '% drive efficiency', 1);
+  if (s.slipper !== a.slipper) o.push(`<em class=${s.slipper ? 'up' : 'dn'}>${s.slipper ? '+slipper clutch' : '−slipper clutch'}</em>`);
   return o.slice(0, 3).join(' ');
 }
 const hex = v => /^#[0-9a-f]{6}$/i.test(v) ? v : '#888888';

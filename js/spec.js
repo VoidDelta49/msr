@@ -2,8 +2,8 @@
 import { lerpTable } from './util.js';
 import { DRIVES } from './drivetrain.js';
 
-// part option keys that multiply instead of replace
-const MUL = new Set(['pow', 'ie', 'csp', 'brake']);
+// part option keys that multiply instead of replace (capx: clutch torque capacity, etax: chain/belt efficiency; drivetrain.js applies both)
+const MUL = new Set(['pow', 'ie', 'csp', 'brake', 'capx', 'etax']);
 // ... and keys that add (dm: mass change in kg, e.g. carbon parts)
 const ADD = new Set(['dm']);
 
@@ -13,7 +13,7 @@ export function computeSpec(bike, b) {
     type: bike.drivetrain, ...ch,
     ie: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
     peakPS: en.peakPS, tachMax: en.tachMax, ram: en.ram || 0, sound: bike.sound,
-    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', dm: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0,
+    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, dm: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0,
   };
   for (const [k, p] of Object.entries(bike.parts)) {
     const o = p.o[b[k]] || p.o[0];

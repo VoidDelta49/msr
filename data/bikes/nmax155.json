@@ -417,6 +417,41 @@
     }
    ]
   },
+  "cam": {
+   "l": "Camshaft",
+   "o": [
+    { "n": "Stock" },
+    { "n": "Racing cam (+4%)", "pow": 1.04 }
+   ]
+  },
+  "battery": {
+   "l": "Battery",
+   "o": [
+    { "n": "Stock lead-acid" },
+    { "n": "Lithium LiFePO4 (−1.2 kg)", "dm": -1.2 }
+   ]
+  },
+  "clutch": {
+   "l": "Clutch shoes",
+   "o": [
+    { "n": "Stock" },
+    { "n": "Racing shoes (+25% hold)", "capx": 1.25 }
+   ]
+  },
+  "belt": {
+   "l": "Drive belt",
+   "o": [
+    { "n": "Stock" },
+    { "n": "Racing belt (+1% drive)", "etax": 1.01 }
+   ]
+  },
+  "lines": {
+   "l": "Brake lines",
+   "o": [
+    { "n": "Stock rubber" },
+    { "n": "Steel-braided (+4%)", "brake": 1.04 }
+   ]
+  },
   "wheelcol": {
    "l": "Wheel colour",
    "o": [
@@ -647,6 +682,11 @@
   "intake": 0,
   "flywheel": 0,
   "brakes": 0,
+  "cam": 0,
+  "battery": 0,
+  "clutch": 0,
+  "belt": 0,
+  "lines": 0,
   "wheelcol": 0,
   "rimstripe": 0,
   "cover": 0,

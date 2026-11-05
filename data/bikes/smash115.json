@@ -172,6 +172,41 @@
         { "n": "Race compound", "brake": 1.17 }
       ]
     },
+    "plug": {
+      "l": "Spark plug",
+      "o": [
+        { "n": "Stock nickel" },
+        { "n": "Iridium (+1%)", "pow": 1.01 }
+      ]
+    },
+    "cam": {
+      "l": "Camshaft",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Racing cam (+5%)", "pow": 1.05 }
+      ]
+    },
+    "battery": {
+      "l": "Battery",
+      "o": [
+        { "n": "Stock lead-acid" },
+        { "n": "Lithium LiFePO4 (−0.9 kg)", "dm": -0.9 }
+      ]
+    },
+    "clutch": {
+      "l": "Clutch",
+      "o": [
+        { "n": "Stock" },
+        { "n": "Heavy-duty springs (+20% hold)", "capx": 1.2 }
+      ]
+    },
+    "chain": {
+      "l": "Chain",
+      "o": [
+        { "n": "Stock" },
+        { "n": "X-ring sealed (+1% drive)", "etax": 1.01 }
+      ]
+    },
     "wheelcol": {
       "l": "Wheel colour",
       "o": [
@@ -316,6 +351,11 @@
     "intake": 0,
     "flywheel": 0,
     "brakes": 0,
+    "plug": 0,
+    "cam": 0,
+    "battery": 0,
+    "clutch": 0,
+    "chain": 0,
     "wheelcol": 0,
     "rimstripe": 0,
     "cover": 0,

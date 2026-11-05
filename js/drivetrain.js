@@ -11,11 +11,11 @@ const topV = s => Math.cbrt(s.peakPS * 735.5 * s.pow * (s.tqc || 1) * s.eta / s.
 const manual = {
   spec(s, bike, b) {
     const M = bike.manual;
-    s.prim = M.prim; s.g = M.gears; s.nG = M.gears.length - 1; s.eta = M.eta; s.cap = M.clutchCap;
+    s.prim = M.prim; s.g = M.gears; s.nG = M.gears.length - 1; s.eta = M.eta * s.etax; s.cap = M.clutchCap * s.capx;
     // pattern (from the owner's manual): 'return' = 1 down, rest up (N between 1st and 2nd); 'down' = N on top, every gear below it
     // (Honda TMX Supremo "five-down"): each toe press goes up one gear, each heel press down one, and 1st -> N is an ordinary click
     s.pat = M.pattern || 'return';
-    s.slipper = M.slipper || 0; s.eclutch = !!M.eclutch; s.qs = !!M.qs; // slipper: back-torque the clutch carries before it slips (Nm); eclutch: ECU works the clutch on shifts
+    s.slipper = s.slipper || M.slipper || 0; s.eclutch = !!M.eclutch; s.qs = !!M.qs; // slipper: back-torque the clutch carries before it slips (Nm; a part option can fit an aftermarket one); eclutch: ECU works the clutch on shifts
     s.final = b[M.final[0]] / b[M.final[1]];
   },
   reset(S) { S.gear = 0; },
@@ -70,8 +70,8 @@ const manual = {
 const cvt = {
   spec(s, bike, b) {
     const C = bike.cvt, V = C.variator;
-    s.final = C.final; s.eta = C.eta; s.lo ??= C.lo; s.hi ??= C.hi;
-    s.e0 = C.clutch.e0 + s.eng; s.e1 = C.clutch.e1 + s.eng; s.cap = C.clutch.cap;
+    s.final = C.final; s.eta = C.eta * s.etax; s.lo ??= C.lo; s.hi ??= C.hi;
+    s.e0 = C.clutch.e0 + s.eng; s.e1 = C.clutch.e1 + s.eng; s.cap = C.clutch.cap * s.capx;
     s.vBase = V.base * Math.sqrt(V.roller / (s.roller ?? V.roller)); s.vPre = V.preload; s.vRise = V.rise; s.vLoad = V.load; s.vRate = V.rate;
     // YECVT (Yamaha NMAX / Aerox Tech MAX, part option yec: 1): an electric motor moves the drive pulley, so there are no rollers or
     // centre spring to tune. The ECU aims for the stock shift-rpm map (T mode), +s rpm in S mode, +lv rpm per Y-Shift level (3 levels),

@@ -1,4 +1,9 @@
 [
+  { "v": "11.72", "d": "2026-11-05", "t": [
+    "New garage parts, each fitted only to bikes it really suits: spark plug (iridium, not on the CBR650R or H2 which come with one), racing camshaft (the small singles), lithium battery (all bikes, about 1 to 2 kg lighter), clutch (heavy-duty springs on every geared bike, plus a slipper clutch kit for the Raider R150), chain (X-ring, and a 520 race conversion for the CBR650R and H2), and for the scooters racing clutch shoes and a racing drive belt.",
+    "Steel-braided brake lines for the bikes with hydraulic disc brakes (not the drum-braked TMX, Macho and Smash).",
+    "The garage shows what a clutch or chain/belt part changes (clutch hold, drive efficiency, slipper clutch)."
+  ] },
   { "v": "11.71", "d": "2026-11-04", "t": [
     "Fix Ciudad Nueva: widening it east pushed the Bato bridge deck over the new avenues and buildings, lifting streets above the houses next to them. The city now grows west and south only (about 45% wider to the west, 27% deeper, new avenues, a south street, 11 more towers) and the bridge lands as before.",
     "New buildings on Isla Bantay are no longer placed on top of roads (a cottage on the west bridge, a shop on the lake loop, huts on the cape road)."
