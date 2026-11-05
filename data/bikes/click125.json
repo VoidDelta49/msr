@@ -96,6 +96,7 @@
   "parts": {
     "rollers": {
       "l": "Rollers (bola)",
+      "int": 1,
       "o": [
         { "n": "13 g", "roller": 13 },
         { "n": "15 g", "roller": 15 },
@@ -105,6 +106,7 @@
     },
     "cspring": {
       "l": "Center spring",
+      "int": 1,
       "o": [
         { "n": "Stock", "csp": 1 },
         { "n": "1000 rpm", "csp": 1.18 },
@@ -113,6 +115,7 @@
     },
     "clspring": {
       "l": "Clutch springs",
+      "int": 1,
       "o": [
         { "n": "Stock", "eng": 0 },
         { "n": "1000 rpm", "eng": 500 },
@@ -121,6 +124,7 @@
     },
     "pulley": {
       "l": "Pulley set",
+      "int": 1,
       "o": [
         { "n": "Stock", "lo": 2.4, "hi": 0.8 },
         { "n": "Racing pulley", "lo": 2.45, "hi": 0.74 }
@@ -136,6 +140,7 @@
     },
     "ecu": {
       "l": "ECU map",
+      "int": 1,
       "o": [
         { "n": "Stock", "pow": 1, "red": 9500, "ie": 1, "idle": 1700 },
         { "n": "Street tune", "pow": 1.05, "red": 10000, "ie": 0.9, "idle": 1700 },
@@ -162,6 +167,7 @@
     },
     "intake": {
       "l": "Air filter",
+      "int": 1,
       "o": [
         { "n": "Stock" },
         { "n": "Sport foam (+3%)", "pow": 1.03 },
@@ -170,14 +176,73 @@
     },
     "flywheel": {
       "l": "Flywheel",
+      "int": 1,
       "o": [
         { "n": "Stock" },
         { "n": "Lightened (quicker revs)", "ie": 0.8 },
         { "n": "Heavy (smoother)", "ie": 1.3 }
       ]
     },
+    "tb": {
+      "l": "Throttle body",
+      "int": 1,
+      "o": [
+        { "n": "Stock" },
+        { "n": "Big-bore throttle body (+3%)", "pow": 1.03, "tqs": 0.03, "fux": 1.04 }
+      ]
+    },
+    "injector": {
+      "l": "Injector",
+      "int": 1,
+      "o": [
+        { "n": "Stock" },
+        { "n": "High-flow injector (+2%)", "pow": 1.02, "fux": 1.06 }
+      ]
+    },
+    "valves": {
+      "l": "Valve springs",
+      "int": 1,
+      "o": [
+        { "n": "Stock" },
+        { "n": "Racing springs (+400 rpm limit)", "redd": 400 }
+      ]
+    },
+    "port": {
+      "l": "Head work",
+      "int": 1,
+      "o": [
+        { "n": "Stock" },
+        { "n": "Ported & polished (+3%)", "pow": 1.03, "tqs": 0.02 }
+      ]
+    },
+    "cyl": {
+      "l": "Cylinder",
+      "int": 1,
+      "o": [
+        { "n": "Stock" },
+        { "n": "Bore-up kit (+15%, thirstier)", "pow": 1.15, "ie": 1.04, "fux": 1.15 }
+      ]
+    },
+    "piston": {
+      "l": "Piston",
+      "int": 1,
+      "o": [
+        { "n": "Stock cast" },
+        { "n": "Forged high-compression (+3%)", "pow": 1.03, "ie": 0.98 }
+      ]
+    },
+    "oil": {
+      "l": "Engine oil",
+      "int": 1,
+      "o": [
+        { "n": "Stock mineral" },
+        { "n": "Full synthetic (−6% friction)", "frx": 0.94 },
+        { "n": "Racing ester (−9% friction)", "frx": 0.91 }
+      ]
+    },
     "brakes": {
       "l": "Brake pads",
+      "int": 1,
       "o": [
         { "n": "Stock" },
         { "n": "Sintered", "brake": 1.08 },
@@ -186,6 +251,7 @@
     },
     "plug": {
       "l": "Spark plug",
+      "int": 1,
       "o": [
         { "n": "Stock nickel" },
         { "n": "Iridium (+1%)", "pow": 1.01 }
@@ -193,13 +259,15 @@
     },
     "cam": {
       "l": "Camshaft",
+      "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Racing cam (+4%)", "pow": 1.04 }
+        { "n": "Racing cam (+4%)", "pow": 1.04, "tqs": 0.05 }
       ]
     },
     "battery": {
       "l": "Battery",
+      "int": 1,
       "o": [
         { "n": "Stock lead-acid" },
         { "n": "Lithium LiFePO4 (−1.1 kg)", "dm": -1.1 }
@@ -207,6 +275,7 @@
     },
     "clutch": {
       "l": "Clutch shoes",
+      "int": 1,
       "o": [
         { "n": "Stock" },
         { "n": "Racing shoes (+25% hold)", "capx": 1.25 }
@@ -214,6 +283,7 @@
     },
     "belt": {
       "l": "Drive belt",
+      "int": 1,
       "o": [
         { "n": "Stock" },
         { "n": "Racing belt (+1% drive)", "etax": 1.01 }
@@ -221,6 +291,7 @@
     },
     "lines": {
       "l": "Brake lines",
+      "int": 1,
       "o": [
         { "n": "Stock rubber" },
         { "n": "Steel-braided (+4%)", "brake": 1.04 }
@@ -323,6 +394,13 @@
     "yr": 0,
     "intake": 0,
     "flywheel": 0,
+    "tb": 0,
+    "injector": 0,
+    "valves": 0,
+    "port": 0,
+    "cyl": 0,
+    "piston": 0,
+    "oil": 0,
     "brakes": 0,
     "plug": 0,
     "cam": 0,

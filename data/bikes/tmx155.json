@@ -198,6 +198,7 @@
     },
     "tune": {
       "l": "Engine tune",
+      "int": 1,
       "o": [
         {
           "n": "Stock",
@@ -255,6 +256,7 @@
     },
     "intake": {
       "l": "Air filter",
+      "int": 1,
       "o": [
         {
           "n": "Stock"
@@ -271,6 +273,7 @@
     },
     "flywheel": {
       "l": "Flywheel",
+      "int": 1,
       "o": [
         {
           "n": "Stock"
@@ -285,8 +288,67 @@
         }
       ]
     },
+    "carb": {
+      "l": "Carburetor",
+      "int": 1,
+      "o": [
+        { "n": "Stock" },
+        { "n": "Keihin PE24 (+3%)", "pow": 1.03, "tqs": 0.02, "fux": 1.05 },
+        { "n": "Keihin PE28 (+6%, thirsty)", "pow": 1.06, "tqs": 0.05, "fux": 1.12 }
+      ]
+    },
+    "valves": {
+      "l": "Valve springs",
+      "int": 1,
+      "o": [
+        { "n": "Stock" },
+        { "n": "Racing springs (+400 rpm limit)", "redd": 400 }
+      ]
+    },
+    "port": {
+      "l": "Head work",
+      "int": 1,
+      "o": [
+        { "n": "Stock" },
+        { "n": "Ported & polished (+3%)", "pow": 1.03, "tqs": 0.02 }
+      ]
+    },
+    "piston": {
+      "l": "Piston",
+      "int": 1,
+      "o": [
+        { "n": "Stock cast" },
+        { "n": "Forged high-compression (+3%)", "pow": 1.03, "ie": 0.98 }
+      ]
+    },
+    "oil": {
+      "l": "Engine oil",
+      "int": 1,
+      "o": [
+        { "n": "Stock mineral" },
+        { "n": "Full synthetic (−6% friction)", "frx": 0.94 },
+        { "n": "Racing ester (−9% friction)", "frx": 0.91 }
+      ]
+    },
+    "coil": {
+      "l": "Ignition coil",
+      "int": 1,
+      "o": [
+        { "n": "Stock" },
+        { "n": "High-output coil (+1%)", "pow": 1.01 }
+      ]
+    },
+    "cdi": {
+      "l": "CDI",
+      "int": 1,
+      "o": [
+        { "n": "Stock (limited)" },
+        { "n": "Racing CDI (+600 rpm limit)", "pow": 1.01, "redd": 600 }
+      ]
+    },
     "brakes": {
       "l": "Brake pads",
+      "int": 1,
       "o": [
         {
           "n": "Stock"
@@ -303,6 +365,7 @@
     },
     "plug": {
       "l": "Spark plug",
+      "int": 1,
       "o": [
         { "n": "Stock nickel" },
         { "n": "Iridium (+1%)", "pow": 1.01 }
@@ -310,13 +373,15 @@
     },
     "cam": {
       "l": "Camshaft",
+      "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Racing cam (+5%)", "pow": 1.05 }
+        { "n": "Racing cam (+5%)", "pow": 1.05, "tqs": 0.05 }
       ]
     },
     "battery": {
       "l": "Battery",
+      "int": 1,
       "o": [
         { "n": "Stock lead-acid" },
         { "n": "Lithium LiFePO4 (−1.4 kg)", "dm": -1.4 }
@@ -324,6 +389,7 @@
     },
     "clutch": {
       "l": "Clutch",
+      "int": 1,
       "o": [
         { "n": "Stock" },
         { "n": "Heavy-duty springs (+25% hold)", "capx": 1.25 }
@@ -331,6 +397,7 @@
     },
     "chain": {
       "l": "Chain",
+      "int": 1,
       "o": [
         { "n": "Stock" },
         { "n": "X-ring sealed (+1% drive)", "etax": 1.01 }
@@ -503,6 +570,13 @@
     "paint": 0,
     "intake": 0,
     "flywheel": 0,
+    "carb": 0,
+    "valves": 0,
+    "port": 0,
+    "piston": 0,
+    "oil": 0,
+    "coil": 0,
+    "cdi": 0,
     "brakes": 0,
     "plug": 0,
     "cam": 0,

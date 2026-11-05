@@ -198,6 +198,7 @@
   },
   "ecu": {
    "l": "Power mode",
+   "int": 1,
    "o": [
     {
      "n": "Full"
@@ -261,6 +262,7 @@
   },
   "flywheel": {
    "l": "Flywheel",
+   "int": 1,
    "o": [
     {
      "n": "Stock"
@@ -275,8 +277,17 @@
     }
    ]
   },
+  "oil": {
+   "l": "Engine oil",
+   "int": 1,
+   "o": [
+    { "n": "Stock synthetic" },
+    { "n": "Racing ester (−4% friction)", "frx": 0.96 }
+   ]
+  },
   "brakes": {
    "l": "Brake pads",
+   "int": 1,
    "o": [
     {
      "n": "Stock"
@@ -293,6 +304,7 @@
   },
   "battery": {
    "l": "Battery",
+   "int": 1,
    "o": [
     { "n": "Stock lead-acid" },
     { "n": "Lithium LiFePO4 (−2.2 kg)", "dm": -2.2 }
@@ -300,6 +312,7 @@
   },
   "clutch": {
    "l": "Clutch",
+   "int": 1,
    "o": [
     { "n": "Stock" },
     { "n": "Heavy-duty springs (+15% hold)", "capx": 1.15 }
@@ -307,6 +320,7 @@
   },
   "chain": {
    "l": "Chain",
+   "int": 1,
    "o": [
     { "n": "Stock O-ring" },
     { "n": "X-ring (+0.5% drive)", "etax": 1.005 },
@@ -657,6 +671,7 @@
   "yf": 0,
   "yr": 0,
   "flywheel": 0,
+  "oil": 0,
   "brakes": 0,
   "battery": 0,
   "clutch": 0,

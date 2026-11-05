@@ -10,6 +10,7 @@ import { say } from './hud.js';
 import { TC } from './controls.js';
 import { view, accent, pulse, reframe } from './studio.js';
 import { bikeCard } from './bikecard.js';
+import { dynoRun, dynoGear, DRUM } from './dyno.js';
 
 export const G = { onBike: null, onChange: null };   // set by main.js
 const GAME = 'cpm-motor-edition', $$ = s => document.querySelectorAll(s), esc = s => String(s).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
@@ -19,12 +20,12 @@ const TABS = [
   ['engine', 'ENGINE', { az: 1.2, el: .12, r: 2.3, ty: .5, tz: .05 }], ['drive', 'DRIVETRAIN', { az: 1.25, el: .1, r: 2.4, ty: .45, tz: -.15 }],
   ['susp', 'SUSPENSION', { az: .9, el: .1, r: 2.6, ty: .55, tz: .55 }], ['wheels', 'WHEELS & BRAKES', { az: 1.4, el: .08, r: 2.3, ty: .35, tz: .5 }],
   ['look', 'PAINT', { spin: 1, el: .2, r: 3.6, ty: .7, tz: 0 }], ['carbon', 'CARBON', { spin: 1, el: .18, r: 3.3, ty: .7, tz: 0 }],
-  ['stats', 'STATS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }], ['builds', 'BUILDS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }],
+  ['stats', 'STATS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }], ['dyno', 'DYNO', { az: 1.5, el: .06, r: 2.7, ty: .4, tz: -.45 }], ['builds', 'BUILDS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }],
 ];
-const WHERE = { exhaust: 'engine', ecu: 'engine', fuelsys: 'engine', tune: 'engine', trim: 'wheels', intake: 'engine', flywheel: 'engine', rollers: 'drive', cspring: 'drive', clspring: 'drive', pulley: 'drive', fs: 'drive', rs: 'drive', autoClutch: 'drive', iss: 'drive', qs: 'drive', tc: 'drive', ver: 'drive', ysp: 'drive', kit: 'engine', frame: 'look', plug: 'engine', cam: 'engine', battery: 'engine', clutch: 'drive', chain: 'drive', belt: 'drive', lines: 'wheels',
+const WHERE = { exhaust: 'engine', ecu: 'engine', fuelsys: 'engine', tune: 'engine', trim: 'wheels', intake: 'engine', flywheel: 'engine', rollers: 'drive', cspring: 'drive', clspring: 'drive', pulley: 'drive', fs: 'drive', rs: 'drive', autoClutch: 'drive', iss: 'drive', qs: 'drive', tc: 'drive', ver: 'drive', ysp: 'drive', kit: 'engine', frame: 'look', decal: 'look', tb: 'engine', injector: 'engine', carb: 'engine', valves: 'engine', port: 'engine', cyl: 'engine', piston: 'engine', oil: 'engine', coil: 'engine', cdi: 'engine', plug: 'engine', cam: 'engine', battery: 'engine', clutch: 'drive', chain: 'drive', belt: 'drive', lines: 'wheels',
   pf: 'susp', pr: 'susp', yf: 'susp', yr: 'susp', kf: 'susp', kr: 'susp', damp: 'susp', tires: 'wheels', brakes: 'wheels', wheelcol: 'wheels', rimstripe: 'wheels' };
 const where = k => WHERE[k] || (k.startsWith('cf') ? 'carbon' : 'look');
-const has = t => t === 'look' || t === 'wheels' || t === 'stats' || t === 'builds' || Object.keys(ctx.bike.parts).some(k => where(k) === t) || ctx.bike.sliders.some(s => where(s.k) === t) || ctx.bike.toggles.some(s => where(s.k) === t);
+const has = t => t === 'look' || t === 'dyno' || t === 'wheels' || t === 'stats' || t === 'builds' || Object.keys(ctx.bike.parts).some(k => where(k) === t) || ctx.bike.sliders.some(s => where(s.k) === t) || ctx.bike.toggles.some(s => where(s.k) === t);
 let tab = 'engine', sId = '', sSpec = null;
 const stock = () => (sId !== ctx.bike.id && (sSpec = computeSpec(ctx.bike, ctx.bike.defaults), sId = ctx.bike.id), sSpec);
 
@@ -64,8 +65,8 @@ function dyno(c) {
   const [p, pr] = pk(s); g.fillStyle = '#ffb020'; g.fillText(`${p.toFixed(1)} PS @ ${pr}`, x0 + 4, 11); g.fillStyle = '#5ec8ff'; g.fillText(`${(s.tqMax * s.pow).toFixed(1)} Nm`, W - 60, 11);
 }
 let gt = 0;
-export function garageFrame() { // each frame while the garage is open: live readout + dyno dot
-  const t = performance.now(); if (t - gt < 50) return; gt = t; const s = ctx.spec, r = S.rpm;
+export function garageFrame() { // each frame while the garage is open: live readout + dyno dot + a dyno run playing
+  const t = performance.now(); if (play) dynoTick(t); if (t - gt < 50) return; gt = t; const s = ctx.spec, r = S.rpm;
   $('gRpm').textContent = S.running ? `${Math.round(r / 10) * 10} rpm · ${pAt(s, Math.min(r, s.red)).toFixed(1)} PS` : 'ENGINE OFF · hold REV';
   for (const c of $$('canvas.dyno')) if (c.offsetParent) dyno(c);
 }
@@ -83,13 +84,27 @@ function delta(k, i) {
   if (s.slipper !== a.slipper) o.push(`<em class=${s.slipper ? 'up' : 'dn'}>${s.slipper ? '+slipper clutch' : '−slipper clutch'}</em>`);
   return o.slice(0, 3).join(' ');
 }
+// ENGINE tab sub-menu: the engine's parts grouped the way a workshop would (key -> group; unknown engine keys land in ECU & tuning)
+const SUBS = [['intake', 'INTAKE & FUEL', 'Air in and fuel in: filter, throttle body or carburettor, injector.'], ['head', 'HEAD', 'Camshaft, valve springs and port work: how well the engine breathes up high.'],
+  ['bottom', 'BOTTOM END', 'Cylinder, piston, flywheel and oil: displacement, compression, rotating mass, friction.'], ['ign', 'IGNITION', 'Spark plug, coil, CDI and battery.'],
+  ['exh', 'EXHAUST', 'Pipe and silencer.'], ['ecu', 'ECU & TUNING', 'Fuel and ignition map, rev limit, power modes and kits.']];
+const SUBOF = { intake: 'intake', tb: 'intake', carb: 'intake', injector: 'intake', fuelsys: 'intake', cam: 'head', valves: 'head', port: 'head', cyl: 'bottom', piston: 'bottom', oil: 'bottom', flywheel: 'bottom', tune: 'bottom', plug: 'ign', coil: 'ign', cdi: 'ign', battery: 'ign', exhaust: 'exh', ecu: 'ecu', kit: 'ecu' };
+const subOf = k => SUBOF[k] || 'ecu';
+let sub = 'intake';
+function subHTML(bike, b) {
+  const ks = Object.keys(bike.parts).filter(k => where(k) === 'engine'), subs = SUBS.filter(x => ks.some(k => subOf(k) === x[0]));
+  if (!subs.some(x => x[0] === sub)) sub = subs[0][0];
+  return `<div class=gsub>${subs.map(([id, l]) => { const n = ks.filter(k => subOf(k) === id && b[k] !== bike.defaults[k]).length; return `<button class="gs${id === sub ? ' on' : ''}" data-sub=${id}>${l}${n ? `<i>${n}</i>` : ''}</button>`; }).join('')}</div><p class=gsubd>${SUBS.find(x => x[0] === sub)[2]}</p>`;
+}
 const hex = v => /^#[0-9a-f]{6}$/i.test(v) ? v : '#888888';
 function body(keep) {
   const bike = ctx.bike, b = ctx.bcfg, def = bike.defaults; let h = '';
   if (tab === 'stats') h = '<div class=statbox></div>';
   else if (tab === 'builds') h = buildsHTML();
+  else if (tab === 'dyno') h = dynoHTML();
   else {
-    for (const [k, p] of Object.entries(bike.parts)) if (where(k) === tab) {
+    if (tab === 'engine') h += subHTML(bike, b);
+    for (const [k, p] of Object.entries(bike.parts)) if (where(k) === tab && (tab !== 'engine' || subOf(k) === sub)) {
       h += `<div class=pr><div class=pl>${p.l}</div><div class=opts>${p.o.map((o, i) => { const sw = o.c || o.wc || o.rim || o.ec || o.hd; return `<button class="opt${b[k] == i ? ' on' : ''}" data-k=${k} data-i=${i}>${sw ? `<i class=dot style="background:${sw}"></i>` : ''}<b>${o.n}</b>${b[k] == i ? '<small>fitted</small>' : `<small>${delta(k, i)}</small>`}</button>`; }).join('')}</div></div>`;
     }
     for (const s of bike.sliders) if (where(s.k) === tab) h += `<div class=pr><div class=pl>${s.l} <b id=v_${s.k}>${b[s.k]}${s.u}</b>${b[s.k] !== def[s.k] ? `<small> stock ${def[s.k]}${s.u}</small>` : ''}</div><input type=range min=${s.min} max=${s.max} step=${s.step || 1} value=${b[s.k]} data-s=${s.k}></div>`;
@@ -98,13 +113,13 @@ function body(keep) {
     if (tab === 'look' || tab === 'wheels') { const k = tab === 'look' ? 'cc' : 'cw'; h += `<div class=pr><div class=pl>Custom ${tab === 'look' ? 'body' : 'wheel'} colour</div><div class=crow><input type=color data-cc=${k} value="${hex(b[k] || (tab === 'look' ? ctx.spec.c : ctx.spec.wc))}"><button class=chip data-clr=${k}>Clear</button></div></div>`; }
     h += `<div class=pr><button class="chip" data-treset=1>↺ Reset ${TABS.find(t => t[0] === tab)[1].toLowerCase()} to stock</button></div>`;
   }
-  $('gBody').innerHTML = h; if (!keep) $('gBody').scrollTop = 0; if (tab === 'stats') { sHtml = ''; stats(); }
+  $('gBody').innerHTML = h; if (!keep) $('gBody').scrollTop = 0; if (tab === 'stats') { sHtml = ''; stats(); } if (tab === 'dyno') drawDyno();
 }
 function tabs() { $('gTabs').innerHTML = TABS.filter(t => has(t[0])).map(t => `<button class="gt gt-${t[0]}${t[0] === tab ? ' on' : ''}" data-tab=${t[0]}>${t[1]}</button>`).join(''); }
 function setTab(t) { tab = t; tabs(); body(); reframe(); view(TABS.find(x => x[0] === t)[2]); }
 
 export function buildGarage() {
-  if (!has(tab)) tab = 'engine';
+  if (!has(tab)) tab = 'engine'; if (play) endRun(false);
   $('gBikes').innerHTML = Object.values(ctx.bikes).map(k => bikeCard(k, k.id === ctx.bike.id, 'data-bike')).join('');
   $('gCurN').textContent = ctx.bike.short; $('gName').textContent = ctx.bike.tag; list(false); reframe(); accent(ctx.spec.c); setTab(tab); stats();
 }
@@ -121,6 +136,8 @@ $('garage').onclick = e => {
   else if (d.step) { const L = Object.keys(ctx.bikes), i = L.indexOf(ctx.bike.id); pick(L[(i + +d.step + L.length) % L.length]); }
   else if (d.bike) pick(d.bike);
   else if (d.tab) setTab(d.tab);
+  else if (d.sub) { sub = d.sub; body(); }
+  else if (d.dy) dynoAct(d.dy, +d.i);
   else if (d.k) { b[d.k] = +d.i; changed(); body(1); }
   else if (d.t) { b[d.t] = !b[d.t]; el.classList.toggle('on', b[d.t]); changed(false); }
   else if (d.clr) { delete b[d.clr]; changed(); body(1); }
@@ -138,6 +155,83 @@ $('gStock').onclick = () => {
   if (!el.classList.contains('on')) { el.classList.add('on'); el.textContent = 'TAP AGAIN TO RESET'; el.t = setTimeout(idle, 2500); return; }
   idle(); delete ctx.bcfg.cc; delete ctx.bcfg.cw; Object.assign(ctx.bcfg, ctx.bike.defaults); changed(); body(1); say('Back to stock', 1000);
 };
+
+/* ---------- dyno run (js/dyno.js does the physics; here: gear pick, playback with the real engine sound, chart, results) ---------- */
+// Runs are kept per bike for this session (up to 5, oldest dropped), plus an optional stock pull drawn as a grey ghost.
+const RUNS = {}, DCOL = ['#ffb020', '#5ec8ff', '#7be08a', '#ff6b8a', '#c49bff'], ORD = n => n + ([, 'st', 'nd', 'rd'][n] || 'th');
+let dGear = 0, dBike = '', play = null;
+const runs = () => RUNS[ctx.bike.id] || (RUNS[ctx.bike.id] = Object.assign([], { n: 0, stock: null }));
+const fmt = v => Math.round(v).toLocaleString('en-US'), r50 = v => fmt(Math.round(v / 50) * 50);
+function dGearNow() { if (dBike !== ctx.bike.id) { dBike = ctx.bike.id; dGear = ctx.spec.type === 'cvt' ? 0 : dynoGear(ctx.spec); } return Math.min(dGear, ctx.spec.nG || 0); }
+// what is fitted that isn't stock (engine + drivetrain), for the run's label
+function buildName() {
+  const bike = ctx.bike, b = ctx.bcfg, def = bike.defaults, L = [];
+  for (const [k, p] of Object.entries(bike.parts)) if ((where(k) === 'engine' || where(k) === 'drive') && b[k] !== def[k] && p.o[b[k]]) L.push(p.o[b[k]].n.replace(/\s*\(.*\)/, ''));
+  for (const s of bike.sliders) if (where(s.k) === 'drive' && b[s.k] !== def[s.k]) L.push(`${s.l} ${b[s.k]}${s.u}`);
+  return L.length ? L.join(', ') : 'Stock engine';
+}
+function dynoHTML() {
+  const s = ctx.spec, g = dGearNow(), L = runs(), busy = !!play;
+  const gears = s.type === 'cvt' ? `<p>CVT: the variator shifts by itself through the pull, so the chart runs against road speed.</p>`
+    : `<div class=crow>${Array.from({ length: s.nG }, (_, i) => i + 1).map(i => `<button class="chip${i === g ? ' on' : ''}" data-dy=gear data-i=${i}>${ORD(i)}</button>`).join('')}</div>`;
+  const best = L[0] ? L[0].r.hp : 0;
+  const row = (x, col, label) => `<tr><td><i style="background:${col}"></i>${label}</td><td><b>${x.r.hp.toFixed(1)}</b></td><td>${r50(x.r.hpRpm)}</td><td><b>${x.r.tq.toFixed(1)}</b></td><td>${r50(x.r.tqRpm)}</td><td>${Math.round(x.r.loss * 100)}%</td><td>${x === L[0] || !best ? '' : `<em class=${x.r.hp >= best ? 'up' : 'dn'}>${x.r.hp >= best ? '+' : '−'}${Math.abs(x.r.hp - best).toFixed(1)}</em>`}</td></tr><tr class=bn><td colspan=7>${esc(x.name)} · ${x.r.cvt ? 'CVT' : ORD(x.r.gear) + ' gear'} · ${x.r.kphEnd.toFixed(0)} km/h at the limiter</td></tr>`;
+  const tbl = L.length || L.stock ? `<table class=dres><tr><th></th><th>Wheel PS</th><th>rpm</th><th>Nm</th><th>rpm</th><th>Loss</th><th>vs #${L[0] ? L[0].n : ''}</th></tr>${L.stock ? row(L.stock, '#8a929b', 'Stock') : ''}${L.map(x => row(x, x.col, '#' + x.n)).join('')}</table>` : '<p>No runs yet. Fit some parts, then press RUN.</p>';
+  return `<div class=pr><div class=pl>Dyno gear</div>${gears}</div>
+<div class=pr><div class=crow><button class="chip on" data-dy=run${busy ? ' disabled' : ''}>${busy ? 'RUNNING…' : '▶ RUN'}</button><button class="chip${L.stock ? ' on' : ''}" data-dy=stock${busy ? ' disabled' : ''}>Stock ghost</button><button class=chip data-dy=clear${busy ? ' disabled' : ''}>Clear runs</button></div>
+<canvas class=dynor width=400 height=250></canvas><div class=dlive id=dLive>${busy ? '' : `Brochure (crank) peak with this build: <b>${dynoRun(s, ctx.drive, ctx.bcfg, g || 1).crank.toFixed(1)} PS</b>. The drum reads what reaches the rear tyre.`}</div></div>
+<div class=pr><div class=pl>Results</div>${tbl}</div>
+<details><summary>How this dyno works</summary><div class=det>An inertia drum (${DRUM} kg at its surface) is spun by the rear tyre at full throttle from low revs to the limiter${s.type === 'cvt' ? ', the CVT shifting as it would on the road' : ' in one gear'}. Power = drum mass × its acceleration × speed, so it shows rear-wheel PS: the chain or belt, gearbox, clutch and the engine's own spinning parts all take their share (Loss = how far below the crank figure). Torque is that power at the engine's rpm. Every fitted part counts: cams and throttle bodies move the curve up the rev range, oil cuts friction, a light flywheel reads higher here, a heavy one lower. No wind on a dyno, so no ram air.</div></details>`;
+}
+function dynoAct(a, i) {
+  const L = runs(); if (play && a !== 'gear') return;
+  if (a === 'gear') { if (play) return; dGear = i; body(1); }
+  else if (a === 'clear') { L.length = 0; L.n = 0; L.stock = null; body(1); }
+  else if (a === 'stock') { L.stock = L.stock ? null : { r: dynoRun(stock(), ctx.drive, ctx.bike.defaults, dGearNow()), name: 'Stock', col: '#8a929b' }; body(1); }
+  else if (a === 'run') {
+    const r = dynoRun(ctx.spec, ctx.drive, ctx.bcfg, dGearNow()), n = ++L.n;
+    // the pull plays back in 5-9 s whatever the drum took, with the engine sound following the revs; a short hold on the limiter at the end
+    play = { run: { r, n, name: buildName(), col: DCOL[(n - 1) % DCOL.length] }, t0: performance.now(), k: r.T / Math.min(9, Math.max(5, r.T)), i: 0, end: 0 };
+    TC.rev = 1; $('revB').classList.add('on'); body(1);
+  }
+}
+function endRun(keep) {
+  const p = play; play = null; TC.rev = 0; $('revB').classList.remove('on'); if (!p) return;
+  if (keep) { const L = runs(); L.push(p.run); if (L.length > 5) L.shift(); say(`Run #${p.run.n}: ${p.run.r.hp.toFixed(1)} PS at the wheel`, 1600); }
+  if (tab === 'dyno') body(1);
+}
+function dynoTick(now) {
+  const p = play, P = p.run.r.pts, el = (now - p.t0) / 1000 * p.k;
+  if (el >= p.run.r.T) { if (!p.end) p.end = now; S.rpm = ctx.spec.red; if (now - p.end > 450) endRun(true); return; }
+  while (p.i < P.length - 1 && P[p.i + 1].t <= el) p.i++;
+  const q = P[p.i]; S.rpm = q.rpm; // the engine sound follows the pull (physics free-revs on the stand; this pins the revs to the drum)
+  if (tab === 'dyno') { drawDyno(); const e = $('dLive'); if (e) e.innerHTML = `<b>${fmt(q.rpm)}</b> rpm · <b>${q.kph.toFixed(0)}</b> km/h · <b style="color:${p.run.col}">${q.hp.toFixed(1)} PS</b> · ${q.tq.toFixed(1)} Nm`; }
+}
+// power (solid) and torque (dashed) of every run; x is rpm for geared bikes, km/h for CVTs
+function drawDyno() {
+  const c = document.querySelector('canvas.dynor'); if (!c) return;
+  const g = c.getContext('2d'), W = c.width, H = c.height, L = runs(), all = [...(L.stock ? [L.stock] : []), ...L, ...(play ? [play.run] : [])];
+  g.clearRect(0, 0, W, H); g.font = '11px system-ui';
+  const cvt = ctx.spec.type === 'cvt', X0 = 30, X1 = W - 30, Y0 = H - 22, Y1 = 18, xv = q => cvt ? q.kph : q.rpm;
+  if (!all.length) { g.fillStyle = '#7d8893'; g.fillText('Press RUN to strap the bike to the drum', X0 + 40, H / 2); return; }
+  let xa = 1e9, xb = 0, pm = 0, tm = 0; for (const x of all) for (const q of x.r.pts) { xa = Math.min(xa, xv(q)); xb = Math.max(xb, xv(q)); pm = Math.max(pm, q.hp); tm = Math.max(tm, q.tq); }
+  const st = cvt ? 20 : xb > 12000 ? 2000 : 1000; xa = Math.floor(xa / st) * st; xb = Math.ceil(xb / st) * st; pm *= 1.15; tm *= 1.15;
+  const X = v => X0 + (v - xa) / (xb - xa) * (X1 - X0), YP = v => Y0 - v / pm * (Y0 - Y1), YT = v => Y0 - v / tm * (Y0 - Y1);
+  g.lineWidth = 1; g.strokeStyle = 'rgba(255,255,255,.08)'; g.fillStyle = '#7d8893';
+  for (let v = xa; v <= xb + 1e-6; v += st) { g.beginPath(); g.moveTo(X(v), Y1); g.lineTo(X(v), Y0); g.stroke(); g.fillText(cvt ? v : v / 1000 + 'k', X(v) - 6, H - 7); }
+  for (let i = 0; i <= 4; i++) { const y = Y0 - i / 4 * (Y0 - Y1); g.beginPath(); g.moveTo(X0, y); g.lineTo(X1, y); g.stroke(); g.fillText((pm * i / 4).toFixed(0), 4, y + 4); g.fillText((tm * i / 4).toFixed(0), X1 + 4, y + 4); }
+  g.fillText('PS', 4, 10); g.fillText('Nm', X1 + 4, 10); g.fillText(cvt ? 'km/h' : 'rpm', X1 - 22, Y0 - 4);
+  for (const x of all) {
+    const live = play && x === play.run, P = live ? x.r.pts.slice(0, play.i + 1) : x.r.pts, ghost = x === L.stock; if (P.length < 2) continue;
+    for (const [f, Y, w, dash] of [[q => q.tq, YT, 1.5, [5, 4]], [q => q.hp, YP, ghost ? 1.5 : 2.5, ghost ? [3, 3] : []]]) {
+      g.beginPath(); P.forEach((q, j) => j ? g.lineTo(X(xv(q)), Y(f(q))) : g.moveTo(X(xv(q)), Y(f(q)))); g.setLineDash(dash); g.strokeStyle = x.col; g.globalAlpha = ghost ? .7 : dash.length ? .6 : 1; g.lineWidth = w; g.stroke();
+    }
+    g.setLineDash([]); g.globalAlpha = 1;
+    if (live) { const q = P[P.length - 1]; g.fillStyle = '#fff'; g.beginPath(); g.arc(X(xv(q)), YP(q.hp), 4, 0, 6.3); g.fill(); }
+    else if (!ghost) { g.fillStyle = x.col; g.beginPath(); g.arc(X(cvt ? x.r.hpKph : x.r.hpRpm), YP(x.r.hp), 3, 0, 6.3); g.fill(); }
+  }
+  let ly = Y1 + 2; g.textAlign = 'left'; for (const x of all) { g.fillStyle = x.col; g.fillText(`${x === L.stock ? 'Stock' : '#' + x.n} ${(play && x === play.run ? x.r.pts[play.i].hp : x.r.hp).toFixed(1)} PS`, X0 + 6, ly + 8); ly += 13; }
+}
 
 /* ---------- builds: saved in the browser, or exported to / imported from a file ---------- */
 function buildsHTML() {

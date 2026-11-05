@@ -182,8 +182,8 @@ const bikes = {};
   for (const [id, b] of Object.entries(bikes)) {
     const A = `wiring/${id}`;
     if (!/^[a-z0-9_-]{1,24}$/.test(id)) err(A, `id "${id}" is rejected by the multiplayer relay (server/worker.js: ^[a-z0-9_-]{1,24}$)`);
-    const pk = Object.keys(b.parts || {});
-    if (pk.length > 24) err(A, `${pk.length} part keys: the relay keeps only 24 (server/worker.js cleanLook), the rest would never show on other phones`);
+    const pk = Object.keys(b.parts || {}), sent = pk.filter(k => !b.parts[k].int); // int: engine internals, net.js never sends them
+    if (sent.length > 24) err(A, `${sent.length} visible part keys (mark engine internals "int": 1): the relay keeps only 24 (server/worker.js cleanLook), the rest would never show on other phones`);
     for (const k of pk) { if (!/^[a-zA-Z0-9_]{1,16}$/.test(k)) err(A, `part key "${k}" is rejected by the relay (letters/digits/_ only, max 16)`); if (b.parts[k].o.length >= 32) err(A, `parts.${k} has ${b.parts[k].o.length} options: the relay only passes indices < 32`); }
     if (MODELS && !MODELS.includes(b.model)) err(A, `model "${b.model}" is not in MODELS (js/model.js: ${MODELS.join(', ')})`);
     if (CLUSTERS && !CLUSTERS.includes(b.cluster)) err(A, `cluster "${b.cluster}" is not in CLUSTERS (js/hud.js: ${CLUSTERS.join(', ')})`);

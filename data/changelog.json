@@ -1,4 +1,10 @@
 [
+  { "v": "11.73", "d": "2026-11-05", "t": [
+    "Garage ENGINE tab now has a sub-menu: Intake & fuel, Head, Bottom end, Ignition, Exhaust and ECU & tuning, each with a count of what you've changed there.",
+    "New engine parts, only where they fit the real engine: big-bore throttle body and high-flow injector (fuel-injected singles), Keihin PE24 / PE28 carburettors, ignition coil and racing CDI (TMX and Macho; coil on the Smash), racing valve springs, ported head, forged high-compression piston, bore-up kit (fuel-injected singles; the carb bikes keep theirs under Engine tune), and engine oil for every bike. Cams now move the power up the rev range instead of adding it everywhere.",
+    "New DYNO tab: strap the bike to an inertia drum and do a full-throttle pull, with the engine sound following the revs. Pick the gear (CVTs shift by themselves), keep up to 5 runs on one chart with a stock ghost, and read rear-wheel PS and Nm with their rpm, loss below the brochure figure and the gain against your first run. A light flywheel reads higher on the drum, a heavy one lower, like on a real one.",
+    "Engine internals are no longer sent to other players (they can't be seen), so they don't count against the 24-part multiplayer limit."
+  ] },
   { "v": "11.72", "d": "2026-11-05", "t": [
     "New garage parts, each fitted only to bikes it really suits: spark plug (iridium, not on the CBR650R or H2 which come with one), racing camshaft (the small singles), lithium battery (all bikes, about 1 to 2 kg lighter), clutch (heavy-duty springs on every geared bike, plus a slipper clutch kit for the Raider R150), chain (X-ring, and a 520 race conversion for the CBR650R and H2), and for the scooters racing clutch shoes and a racing drive belt.",
     "Steel-braided brake lines for the bikes with hydraulic disc brakes (not the drum-braked TMX, Macho and Smash).",

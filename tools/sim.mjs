@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 // Headless physics scenarios on the game's real solver (see lib/headless.mjs). No browser, a few seconds for all bikes.
 //   node tools/sim.mjs [bike|all] [scenario|all] [--json] [--part exhaust=1 ...] [--set kf=14 ...] [--no-wc] [--tough]
-// scenarios: launch start brake corner wheelie stall idle iss pillion      (default: all, every bike)
+// scenarios: launch start brake corner wheelie stall idle iss pillion dyno      (default: all, every bike)
 // Output is one compact line per bike+scenario. Numbers are comparable between runs, so use them to see what a change did:
 //   node tools/sim.mjs all launch > /tmp/before; (edit) ; node tools/sim.mjs all launch | diff /tmp/before -
-import { createSim, bikeIds, TICK, S, ign, withPassenger } from './lib/headless.mjs';
+import { createSim, bikeIds, TICK, S, ign, withPassenger, ROOT } from './lib/headless.mjs';
+import { pathToFileURL } from 'node:url';
+const { dynoRun } = await import(pathToFileURL(ROOT + '/js/dyno.js').href);
 
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const appr = (v, t, s) => v < t ? Math.min(t, v + s) : Math.max(t, v - s);
@@ -125,6 +127,12 @@ const SC = {
     const p = createSim(o.bike, w).spec, q = p.base; m.lrPct = r1(p.lr / p.wb * 100); m.dLrPct = r1((p.lr - q.lr) / p.wb * 100); m.hCm = r1(p.h * 100); m.dHCm = r1((p.h - q.h) * 100); m.I = r1(p.I); m.kg = r1(p.m - q.m);
     const s = createSim(o.bike, o).spec, was = JSON.stringify([s.m, s.ms, s.lf, s.lr, s.h, s.I]); withPassenger(s, 65); withPassenger(s, 65); withPassenger(s, 0);
     m.idem = JSON.stringify([s.m, s.ms, s.lf, s.lr, s.h, s.I]) === was ? 1 : 0; m.nan = a.nan || l.nan || k1.nan || wh.nan; return m;
+  },
+  // the garage's inertia-drum dyno (js/dyno.js) in its default gear: rear-wheel PS / Nm peaks, loss below the crank figure, pull time
+  dyno(o) {
+    const sim = createSim(o.bike, o), d = dynoRun(sim.spec, sim.ctx.drive, sim.ctx.bcfg);
+    const ok = d.pts.every(q => Number.isFinite(q.hp) && Number.isFinite(q.rpm)) && d.hp > 0 && d.hp < d.crank;
+    return { whp: r1(d.hp), whpRpm: Math.round(d.hpRpm / 50) * 50, wtq: r1(d.tq), crank: r1(d.crank), loss: r1(d.loss * 100), pull: r1(d.T), ok: ok ? 1 : 0 };
   },
   // neutral, nothing touched: stays running near its idle speed, doesn't roll, burns a little fuel
   idle(o) {

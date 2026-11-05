@@ -2,10 +2,12 @@
 import { lerpTable } from './util.js';
 import { DRIVES } from './drivetrain.js';
 
-// part option keys that multiply instead of replace (capx: clutch torque capacity, etax: chain/belt efficiency; drivetrain.js applies both)
-const MUL = new Set(['pow', 'ie', 'csp', 'brake', 'capx', 'etax']);
-// ... and keys that add (dm: mass change in kg, e.g. carbon parts)
-const ADD = new Set(['dm']);
+// part option keys that multiply instead of replace (capx: clutch torque capacity, etax: chain/belt efficiency; drivetrain.js applies both;
+// frx: engine friction, e.g. oil; fux: fuel use)
+const MUL = new Set(['pow', 'ie', 'csp', 'brake', 'capx', 'etax', 'frx', 'fux']);
+// ... and keys that add (dm: mass change in kg, e.g. carbon parts; tqs: torque-curve tilt toward the top end, e.g. a cam;
+// redd: rpm added to the rev limit, e.g. valve springs or a racing CDI)
+const ADD = new Set(['dm', 'tqs', 'redd']);
 
 export function computeSpec(bike, b) {
   const ch = bike.chassis, en = bike.engine;
@@ -13,12 +15,18 @@ export function computeSpec(bike, b) {
     type: bike.drivetrain, ...ch,
     ie: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
     peakPS: en.peakPS, tachMax: en.tachMax, ram: en.ram || 0, sound: bike.sound,
-    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, dm: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0,
+    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0,
   };
   for (const [k, p] of Object.entries(bike.parts)) {
     const o = p.o[b[k]] || p.o[0];
     for (const [kk, v] of Object.entries(o)) { if (kk === 'n') continue; if (MUL.has(kk)) s[kk] *= v; else if (ADD.has(kk)) s[kk] += v; else s[kk] = v; }
   }
+  // engine internals: tilt the torque curve about 60% of the stock redline (tqs 0.05 = 5% less at idle-ish revs, ~2% more at the top),
+  // raise the limiter (never past the end of the torque table), scale friction and fuel use
+  if (s.tqs) s.TQ = s.TQ.map(([r, t]) => [r, t * Math.max(.5, 1 + s.tqs * (r / s.red0 - .6))]);
+  if (s.redd) s.red = Math.min(s.red + s.redd, s.TQ[s.TQ.length - 1][0]);
+  if (s.frx !== 1) s.fric = [s.fric[0] * s.frx, s.fric[1] * s.frx];
+  if (s.fux !== 1) s.fuel = { ...s.fuel, idle: s.fuel.idle * s.fux, k: s.fuel.k * s.fux };
   if (b.cc) s.c = b.cc; if (b.cw) s.wc = b.cw; // custom body / wheel colours from the garage's pickers
   s.m0 = s.m; s.m += s.dm;
   s.kf = b.kf * 1000; s.kr = b.kr * 1000; s.damp = b.damp / 100;

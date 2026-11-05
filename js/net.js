@@ -184,7 +184,8 @@ export function netFrame(dt, now) {
       else { if (now - sendB >= 1000) { sendB = now; pack(); } if (now - sendT >= gap) { sendT = now; packWalk(); } }
     } else if (++backlog > 3) slowUntil = now + 10000;
   }
-  if (now - lookT > 1000) { lookT = now; const parts = {}; for (const k in ctx.bike.parts) parts[k] = ctx.bcfg[k] | 0; const look = { bike: ctx.bike.id, parts }, k = JSON.stringify(look); if (k !== lookKey) { lookKey = k; send({ t: 'look', look }); } }
+  // parts marked int (engine internals: cam, oil, clutch...) change nothing anyone else can see, so they stay off the wire
+  if (now - lookT > 1000) { lookT = now; const parts = {}; for (const k in ctx.bike.parts) if (!ctx.bike.parts[k].int) parts[k] = ctx.bcfg[k] | 0; const look = { bike: ctx.bike.id, parts }, k = JSON.stringify(look); if (k !== lookKey) { lookKey = k; send({ t: 'look', look }); } }
   if (!NET.peers.size) { NET.live = 0; NET.near = 1e9; if (ctx.mpK) { ctx.mpDots = []; ctx.mpK = ''; } return; }
   camera.updateMatrixWorld(); PM.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse); FR.setFromProjectionMatrix(PM);
   built = false; const dots = ctx.mpDots || (ctx.mpDots = []); dots.length = 0; let mk = '', live = 0, near = 1e9;
