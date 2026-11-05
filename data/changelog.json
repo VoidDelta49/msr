@@ -1,4 +1,7 @@
 [
+  { "v": "11.77", "d": "2026-11-05", "t": [
+    "WebGPU (most phones on recent Chrome): GPU-culled props now cast shadows from their own shadow-only copy holding just the props around the bike. Before, every shadow-map refresh (about every 8 m of riding) re-drew every visible prop out to the draw distance, and every frame drew the ring of shadow casters behind the camera too. Shadows look the same; the periodic GPU spike on shadow refreshes is much smaller."
+  ] },
   { "v": "11.76", "d": "2026-11-05", "t": [
     "Engine-sound effects of air filters, carbs and throttle bodies, head work, valve springs and ECU / CDI / tune options now live on each part option in the bike data, so new parts can change the sound without code changes. Sound is unchanged, except that a racing CDI and an engine tune now stack their crackle and roughness instead of only the bigger one counting."
   ] },

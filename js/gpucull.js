@@ -2,7 +2,7 @@
 // Each prop type is ONE InstancedMesh for the whole island (no 700 m chunks). Every frame a compute pass tests every
 // instance against the camera frustum and its distance class, and copies the survivors' matrices (and colours) into
 // a compact buffer; the mesh is then drawn with drawIndexedIndirect, so the instance count never comes back to JS.
-// Shadow casters near the bike pass too, so a tree behind you still casts its shadow into view.
+// Shadow casters near the bike also go to a shadow-only copy (one-pass path), so a tree behind you still casts its shadow into view.
 // Instance order changes from frame to frame, so flat decals (lane lines) stay on the CPU path (they would z-fight).
 // WebGL keeps the chunked path in world.js; nothing here runs there.
 // LOD (11.66): a prop with a low-detail twin is two types over the same list, band +1 (full detail) and -1 (the twin): each
@@ -21,7 +21,7 @@ const PL = [0, 1, 2, 3, 4, 5].map(() => uniform(new THREE.Vector4())); // frustu
 const CAM = uniform(new THREE.Vector2()), SHC = uniform(new THREE.Vector2());
 const SH_R = 46; // shadow camera is ±28 m around the bike; + diagonal + tall casters leaning in from outside
 let run = null, resetArgs = null, still = 0; const LAST = new Float64Array(26).fill(NaN);
-export const G = { args: null, n: 0 }; // debug: G.args = indirect args (5 u32 per type, [1] = drawn instances)
+export const G = { args: null, n: 0 }; // debug: G.args = indirect args (5 u32 per draw, [1] = drawn instances; one-pass: entry n + k = type k's shadow copy)
 const fr = new THREE.Frustum(), pm = new THREE.Matrix4(), dummy = new THREE.Object3D(), v = new THREE.Vector3(), col = new THREE.Color();
 
 export function finishGpuInst(scene) {
@@ -37,15 +37,26 @@ export function finishGpuInst(scene) {
 // separate clear dispatch. Before, it was one clear dispatch + one dispatch per type, each with its own bind group, uniform updates and
 // pipeline switch, i.e. ~20 compute nodes for three to walk every frame. Needs 'indirect-first-instance' (most GPUs; without it a
 // non-zero firstInstance makes indirect draws no-ops), else finishPerType below.
+// Shadows (11.77): a casting type also gets a shadow-only slice behind all the main slices, filled with just the instances near the
+// shadow camera and drawn by a proxy on layer 1 (only the shadow camera sees it, as on WebGL: batch.js / world.js). Before, one list
+// fed both passes, so every shadow-map refresh (every ~8 m of riding) vertex-shaded every visible prop out to the draw distance
+// against a ±28 m map, and the main pass drew the ring of casters behind the camera every frame. Shadow args: entry n + k.
+const SHM = new THREE.MeshBasicMaterial(); // shadow-only proxy material, shared: one shadow pipeline for every type
 function finishOnePass(scene) {
-  const n = TYPES.length, ARGS = new THREE.IndirectStorageBufferAttribute(new Uint32Array(n * 5), 5);
+  const n = TYPES.length, ARGS = new THREE.IndirectStorageBufferAttribute(new Uint32Array(n * 10), 5), cast = sun.castShadow;
   const T = TYPES.reduce((a, t) => a + t.list.length, 0), hasC = TYPES.some(t => t.list.some(o => o.c !== undefined));
+  const TS = cast ? TYPES.reduce((a, t) => a + (t.shadow ? t.list.length : 0), 0) : 0;
   const sM = new Float32Array(T * 16), sS = new Float32Array(T * 4), sT = new Uint32Array(T), sC = hasC ? new Float32Array(T * 3).fill(1) : null;
-  const dM = new THREE.StorageInstancedBufferAttribute(T, 16), dC = hasC ? new THREE.StorageInstancedBufferAttribute(T, 3) : null;
-  const par = [], cast = sun.castShadow; let off = 0;
+  const dM = new THREE.StorageInstancedBufferAttribute(T + TS, 16), dC = hasC ? new THREE.StorageInstancedBufferAttribute(T, 3) : null;
+  const par = []; let off = 0, shOff = T;
+  const mesh = (g, mat, N, k, first) => { // own geometry per draw (shares the attributes): setIndirect is per geometry
+    const gg = new THREE.BufferGeometry(); for (const [a, b] of Object.entries(g.attributes)) gg.setAttribute(a, b); if (g.index) gg.setIndex(g.index);
+    ARGS.array[k * 5] = g.index ? g.index.count : g.attributes.position.count; // firstInstance: indexed layout [count, inst, firstIndex, baseVertex, firstInst], non-indexed [count, inst, firstVertex, firstInst]
+    ARGS.array[k * 5 + (g.index ? 4 : 3)] = first; gg.setIndirect(ARGS, k * 20);
+    const m = new THREE.InstancedMesh(gg, mat, N); m.instanceMatrix = dM; m.frustumCulled = false; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m); return m;
+  };
   TYPES.forEach((t, k) => {
-    const L = t.list, N = L.length, g = new THREE.BufferGeometry();
-    for (const [a, b] of Object.entries(t.geo.attributes)) g.setAttribute(a, b); if (t.geo.index) g.setIndex(t.geo.index);
+    const L = t.list, N = L.length, sh = cast && t.shadow;
     t.geo.computeBoundingSphere(); const bs = t.geo.boundingSphere, tc = L.some(o => o.c !== undefined);
     L.forEach((o, j) => {
       const i = off + j, sx = o.sx || 1, sy = o.sy || 1, sz = o.sz || 1;
@@ -53,15 +64,13 @@ function finishOnePass(scene) {
       v.copy(bs.center).applyMatrix4(dummy.matrix); sS[i * 4] = v.x; sS[i * 4 + 1] = v.y; sS[i * 4 + 2] = v.z; sS[i * 4 + 3] = bs.radius * Math.max(sx, sy, sz);
       sT[i] = k; if (hasC && o.c !== undefined) col.set(o.c).toArray(sC, i * 3);
     });
-    const m = new THREE.InstancedMesh(g, t.mat, N); m.instanceMatrix = dM; if (tc) m.instanceColor = dC;
-    ARGS.array[k * 5] = g.index ? g.index.count : g.attributes.position.count; // firstInstance: indexed layout [count, inst, firstIndex, baseVertex, firstInst], non-indexed [count, inst, firstVertex, firstInst]
-    ARGS.array[k * 5 + (g.index ? 4 : 3)] = off; g.setIndirect(ARGS, k * 20);
-    m.frustumCulled = false; m.castShadow = t.shadow; m.receiveShadow = true; m.matrixAutoUpdate = false; m.updateMatrix(); scene.add(m);
-    par.push(new THREE.Vector4(t.far, t.shadow && cast ? 1 : 0, off, t.band * LOD_D)); off += N;
+    const m = mesh(t.geo, t.mat, N, k, off); if (tc) m.instanceColor = dC; m.castShadow = false; m.receiveShadow = true;
+    if (sh) { const s = mesh(t.geo, SHM, N, n + k, shOff); s.castShadow = true; s.receiveShadow = false; s.layers.set(1); }
+    par.push(new THREE.Vector4(t.far, sh ? shOff + 1 : 0, off, t.band * LOD_D)); off += N; if (sh) shOff += N; // y: shadow slice start + 1, 0 = casts nothing
   });
-  const A = storage(ARGS, 'uint', n * 5).toAtomic(), P = uniformArray(par, 'vec4');
+  const A = storage(ARGS, 'uint', n * 10).toAtomic(), P = uniformArray(par, 'vec4');
   const src = storage(new THREE.StorageBufferAttribute(sM, 16), 'mat4', T).toReadOnly(), sph = storage(new THREE.StorageBufferAttribute(sS, 4), 'vec4', T).toReadOnly();
-  const typ = storage(new THREE.StorageBufferAttribute(sT, 1), 'uint', T).toReadOnly(), dst = storage(dM, 'mat4', T);
+  const typ = storage(new THREE.StorageBufferAttribute(sT, 1), 'uint', T).toReadOnly(), dst = storage(dM, 'mat4', T + TS);
   const srcC = hasC && storage(new THREE.StorageBufferAttribute(sC, 3), 'vec3', T).toReadOnly(), dstC = hasC && storage(dC, 'vec3', T);
   const kern = Fn(() => {
     const i = instanceIndex;
@@ -70,11 +79,17 @@ function finishOnePass(scene) {
       const d2 = dot(d, d), ok = d2.lessThan(f.mul(f)).toVar(), b = q.w;
       ok.assign(ok.and(b.equal(0).or(b.greaterThan(0).and(d2.lessThan(b.mul(b)))).or(b.lessThan(0).and(d2.greaterThanEqual(b.mul(b))))));
       for (const L of PL) ok.assign(ok.and(dot(L.xyz, p).add(L.w).greaterThan(r.negate())));
-      const e = p.xz.sub(SHC), sr = float(SH_R).add(r); ok.assign(ok.or(q.y.greaterThan(.5).and(dot(e, e).lessThan(sr.mul(sr)))));
       If(ok, () => {
         const slot = uint(q.z).add(atomicAdd(A.element(k.mul(5).add(1)), uint(1))).toVar();
         dst.element(slot).assign(src.element(i)); if (hasC) dstC.element(slot).assign(srcC.element(i));
       });
+      if (TS) { // shadow slice: near the shadow camera, whatever the view frustum, distance class or LOD band says
+        const e = p.xz.sub(SHC), sr = float(SH_R).add(r);
+        If(q.y.greaterThan(.5).and(dot(e, e).lessThan(sr.mul(sr))), () => {
+          const slot = uint(q.y.sub(1)).add(atomicAdd(A.element(k.add(uint(n)).mul(5).add(1)), uint(1))).toVar();
+          dst.element(slot).assign(src.element(i));
+        });
+      }
     });
   })().compute(T, [64]);
   run = kern; resetArgs = ARGS; G.args = ARGS; G.n = n; G.total = T; G.onePass = true;
