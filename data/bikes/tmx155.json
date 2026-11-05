@@ -33,6 +33,7 @@
     "red": 9000,
     "peakPS": 11.3,
     "tachMax": 10000,
+    "geo": { "bore": 57.3, "stroke": 57.8, "cr": 9.1, "peak": 7500 },
     "torque": [
       [
         0,
@@ -141,9 +142,7 @@
     "gain": 0.95,
     "whine": 0,
     "cyl": 1,
-    "pipe": 250,
     "pq": 5,
-    "body": 75,
     "bq": 2.6,
     "punch": 1.15,
     "rough": 0.16,
@@ -185,12 +184,12 @@
           "snd": 0
         },
         {
-          "n": "Slip-on (+5%)",
+          "n": "Slip-on (+5%)", "muf": 0.6,
           "pow": 1.05,
           "snd": 1
         },
         {
-          "n": "Open pipe (+9%)",
+          "n": "Open pipe (+9%)", "muf": 0, "hdr": 1,
           "pow": 1.09,
           "snd": 2
         }
@@ -210,7 +209,7 @@
           "ie": 0.92
         },
         {
-          "n": "Bore-up 165 cc (+11%)",
+          "n": "Bore-up 165 cc (+11%)", "ccx": 1.106,
           "pow": 1.11,
           "ie": 0.9,
           "idle": 1450
@@ -318,7 +317,7 @@
       "int": 1,
       "o": [
         { "n": "Stock cast" },
-        { "n": "Forged high-compression (+3%)", "pow": 1.03, "ie": 0.98 }
+        { "n": "Forged high-compression (+3%)", "crd": 1, "pow": 1.03, "ie": 0.98 }
       ]
     },
     "oil": {
@@ -376,7 +375,7 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Racing cam (+5%)", "pow": 1.05, "tqs": 0.05 }
+        { "n": "Racing cam (+5%)", "evo": 8, "pow": 1.05, "tqs": 0.05 }
       ]
     },
     "battery": {

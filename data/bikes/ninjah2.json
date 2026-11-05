@@ -34,6 +34,7 @@
   "red": 14000,
   "peakPS": 231,
   "tachMax": 16000,
+  "geo": { "bore": 76.0, "stroke": 55.0, "cr": 8.5, "peak": 11500 },
   "torque": [
    [
     0,
@@ -158,12 +159,10 @@
   "boost": 1,
   "chirp": 1,
   "lp": 1.2,
-  "gain": 1.4,
+  "gain": 0.85,
   "whine": 0,
   "cyl": 4,
-  "pipe": 950,
   "pq": 1.8,
-  "body": 260,
   "bq": 1.1,
   "punch": 1.15,
   "rough": 0.05,
@@ -185,12 +184,12 @@
      "snd": 0
     },
     {
-     "n": "Slip-on megaphone (+2%)",
+     "n": "Slip-on megaphone (+2%)", "muf": 0.6,
      "pow": 1.02,
      "snd": 1
     },
     {
-     "n": "Full titanium (+5%)",
+     "n": "Full titanium (+5%)", "muf": 0.5, "hdr": 1,
      "pow": 1.05,
      "snd": 2
     }

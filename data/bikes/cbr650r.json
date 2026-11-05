@@ -33,6 +33,7 @@
     "red": 12750,
     "peakPS": 95,
     "tachMax": 14000,
+    "geo": { "bore": 67.0, "stroke": 46.0, "cr": 11.6, "peak": 12000 },
     "torque": [
       [
         0,
@@ -133,12 +134,10 @@
     "sc": {"rattle": 1.8, "thump": 1.5, "thumpHz": 0.8, "peg": 0, "lash": 1.7},
     "parts": {"sq": 1.1, "sqHz": 2400, "hiss": 1.3, "chain": 0.8, "chainHz": 3200, "lash": 0.6, "clutch": 0.5, "thump": 1.4, "thumpHz": 0.75, "rattle": 0, "key": 0.9, "keyHz": 0.8, "tink": 1.3, "tinkHz": 0.7, "peg": 1.3},
     "lp": 1.3,
-    "gain": 1.3,
+    "gain": 1.05,
     "whine": 0,
     "cyl": 4,
-    "pipe": 1100,
     "pq": 2,
-    "body": 320,
     "bq": 1.0,
     "punch": 1,
     "rough": 0.04,
@@ -160,12 +159,12 @@
           "snd": 0
         },
         {
-          "n": "Slip-on (+2%)",
+          "n": "Slip-on (+2%)", "muf": 0.6,
           "pow": 1.02,
           "snd": 1
         },
         {
-          "n": "Full system (+7%)",
+          "n": "Full system (+7%)", "muf": 0.5, "hdr": 1,
           "pow": 1.07,
           "snd": 2
         }

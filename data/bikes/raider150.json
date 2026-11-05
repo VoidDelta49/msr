@@ -29,6 +29,7 @@
     "red": 11000,
     "peakPS": 18.5,
     "tachMax": 14000,
+    "geo": { "bore": 62.0, "stroke": 48.8, "cr": 11.5, "peak": 10000 },
     "torque": [
       [0, 3],
       [1000, 6],
@@ -64,9 +65,7 @@
     "gain": 1,
     "whine": 0,
     "cyl": 1,
-    "pipe": 380,
     "pq": 5,
-    "body": 95,
     "bq": 2.5,
     "punch": 1.1,
     "rough": 0.1,
@@ -83,8 +82,8 @@
       "l": "Exhaust",
       "o": [
         { "n": "Stock", "pow": 1, "snd": 0 },
-        { "n": "Slip-on (+10%)", "pow": 1.1, "snd": 1 },
-        { "n": "Full system (+18%)", "pow": 1.18, "snd": 2 }
+        { "n": "Slip-on (+10%)", "muf": 0.6, "pow": 1.1, "snd": 1 },
+        { "n": "Full system (+18%)", "muf": 0.5, "hdr": 1, "pow": 1.18, "snd": 2 }
       ]
     },
     "ecu": {
@@ -170,7 +169,7 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Bore-up kit (+12%, thirstier)", "pow": 1.12, "ie": 1.04, "fux": 1.12 }
+        { "n": "Bore-up kit (+12%, thirstier)", "ccx": 1.12, "pow": 1.12, "ie": 1.04, "fux": 1.12 }
       ]
     },
     "piston": {
@@ -178,7 +177,7 @@
       "int": 1,
       "o": [
         { "n": "Stock cast" },
-        { "n": "Forged high-compression (+3%)", "pow": 1.03, "ie": 0.98 }
+        { "n": "Forged high-compression (+3%)", "crd": 1, "pow": 1.03, "ie": 0.98 }
       ]
     },
     "oil": {
@@ -212,7 +211,7 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Racing cam (+4%)", "pow": 1.04, "tqs": 0.05 }
+        { "n": "Racing cam (+4%)", "evo": 8, "pow": 1.04, "tqs": 0.05 }
       ]
     },
     "battery": {

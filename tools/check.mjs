@@ -105,6 +105,8 @@ const bikes = {};
     else if (en.torque[en.torque.length - 1][0] < en.red) warn(A, 'torque curve ends below the redline (flat extrapolation)');
     if (!(Array.isArray(en.fric) && en.fric.length === 2 && en.fric.every(isNum))) err(A, 'engine.fric must be [a, b]');
     if (!(en.fuel && ['cap', 'idle', 'k'].every(k => isNum(en.fuel[k])))) err(A, 'engine.fuel needs cap, idle, k');
+    if (!(en.geo && ['bore', 'stroke', 'cr', 'peak'].every(k => isNum(en.geo[k]) && en.geo[k] > 0))) err(A, 'engine.geo needs the real bore, stroke (mm), cr (compression ratio) and peak (peak-power rpm): the engine sound is computed from them (spec.js acoustics)');
+    else if (en.geo.cr < 6 || en.geo.cr > 15 || en.geo.peak > en.red * 1.2 || en.geo.bore < 30 || en.geo.bore > 120) warn(A, 'engine.geo looks off (cr 6-15, peak <= redline, bore 30-120 mm)');
     const D = b.drivetrain === 'cvt' ? b.cvt : b.manual, DN = b.drivetrain === 'cvt' ? 'cvt' : 'manual';
     if (!D) err(A, `drivetrain ${b.drivetrain} needs a "${DN}" block`);
     else if (b.drivetrain === 'cvt') {

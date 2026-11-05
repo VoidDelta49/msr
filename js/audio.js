@@ -5,11 +5,12 @@ import { cfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { clamp, sstep, vnoise } from './util.js';
 import { at } from './foot.js';
+import { acoustics } from './spec.js';
 
 let AC = null, E = null, lastSpec = null, ambT = 0, crashWas = false, airWas = false, offR = 0, lastT = 0;
 let rdT = -1, onRdC = 0, pFf = null, pFr = null, pTh = 0, suspT = 0, lashT = 0, runWas = false, coolT = 0, coolEnd = 0, scTh = 0, scT = 0; // part-sound edge detectors (suspension hits, chain lash, exhaust cooling)
 const A = {}, Z = { coast: 0, river: 0, town: 0, paddy: 0, volc: 0, wild: 0, sx: 0, sz: 0, rx: 0, rz: 0 };
-const EXH = { gain: [1, 1.4, 1.85], bright: [1, 1.3, 1.65], pq: [1, 1.35, 1.7], crackle: [1, 2.6, 4.5], drive: [1, 1.2, 1.4], pipe: [1, .9, .8], body: [1, .95, .88] };
+const EXH = { gain: [1, 1.4, 1.85], bright: [1, 1.3, 1.65], pq: [1, 1.35, 1.7], crackle: [1, 2.6, 4.5], drive: [1, 1.2, 1.4] }; // levels; the geometry is in acoustics()
 
 // per-bike part-sound profile: data/bikes/*.json -> sound.parts (level / pitch multipliers, all optional; see CONTEXT "Rules")
 // with a sidecar fitted (spec.sc), sound.sc overrides those keys (steel box rattle, heavier thumps)
@@ -106,21 +107,20 @@ function legacy() {
   A.lg = node('gain'); A.o.connect(A.lp); chain(A.o2, A.g2, A.lp); chain(A.lp, sh, A.lg, A.eng); A.o.start(); A.o2.start();
 }
 
-// garage tune -> engine voice. lv(k): how far up a part's option list the bike is set (stock 0 .. top option 1); every bike names
-// its engine parts the same way (cam, intake, cyl, port, tb/carb, piston, valves, ecu/cdi/tune), a part the bike lacks reads 0
+// garage parts without a geometric number (filter, carb / throttle body, head work, valve springs, ECU / CDI / tune) scale levels:
+// lv(k) = how far up that part's option list the bike is set, 0 stock .. 1 top option; a part the bike lacks reads 0
 const lv = k => { const p = ctx.bike?.parts?.[k]; return p && ctx.bcfg ? Math.min(1, (ctx.bcfg[k] | 0) / Math.max(1, p.o.length - 1)) : 0; };
 function engineCfg(sp) {
-  const s = sp.sound, x = sp.snd || 0, cam = lv('cam'), inl = lv('intake'), bore = lv('cyl'), port = lv('port'), thr = Math.max(lv('tb'), lv('carb')), pis = lv('piston'), ecu = Math.max(lv('ecu'), lv('cdi'), lv('tune'));
+  const s = sp.sound, x = sp.snd || 0, inl = lv('intake'), port = lv('port'), thr = Math.max(lv('tb'), lv('carb')), ecu = Math.max(lv('ecu'), lv('cdi'), lv('tune')), lope = Math.min(1, sp.evo / 8);
   const fly = clamp(sp.ie / (sp.ie0 || sp.ie), .5, 2); // flywheel (and heavier/lighter internals) vs stock
   E.port.postMessage({
-    cyl: s.cyl || 1, bq: s.bq, crackRpm: s.crackRpm || sp.red * .55, idle: sp.idle, fly, lope: cam,
-    body: s.body * EXH.body[x] * (1 - .1 * bore),                                    // bigger bore: deeper thump
-    punch: s.punch * (1 + .3 * bore + .15 * pis + .1 * ecu) / Math.sqrt(fly),        // light flywheel: sharper pulses
-    rough: s.rough * (1 + .5 * ecu + .3 * bore),                                     // leaner maps and big bores idle less evenly
-    mech: s.mech * (1 + .6 * lv('valves') + .4 * cam + .25 * pis),                   // stiffer springs, more lift: louder valvetrain
-    intake: s.intake * (1 + 3 * inl + 1.5 * thr + .5 * port), inHz: 1 - .2 * inl - .1 * thr, // open filter, big carb: louder, lower induction honk
-    pipe: s.pipe * EXH.pipe[x], pq: s.pq * EXH.pq[x], bright: s.bright * EXH.bright[x] * (1 + .15 * port + .1 * thr + .2 * cam),
-    crackle: Math.min(1, s.crackle * EXH.crackle[x] * (1 + 1.5 * ecu + .5 * cam)), drive: s.drive * EXH.drive[x] * (1 + .1 * bore),
+    ...acoustics(sp), cyl: s.cyl || 1, crackRpm: s.crackRpm || sp.red * .55, idle: sp.idle, fly, lope, pq: s.pq * EXH.pq[x], bq: s.bq * (2 - sp.muf),
+    punch: s.punch * sp.ccx * (1 + sp.evo / 40 + .1 * ecu) / Math.sqrt(fly), // pulse volume ~ swept volume; earlier opening = higher blowdown pressure
+    rough: s.rough * (1 + .5 * ecu + .3 * (sp.ccx - 1) * 8),                   // leaner maps and big bores idle less evenly
+    mech: s.mech * (1 + .6 * lv('valves') + .4 * lope),                         // stiffer springs, more lift: louder valvetrain
+    intake: s.intake * (1 + 3 * inl + 1.5 * thr + .5 * port),                  // open filter, big carb / throttle body: louder induction
+    bright: s.bright * EXH.bright[x] * (1 + .15 * port + .1 * thr + .2 * lope),
+    crackle: Math.min(1, s.crackle * EXH.crackle[x] * (1 + 1.5 * ecu + .5 * lope)), drive: s.drive * EXH.drive[x] * sp.ccx ** .8,
   });
 }
 

@@ -14,7 +14,8 @@ const b = loadBike(from); b.id = id; b.name = name || 'TODO real brand + model';
 writeFileSync(path.join(ROOT, `data/bikes/${id}.json`), JSON.stringify(b, null, 1) + '\n');
 const idx = path.join(ROOT, 'data/bikes/index.json'); writeFileSync(idx, JSON.stringify([...bikeIds, id]) + '\n');
 console.log(`created data/bikes/${id}.json (copy of ${from}) and added it to index.json. To finish:
- 1. Real numbers: chassis (m, r, wb, lf+lr=wb, h, I, drag, brake), engine (torque curve, idle/red/tachMax, peakPS, fuel), manual/cvt block, defaults, parts, sliders.
+ 1. Real numbers: chassis (m, r, wb, lf+lr=wb, h, I, drag, brake), engine (torque curve, idle/red/tachMax, peakPS, fuel, geo: bore/stroke/cr/peak-power rpm
+    (the exhaust, muffler and intake sound is computed from geo; copied from ${from}!)), manual/cvt block, defaults, parts, sliders.
  2. sound.parts based on the REAL bike (brakes, drivetrain, weight, body); not a copy of ${from}'s. Compare: node tools/bike.mjs ${id}
  2b. chassis.pil (copied from ${from}): dz / dy shift the rider mesh back / up onto the pillion seat, x / h are the passenger's place for the physics. Tune: node tools/pillion.mjs --bike ${id} --shot /tmp/pil
  3. model / cluster: pick from existing keys, or add a builder to MODELS (js/model.js) / CLUSTERS (js/hud.js). New part keys land on the PAINT tab unless listed in WHERE (js/garage.js).
