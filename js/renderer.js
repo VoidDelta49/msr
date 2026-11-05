@@ -1,10 +1,10 @@
 // WebGPU when the browser has it, WebGL 2 otherwise (or when forced in Options / after a GPU failure)
 import * as THREE from 'three';
 import { $ } from './util.js';
-import { cfg, Q, AA_MODES } from './config.js';
+import { cfg, Q, AA_MODES, BENCH } from './config.js';
 
 export let FELL = false; try { FELL = !!sessionStorage.getItem('cpmGL'); } catch (e) { }
-const mkR = gl => new THREE.WebGPURenderer({ canvas: $('gl'), antialias: false, powerPreference: 'high-performance', forceWebGL: gl });
+const mkR = gl => new THREE.WebGPURenderer({ canvas: $('gl'), antialias: false, powerPreference: 'high-performance', forceWebGL: gl, trackTimestamp: BENCH }); // trackTimestamp: GPU pass timers for the benchmark (bench.js); only on a benchmark load
 export let renderer = mkR(!!cfg.forceGL || FELL);
 try { await renderer.init(); } catch (e) { FELL = true; renderer = mkR(true); await renderer.init(); }
 function gpuFallback() { if (FELL) return; FELL = true; try { sessionStorage.setItem('cpmGL', '1'); } catch (e) { } location.reload(); }
@@ -77,7 +77,8 @@ if (IBL) {
   pmrem = new THREE.PMREMGenerator(renderer); envRT = pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: 64 });
   scene.environment = envRT.texture;
 }
-export function bakeEnv() { if (envRT) pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: 64, renderTarget: envRT }); }
+export const PC = { bake: 0 }; // event counters the benchmark reads (bench.js)
+export function bakeEnv() { if (envRT) PC.bake++, pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: 64, renderTarget: envRT }); }
 export const hemi = new THREE.HemisphereLight(0xdcecff, 0x55653a, 1.15); scene.add(hemi);
 export const sun = new THREE.DirectionalLight(0xffeccc, 2.8); sun.castShadow = Q.shadow > 0; sun.shadow.mapSize.set(Q.shadow || 1024, Q.shadow || 1024);
 { const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; sun.shadow.camera.layers.enable(1); scene.add(sun, sun.target); // shadow camera also sees layer 1 = shadow-only proxies (model.js)
@@ -146,7 +147,8 @@ if (AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx || cfg.mblur) {
   }
   pipe = new THREE.RenderPipeline(renderer); pipe.outputColorTransform = false; pipe.outputNode = out;
 }
-export const draw = () => { if (MB) MB.update(camera, performance.now()); pipe ? pipe.render() : renderer.render(scene, camera); };
+export const BX = { post: true, noShadow: false }; // benchmark ablations (bench.js): post false = render the scene straight to the canvas; noShadow = never redraw the shadow map
+export const draw = () => { if (MB) MB.update(camera, performance.now()); pipe && BX.post ? pipe.render() : renderer.render(scene, camera); };
 // Shader warm-up, during loading: build every material's shader/pipeline now instead of on first use (the first
 // crash, switching to 3rd person, a new area coming into view). Everything hidden is shown and frustum culling is off
 // for the duration. compileAsync links the programs in parallel where the driver allows (KHR_parallel_shader_compile on

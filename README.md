@@ -130,6 +130,7 @@ data/map/island.json  the island layout (coast, features, river, roads, town blo
 js/renderer.js        WebGPU/WebGL setup and fallback, quality preset
 js/perf.js            culling, terrain LOD, merging, Lambert materials, auto resolution
 js/gpucull.js         WebGPU compute culling + indirect draws for instanced props
+js/bench.js           in-game benchmark (Options > System): scripted ride, frame/CPU/GPU timings, hitch causes, ablations, text report
 js/net.js             multiplayer: relay connection, state packets, interpolated ghost bikes, name tags
 js/race.js            tap-to-race between two riders
 js/ride.js            passengers: hop into a friend's sidecar or on the back of any bike, cartoon ejections on a crash

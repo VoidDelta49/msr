@@ -2,7 +2,7 @@
 // three.js, Rapier and the island (main.js and everything it imports) are fetched in the background once the page has
 // loaded, and only parsed/built when the player taps PLAY. The same menu is the pause menu in game (Esc / ☰).
 import { bikeCard } from './bikecard.js';
-import { cfg, save, BUILD, MP_URL, AA_MODES } from './config.js';
+import { cfg, save, BUILD, MP_URL, AA_MODES, BENCH } from './config.js';
 import { $ } from './util.js';
 import { ctx } from './state.js';
 import { O, openOpts } from './options.js';
@@ -156,6 +156,7 @@ async function play() {
   }
 }
 $('mPlay').onclick = play;
+if (BENCH) { $('mPlayT').textContent = 'START BENCHMARK'; $('mTip').textContent = 'Benchmark ready: tap to start, then leave the screen alone for about a minute and a half.'; } // bench.js
 $('bMenu').onclick = openMenu;
 addEventListener('keydown', e => {
   if (e.code !== 'Escape' || ctx.OPT || ctx.GAR) return; // Esc in options/garage is handled there

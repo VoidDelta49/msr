@@ -1,4 +1,8 @@
 [
+  { "v": "11.79", "d": "2026-11-05", "t": [
+    "New benchmark: Options > System > Benchmark reloads the game, then rides a fixed route for about a minute and a half and records frame times, CPU time per stage, GPU time (where the device has a GPU timer), draw calls and every hitch with what came just before it (shadow-map refresh, dash upload, memory cleanup, sky update). It then repeats one stretch with shadow-map updates, post-processing and resolution switched off to price each, and once more at the end to catch the phone slowing down as it heats up. The report is plain text in the same tab, with a Copy report button.",
+    "Fixed: the first frame after PLAY could carry a negative time step on a slow load, which froze the bike's physics for as long as the load had blocked the screen (up to a couple of seconds)."
+  ] },
   { "v": "11.78", "d": "2026-11-05", "t": [
     "WebGPU (and WebGL on GPUs without multi-draw): street-lamp halos are no longer drawn in daylight. They were invisible by day (opacity 0) but still drawn as blended quads, about 15 draws a frame for nothing. They come back as before when the lamps switch on at sunset."
   ] },

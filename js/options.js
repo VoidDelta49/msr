@@ -109,11 +109,19 @@ const tGame = () => sec('WORLD') +
   sw('showApi', 'Show renderer', 'Which renderer is running, in the corner.');
 const tSys = () => {
   const aa = O.live && O.aa ? ' · Anti-aliasing: ' + O.aa.label : '';
-  return sec('THIS DEVICE') + `<p class=onote>${esc((O.api || 'The renderer is picked when the game loads') + aa)}<br>Build ${esc(BUILD)}</p>` +
+  return sec('THIS DEVICE') + `<p class=onote>${esc((O.api || 'The renderer is picked when the game loads') + aa)}<br>Build ${esc(BUILD)}</p>` + benchSec() +
     sec('ERROR LOG') + `<pre id=oLog>${esc(LOG.length ? LOG.slice(-12).join('\n') : 'No errors logged')}</pre>` +
     `<div class=obtns><button class=b data-act=copy>Copy log</button><button class="b${rstT ? ' on' : ''}" data-act=reset>${rstT ? 'Tap again to reset everything' : 'Reset all options'}</button></div>` +
     `<p class=onote>Resets the settings in this panel only. Your bikes, garage setups and multiplayer name stay.</p>`;
 };
+// Benchmark (bench.js): this only arms it and reloads; the run happens in the game, the last report lands in localStorage (cpmBench)
+function lastBench() { try { return JSON.parse(localStorage.getItem('cpmBench')); } catch (e) { return null; } }
+function benchSec() {
+  const b = lastBench();
+  return sec('BENCHMARK') + `<p class=onote>Rides a fixed route for about a minute and a half and measures frame times, CPU and GPU time per stage, hitches and what caused them, then repeats one stretch with shadows, post-processing and resolution switched off to price each. The game reloads first: tap PLAY when it asks, then leave the screen alone. Best on a cool phone with other apps closed.</p>` +
+    `<div class=obtns><button class="b on" data-act=bench>Run benchmark</button>${b ? '<button class=b data-act=benchcopy>Copy report</button>' : ''}</div>` +
+    (b ? `<p class=onote>Last run: build ${esc(b.build)}, ${esc(new Date(b.at).toLocaleString())}. Paste the report where it can be read.</p><pre id=oBench>${esc(b.text)}</pre>` : '');
+}
 const TABS = [['gfx', 'Graphics', tGfx], ['ctl', 'Controls', tCtl], ['aud', 'Audio', tAud], ['game', 'Game', tGame], ['sys', 'System', tSys]];
 let tab = 'gfx'; try { tab = sessionStorage.getItem('cpmOptTab') || tab; } catch (e) { }
 if (!TABS.some(t => t[0] === tab)) tab = 'gfx';
@@ -144,6 +152,7 @@ function resetAll() {
   save(); applyUi(); if (O.setDPR) O.setDPR(); if (O.onPerf) O.onPerf(); build(true);
 }
 
+export function showOpts(id) { if (TABS.some(t => t[0] === id)) { tab = id; try { sessionStorage.setItem('cpmOptTab', id); } catch (e) { } } openOpts(); const b = $('oBody').querySelector('[data-act=bench]'), h = b && b.parentElement.previousElementSibling.previousElementSibling; if (h) h.scrollIntoView({ block: 'start' }); } // (heading, note, buttons: land on the heading) // main.js: the benchmark's report
 export function openOpts() { if (ctx.OPT || ctx.GAR) return; $('opts').hidden = false; build(); ctx.OPT = true; document.body.classList.add('opt'); }
 export function closeOpts() { if (!ctx.OPT) return; $('opts').hidden = true; ctx.OPT = false; document.body.classList.remove('opt'); }
 
@@ -156,6 +165,8 @@ $('opts').onclick = e => {
   if (d.sg) return set(d.sg, parse(d.sg, d.v));
   if (d.act === 'reset') return resetAll();
   if (d.act === 'copy') { const t = LOG.join('\n') || 'No errors logged'; const done = ok => { b.textContent = ok ? 'Copied' : 'Copy failed'; }; try { navigator.clipboard.writeText(t).then(() => done(true), () => done(false)); } catch (x) { done(false); } return; }
+  if (d.act === 'bench') { try { sessionStorage.setItem('cpmBench', String(Date.now())); } catch (x) { } return location.reload(); }
+  if (d.act === 'benchcopy') { const l = lastBench(), done = ok => { b.textContent = ok ? 'Copied' : 'Copy failed'; }; if (!l) return; try { navigator.clipboard.writeText(l.text + '\n\n' + JSON.stringify(l.data)).then(() => done(true), () => done(false)); } catch (x) { done(false); } return; }
   if (b.id === 'oReload') location.reload();
 };
 $('opts').oninput = e => {
