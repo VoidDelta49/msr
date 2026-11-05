@@ -9,7 +9,7 @@ import { at } from './foot.js';
 let AC = null, E = null, lastSpec = null, ambT = 0, crashWas = false, airWas = false, offR = 0, lastT = 0;
 let rdT = -1, onRdC = 0, pFf = null, pFr = null, pTh = 0, suspT = 0, lashT = 0, runWas = false, coolT = 0, coolEnd = 0, scTh = 0, scT = 0; // part-sound edge detectors (suspension hits, chain lash, exhaust cooling)
 const A = {}, Z = { coast: 0, river: 0, town: 0, paddy: 0, volc: 0, wild: 0, sx: 0, sz: 0, rx: 0, rz: 0 };
-const EXH = { gain: [1, 1.35, 1.7], bright: [1, 1.3, 1.6], pq: [1, 1.3, 1.6], crackle: [1, 2.4, 4], drive: [1, 1.15, 1.3], pipe: [1, .92, .85] };
+const EXH = { gain: [1, 1.4, 1.85], bright: [1, 1.3, 1.65], pq: [1, 1.35, 1.7], crackle: [1, 2.6, 4.5], drive: [1, 1.2, 1.4], pipe: [1, .9, .8], body: [1, .95, .88] };
 
 // per-bike part-sound profile: data/bikes/*.json -> sound.parts (level / pitch multipliers, all optional; see CONTEXT "Rules")
 // with a sidecar fitted (spec.sc), sound.sc overrides those keys (steel box rattle, heavier thumps)
@@ -17,6 +17,7 @@ const pv = (k, d = 1) => (ctx.spec?.sc && ctx.spec.sound?.sc?.[k]) ?? ctx.spec?.
 
 // smoothed param set that skips near-identical values (saves automation events every frame)
 function st(p, v, tc) { if (p._v !== undefined && Math.abs(p._v - v) < 1e-4) return; p._v = v; p.setTargetAtTime(v, AC.currentTime, tc); }
+const kv = (p, v) => { if (p._v !== v) p.value = p._v = v; }; // k-rate worklet param: write only on change
 // Silent-voice gating. Every continuous layer (wind, tyres, brake/chain parts, ambience beds) is a looping noise source through its
 // own filters, and the audio thread runs all of them every block even at gain 0: ~30 biquads at 48 kHz, most of them silent at any
 // moment. A voice's feed (source -> first filter) is cut once its gain has sat at 0 long enough to have faded out; the filters then
@@ -105,11 +106,21 @@ function legacy() {
   A.lg = node('gain'); A.o.connect(A.lp); chain(A.o2, A.g2, A.lp); chain(A.lp, sh, A.lg, A.eng); A.o.start(); A.o2.start();
 }
 
+// garage tune -> engine voice. lv(k): how far up a part's option list the bike is set (stock 0 .. top option 1); every bike names
+// its engine parts the same way (cam, intake, cyl, port, tb/carb, piston, valves, ecu/cdi/tune), a part the bike lacks reads 0
+const lv = k => { const p = ctx.bike?.parts?.[k]; return p && ctx.bcfg ? Math.min(1, (ctx.bcfg[k] | 0) / Math.max(1, p.o.length - 1)) : 0; };
 function engineCfg(sp) {
-  const s = sp.sound, x = sp.snd || 0;
+  const s = sp.sound, x = sp.snd || 0, cam = lv('cam'), inl = lv('intake'), bore = lv('cyl'), port = lv('port'), thr = Math.max(lv('tb'), lv('carb')), pis = lv('piston'), ecu = Math.max(lv('ecu'), lv('cdi'), lv('tune'));
+  const fly = clamp(sp.ie / (sp.ie0 || sp.ie), .5, 2); // flywheel (and heavier/lighter internals) vs stock
   E.port.postMessage({
-    cyl: s.cyl || 1, body: s.body, bq: s.bq, punch: s.punch, rough: s.rough, mech: s.mech, intake: s.intake, crackRpm: s.crackRpm || sp.red * .55,
-    pipe: s.pipe * EXH.pipe[x], pq: s.pq * EXH.pq[x], bright: s.bright * EXH.bright[x], crackle: Math.min(1, s.crackle * EXH.crackle[x]), drive: s.drive * EXH.drive[x],
+    cyl: s.cyl || 1, bq: s.bq, crackRpm: s.crackRpm || sp.red * .55, idle: sp.idle, fly, lope: cam,
+    body: s.body * EXH.body[x] * (1 - .1 * bore),                                    // bigger bore: deeper thump
+    punch: s.punch * (1 + .3 * bore + .15 * pis + .1 * ecu) / Math.sqrt(fly),        // light flywheel: sharper pulses
+    rough: s.rough * (1 + .5 * ecu + .3 * bore),                                     // leaner maps and big bores idle less evenly
+    mech: s.mech * (1 + .6 * lv('valves') + .4 * cam + .25 * pis),                   // stiffer springs, more lift: louder valvetrain
+    intake: s.intake * (1 + 3 * inl + 1.5 * thr + .5 * port), inHz: 1 - .2 * inl - .1 * thr, // open filter, big carb: louder, lower induction honk
+    pipe: s.pipe * EXH.pipe[x], pq: s.pq * EXH.pq[x], bright: s.bright * EXH.bright[x] * (1 + .15 * port + .1 * thr + .2 * cam),
+    crackle: Math.min(1, s.crackle * EXH.crackle[x] * (1 + 1.5 * ecu + .5 * cam)), drive: s.drive * EXH.drive[x] * (1 + .1 * bore),
   });
 }
 
@@ -124,7 +135,8 @@ export function updAudio() {
   st(A.eng.gain, (fp ? 1 : .85) * sd.gain * EXH.gain[x] * 1.35, .05);
   if (E) {
     if (sp !== lastSpec) { lastSpec = sp; engineCfg(sp); }
-    const P = E.parameters; P.get('rpm').value = offR; P.get('load').value = S.thrEff || 0; P.get('on').value = run ? 1 : 0; P.get('cut').value = cut ? 1 : 0; P.get('vol').value = on ? 1 : 0;
+    const P = E.P || (E.P = ['rpm', 'load', 'on', 'cut', 'vol'].map(k => E.parameters.get(k)));
+    kv(P[0], offR); kv(P[1], S.thrEff || 0); kv(P[2], run ? 1 : 0); kv(P[3], cut ? 1 : 0); kv(P[4], on ? 1 : 0);
   } else if (A.o) {
     const f = Math.max(1, offR / 120); st(A.o.frequency, f, .015); st(A.o2.frequency, f / 2, .015);
     st(A.lp.frequency, (250 + S.rpm * .11 + S.thrEff * 1200) * [1, 1.35, 1.8][x] * sd.lp, .03); st(A.lp.Q, [3, 5, 8][x], .1);

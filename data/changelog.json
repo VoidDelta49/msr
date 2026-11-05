@@ -1,4 +1,10 @@
 [
+  { "v": "11.74", "d": "2026-11-05", "t": [
+    "Engine sound upgrade: idle is no longer a steady drone. Each firing varies a little in strength and timing and the idle speed hunts gently, more so on rough singles, less on smooth multis.",
+    "Tuning is now clearly audible: a racing cam gives a lumpy, loping idle and more valvetrain clatter; air filters, big throttle bodies and carbs add induction roar; a bore-up thumps deeper and harder; a lightened flywheel sounds choppier and a heavy one smoother; race ECU maps, CDIs and tunes crackle more on the overrun; exhausts step up more in volume, bass and rasp.",
+    "Valve tick is now heard at idle too, where you notice it most on a real bike.",
+    "Engine voice costs about 30% less audio-thread time."
+  ] },
   { "v": "11.73", "d": "2026-11-05", "t": [
     "Garage ENGINE tab now has a sub-menu: Intake & fuel, Head, Bottom end, Ignition, Exhaust and ECU & tuning, each with a count of what you've changed there.",
     "New engine parts, only where they fit the real engine: big-bore throttle body and high-flow injector (fuel-injected singles), Keihin PE24 / PE28 carburettors, ignition coil and racing CDI (TMX and Macho; coil on the Smash), racing valve springs, ported head, forged high-compression piston, bore-up kit (fuel-injected singles; the carb bikes keep theirs under Engine tune), and engine oil for every bike. Cams now move the power up the rev range instead of adding it everywhere.",

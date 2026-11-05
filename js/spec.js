@@ -13,7 +13,7 @@ export function computeSpec(bike, b) {
   const ch = bike.chassis, en = bike.engine;
   const s = {
     type: bike.drivetrain, ...ch,
-    ie: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
+    ie: en.Ie, ie0: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
     peakPS: en.peakPS, tachMax: en.tachMax, ram: en.ram || 0, sound: bike.sound,
     pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0,
   };
