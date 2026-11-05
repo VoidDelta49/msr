@@ -32,7 +32,7 @@ For a custom experiment write a 10-line script on `tools/lib/headless.mjs` (`cre
 ## Limits (know what a green run does NOT cover)
 - Flat ground, no Rapier: suspension heave/pitch, walls, crashes, tricycle roll are NOT simulated (only the bike solver is).
 - Touch/HUD layout is checked by `layout.mjs` + `layout-dom.mjs` (not the main menu or garage; the options panel has its own browser check, `options.mjs`). Changing a button label or size in the top bar / banner / engine buttons: re-run both, they fail if a label stops fitting.
-- Rendering, audio, other UI, multiplayer, WebGPU: only checked statically (syntax/imports/data) or by `smoke.mjs` in a real browser. Draw calls: `smoke.mjs --perf` (exact counts; timings on swiftshader mean nothing). WebGPU does not run on swiftshader (device lost, game falls back).
+- Rendering, audio, other UI, multiplayer, WebGPU: only checked statically (syntax/imports/data) or by `smoke.mjs` in a real browser. Draw calls: `smoke.mjs --perf` (exact counts; timings on swiftshader mean nothing). `smoke.mjs --webgpu` runs WebGPU on swiftshader's Vulkan (GPU culling included) and fails if the game fell back to WebGL.
 - Baseline tolerance is 4% (absolute floors for times); `test.mjs` fails on drift so intended changes need `--update` plus a note in the commit.
 - When a new bike is added: `check` validates its JSON/sound profile and `test` fails with "new metric" until `--update` is run.
 

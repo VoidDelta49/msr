@@ -3,8 +3,9 @@
 // window.__cpm (the debug hook) and fails on any console error / page error.  NEEDS a browser, which the other tools don't:
 //   npm i playwright-core && npx playwright-core install chromium-headless-shell     (in a scratch dir, NOT in the repo)
 //   PW=/path/to/node_modules/playwright-core node tools/smoke.mjs [--bike click125] [--shot out.png] [--webgpu] [--perf [--top N]] [--gfx low|med|high] [--tod 0-23]
-// Default renderer is WebGL 2 (sessionStorage cpmGL, like the game's own fallback). --webgpu tries WebGPU, but on swiftshader the
-// device is lost mid-load and the game reloads into WebGL (seen in 11.43, before and after the batching): WebGPU needs a real device.
+// Default renderer is WebGL 2 (sessionStorage cpmGL, like the game's own fallback). --webgpu runs WebGPU on swiftshader's Vulkan
+// (11.77: without --enable-features=Vulkan --use-vulkan=swiftshader the canvas swap chain can't be created, the device is lost and the
+// game reloads into WebGL) and fails if the game still ended up on WebGL. GPU culling runs for real there (one-pass path).
 // --perf: also teleports the bike to 5 spots (with --shot x.png: one screenshot each, x-0.png...) and prints draw calls / triangles per frame (renderer.info: main + shadow + post
 // passes) plus the biggest groups of visible objects (what to batch next). Swiftshader timings are meaningless; counts are exact.
 // Without playwright it exits 0 with "skipped" so it never blocks tools/test.mjs workflows. First run for real in 11.43 (playwright-core +
@@ -15,7 +16,7 @@ import { serve } from './serve.mjs';
 const a = process.argv.slice(2), opt = (k, d) => { const i = a.indexOf(k); return i >= 0 ? a[i + 1] : d; };
 let pw; try { pw = createRequire(import.meta.url)(process.env.PW || 'playwright-core'); } catch { console.log('smoke: skipped (playwright-core not found; see header of tools/smoke.mjs)'); process.exit(0); }
 const srv = await serve(0), url = `http://localhost:${srv.address().port}/`, errs = [];
-let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu'] }); } catch (e) { console.log('smoke: skipped (no chromium: ' + e.message.split('\n')[0] + ')'); srv.close(); process.exit(0); }
+let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu', ...(a.includes('--webgpu') ? ['--enable-features=Vulkan', '--use-vulkan=swiftshader'] : [])] }); } catch (e) { console.log('smoke: skipped (no chromium: ' + e.message.split('\n')[0] + ')'); srv.close(); process.exit(0); }
 const pg = await br.newPage({ viewport: { width: 900, height: 500 } });
 pg.on('pageerror', e => errs.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 300)); });
 try {
@@ -27,8 +28,9 @@ try {
   const r = await pg.evaluate(async () => {
     const c = window.__cpm, S = c.S, out = {}; c.reset && c.reset();
     for (const id of Object.keys(c.ctx.bikes)) { c.setBike(id); await new Promise(r => setTimeout(r, 150)); out[id] = { v: +S.v.toFixed(2), x: Number.isFinite(S.x) }; }
-    return { bikes: out, build: document.getElementById('mFoot').textContent };
+    return { bikes: out, build: document.getElementById('mFoot').textContent, gpu: !!c.renderer.backend.isWebGPUBackend };
   });
+  if (a.includes('--webgpu') && !r.gpu) errs.push('--webgpu: the game is running on WebGL (WebGPU device lost or unavailable)');
   const bad = Object.entries(r.bikes).filter(([, v]) => !v.x).map(([k]) => k); if (bad.length) errs.push('non-finite position after switching to ' + bad.join(', '));
   if (a.includes('--perf')) for (let i = 0; i < 5; i++) { console.log(await pg.evaluate(perfProbe, [i, +(opt('--top') || 14)])); if (opt('--shot')) await pg.screenshot({ path: opt('--shot').replace(/(\.png)?$/, '-' + i + '.png') }); }
   else if (opt('--shot')) await pg.screenshot({ path: opt('--shot') });
