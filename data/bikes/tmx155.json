@@ -204,12 +204,12 @@
           "pow": 1
         },
         {
-          "n": "Street tune (+4%)",
+          "n": "Street tune (+4%)", "sPun": 0.05, "sRgh": 0.25, "sCrk": 0.75,
           "pow": 1.04,
           "ie": 0.92
         },
         {
-          "n": "Bore-up 165 cc (+11%)", "ccx": 1.106,
+          "n": "Bore-up 165 cc (+11%)", "sPun": 0.1, "sRgh": 0.5, "sCrk": 1.5, "ccx": 1.106,
           "pow": 1.11,
           "ie": 0.9,
           "idle": 1450
@@ -261,11 +261,11 @@
           "n": "Stock"
         },
         {
-          "n": "Sport foam (+3%)",
+          "n": "Sport foam (+3%)", "sIn": 1.5,
           "pow": 1.03
         },
         {
-          "n": "Cold-air intake (+5%)",
+          "n": "Cold-air intake (+5%)", "sIn": 3.0,
           "pow": 1.05
         }
       ]
@@ -292,8 +292,8 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Keihin PE24 (+3%)", "pow": 1.03, "tqs": 0.02, "fux": 1.05 },
-        { "n": "Keihin PE28 (+6%, thirsty)", "pow": 1.06, "tqs": 0.05, "fux": 1.12 }
+        { "n": "Keihin PE24 (+3%)", "sIn": 0.75, "sBri": 0.05, "pow": 1.03, "tqs": 0.02, "fux": 1.05 },
+        { "n": "Keihin PE28 (+6%, thirsty)", "sIn": 1.5, "sBri": 0.1, "pow": 1.06, "tqs": 0.05, "fux": 1.12 }
       ]
     },
     "valves": {
@@ -301,7 +301,7 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Racing springs (+400 rpm limit)", "redd": 400 }
+        { "n": "Racing springs (+400 rpm limit)", "sMech": 0.6, "redd": 400 }
       ]
     },
     "port": {
@@ -309,7 +309,7 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Ported & polished (+3%)", "pow": 1.03, "tqs": 0.02 }
+        { "n": "Ported & polished (+3%)", "sIn": 0.5, "sBri": 0.15, "pow": 1.03, "tqs": 0.02 }
       ]
     },
     "piston": {
@@ -342,7 +342,7 @@
       "int": 1,
       "o": [
         { "n": "Stock (limited)" },
-        { "n": "Racing CDI (+600 rpm limit)", "pow": 1.01, "redd": 600 }
+        { "n": "Racing CDI (+600 rpm limit)", "sPun": 0.1, "sRgh": 0.5, "sCrk": 1.5, "pow": 1.01, "redd": 600 }
       ]
     },
     "brakes": {

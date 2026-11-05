@@ -119,8 +119,8 @@
       "int": 1,
       "o": [
         { "n": "Stock", "pow": 1 },
-        { "n": "Street tune (+4%)", "pow": 1.04, "ie": 0.9 },
-        { "n": "Bore-up kit (+12%)", "ccx": 1.12, "pow": 1.12, "ie": 0.85, "idle": 1500 }
+        { "n": "Street tune (+4%)", "sPun": 0.05, "sRgh": 0.25, "sCrk": 0.75, "pow": 1.04, "ie": 0.9 },
+        { "n": "Bore-up kit (+12%)", "sPun": 0.1, "sRgh": 0.5, "sCrk": 1.5, "ccx": 1.12, "pow": 1.12, "ie": 0.85, "idle": 1500 }
       ]
     },
     "exhaust": {
@@ -153,8 +153,8 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Sport foam (+3%)", "pow": 1.03 },
-        { "n": "Cold-air intake (+5%)", "pow": 1.05 }
+        { "n": "Sport foam (+3%)", "sIn": 1.5, "pow": 1.03 },
+        { "n": "Cold-air intake (+5%)", "sIn": 3.0, "pow": 1.05 }
       ]
     },
     "flywheel": {
@@ -171,7 +171,7 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Racing springs (+400 rpm limit)", "redd": 400 }
+        { "n": "Racing springs (+400 rpm limit)", "sMech": 0.6, "redd": 400 }
       ]
     },
     "port": {
@@ -179,7 +179,7 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Ported & polished (+3%)", "pow": 1.03, "tqs": 0.02 }
+        { "n": "Ported & polished (+3%)", "sIn": 0.5, "sBri": 0.15, "pow": 1.03, "tqs": 0.02 }
       ]
     },
     "piston": {

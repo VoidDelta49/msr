@@ -107,20 +107,19 @@ function legacy() {
   A.lg = node('gain'); A.o.connect(A.lp); chain(A.o2, A.g2, A.lp); chain(A.lp, sh, A.lg, A.eng); A.o.start(); A.o2.start();
 }
 
-// garage parts without a geometric number (filter, carb / throttle body, head work, valve springs, ECU / CDI / tune) scale levels:
-// lv(k) = how far up that part's option list the bike is set, 0 stock .. 1 top option; a part the bike lacks reads 0
-const lv = k => { const p = ctx.bike?.parts?.[k]; return p && ctx.bcfg ? Math.min(1, (ctx.bcfg[k] | 0) / Math.max(1, p.o.length - 1)) : 0; };
+// garage parts: the physical ones arrive through acoustics() (ccx, crd, evo, muf, hdr); the rest as summed sound levels (sIn, sBri,
+// sMech, sPun, sRgh, sCrk on the part options, see spec.js). A racing cam's earlier exhaust opening (evo) also lumps the idle
 function engineCfg(sp) {
-  const s = sp.sound, x = sp.snd || 0, inl = lv('intake'), port = lv('port'), thr = Math.max(lv('tb'), lv('carb')), ecu = Math.max(lv('ecu'), lv('cdi'), lv('tune')), lope = Math.min(1, sp.evo / 8);
+  const s = sp.sound, x = sp.snd || 0, lope = Math.min(1, sp.evo / 8);
   const fly = clamp(sp.ie / (sp.ie0 || sp.ie), .5, 2); // flywheel (and heavier/lighter internals) vs stock
   E.port.postMessage({
     ...acoustics(sp), cyl: s.cyl || 1, crackRpm: s.crackRpm || sp.red * .55, idle: sp.idle, fly, lope, pq: s.pq * EXH.pq[x], bq: s.bq * (2 - sp.muf),
-    punch: s.punch * sp.ccx * (1 + sp.evo / 40 + .1 * ecu) / Math.sqrt(fly), // pulse volume ~ swept volume; earlier opening = higher blowdown pressure
-    rough: s.rough * (1 + .5 * ecu + .3 * (sp.ccx - 1) * 8),                   // leaner maps and big bores idle less evenly
-    mech: s.mech * (1 + .6 * lv('valves') + .4 * lope),                         // stiffer springs, more lift: louder valvetrain
-    intake: s.intake * (1 + 3 * inl + 1.5 * thr + .5 * port),                  // open filter, big carb / throttle body: louder induction
-    bright: s.bright * EXH.bright[x] * (1 + .15 * port + .1 * thr + .2 * lope),
-    crackle: Math.min(1, s.crackle * EXH.crackle[x] * (1 + 1.5 * ecu + .5 * lope)), drive: s.drive * EXH.drive[x] * sp.ccx ** .8,
+    punch: s.punch * sp.ccx * (1 + sp.evo / 40 + sp.sPun) / Math.sqrt(fly), // pulse volume ~ swept volume; earlier opening = higher blowdown pressure
+    rough: s.rough * (1 + sp.sRgh + .3 * (sp.ccx - 1) * 8),                 // leaner maps and big bores idle less evenly
+    mech: s.mech * (1 + sp.sMech + .4 * lope),                             // stiffer springs, more lift: louder valvetrain
+    intake: s.intake * (1 + sp.sIn),                                       // open filter, big carb / throttle body: louder induction
+    bright: s.bright * EXH.bright[x] * (1 + sp.sBri + .2 * lope),
+    crackle: Math.min(1, s.crackle * EXH.crackle[x] * (1 + sp.sCrk + .5 * lope)), drive: s.drive * EXH.drive[x] * sp.ccx ** .8,
   });
 }
 

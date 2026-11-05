@@ -1,4 +1,7 @@
 [
+  { "v": "11.76", "d": "2026-11-05", "t": [
+    "Engine-sound effects of air filters, carbs and throttle bodies, head work, valve springs and ECU / CDI / tune options now live on each part option in the bike data, so new parts can change the sound without code changes. Sound is unchanged, except that a racing CDI and an engine tune now stack their crackle and roughness instead of only the bigger one counting."
+  ] },
   { "v": "11.75", "d": "2026-11-05", "t": [
     "Engine sound is now worked out from each bike's real engine: bore, stroke, compression ratio and peak-power rpm set the exhaust header (A. Graham Bell's tuned-length and diameter formulas), the muffler (a Helmholtz resonator) and the intake runner (the tuned-runner formula), so every bike's note comes from its own hardware.",
     "The header now rings like a real pipe (odd harmonics, rising in pitch as the exhaust gas heats up under load), each exhaust pulse lasts a fixed crank angle so it gets shorter and sharper as the revs climb, the muffler sound is radiated the way a real tailpipe radiates it, valve clatter follows mean piston speed and combustion knock follows compression.",

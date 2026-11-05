@@ -9,7 +9,10 @@ const MUL = new Set(['pow', 'ie', 'csp', 'brake', 'capx', 'etax', 'frx', 'fux', 
 // redd: rpm added to the rev limit, e.g. valve springs or a racing CDI; crd: compression ratio points, e.g. a high-comp piston;
 // evo: degrees earlier the exhaust valve opens, e.g. a racing cam). Exhaust options replace muf (muffler volume vs stock, 0 = open
 // pipe) and hdr (header length vs A. G. Bell's tuned length: stock headers are packaged short, 0.85). audio.js reads these + geo
-const ADD = new Set(['dm', 'tqs', 'redd', 'crd', 'evo']);
+// Engine-sound levels for parts with no geometric number (filter, carb / throttle body, head work, valve springs, ECU / CDI / tune)
+// also add, summed over every fitted option: sIn induction, sBri exhaust brightness, sMech valvetrain, sPun pulse punch,
+// sRgh idle roughness, sCrk overrun crackle (each 0 stock, e.g. sIn 3 = 4x the stock induction level). audio.js engineCfg reads them
+const ADD = new Set(['dm', 'tqs', 'redd', 'crd', 'evo', 'sIn', 'sBri', 'sMech', 'sPun', 'sRgh', 'sCrk']);
 
 export function computeSpec(bike, b) {
   const ch = bike.chassis, en = bike.engine;
@@ -17,7 +20,7 @@ export function computeSpec(bike, b) {
     type: bike.drivetrain, ...ch,
     ie: en.Ie, ie0: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
     peakPS: en.peakPS, tachMax: en.tachMax, ram: en.ram || 0, sound: bike.sound, geo: en.geo,
-    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, ccx: 1, crd: 0, evo: 0, muf: 1, hdr: .85, cfb: 0, cff: 0, cfw: 0, cfx: 0,
+    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, ccx: 1, crd: 0, evo: 0, muf: 1, hdr: .85, sIn: 0, sBri: 0, sMech: 0, sPun: 0, sRgh: 0, sCrk: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0,
   };
   for (const [k, p] of Object.entries(bike.parts)) {
     const o = p.o[b[k]] || p.o[0];

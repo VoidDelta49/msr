@@ -182,14 +182,14 @@
           "idle": 1300
         },
         {
-          "n": "Street tune",
+          "n": "Street tune", "sPun": 0.05, "sRgh": 0.25, "sCrk": 0.75,
           "pow": 1.04,
           "red": 13000,
           "ie": 0.95,
           "idle": 1300
         },
         {
-          "n": "Race map",
+          "n": "Race map", "sPun": 0.1, "sRgh": 0.5, "sCrk": 1.5,
           "pow": 1.08,
           "red": 13300,
           "ie": 0.9,
@@ -245,8 +245,8 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Sport foam (+3%)", "pow": 1.03 },
-        { "n": "Cold-air intake (+5%)", "pow": 1.05 }
+        { "n": "Sport foam (+3%)", "sIn": 1.5, "pow": 1.03 },
+        { "n": "Cold-air intake (+5%)", "sIn": 3.0, "pow": 1.05 }
       ]
     },
     "flywheel": {

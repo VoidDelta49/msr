@@ -187,14 +187,14 @@
           "idle": 1400
         },
         {
-          "n": "Street tune",
+          "n": "Street tune", "sPun": 0.05, "sRgh": 0.25, "sCrk": 0.75,
           "pow": 1.05,
           "red": 10500,
           "ie": 0.9,
           "idle": 1400
         },
         {
-          "n": "Race map",
+          "n": "Race map", "sPun": 0.1, "sRgh": 0.5, "sCrk": 1.5,
           "pow": 1.1,
           "red": 11000,
           "ie": 0.8,
@@ -251,11 +251,11 @@
           "n": "Stock"
         },
         {
-          "n": "Sport foam (+3%)",
+          "n": "Sport foam (+3%)", "sIn": 1.5,
           "pow": 1.03
         },
         {
-          "n": "Cold-air intake (+5%)",
+          "n": "Cold-air intake (+5%)", "sIn": 3.0,
           "pow": 1.05
         }
       ]
@@ -282,7 +282,7 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Big-bore throttle body (+3%)", "pow": 1.03, "tqs": 0.03, "fux": 1.04 }
+        { "n": "Big-bore throttle body (+3%)", "sIn": 1.5, "sBri": 0.1, "pow": 1.03, "tqs": 0.03, "fux": 1.04 }
       ]
     },
     "injector": {
@@ -298,7 +298,7 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Racing springs (+400 rpm limit)", "redd": 400 }
+        { "n": "Racing springs (+400 rpm limit)", "sMech": 0.6, "redd": 400 }
       ]
     },
     "port": {
@@ -306,7 +306,7 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Ported & polished (+3%)", "pow": 1.03, "tqs": 0.02 }
+        { "n": "Ported & polished (+3%)", "sIn": 0.5, "sBri": 0.15, "pow": 1.03, "tqs": 0.02 }
       ]
     },
     "cyl": {
