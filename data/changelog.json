@@ -1,4 +1,7 @@
 [
+  { "v": "11.78", "d": "2026-11-05", "t": [
+    "WebGPU (and WebGL on GPUs without multi-draw): street-lamp halos are no longer drawn in daylight. They were invisible by day (opacity 0) but still drawn as blended quads, about 15 draws a frame for nothing. They come back as before when the lamps switch on at sunset."
+  ] },
   { "v": "11.77", "d": "2026-11-05", "t": [
     "WebGPU (most phones on recent Chrome): GPU-culled props now cast shadows from their own shadow-only copy holding just the props around the bike. Before, every shadow-map refresh (about every 8 m of riding) re-drew every visible prop out to the draw distance, and every frame drew the ring of shadow casters behind the camera too. Shadows look the same; the periodic GPU spike on shadow refreshes is much smaller."
   ] },

@@ -25,11 +25,12 @@ export function mergeByMaterial(grp, merge) {
 
 /* ---------- distance culling ---------- */
 const ITEMS = [], LODS = [], box = new THREE.Box3(), sph = new THREE.Sphere();
-// hide `o` once the camera is further than `far` from its bounding sphere
-export function cullFar(o, far) {
+// hide `o` once the camera is further than `far` from its bounding sphere. gate: optional () => bool that must also hold
+// (11.78: lights.lampsOn for the chunked night-only halos, which were drawn all day at opacity 0 on WebGPU / WebGL without multi-draw)
+export function cullFar(o, far, gate = null) {
   if (o.isInstancedMesh) { o.computeBoundingSphere(); sph.copy(o.boundingSphere); }
   else { o.updateMatrixWorld(true); box.setFromObject(o).getBoundingSphere(sph); }
-  ITEMS.push({ o, x: sph.center.x, z: sph.center.z, r: sph.radius, far: Math.min(far, DRAW) });
+  ITEMS.push({ o, x: sph.center.x, z: sph.center.z, r: sph.radius, far: Math.min(far, DRAW), gate });
 }
 // same for a piece that is not an object (a BatchedMesh instance): o = anything with a visible setter, s = its world sphere
 export function cullFarSphere(o, s, far) { ITEMS.push({ o, x: s.center.x, z: s.center.z, r: s.radius, far: Math.min(far, DRAW) }); }
@@ -41,7 +42,7 @@ let frame = 0;
 export function cullUpdate(camera) {
   const e = camera.matrixWorld.elements, cx = e[12], cz = e[14];
   if (frame++ & 3) return; // whole-object distance checks: every 4th frame is plenty at bike speeds
-  for (const it of ITEMS) { const dx = it.x - cx, dz = it.z - cz, f = it.far + it.r; it.o.visible = dx * dx + dz * dz < f * f; }
+  for (const it of ITEMS) { const dx = it.x - cx, dz = it.z - cz, f = it.far + it.r; it.o.visible = dx * dx + dz * dz < f * f && (!it.gate || it.gate()); }
   for (const t of LODS) {
     const ex = Math.max(t.x0 - cx, 0, cx - t.x1), ez = Math.max(t.z0 - cz, 0, cz - t.z1), d = Math.sqrt(ex * ex + ez * ez);
     const k = d > DRAW ? -1 : d < LOD_D[0] ? 0 : d < LOD_D[1] ? 1 : d < LOD_D[2] ? 2 : 3;

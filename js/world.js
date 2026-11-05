@@ -8,7 +8,7 @@ import { cfg, Q, BUILD } from './config.js';
 import { attribute, texture, uv, vec2, vec3, float, select } from 'three/tsl';
 import { gpuInst, finishGpuInst } from './gpucull.js';
 import * as T from './tex.js';
-import { glowMat, lampMat, poolMat, haloMat, poolPatches, HALO_GEO, nightOnly } from './lights.js';
+import { glowMat, lampMat, poolMat, haloMat, poolPatches, HALO_GEO, nightOnly, isNight, lampsOn } from './lights.js';
 import { mkTex } from './tex.js';
 import { DRAW, FAR, freeze, cullFar, cullFarSphere, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
 import { buildRoads, groundModel } from './roads.js';
@@ -142,7 +142,7 @@ function inst(geo,mat,list,shadow=true,far=FAR.big,lo){ // lo: low-detail twin g
   // was drawn into the shadow map. Casters get their own 140 m chunks on layer 1 (only the shadow camera sees it, the
   // same trick as the old bike proxy), so the shadow pass draws only the few chunks around the bike.
   const sh=shadow&&Q.shadow>0;
-  for(const L of cells(CHUNK)){const m=mkI(L,mat,true);m.castShadow=false;m.receiveShadow=true;cullFar(m,far)}
+  for(const L of cells(CHUNK)){const m=mkI(L,mat,true);m.castShadow=false;m.receiveShadow=true;cullFar(m,far,isNight(mat)?lampsOn:null)}
   if(sh)for(const L of cells(SHCH)){const m=mkI(L,SHM,false);m.castShadow=true;m.receiveShadow=false;m.layers.set(1)}}
 const SHCH=140,SHM=new THREE.MeshBasicMaterial();
 // Two prop parts placed by the same list (palm trunk + fronds, tree trunk + crown, jeepney body + wheels, nipa hut +
