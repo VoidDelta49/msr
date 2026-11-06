@@ -217,27 +217,9 @@
     "paint": {
       "l": "Paint",
       "o": [
-        {
-          "n": "Grand Prix Red",
-          "c": "#b3121d",
-          "lv": "tri",
-          "rim": "#c8141f",
-          "hd": "#f4f4f0"
-        },
-        {
-          "n": "Matt Gunpowder Black",
-          "c": "#3b3d42",
-          "lv": "red",
-          "rough": 0.78,
-          "hd": "#8d9095"
-        },
-        {
-          "n": "Graphite Black",
-          "c": "#25272b",
-          "lv": "cop",
-          "hd": "#ecebe6",
-          "ec": "#9a7650"
-        }
+        { "n": "Grand Prix Red (Tricolour)", "c": "#b3121d", "lv": "tri", "rim": "#c8141f", "hd": "#f4f4f0" },
+        { "n": "Matt Gunpowder Black Metallic", "c": "#3b3d42", "lv": "red", "rough": 0.78, "hd": "#8d9095" },
+        { "n": "Matt Gunpowder Black (2026, yellow)", "c": "#2b2e33", "lv": "yel", "rough": 0.78, "hd": "#f2c500" }
       ]
     },
     "intake": {

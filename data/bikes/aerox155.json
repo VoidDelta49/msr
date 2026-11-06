@@ -4,7 +4,7 @@
   "short": "Aerox 155",
   "tag": "CVT automatic · VVA · maxi-sport",
   "class": "SCOOTER",
-  "blurb": "155.09 cc liquid-cooled SOHC 4-valve single with VVA (58.0 × 58.7 mm, 11.6:1), 15.4 PS @ 8,000 rpm, 13.9 Nm @ 6,500 rpm. V-belt CVT (2.300–0.724) with a dry centrifugal clutch, 230 mm front disc (ABS on the S), 130 mm rear drum, 14\" alloys (110/80-14, 140/70-14), twin rear shocks, 1,350 mm wheelbase, 126 kg wet, 5.5 L tank, Stop & Start System.",
+  "blurb": "155.09 cc liquid-cooled SOHC 4-valve single with VVA (58.0 × 58.7 mm, 11.6:1), 15.4 PS @ 8,000 rpm, 13.9 Nm @ 6,500 rpm. V-belt CVT (2.300–0.724) with a dry centrifugal clutch, 230 mm discs front and rear (ABS on the SP), 14\" alloys (110/80-14, 140/70-14), twin rear shocks, 1,350 mm wheelbase, 126 kg wet, 5.5 L tank, Stop & Start System.",
   "model": "aerox",
   "cluster": "scooter",
   "drivetrain": "cvt",
@@ -305,39 +305,10 @@
     "paint": {
       "l": "Paint",
       "o": [
-        {
-          "n": "Matte Black / Cyan",
-          "c": "#1c1d20",
-          "lv": "c",
-          "rough": 0.7,
-          "wc": "#16171a",
-          "rim": "#16b3cc"
-        },
-        {
-          "n": "Icon Blue",
-          "c": "#1d4fc8",
-          "lv": "k",
-          "wc": "#1d4fc8"
-        },
-        {
-          "n": "Matte Gray / Cyan",
-          "c": "#5c6168",
-          "lv": "c",
-          "rough": 0.7,
-          "wc": "#16b3cc"
-        },
-        {
-          "n": "White / Red",
-          "c": "#ecece8",
-          "lv": "r",
-          "wc": "#d0331f"
-        },
-        {
-          "n": "Black / Red",
-          "c": "#1c1d20",
-          "lv": "r",
-          "wc": "#d0331f"
-        }
+        { "n": "Race Blue", "c": "#1a4fb0", "rough": 0.35, "metal": 0.25 },
+        { "n": "Glaze Blue", "c": "#e6ecf0", "rough": 0.4 },
+        { "n": "Yamaha Black", "c": "#15161a", "rough": 0.35 },
+        { "n": "SP Matte Blue", "c": "#2b4a8e", "lv": "r", "rough": 0.72, "wc": "#c21d1d", "rim": "#c21d1d" }
       ]
     },
     "intake": {

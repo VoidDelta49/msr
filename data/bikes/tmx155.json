@@ -236,21 +236,8 @@
     "paint": {
       "l": "Paint",
       "o": [
-        {
-          "n": "Red",
-          "c": "#c3161d",
-          "lv": "r"
-        },
-        {
-          "n": "Black",
-          "c": "#16171a",
-          "lv": "k"
-        },
-        {
-          "n": "Blue",
-          "c": "#1d3f9e",
-          "lv": "b"
-        }
+        { "n": "Candy Ruby Red", "c": "#b01e23", "lv": "r" },
+        { "n": "Fiery Black", "c": "#111214", "lv": "k" }
       ]
     },
     "intake": {

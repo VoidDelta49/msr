@@ -157,11 +157,11 @@
     "paint": {
       "l": "Paint",
       "o": [
-        { "n": "Pearl White", "c": "#ecece8", "rough": 0.5, "wc": "#c3c8cd" },
-        { "n": "Matte Black", "c": "#1c1d20" },
-        { "n": "Candy Red", "c": "#a8161c" },
-        { "n": "Matte Gray", "c": "#5d6166" },
-        { "n": "Cyan", "c": "#16b3cc" }
+        { "n": "Pearl Arctic White", "c": "#ecece8", "rough": 0.45 },
+        { "n": "Pearl Sylvestris Gray", "c": "#8c9096", "rough": 0.4, "metal": 0.3 },
+        { "n": "Obsidian Black Metallic", "c": "#1b1c1f", "rough": 0.35, "metal": 0.35 },
+        { "n": "Mat Axis Gray Metallic (Smart)", "c": "#4a4e54", "lv": "m", "rough": 0.72, "metal": 0.2, "hd": "#d6a93a" },
+        { "n": "Mat Fresco Brown (Smart)", "c": "#6a5445", "lv": "m", "rough": 0.72, "hd": "#d6a93a" }
       ]
     },
     "intake": {

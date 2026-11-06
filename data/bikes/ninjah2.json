@@ -232,31 +232,9 @@
   "paint": {
    "l": "Paint",
    "o": [
-    {
-     "n": "Mirror chrome / black",
-     "c": "#c3c9d0",
-     "metal": 0.55,
-     "rough": 0.18,
-     "lv": "m",
-     "rim": "#3fae2a",
-     "hd": "#e9e9e4"
-    },
-    {
-     "n": "Matte mirror / carbon",
-     "c": "#5d636b",
-     "metal": 0.45,
-     "rough": 0.55,
-     "lv": "c",
-     "rim": "#3fae2a",
-     "hd": "#9aa0a8"
-    },
-    {
-     "n": "Gloss black / green",
-     "c": "#1b1d21",
-     "lv": "k",
-     "rim": "#3fae2a",
-     "hd": "#3fae2a"
-    }
+        { "n": "Mirror Coated Spark Black", "c": "#c3c9d0", "metal": 0.55, "rough": 0.18, "lv": "m", "rim": "#3fae2a", "hd": "#e9e9e4" },
+        { "n": "Mirror Coated Matte Spark Black (Carbon)", "c": "#5d636b", "metal": 0.45, "rough": 0.55, "lv": "c", "rim": "#3fae2a", "hd": "#9aa0a8" },
+        { "n": "Gloss black / green", "c": "#1b1d21", "lv": "k", "rim": "#3fae2a", "hd": "#3fae2a" }
    ]
   },
   "flywheel": {

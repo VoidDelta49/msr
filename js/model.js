@@ -168,7 +168,7 @@ function drawLivery(kind, paint, lv = '') {
       R(Bl, 365, 145, 420, 149, 477, 164, 486, 171, 440, 167, 392, 157); R(W, 432, 147, 462, 150, 476, 160, 446, 157);
       R(Bl, 352, 180, 400, 178, 402, 186, 356, 192); R(W, 401, 180, 441, 178, 431, 200, 405, 203);
     } else { // black schemes: one pinstripe along the fairing, the belly pan and the tail (red on Matt Gunpowder, copper on Graphite)
-      const c = lv === 'cop' ? '#c8742f' : '#c01c24';
+      const c = lv === 'cop' ? '#c8742f' : lv === 'yel' ? '#f2c500' : '#c01c24';                            // 2026 EU black: bright yellow accent
       line(c, .02, 900, 345, 1047, 354, 1080, 378, 866, 462); line(c, .016, 714, 606, 833, 640); line(c, .016, 250, 272, 380, 296, 402, 330);
     }
   } else if (kind === 'h2') { // Ninja H2 (reference photos): dark tank top and upper nose, dark tail underside and lower side-wing fins over the
@@ -195,8 +195,8 @@ function drawLivery(kind, paint, lv = '') {
     poly(Bl, .42, .77, .56, .86, .66, .9, .6, .82, .5, .75); poly(Bl, .66, .82, .8, .86, .72, .8); // blue fades
     poly(K, -1, .76, -.45, .76, -.45, 1.3, -1, 1.3);                                             // cowl black
     poly(Bl, -.32, 1.075, -.5, 1.0, -.6, .94, -.62, .925, -.5, .975, -.32, 1.05);               // blue edge stripe on the cowl
-  } else if (kind === 'sport') { // Raider R150 Fi: white/paint upper shroud with an orange slash, black lower shroud, black "R150" blocks on the side panel, black tail
-    const O = '#e8731e';
+  } else if (kind === 'sport') { // Raider R150: paint upper shroud with an accent slash, black lower shroud, black "R150" blocks on the side panel, black tail
+    const O = { r: '#c01c24', w: '#e8e8e3', k: '#4a4d52', y: '#f2c500' }[lv] || '#e8731e';             // MY2026 accents (from the paint name; graphics layout estimated)
     poly(K, -.42, .3, .1, .3, .1, .63, -.06, .62, -.2, .56, -.42, .58);                       // lower shroud + radiator area
     poly(O, -.31, .80, -.12, .80, -.02, .71, -.07, .69, -.18, .75, -.31, .755);               // orange slash
     poly(K, -.27, .78, -.17, .78, -.14, .76, -.25, .76);                                       // emblem bar
@@ -220,6 +220,7 @@ function drawLivery(kind, paint, lv = '') {
     if (lv === 'wb') { poly(N, -.6, .3, -.2, .3, -.2, .6, -.46, .58, -.6, .5); poly(N, -.1, .3, .45, .3, .45, .56, .1, .55, -.1, .5); sweep(R, 0); sweep(N, -.035); }
     else if (lv === 'kr') { poly(G, .1, .58, .5, .66, .8, .74, .55, .62); sweep(R, .02, .016); poly(R, -.52, .62, -.42, .72, -.42, .74, -.52, .645); }
     else if (lv === 'ng') { poly(K, .55, .62, 1.0, .62, 1.0, .9, .75, .8); sweep(Au, 0, .014); sweep(Au, -.03, .014); sweep(Au, -.06, .014); }
+    else if (lv === 'sb') { poly(K, .05, .3, 1.05, .3, 1.05, .62, .55, .6, .3, .55, .05, .52); sweep('#c8ccd2', .02, .016); sweep(R, -.012, .01); } // Smash Fi Matte Stellar Blue: silver sweep with a red pinline
     else { poly(K, .05, .3, 1.05, .3, 1.05, .9, .9, .84, .55, .7, .3, .6, .05, .56); poly(K, -.6, 1.04, -.2, 1.04, -.2, 1.2, -.6, 1.2); sweep(W, .03, .016); sweep(W, 0, .016); }
   } else if (kind === 'aerox') { // Aerox 155 (reference photos): black V face, lower apron and lower rear, sharp accent slashes on the apron and the rear body
     const A = lv === 'c' ? '#16b3cc' : lv === 'r' ? '#d0331f' : K;
@@ -259,10 +260,12 @@ function drawLivery(kind, paint, lv = '') {
   } else {                // Click 125i (reference photos): white wings and floor skirt, gloss black front face, apron, vent slashes and lower rear
     poly(K, -.8, .5, -.535, .6, -.485, .72, -.42, .865, -.37, .9, -.2, .9, -.2, 1.2, -.8, 1.2); // black front face (thin band at the front edge + the top)
     poly(K, -.8, .36, -.32, .36, -.3, .45, -.38, .55, -.8, .57);                               // lower apron (the floor skirt below stays body colour)
-    poly(K, -.40, .62, -.26, .72, -.26, .735, -.40, .64); poly(K, -.38, .665, -.25, .785, -.25, .8, -.38, .68); // wing vent slashes
-    poly(K, .0, .36, .32, .36, .36, .3, .9, .3, .9, .6, .52, .5, .14, .47, .0, .5);             // lower rear
-    poly(K, .1, .56, .64, .72, .64, .73, .1, .57);                                             // crease line
-    poly(K, .82, .3, 1.05, .3, 1.05, 1.2, .86, 1.2);                                           // tail tip
+    if (lv !== 'm') { // two-tone Standard (2026: Pearl Sylvestris Gray, Pearl Arctic White, Obsidian Black); the matte Smart Edition is solid colour
+      poly(K, -.40, .62, -.26, .72, -.26, .735, -.40, .64); poly(K, -.38, .665, -.25, .785, -.25, .8, -.38, .68); // wing vent slashes
+      poly(K, .0, .36, .32, .36, .36, .3, .9, .3, .9, .6, .52, .5, .14, .47, .0, .5);           // lower rear
+      poly(K, .1, .56, .64, .72, .64, .73, .1, .57);                                           // crease line
+      poly(K, .82, .3, 1.05, .3, 1.05, 1.2, .86, 1.2);                                         // tail tip
+    }
   }
   LIV.t.needsUpdate = true;
 }
@@ -349,12 +352,14 @@ function controls(st, y, z, hw, lv, mir, noClu) {
   }
 }
 
-/* ---------- sport underbone (Suzuki Raider R150 Fi) ---------- */
+/* ---------- sport underbone (Suzuki Raider R150, 5th gen MY2026 Blade / Shadow) ---------- */
+// MY2026 (launched Nov 2025): "air-slicing" panels with small plane-style winglets on the front shrouds, full-LED head and tail
+// lamps (Blade keeps the Raider-shaped headlamp), full-digital cluster, petal discs both ends, 17" cast mags.
 // Hyper-underbone. Reference: white/black/orange. Sharp handlebar cowl (white wings, black face, LED lamp, smoked
 // visor), black spine, big angular shrouds over the radiator, white side panel with black blocks, black upswept tail
 // with grab rails and a long plate hanger, silver heat-shielded can, copper 6-spoke mags with petal discs.
 function sport(ct) {
-  B.G = { rw: .29, rearZ: .65, fork: .728, rake: .436, pivotY: .42, pivotZ: .08, swingX: 0 }; B.wheelCol = 0xb8682c; B.cargo = { y: .9, z: .47 };
+  B.G = { rw: .29, rearZ: .65, fork: .728, rake: .436, pivotY: .42, pivotZ: .08, swingX: 0 }; B.wheelCol = 0x16171a; B.cargo = { y: .9, z: .47 };
   B.rearH = new THREE.Group(); B.rearH.position.set(0, .29, .65); ct.add(B.rearH); B.rearW = wheelG(.25, .04, .212, 5, .02, true, .095); B.rearH.add(B.rearW);
   mk(cyl(.075, .075, .012, 10), MB, B.rearH, -.065, 0, 0, 0, 0, PI / 2);                                       // sprocket
   mk(arc(.305, .33, 1.35, 2.6, .11), MF, B.rearH, 0, 0, 0);                                                   // inner rear fender
@@ -371,6 +376,7 @@ function sport(ct) {
   mk(prof([[-.31, .93], [-.14, .92, .02, .86], [.08, .8], [.05, .72], [-.18, .72], [-.3, .8]], .22, .02), MK, ct, 0, 0, 0); // black spine / "tank"
   mk(prof([[-.31, .88], [-.18, .87], [-.06, .83], [.05, .71], [-.02, .62], [-.06, .45], [-.18, .42], [-.37, .57], [-.34, .68]], .32, .022), MP, ct, 0, 0, 0); // shroud (front edge: forward wedge over the radiator)
   mk(prof([[-.05, .47], [.03, .4], [-.03, .28], [-.16, .15], [-.22, .17], [-.22, .33], [-.17, .42]], .29, .02), MP, ct, 0, 0, 0); // belly pan chin
+  for (const s of [-1, 1]) for (const [y, z, w] of [[.7, -.27, .07], [.62, -.3, .06]]) mk(box(w, .012, .11), MK, ct, s * (.155 + w / 2), y, z, .15, 0, s * -.18); // MY2026 winglets on the shrouds
   mk(prof([[.04, .8], [.36, .82], [.6, .87], [.62, .82], [.42, .7], [.18, .62], [.04, .64]], .24, .02), MP, ct, 0, 0, 0); // side panel
   mk(prof([[.52, .86], [.76, .905], [.9, .935], [.92, .905], [.82, .82], [.6, .78], [.5, .8]], .17, .02), MP, ct, 0, 0, 0); // tail
   mk(prof([[.04, .66], [.34, .7], [.4, .58], [.3, .48], [.08, .48]], .2, .01), MK, ct, 0, 0, 0);            // frame cover
@@ -394,7 +400,7 @@ function sport(ct) {
   mk(profSt([[-.3, 1.1], [-.42, 1.08], [-.56, .98], [-.63, .9], [-.58, .86], [-.46, .88], [-.36, .92], [-.3, .98]], .27, .02), MP, st, 0, 0, 0); // cowl
   mk(profSt([[-.46, 1.03], [-.6, .92], [-.645, .88], [-.6, .855], [-.5, .9]], .14, .012), MK, st, 0, 0, 0);    // black face
   mk(profSt([[-.31, 1.1], [-.43, 1.085], [-.5, 1.04], [-.45, 1.13], [-.33, 1.17]], .2, .008), MVisG, st, 0, 0, 0); // smoked grey visor
-  mkSt(box(.14, .1, .02), MC, 0, -.633, .909, .85); mkSt(box(.08, .045, .02), MHead, 0, -.641, .91, .85);         // clear multi-reflector headlamp
+  mkSt(box(.15, .1, .02), MK, 0, -.633, .909, .85); mkSt(box(.12, .02, .02), MHead, 0, -.641, .93, .85); mkSt(box(.09, .02, .02), MHead, 0, -.641, .888, .85); // full-LED headlamp (two light bars in a dark housing)
   for (const s of [-1, 1]) { mkSt(box(.05, .014, .02), MHead, s * .1, -.53, .99, .85, 0, s * .5); mkSt(box(.03, .03, .07), MAmb, s * .14, -.5, .93); } // position LEDs, signals
   clusterPlane(st, 0, .2, -.08, -.9);
   controls(st, .16, .07, .29, .2, [.3, .17, -.06]);
@@ -415,11 +421,13 @@ function sport(ct) {
   };
 }
 
-/* ---------- step-through scooter (Honda Click 125i) ---------- */
+/* ---------- step-through scooter (Honda Click125, 2026 facelift of the 2022 body) ---------- */
 // 14" wheels (100/80-14 rear ≈ 0.258 m radius), 1.28 m wheelbase, ~26.5° rake, 769 mm seat, unit-swing engine/CVT
 // case on the left. Reference: white/black/blue. Sharp front with a black face and swept LED eyes at the nose, white
 // wings, black handlebar cover with the meter, black tunnel and floor, big white rear panels over a black lower rear,
-// tail lamp under the grab rail, long plate hanger, chunky black muffler, black twin-spoke wheels.
+// tail lamp under the grab rail, long plate hanger, chunky black muffler with an aluminium end cap, black twin-spoke wheels.
+// 2026 ("Game Changer Upgrade", Top Gear PH): open vents/ducts in the side fairings, a one-piece sculpted grab bar, bag hook
+// by the floor, 3D "Click" badge on the rear body (gold on the matte Smart Edition: the decal colour hd, pseudo-letters).
 function scooter(ct) {
   const rw = .258, rake = .46, headY = .86, fork = (headY - rw) / Math.cos(rake), headZ = -.64 + fork * Math.sin(rake);
   B.G = { rw, rearZ: .64, fork, rake, pivotY: .34, pivotZ: .02, swingX: -.1 }; B.wheelCol = 0x1c1d21; B.cargo = { y: .78, z: .46 };
@@ -437,12 +445,15 @@ function scooter(ct) {
   mk(box(.03, .04, .03), MC, ct, 0, .62, -.15);                                                               // bag hook
   mk(prof([[-.52, .62], [-.46, .76], [-.4, .88], [-.36, .92], [-.25, .92], [-.21, .7], [-.16, .38], [-.3, .33], [-.36, .45], [-.42, .53], [-.5, .56]], .42, .03), MP, ct, 0, 0, 0); // front body
   mk(prof([[-.585, .58], [-.53, .66], [-.47, .74], [-.44, .7], [-.46, .56], [-.54, .55]], .26, .02), MK, ct, 0, 0, 0); // black nose
+  for (const s of [-1, 1]) for (const [y, z] of [[.66, -.37], [.72, -.35]]) mk(box(.024, .024, .13), MB, ct, s * .212, y, z, -.75, 0, 0); // 2026 side-fairing ducts (open slots)
+  B.decal = MDec; for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.15, .034), MDec, ct, s * .153, .66, .44, 0, s * PI / 2, -.14 * s); // 3D "Click" badge
   for (const s of [-1, 1]) { mk(box(.12, .034, .022), MHead, ct, s * .07, .62, -.567, .6, 0, s * .42); mk(box(.04, .02, .02), MAmb, ct, s * .12, .67, -.535, .6, 0, s * .3); } // LED eyes, signals
   mk(prof([[-.02, .33], [.14, .33], [.18, .6], [.1, .72], [0, .72], [-.06, .56]], .26, .015), MK, ct, 0, 0, 0); // under-seat tunnel
   mk(prof([[.04, .7], [.4, .74], [.72, .785], [.87, .775], [.9, .72], [.8, .63], [.56, .53], [.34, .5], [.16, .5], [.06, .58]], .3, .03), MP, ct, 0, 0, 0); // rear body
   mk(prof([[.12, .47], [.3, .45], [.52, .51], [.62, .4], [.5, .3], [.18, .3]], .26, .01), MK, ct, 0, 0, 0);  // lower rear cover
   mk(prof([[0, .73], [.05, .765], [.3, .775], [.55, .785], [.74, .8], [.79, .78], [.75, .75], [.02, .71]], .3, .03, 2), MS, ct, 0, 0, 0); // seat
-  for (const s of [-1, 1]) tube([s * .13, .77, .58], [s * .12, .8, .8], .016, MK, ct); mk(box(.26, .03, .05), MK, ct, 0, .795, .82); // grab rail
+  for (const s of [-1, 1]) mk(prof([[.56, .77], [.62, .805], [.84, .815], [.86, .79], [.8, .775], [.62, .765]], .04, .01), MK, ct, s * .125, 0, 0); // 2026 one-piece grab bar: sculpted side
+  mk(prof([[.78, .79], [.84, .815], [.88, .8], [.86, .775]], .29, .012), MK, ct, 0, 0, 0);                    // ... joined behind the seat
   mk(box(.16, .045, .03), MTail, ct, 0, .72, .888, .5); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .7, .865);
   mk(prof([[.74, .62], [.84, .64], [.96, .4], [.92, .34], [.82, .42]], .11, .012), MK, ct, 0, 0, 0);         // plate hanger
   mk(box(.2, .12, .008), MPl, ct, 0, .38, .958, .35); for (const s of [-1, 1]) mk(box(.05, .028, .045), MAmb, ct, s * .09, .58, .84);
@@ -731,6 +742,7 @@ function mergeStatic(par, skip) {
   for (const L of by.values()) if (L.length > 1) mergeList(L, par);
 }
 /* ---------- step-through underbone (Suzuki Smash 115 / Smash Fi 115) ---------- */
+// The Smash Fi (Nov 2023) keeps the Smash 115 body: new decals, a sportier meter and muffler, an engine heat guard.
 // 17" wheels (80/90-17 rear ≈ 0.285 m radius), 1,240 mm wheelbase, ~26° rake, 750 mm seat, near-horizontal single up
 // front. Reference: painted handlebar cover with the headlamp and meter, slim legshield that runs down into the front
 // fender line, low black spine (the step-through), long side covers sweeping up to a small tail, silver heat-shielded
@@ -760,6 +772,7 @@ function underbone(ct, v) {
   tube([.15, .33, .14], [.17, .45, .3], .012, MC, ct, 5); mk(box(.03, .02, .08), MB, ct, .17, .45, .34);       // kick starter
   for (const s of [-1, 1]) { mk(box(.09, .02, .035), MB, ct, s * .17, .3, .14); mk(box(.025, .07, .05), MAlu, ct, s * .13, .33, .14); } // pegs
   mk(box(.03, .02, .22), MC, ct, -.17, .32, .08, .1);                                                       // heel-toe gear pedal
+  mk(prof([[-.3, .37], [-.12, .43], [-.06, .36], [-.1, .27], [-.28, .27]], .012, .004), MB, ct, .135, 0, 0);  // Smash Fi heat guard over the leg side of the cylinder
   // bodywork
   const front = prof([[-.27, .98], [-.4, .95], [-.5, .84], [-.535, .68], [-.5, .52], [-.41, .41], [-.31, .42], [-.25, .56], [-.23, .76], [-.24, .9]], .32, .025);
   mk(taper(front, [[-.54, .62], [-.35, 1]]), MP, ct, 0, 0, 0);                                                  // front legshield cowl
@@ -924,7 +937,11 @@ function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see build
   };
 }
 
-/* ---------- maxi-sport scooter (Yamaha Aerox 155) ---------- */
+/* ---------- maxi-sport scooter (Yamaha Aerox, 2025 all-new) ---------- */
+// 2025 (PH 1 Aug 2025, "Mio" dropped, MAX Series): extended angular XMAX-style headlamp housing with twin LED lamps, short smoked
+// screen, forged-carbon-look trim under the headlamp and on the inner fairings (SP: red accents instead, red wheels and red seat
+// stitching: paint lv 'r'), pointed LED tail lamp with the signals sticking out at each side, new 230 mm rear disc.
+const MTrim = std(0x202226, .4, .2), MStch = std(0x2a2c30, .6, .1); MTrim.userData = { r: .4, mt: .2 };
 // 14" alloys (110/80-14, 140/70-14 ≈ 0.27 m), 1,350 mm wheelbase, ~26° rake, 790 mm seat. Reference photos: sharp front apron
 // with a black V face and twin LED eyes, small smoked visor, high centre tunnel between the floorboards, long stepped seat, high
 // sharp tail with split grab handles, twin rear shocks, liquid-cooled unit swing (radiator cover on the right), big black
@@ -933,8 +950,10 @@ function aerox(ct) {
   const rw = .272, rake = .45, headY = .92, fZ = -.7, fork = (headY - rw) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
   B.G = { rw, rearZ: .65, fork, rake, pivotY: .34, pivotZ: .04, swingX: -.1 }; B.wheelCol = 0x15161a; B.cargo = { y: .88, z: .55 };
   const wheel = (t, disc) => wheelG(.215, t, .175, 5, .024, true, disc, { sx: [.045], sr: .173, sw: .005 });
-  B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .65); ct.add(B.rearH); B.rearW = wheel(.057, 0); B.rearH.add(B.rearW);
+  B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .65); ct.add(B.rearH); B.rearW = wheel(.057, .115); B.rearH.add(B.rearW);
   mk(arc(.285, .31, 1.3, 2.6, .13), MF, B.rearH, 0, 0, 0);                                                   // rear hugger
+  mk(box(.045, .065, .085), MK, B.rearH, .09, .06, -.06);                                                      // rear caliper (2025: 230 mm rear disc)
+  B.look = sp => { const red = sp.lv === 'r'; carbon(MTrim, !red, red ? 0xc81e26 : 0x202226); MStch.color.set(red ? 0xd3202b : 0x2a2c30); };
   B.swing = mk(prof([[-.5, -.07], [-.5, .07], [-.2, .11], [.42, .09], [.52, .02], [.48, -.07], [.2, -.1]], .13, .015), MG, ct, -.1, .3, .345); // unit swing
   mk(prof([[-.14, .2], [.06, .2], [.08, .4], [-.12, .42]], .17, .015), MG, ct, -.02, 0, 0);                 // cylinder + head
   mk(box(.02, .17, .2), MGrl, ct, .14, .37, .1, -.35);                                                       // radiator cover (right)
@@ -946,12 +965,17 @@ function aerox(ct) {
   mk(prof([[-.3, .97], [-.23, .95], [-.18, .66], [-.15, .34], [-.24, .34], [-.27, .66]], .4, .015), MK, ct, 0, 0, 0); // inner leg shield
   mk(prof([[-.6, .6], [-.55, .74], [-.47, .9], [-.4, .99], [-.28, 1.0], [-.23, .76], [-.18, .4], [-.33, .34], [-.42, .44], [-.5, .5], [-.58, .54]], .46, .035), MP, ct, 0, 0, 0); // front apron
   mk(prof([[-.63, .55], [-.6, .64], [-.56, .7], [-.5, .62], [-.52, .52], [-.58, .5]], .2, .02), MK, ct, 0, 0, 0); // V nose
-  for (const s of [-1, 1]) { mk(box(.13, .04, .03), MHead, ct, s * .12, .77, -.565, .7, 0, s * .45); mk(box(.1, .015, .02), MHead, ct, s * .15, .85, -.52, .7, 0, s * .5); mk(box(.04, .02, .02), MAmb, ct, s * .2, .7, -.535, .5, 0, s * .4); } // twin eyes, position lights, signals
+  // 2025 extended angular headlamp housing (XMAX-like): a dark pointed pod pushed out ahead of the apron, twin slim LED lamps across it
+  mk(taper(prof([[-.66, .74], [-.64, .82], [-.56, .9], [-.46, .92], [-.48, .8], [-.56, .72]], .3, .02), [[-.67, .55], [-.5, 1]]), MK, ct, 0, 0, 0);
+  for (const s of [-1, 1]) { mk(box(.12, .032, .03), MHead, ct, s * .07, .79, -.655, .75, s * .35, s * .18); mk(box(.1, .012, .02), MHead, ct, s * .11, .86, -.6, .85, 0, s * .5); mk(box(.04, .02, .02), MAmb, ct, s * .2, .7, -.535, .5, 0, s * .4); } // twin LED lamps, position strips, signals
+  mk(taper(prof([[-.6, .56], [-.56, .7], [-.52, .73], [-.54, .62], [-.57, .54]], .24, .006), [[-.6, .6], [-.52, 1]]), MTrim, ct, 0, 0, 0); // carbon-look (SP: red) chin under the lamps
+  for (const s of [-1, 1]) mk(prof([[-.3, .62], [-.22, .68], [-.2, .5], [-.26, .44]], .006, .002), MTrim, ct, s * .2, 0, 0); // inner-fairing trim
   mk(prof([[.04, .74], [.4, .79], [.74, .86], [.94, .9], [.97, .85], [.86, .72], [.6, .58], [.36, .53], [.16, .52], [.06, .6]], .32, .03), MP, ct, 0, 0, 0); // rear body
   mk(prof([[.12, .5], [.32, .48], [.54, .54], [.64, .42], [.5, .31], [.18, .31]], .27, .01), MK, ct, 0, 0, 0); // lower rear cover
   mk(prof([[0, .76], [.05, .8], [.32, .81], [.4, .85], [.74, .9], [.81, .88], [.77, .85], [.38, .8], [.02, .74]], .31, .03, 2), MS, ct, 0, 0, 0); // stepped seat
-  for (const s of [-1, 1]) tube([s * .14, .86, .62], [s * .12, .9, .86], .016, MK, ct);                    // split grab handles
-  mk(box(.15, .04, .03), MTail, ct, 0, .84, .96, .7); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .11, .8, .93);
+  for (const s of [-1, 1]) { tube([s * .14, .86, .62], [s * .12, .9, .86], .016, MK, ct); tube([s * .156, .805, .04], [s * .156, .83, .36], .004, MStch, ct, 4); } // split grab handles, seat stitching (SP red)
+  mk(taper(prof([[.88, .87], [.97, .86], [.99, .84], [.9, .83]], .14, .008), [[.88, 1], [.99, .35]]), MTail, ct, 0, 0, 0); // pointed LED tail lamp
+  for (const s of [-1, 1]) { tube([s * .1, .8, .9], [s * .19, .8, .92], .008, MB, ct, 4); mk(box(.045, .025, .035), MAmb, ct, s * .2, .8, .925); } // signals sticking out at the sides
   mk(prof([[.8, .68], [.9, .7], [1.0, .44], [.96, .38], [.86, .46]], .11, .012), MK, ct, 0, 0, 0);          // plate hanger
   mk(box(.2, .12, .008), MPl, ct, 0, .42, 1.0, .35);
   // steering
@@ -1016,7 +1040,7 @@ function rouser(ct) {
   mk(prof([[.44, .93], [.5, .99], [.76, 1.01], [.8, .98], [.48, .92]], .21, .02, 2), MS, ct, 0, 0, 0);      // pillion
   mk(prof([[.4, .92], [.8, .97], [.98, 1.0], [1.0, .95], [.86, .88], [.5, .84], [.42, .87]], .22, .02), MP, ct, 0, 0, 0); // tail
   for (const s of [-1, 1]) tube([s * .12, .99, .6], [s * .1, 1.02, .86], .014, MK, ct);                     // split grab rails
-  mk(box(.12, .045, .04), MTail, ct, 0, .97, 1.0, .5);
+  for (const s of [-1, 1]) mk(box(.05, .014, .03), MTail, ct, s * .035, .975, 1.0, .5, 0, s * .35);          // twin LED strip tail lamps
   tube([0, .88, .9], [0, .66, 1.05], .015, MK, ct); mk(box(.18, .1, .008), MPl, ct, 0, .62, 1.07, .25);      // plate hanger
   for (const s of [-1, 1]) { tube([s * .03, .8, .96], [s * .15, .8, .97], .007, MB, ct, 4); mk(box(.045, .035, .05), MAmb, ct, s * .17, .8, .97); }
   // steering
@@ -1049,7 +1073,7 @@ function rouser(ct) {
   };
 }
 
-/* ---------- maxi scooter (Yamaha NMAX 155, 2025) ---------- */
+/* ---------- maxi scooter (Yamaha NMAX 155, 2025 all-new; PH sales from March 2025) ---------- */
 // 13" alloys (110/70-13 ≈ 0.242 m front, 130/70-13 ≈ 0.256 m rear), 1,340 mm wheelbase, ~26° rake, 765 mm seat, 1,935 mm long,
 // 1,160 / 1,200 mm tall (Standard / Tech MAX screen). Reference photos (black, PH): tall apron with a black face, an X of thin LED
 // strips meeting in the middle, small projector lamps low at each side and amber signals at the lower corners, tuning-fork badge
@@ -1061,7 +1085,8 @@ function rouser(ct) {
 function nmax(ct, v) {
   const rw = .256, fr = .242, rake = .46, headY = .9, fZ = -.7, fork = (headY - fr) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
   B.G = { rw, rearZ: .64, fork, rake, pivotY: .32, pivotZ: .02, swingX: -.1 }; B.wheelCol = 0x141518; B.cargo = { y: .86, z: .55 }; B.decal = MDec;
-  const wheel = (t, disc) => wheelG(.2, t, .16, 5, .022, true, disc, { sx: [.045], sr: .158, sw: .004 });
+  if (v) B.rimCol = 0xc9a24b;                                                                                  // Tech MAX: gold wheel appliques
+  const wheel = (t, disc) => wheelG(.2, t, .16, 5, .022, true, disc, { sx: [.045], sr: .158, sw: v ? .009 : .004 });
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .64); ct.add(B.rearH); B.rearW = wheel(.056, .115); B.rearH.add(B.rearW);
   mk(arc(.27, .295, 1.3, 2.6, .13), MF, B.rearH, 0, 0, 0);                                                    // rear hugger
   mk(box(.045, .065, .085), MK, B.rearH, .09, .06, -.06);                                                      // rear caliper (disc on the right)
@@ -1101,7 +1126,7 @@ function nmax(ct, v) {
   mk(prof([[-.02, .74], [.03, .775], [.36, .77], [.45, .8], [.78, .845], [.84, .825], [.8, .79], [.42, .76], [0, .72]], .34, .035, 2), MS, ct, 0, 0, 0); // stepped seat
   if (v) for (const s of [-1, 1]) tube([s * .168, .765, .02], [s * .168, .775, .4], .004, MGold, ct, 4);       // gold stitching (Tech MAX)
   for (const s of [-1, 1]) tube([s * .15, .82, .56], [s * .13, .86, .88], .015, MK, ct); tube([-.13, .86, .88], [.13, .86, .88], .015, MK, ct); // loop grab rail
-  mk(box(.17, .04, .03), MTail, ct, 0, .8, .975, .7); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .58, .9);
+  for (const s of [-1, 1]) { mk(box(.1, .016, .022), MTail, ct, s * .05, .805, .972, .7, 0, -s * .22); mk(box(.04, .03, .04), MAmb, ct, s * .1, .58, .9); } // 2025 slim LED tail (the butterfly lamp is gone)
   mk(prof([[.8, .66], [.9, .68], [1.0, .42], [.96, .36], [.86, .44]], .11, .012), MK, ct, 0, 0, 0);            // plate hanger
   mk(box(.2, .12, .008), MPl, ct, 0, .4, 1.0, .35);
   // steering
@@ -1130,7 +1155,7 @@ function nmax(ct, v) {
   };
 }
 
-/* ---------- big maxi scooter (Yamaha XMAX 300, PH 2023) ---------- */
+/* ---------- big maxi scooter (Yamaha XMAX 300, PH 2023 body, 2025 update: electric screen, 4.2" TFT + 3.2" LCD) ---------- */
 // Own builder (the XMAX is not a stretched NMAX): 120/70-15 front (≈ 0.274 m) and 140/70-14 rear (≈ 0.276 m), 1,540 mm wheelbase,
 // ~26.5° rake, 795 mm seat, 2,180 mm long, 1,410 mm tall with the screen up. Reference photos (light grey with bronze wheels, matte
 // dark grey, red): two-tone body. Painted: tall angular front side shields from the screen base down to the floor, a lower front
@@ -1218,7 +1243,7 @@ const MODELS = { sport, scooter, supersport, underbone, tmx, aerox, rouser, h2, 
 export function buildModel(bike, spec) {
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;
-  B.ct.clear(); B.fenderPaint = false; B.decal = null; B.sc = 0; B.scDz = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model;
+  B.ct.clear(); B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.sc = 0; B.scDz = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model;
   if (spec?.sc && bike.sidecar) { B.sc = 1; sidecar(B.ct, bike.sidecar, bike.chassis.wb); } SC_BLOB.p.z = B.scDz; // any bike with sidecar mount data
   setLiveryUV();
   const pc = bike.chassis.pil; // pillion seat (data/bikes/*.json chassis.pil): where the recoloured rider copy goes + the passenger's eye (ride.js)
@@ -1288,12 +1313,12 @@ export function blobTick(H) {
   if (!n) { BK.array[0] = 0; n = 1; } // keep one (invisible) instance: count 0 would skip the draw and its pipeline
   BLOB.count = n; BLOB.instanceMatrix.needsUpdate = true; BK.needsUpdate = true;
 }
-// cfb: body 0 paint / 1 carbon / 2 paint-tinted carbon · cff fenders · cfw wheels · cfx muffler cover
+// cfb: body 0 paint / 1 carbon / 2 paint-tinted carbon · cff fenders · cfw wheels · cfx muffler cover · B.rimCol: a builder's stock rim tape
 export function applyLook(spec) {
   drawLivery(B.kind, '#' + new THREE.Color(spec.c).getHexString(), spec.lv || ''); MP.userData.r = spec.rough ?? .3; MP.userData.mt = spec.metal ?? .2; // matt paints: rougher; mirror-coated paints: metallic
   carbon(MP, !!spec.cfb, spec.c, spec.cfb === 2); carbon(MF, !!spec.cff, B.fenderPaint ? spec.c : 0x15161a); const wc = spec.wc || B.wheelCol; carbon(MW, !!spec.cfw, wc); // wc: paint scheme's own wheel colour
-  MRS.color.set(spec.rim || wc); MCov.color.set(spec.ec || 0x60656d); MFrm.color.set(spec.fc || 0x3fae2a); if (B.decal) B.decal.color.set(spec.hd || '#f1f1ec');
-  B.buildExh(spec.snd, !!spec.cfx); syncPal();
+  MRS.color.set(spec.rim || B.rimCol || wc); MCov.color.set(spec.ec || 0x60656d); MFrm.color.set(spec.fc || 0x3fae2a); if (B.decal) B.decal.color.set(spec.hd || '#f1f1ec');
+  if (B.look) B.look(spec); B.buildExh(spec.snd, !!spec.cfx); syncPal(); // B.look: a builder's own trim colours (palette entries, so no rebuild)
 }
 
 /* ---------- remote players (net.js) ---------- */

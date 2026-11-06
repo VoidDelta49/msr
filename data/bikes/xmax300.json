@@ -326,36 +326,10 @@
   "paint": {
    "l": "Paint",
    "o": [
-    {
-     "n": "Light Gray",
-     "c": "#b7bdc2",
-     "lv": "g",
-     "rough": 0.4,
-     "metal": 0.25,
-     "wc": "#9a6a3a"
-    },
-    {
-     "n": "Matte Dark Gray",
-     "c": "#4a4d52",
-     "lv": "k",
-     "rough": 0.75,
-     "wc": "#18191c"
-    },
-    {
-     "n": "Red",
-     "c": "#b01f1b",
-     "lv": "r",
-     "rough": 0.35,
-     "metal": 0.3,
-     "wc": "#141518"
-    },
-    {
-     "n": "Black",
-     "c": "#16171a",
-     "lv": "k",
-     "rough": 0.35,
-     "wc": "#141518"
-    }
+        { "n": "Ceramic Gray", "c": "#a9aeb1", "lv": "g", "rough": 0.5, "metal": 0.2, "wc": "#141518" },
+        { "n": "Sword Gray", "c": "#55595d", "lv": "k", "rough": 0.5, "metal": 0.3, "wc": "#141518" },
+        { "n": "Icon Black", "c": "#16171a", "lv": "k", "rough": 0.35, "wc": "#141518" },
+        { "n": "Dark Magma", "c": "#3a3430", "lv": "k", "rough": 0.45, "metal": 0.35, "wc": "#141518" }
    ]
   },
   "intake": {

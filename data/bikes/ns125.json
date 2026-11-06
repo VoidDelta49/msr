@@ -222,25 +222,8 @@
     "paint": {
       "l": "Paint",
       "o": [
-        {
-          "n": "Yellow",
-          "c": "#e8b414",
-          "lv": "y",
-          "rim": "#e8b414"
-        },
-        {
-          "n": "Grey",
-          "c": "#7b8086",
-          "lv": "g",
-          "rough": 0.6,
-          "rim": "#c9cdd2"
-        },
-        {
-          "n": "Black",
-          "c": "#17191c",
-          "lv": "k",
-          "rim": "#d42a2a"
-        }
+        { "n": "Bright Yellow", "c": "#e8b414", "lv": "y", "rim": "#e8b414" },
+        { "n": "Sparkling Black", "c": "#17191c", "lv": "k", "metal": 0.3, "rim": "#d42a2a" }
       ]
     },
     "intake": {

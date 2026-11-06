@@ -142,10 +142,9 @@
     "paint": {
       "l": "Paint",
       "o": [
-        { "n": "White / Blue", "c": "#ecebe6", "lv": "wb", "hd": "#1f2a5c" },
-        { "n": "Black / Red", "c": "#1b1c1f", "lv": "kr", "wc": "#c21d1d" },
-        { "n": "Matte Navy / Gold", "c": "#2e3157", "lv": "ng", "rough": 0.65, "wc": "#c9a24a", "hd": "#c9a24a" },
-        { "n": "Red / Black", "c": "#c8161e", "lv": "rk" }
+        { "n": "Candy Summer Red", "c": "#b8142a", "lv": "rk" },
+        { "n": "Titan Black", "c": "#1b1b1d", "lv": "kr", "wc": "#16171a" },
+        { "n": "Metallic Matte Stellar Blue", "c": "#1e3a6e", "lv": "sb", "rough": 0.68, "metal": 0.25 }
       ]
     },
     "intake": {

@@ -336,41 +336,11 @@
   "paint": {
    "l": "Paint",
    "o": [
-    {
-     "n": "Black",
-     "c": "#16171a",
-     "lv": "k",
-     "rough": 0.35,
-     "wc": "#141518"
-    },
-    {
-     "n": "Ceramic Gray",
-     "c": "#8b8f93",
-     "lv": "g",
-     "rough": 0.55,
-     "wc": "#141518"
-    },
-    {
-     "n": "Crystal Graphite",
-     "c": "#3a3e44",
-     "lv": "g",
-     "rough": 0.45,
-     "metal": 0.4,
-     "wc": "#141518"
-    },
-    {
-     "n": "Matte Blue",
-     "c": "#2f4a66",
-     "lv": "g",
-     "rough": 0.7,
-     "wc": "#141518"
-    },
-    {
-     "n": "White",
-     "c": "#e8e8e3",
-     "lv": "g",
-     "wc": "#141518"
-    }
+        { "n": "Black", "c": "#16171a", "lv": "k", "rough": 0.35, "wc": "#141518" },
+        { "n": "Light Grey", "c": "#b8bcc0", "lv": "g", "rough": 0.45, "metal": 0.2, "wc": "#141518" },
+        { "n": "Dark Magma (Tech MAX)", "c": "#3a3430", "lv": "g", "rough": 0.45, "metal": 0.35, "wc": "#141518" },
+        { "n": "Sword Gray", "c": "#55595d", "lv": "g", "rough": 0.5, "metal": 0.3, "wc": "#141518" },
+        { "n": "Ceramic Gray (Tech MAX)", "c": "#a9aeb1", "lv": "g", "rough": 0.55, "wc": "#141518" }
    ]
   },
   "intake": {

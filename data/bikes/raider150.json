@@ -106,12 +106,11 @@
     "paint": {
       "l": "Paint",
       "o": [
-        { "n": "Titan Blue", "c": "#1f4fbf" },
-        { "n": "Glass Black", "c": "#17191c" },
-        { "n": "Racing Red", "c": "#c21d1d" },
-        { "n": "Pearl White", "c": "#e6e6e1" },
-        { "n": "Neon Yellow", "c": "#d6cf18" },
-        { "n": "Matte Gray / Blue", "c": "#8a8e94", "lv": "gb", "rough": 0.7, "wc": "#1f44d8" }
+        { "n": "Pearl Bright Ivory", "c": "#f0ebdd", "lv": "r", "rough": 0.4, "wc": "#c21d1d" },
+        { "n": "Candy Matte Bordeaux Red", "c": "#6e1c2b", "lv": "w", "rough": 0.7, "wc": "#16171a" },
+        { "n": "Metallic Matte Fibroin Gray", "c": "#7a7f85", "lv": "gb", "rough": 0.7, "metal": 0.25, "wc": "#1f44d8" },
+        { "n": "Metallic Medium Blue", "c": "#2f5fa8", "lv": "w", "rough": 0.35, "metal": 0.35, "wc": "#16171a" },
+        { "n": "Shadow Solid Black", "c": "#1b1b1d", "lv": "k", "rough": 0.4, "wc": "#16171a" }
       ]
     },
     "intake": {
@@ -333,7 +332,7 @@
     "exhaust": 0,
     "ecu": 0,
     "tires": 0,
-    "paint": 5,
+    "paint": 2,
     "fs": 14,
     "rs": 38,
     "kf": 11,
