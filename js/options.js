@@ -25,6 +25,7 @@ applyUi();
 const GFX = [['low', 'Low'], ['med', 'Medium'], ['high', 'High']];
 const RES = [[0, 'Off'], [480, '480p'], [360, '360p'], [240, '240p']]; // render height cap, upscaled with crisp pixels
 const FPS = [[30, '30 fps'], [60, '60 fps'], [0, 'Uncapped']];
+const NPCS = [['off', 'Off'], ['few', 'Few'], ['auto', 'Normal'], ['busy', 'Busy']]; // cfg.npc: pedestrians (npcfig.js); Normal follows the graphics quality
 const TOD = [['live', 'Live PH'], [7, 'Morning'], [12, 'Noon'], [17.3, 'Sunset'], [22, 'Night']]; // cfg.tod; live = real Philippine time
 const AAH = {
   off: 'Sharpest and fastest, with jagged edges.',
@@ -101,6 +102,7 @@ const tAud = () => sec('SOUND') +
   slider('vol', 'Volume', '', !cfg.sound);
 const tGame = () => sec('WORLD') +
   seg('tod', 'Time of day', 'Live follows the clock in the Philippines.', TOD, cfg.tod ?? 'live') +
+  seg('npc', 'Pedestrians', 'People walking around town. Some wave you down for a ride. Fewer on Low quality and at night.', NPCS, cfg.npc ?? 'auto') +
   sec('RIDING') +
   sw('tough', 'Tough Biker mode', 'No falls: walls only stop you, and flips and hard landings are survived.') +
   sw('wc', 'Wheelie control', 'The ECU trims torque near the lift point. Turn it off to wheelie.') +

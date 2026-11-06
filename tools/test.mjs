@@ -14,6 +14,7 @@ import { bikeIds } from './lib/headless.mjs';
 import { SCENARIOS, runScenario } from './sim.mjs';
 import { fuzzOne } from './fuzz.mjs';
 import { footTests } from './foot.mjs';
+import { npcTests } from './npc.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url)), BASE = path.join(dir, 'baseline.json');
 const update = process.argv.includes('--update'), problems = [];
@@ -65,6 +66,8 @@ for (const b of bikeIds) {
 { const b = bikeIds[0], x = runScenario('launch', b), y = runScenario('launch', b); if (JSON.stringify(x) !== JSON.stringify(y)) problems.push(`INVARIANT ${b}: launch is not deterministic`); }
 // on-foot character (js/foot.js): walls, bike, water, ledges, jump, get off / on
 for (const p of footTests()) problems.push(p);
+// pedestrians (js/npc.js + data/npc.json): data, walking, doors, dodging, the ride, the real island
+for (const p of npcTests()) problems.push(p);
 // fuzz: random inputs and garage setups on every bike (finite state, sane speed/rpm/lean/gear/fuel, no exceptions)
 for (const b of bikeIds) for (const seed of [1, 2]) { const r = fuzzOne(b, seed, 25); if (r.fail) problems.push(`FUZZ ${b} seed ${seed} t=${r.t}s: ${r.fail}  (node tools/fuzz.mjs ${b} --seed ${seed} --secs 25)`); }
 if (process.argv.includes('--full')) { // real-browser layout check (skips itself when there is no playwright / chromium)
@@ -90,6 +93,6 @@ else {
   for (const k of Object.keys(old)) if (!(k in flat)) problems.push(`DRIFT ${k}: metric disappeared (was ${old[k]})`);
 }
 const shown = problems.slice(0, 25); for (const p of shown) console.log('FAIL  ' + p); if (problems.length > shown.length) console.log(`...and ${problems.length - shown.length} more (node tools/sim.mjs <bike> <scenario> to look closer)`);
-const how = update ? ', baseline updated' : `, matches baseline; determinism + fuzz + on-foot + layout ok${process.argv.includes('--full') ? '; garage sweep + browser layout ok' : ''}`;
+const how = update ? ', baseline updated' : `, matches baseline; determinism + fuzz + on-foot + pedestrians + layout ok${process.argv.includes('--full') ? '; garage sweep + browser layout ok' : ''}`;
 console.log(problems.length ? `test: ${problems.length} problem(s)` : `test: ok (${bikeIds.length} bikes x ${SCENARIOS.length} scenarios${how})`);
 process.exit(problems.length ? 1 : 0);

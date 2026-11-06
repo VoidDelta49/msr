@@ -10,6 +10,7 @@ import { scene, std, sun } from './renderer.js';
 import * as T from './tex.js';
 import { mkTex } from './tex.js';
 import { cluTex } from './hud.js';
+import { prof, JACKET, JEAN, HELM, VISOR, SHOE, GLOVE, TORSO_PTS, humanGeo, bakeFigure, riderPal, optMask } from './figure.js';
 
 // MP = painted panels (white in the paint colour + the livery texture), MK = glossy black panels (the real bikes are two-tone)
 const MP = std(0xffffff, .3, .2), MK = std(0x15161a, .28, .3), MB = std(0x141518, .6, .2), MR = std(0x0d0d0d, .95), MC = std(0xd5dae0, .22, 1), ME = std(0x2a2c30, .45, .6),
@@ -39,14 +40,7 @@ function carbon(m, on, col, tint) {
 for (const m of [MP, MF, MW, MK]) m.userData = { r: m.roughness, mt: m.metalness };
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d), cyl = (a, b, h, s = 8) => new THREE.CylinderGeometry(a, b, h, s);
 function mk(geo, m, par, x, y, z, rx = 0, ry = 0, rz = 0) { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = true; par.add(o); return o; }
-// Low-poly panels: a side profile [[z, y], ...] (a 4-number entry = quadratic curve: control z,y then end z,y) extruded
-// to width w, centred on x = 0, with a one-step chamfer b. Chunky bevelled slabs = the cute N64 toy look.
-function prof(pts, w, b = .012, seg = 3) {
-  const s = new THREE.Shape(); s.moveTo(pts[0][0], pts[0][1]);
-  for (const p of pts.slice(1)) p.length === 4 ? s.quadraticCurveTo(p[0], p[1], p[2], p[3]) : s.lineTo(p[0], p[1]);
-  const d = Math.max(.002, w - 2 * b), g = new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: b > 0, bevelThickness: b, bevelSize: b, bevelSegments: 1, curveSegments: seg });
-  return g.rotateY(-PI / 2).translate(d / 2, 0, 0);
-}
+// prof(): low-poly panels from a side profile, extruded (figure.js, shared with the people)
 // fender: annulus sector around the axle (angles from +z = rear, PI/2 = top, PI = front), width w
 function arc(r1, r2, a0, a1, w, seg = 5) {
   const s = new THREE.Shape(); s.absarc(0, 0, r2, a0, a1, false); s.absarc(0, 0, r1, a1, a0, true);
@@ -277,15 +271,16 @@ function setLiveryUV() {
 }
 
 // cute rider: chunky jacket, jeans, white sneakers, round helmet with a dark visor. All one vertex-coloured material, so
-// the whole rider is one draw (+1 shadow). legs: [thigh, shin] as [x, y, z, rx, len, width]
+// the whole rider is one draw (+1 shadow). legs: [thigh, shin] as [x, y, z, rx, len, width]. The parts, colours and proportions
+// are the character system's (figure.js), which also builds the rider on foot, friends' walkers, the pedestrians and their passengers;
+// on the bike the rider keeps its hand-placed per-bike seated pose here.
 const MRider = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .6, metalness: .1 });
 const tint = (g, c) => { const k = new THREE.Color(c), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = k.r; a[i * 3 + 1] = k.g; a[i * 3 + 2] = k.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
-const JACKET = 0x2a3a52, JEAN = 0x2d3d63, HELM = 0x1d2b4f, VISOR = 0x0c0f14, SHOE = 0xe9e6df, GLOVE = 0x18191b;
 function rider(ct, torso, head, arms, legs) {
   B.riderDims = { al: arms[4], lt: legs[0][4], tw: legs[0][5], ls: legs[1][4], sw: legs[1][5] }; // limb sizes, for riderStand() (B.rider is merged into one mesh at the end of the build)
   B.hip = [legs[0][1] - Math.sin(legs[0][3]) * legs[0][4] / 2, legs[0][2] + Math.cos(legs[0][3]) * legs[0][4] / 2]; // hip joint [y, z] in the bike's frame (tools/pillion.mjs checks the pillion seat data against it)
   const r = (g, c, ...p) => mk(tint(g, c), MRider, ct, ...p);
-  B.rider = [r(prof([[-.12, -.26], [.12, -.26], [.13, .2], [.04, .27], [-.08, .26], [-.13, .2]], .36, .03), JACKET, 0, torso[0], torso[1], torso[2]),
+  B.rider = [r(prof(TORSO_PTS, .36, .03), JACKET, 0, torso[0], torso[1], torso[2]),
     r(new THREE.IcosahedronGeometry(.15, 1), HELM, 0, head[0], head[1]), r(box(.2, .085, .05), VISOR, 0, head[0] - .01, head[1] - .13)];
   for (const s of [-1, 1]) {
     const [ax, ay, az, arx, al] = arms, [th, sh] = legs;
@@ -298,17 +293,8 @@ function rider(ct, torso, head, arms, legs) {
 // feet at y = 0 facing -z. Limb lengths come from this bike's rider(). Returns { geo, mat, eye } (eye = visor height) or null before a bike is built.
 export function riderStand() {
   const d = B.riderDims; if (!d) return null;
-  const { al, lt, tw, ls, sw } = d, P = [], ni = g => g.index ? g.toNonIndexed() : g;
-  const add = (g, c, x, y, z, rx = 0) => { P.push(ni(tint(g, c)).rotateX(rx).translate(x, y, z)); };
-  const shinTop = .065 + ls, hipTop = shinTop - .02 + lt, tcy = hipTop - .03 + .26, hy = tcy + .27 + .12, shY = tcy + .2; // joints overlap a little; torso profile spans y -.26 .. .27
-  add(prof([[-.12, -.26], [.12, -.26], [.13, .2], [.04, .27], [-.08, .26], [-.13, .2]], .36, .03), JACKET, 0, tcy, 0);
-  add(new THREE.IcosahedronGeometry(.15, 1), HELM, 0, hy, -.02); add(box(.2, .085, .05), VISOR, 0, hy - .01, -.15);
-  for (const s of [-1, 1]) {
-    add(box(.09, .09, al), JACKET, s * .23, shY - al / 2, 0, PI / 2); add(box(.08, .07, .08), GLOVE, s * .23, shY - al - .01, 0); // arm (long axis z turned to hang down), glove
-    add(box(tw, tw, lt), JEAN, s * .09, shinTop - .02 + lt / 2, 0, PI / 2); add(box(sw, ls, sw), JEAN, s * .09, .065 + ls / 2, 0);   // thigh (z turned vertical), shin
-    add(box(.1, .07, .17), SHOE, s * .09, .035, -.04);
-  }
-  return { geo: mergeGeometries(P), mat: MRider, eye: hy };
+  const g = humanGeo(d); // the character system's body with this bike's limb sizes, helmet on, baked standing straight
+  return { geo: bakeFigure(g, riderPal(), optMask(['helmet']), [0, 0, 0, 0, 0, 0, 0, 0]), mat: MRider, eye: g.userData.J.hy };
 }
 // Pillion passenger (ride.js): the rider mesh again, shifted back onto the pillion seat and recoloured. It shares the rider's position,
 // normal and index buffers (only the colour buffer is new, a few KB), so a passenger costs one draw call and no extra modelling.

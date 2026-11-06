@@ -1,8 +1,11 @@
-// The on-foot character's body and camera (logic is in foot.js). The body is the biker already on the bike, but STANDING (model.js
-// riderStand(): same material, one draw, no animation): legs straight down on the shoes, torso upright, arms hanging. Rebuilt on every
-// get-off, so it always matches the current bike's rider (limb lengths differ per bike). If that isn't available the seated copy of B.rider is used. Camera: smoothed look angles, eased ground steps, view bob and the take-off / landing dip.
+// The on-foot character's body and camera (logic is in foot.js). The body is the biker already on the bike, built by the character
+// system (figure.js: the same body, shader and pose library the pedestrians use) with this bike's rider limb sizes and outfit, helmet on.
+// Animated on the GPU from foot.js's state: walk / run cycle locked to the view-bob stride (F.bp), a tuck in the air, breathing when idle.
+// Rebuilt on every get-off, so it always matches the current bike's rider. If that isn't available the seated copy of B.rider is used. Camera: smoothed look angles, eased ground steps, view bob and the take-off / landing dip.
 import * as THREE from 'three';
-import { B, blobAdd, riderStand } from './model.js';
+import { B, blobAdd } from './model.js';
+import { Crowd, humanGeo, riderPal, optMask, POSES } from './figure.js';
+import { Q } from './config.js';
 import { scene } from './renderer.js';
 import { F } from './foot.js';
 
@@ -10,12 +13,14 @@ const G = new THREE.Group(); G.visible = false; scene.add(G);
 // contact shadow like the bike's (model.js blobs): nothing here casts into the sun's shadow map
 blobAdd({ b: G, p: new THREE.Vector3(0, .5, 0), h0: .5, d: .7, w: .6, cores: 0, spread: 0, vis: () => G.visible, ground: null, off: false });
 
-const box = new THREE.Box3(), bb = new THREE.Box3();
+const box = new THREE.Box3(), bb = new THREE.Box3(), PAL = riderPal(), MASK = optMask(['helmet']), pose = new Float32Array(8);
+let ME = null, dims = null; // the walker: a one-figure crowd (rebuilt when the bike's rider has other limb sizes)
 export function figBuild() {
-  for (const m of G.children) if (m.userData.own) m.geometry.dispose(); // the standing body's geometry is built per get-off
   G.clear(); box.makeEmpty();
-  const st = riderStand(); // standing pose, built from this bike's rider limb sizes (B.rider itself is one merged, seated mesh)
-  if (st) { const m = new THREE.Mesh(st.geo, st.mat); m.userData.own = true; G.add(m); F.eye = st.eye; return; }
+  if (B.riderDims) {
+    if (!ME || dims !== B.riderDims) { if (ME) ME.mesh.geometry.dispose(); dims = B.riderDims; ME = new Crowd(humanGeo(dims), 1, { name: 'walker', lite: !!Q.lite }); }
+    G.add(ME.mesh); F.eye = ME.J.hy; figAnim(0); return;
+  }
   for (const s of B.rider) { // fallback: the seated pose copied as is (meshes parented to B.ct: s.matrix is their pose in the bike's frame)
     s.updateMatrix(); const m = new THREE.Mesh(s.geometry, s.material); m.matrixAutoUpdate = false; m.matrix.copy(s.matrix); G.add(m);
     if (!s.geometry.boundingBox) s.geometry.computeBoundingBox(); box.union(bb.copy(s.geometry.boundingBox).applyMatrix4(s.matrix));
@@ -26,7 +31,16 @@ export function figBuild() {
 }
 export const figShow = on => { G.visible = on; figBody(true); if (on) footCamSnap(); };
 export const figBody = on => { for (const m of G.children) m.visible = on; }; // first person hides the body but keeps the contact shadow
-export function figPose() { G.position.set(F.x, F.y, F.z); G.rotation.set(0, F.psi, 0); }
+export function figPose() { G.position.set(F.x, F.y, F.z); G.rotation.set(0, F.psi, 0); if (ME && ME.mesh.parent === G) figAnim(F.t); }
+// this frame's pose from the walker's state (foot.js): idle / walk / run blend by speed, the jump tuck, the landing squash (F.dip)
+function figAnim(t) {
+  const k = Math.min(1, F.spd / 2.8);
+  if (!F.gnd) POSES.jump(pose, t, Math.min(1, .4 + Math.abs(F.vy) * .12));
+  else if (F.rs > .3 && F.spd > 3.2) POSES.run(pose, t, 1, F.bp);
+  else if (F.spd > .2) POSES.walk(pose, t, k, F.bp);
+  else POSES.stand(pose, t);
+  ME.clear(); ME.push(0, 0, 0, 0, 1, 1, MASK, pose, PAL, Math.max(0, -F.dip) * .5); ME.commit();
+}
 
 // ---- camera ----
 // C = what the camera has actually settled on: look angles, ground height (so ledge steps glide), orbit focus and distance.

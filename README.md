@@ -73,6 +73,16 @@ About a third of delivery hubs are **bike-locked** (red outline on the map and a
 
 Counts, spacing and the bike-lock share are the constants at the top of `js/missions.js` (`NHUB`, `SEP`, `BIKE_P`, `HARD`), as is the spoilage table `K`.
 
+## Pedestrians (11.81)
+
+People walk the sidewalks of every road on the island and do everyday things: **sando boys** hanging out (squatting, chatting, stretching), **people walking their dogs** (the dog trots at heel on a leash, sniffs and sits, and the owner waits), **students in school uniforms** (white tops, navy slacks or skirts, ties, backpacks), and assorted others (titas with shoulder bags, lolos, office workers on their phones, joggers, tambays). They come out of and go into buildings' front doors, cross the street, turn at junctions, keep out of walls, the sea and each other, jump out of the way of a fast bike, sit down dazed if you clip one, and wave when you walk past on foot.
+
+**Giving a ride:** some of them wave you down (a yellow marker floats above them). Stop next to one on a bike with a free seat (any bike's pillion seat, or the tricycle's sidecar) and they hop on behind you. A random building's front door somewhere on the island, a house, a sari-sari store, the church, a shop, becomes the drop-off (orange beacon + map waypoint). Stop there and they get off and walk inside; the fare and your ride count are kept on the phone. The passenger is 65 kg on the bike's physics like a friend would be. Crash and they get off, get off your bike and they leave. Not during a quest or a race.
+
+**Data-driven:** who they are is `data/npc.json`: archetypes (outfit colours per body part from palettes, optional parts such as caps, backpacks, skirts, ties and bags with their chances, walking speed, height, what they stop to do, how many are out at night, the chance they want a ride, names), the dog, the pool sizes, ranges and ride settings, and the lines they say. A new kind of person is a new entry there, no code. Options > Game > Pedestrians: Off / Few / Normal / Busy.
+
+**Bodies:** `js/figure.js` is the character system for everyone: the rider on foot, a friend's walker, the pedestrians, their dogs and a passenger on your bike share one body recipe (the rider's chunky boxes, torso profile, round head) with bones, 16 colour roles and optional parts, and one pose library (walk, run, phone, hail, chat, squat, sit, sweep...). The whole crowd is one draw call: poses and outfits are per-instance data and the shader bends the limbs, so 30 people cost the same draws as one. Mobile budget, built in: a fixed pool that lives in a ring around you (spawning out of view), off-screen people are not drawn, far people think less often, walls come from a grid, no shadow-map casting (contact blobs instead), fewer people on the Low preset and at night. Logic in `js/npc.js` is headless (`node tools/npc.mjs`).
+
 ## Multiplayer (Build 9.0)
 
 Main menu > MULTIPLAYER: type a name, then JOIN a room code or make a NEW ROOM and share its code (up to 8 riders per room). Everyone rides their own bike with their own physics; other riders appear as ghost bikes (no collisions) with their real bike and paint, a name tag and a cyan dot on the minimap.
@@ -134,6 +144,9 @@ js/bench.js           in-game benchmark (Options > System): scripted ride, frame
 js/net.js             multiplayer: relay connection, state packets, interpolated ghost bikes, name tags
 js/race.js            tap-to-race between two riders
 js/ride.js            passengers: hop into a friend's sidecar or on the back of any bike, cartoon ejections on a crash
+js/figure.js          character system: body/dog geometry with bones + colour roles, GPU-posed one-draw crowds, pose library (figlook.js: outfits as data)
+js/npc.js             pedestrians' brains (headless): spawning ring, sidewalks, doors, activities, dodging, the ride; npcfig.js draws them
+data/npc.json         pedestrian archetypes, outfits, activities, ride settings, lines
 server/               Cloudflare Worker + Durable Object relay (one room per code)
 js/audio.js (+ engine-worklet.js), controls.js, garage.js, options.js, missions.js, config.js, state.js, util.js
 ```

@@ -1,4 +1,12 @@
 [
+  { "v": "11.81", "d": "2026-11-06", "t": [
+    "Pedestrians: people now walk the sidewalks of every road and do everyday things. Sando boys hang out, squat and chat, people walk their dogs (the dog sniffs, sits and waits on a leash), students in school uniforms with backpacks and ties head about, and titas, lolos, office workers, joggers and tambays fill in the rest. They go in and out of buildings' front doors, cross the street, jump out of the way of a fast bike, sit down dazed if you clip one, and wave when you walk past.",
+    "Give a ride: some people wave you down (yellow marker above them). Stop next to one on a bike with a free seat and they hop on behind you (or into the sidecar); a front door somewhere on the island, a house, a store, the church, becomes the drop-off. Stop there and they walk inside. Fares and rides given are kept on your phone.",
+    "Options > Game > Pedestrians: Off / Few / Normal / Busy. Normal follows your graphics quality; there are fewer people at night.",
+    "One character system for everybody: you on foot, your friends' walkers, the pedestrians, their dogs and your passenger share one body (the rider's look) and one pose library. Walking on foot is now animated (arms and legs swing in step, a tuck when you jump).",
+    "Built for phones: the whole crowd is one draw call (poses and outfits are worked out on the GPU), only people in view are drawn, far ones think less often, nobody casts into the shadow map, and the crowd lives in a ring around you instead of everywhere at once.",
+    "Who the people are is data (data/npc.json): a new kind of person is a new entry with its outfit colours, parts, activities and lines, no code."
+  ] },
   { "v": "11.80", "d": "2026-11-06", "t": [
     "MSAA: the 4-sample colour buffer is no longer written back to memory after the scene is drawn (only the smoothed result is ever read). On phones this saves tens of megabytes of memory traffic a frame; without motion blur the 4-sample depth buffer is dropped the same way.",
     "Benchmark: a phase now measures for its full time once frames have settled. Switching post-processing off makes the game build its shaders again, which on a phone took most of that phase and left only a fraction of a second (12 frames) to measure, so its cost came out wrong (even negative). A phase that never settles is marked CUT SHORT and left out of the verdict.",

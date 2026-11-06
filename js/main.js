@@ -29,6 +29,8 @@ import './layout.js'; // HUD + touch-control layout (after controls.js: needs bo
 import { NET, netFrame, join as netJoin, leave as netLeave } from './net.js';
 import { raceTick } from './race.js';
 import { rideInit, rideFrame } from './ride.js';
+import { npcFrame } from './npcfig.js';
+import { NPC } from './npc.js';
 import { keySwitch, killSwitch, starter, quickStart } from './ignition.js';
 import { GPU_TYPES } from './world.js';
 
@@ -258,10 +260,10 @@ function loop(t) {
   if (BN.on) benchDrive(dt); const P1 = performance.now(); // benchmark: this frame's scripted pose (bench.js); P1..P3, C1 = stage stamps for it
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); blobTick(H); const P2 = performance.now(); updAudio(); const P3 = performance.now(); const fp = ctx.camMode === 0 || ctx.GAR; if (t - lastDraw > (fp ? 100 : 50)) { const hold = fp && sun.shadow.needsUpdate; if (!hold) lastDraw = t; hudUp = drawCluster(fp, hold); drawMini(MAP, MAPV); } /* never upload the dash in the frame that redraws the shadow map (two GPU bursts in one frame): it goes next frame */ const D0 = performance.now(); if (MB) mbState(); renderer.info.reset(); let shRef = sun.shadow.needsUpdate; if (BX.noShadow) { shRef = false; sun.shadow.needsUpdate = false; } let C1 = D0; /* benchmark: no shadow-map pass */ if (!ctx.mapCover) { cull(camera); C1 = performance.now(); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0); if (BN.on) benchFrame(t, J0, P1, P2, P3, D0, C1, J1, hudUp, shRef);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); npcFrame(dt, t); blobTick(H); const P2 = performance.now(); updAudio(); const P3 = performance.now(); const fp = ctx.camMode === 0 || ctx.GAR; if (t - lastDraw > (fp ? 100 : 50)) { const hold = fp && sun.shadow.needsUpdate; if (!hold) lastDraw = t; hudUp = drawCluster(fp, hold); drawMini(MAP, MAPV); } /* never upload the dash in the frame that redraws the shadow map (two GPU bursts in one frame): it goes next frame */ const D0 = performance.now(); if (MB) mbState(); renderer.info.reset(); let shRef = sun.shadow.needsUpdate; if (BX.noShadow) { shRef = false; sun.shadow.needsUpdate = false; } let C1 = D0; /* benchmark: no shadow-map pass */ if (!ctx.mapCover) { cull(camera); C1 = performance.now(); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0); if (BN.on) benchFrame(t, J0, P1, P2, P3, D0, C1, J1, hudUp, shRef);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.gpu = GPU; O.aa = AA; O.live = true; O.snap(); // options.js: what the loaded game was built with, to tell which changes still need a reload
 if (ctx.mpWant) { const w = ctx.mpWant; ctx.mpWant = null; netJoin(w.room, w.name, w.url); } // MULTIPLAYER > JOIN before the game had loaded
 O.api = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };
+window.__cpm = { NPC, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };
