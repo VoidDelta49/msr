@@ -111,7 +111,20 @@ function mpUI() {
   $('mpSt').textContent = N && N.st === 'on' ? `In room ${N.room} · ${N.peers.size + 1}/${N.max} riders` : on ? N.note || ST[N.st] : (N && N.err) || (ctx.mpWant ? 'Joins when the game has loaded' : '');
   $('mpSt').classList.toggle('bad', !on && !!(N && N.err)); $('mpLeave').hidden = !on; $('mpJoin').hidden = $('mpNew').hidden = on;
   $('mMPN').textContent = N && N.st === 'on' ? N.room + ' · ' + (N.peers.size + 1) : '';
+  friends();
 }
+// friends in the room: where they are, FIND (waypoint to them), CALL (they get a waypoint to you): social.js
+function friends() {
+  const N = ctx.NET, L = $('mpFr'), ps = N && N.st === 'on' ? [...N.peers.values()].filter(P => !P.lv) : [];
+  L.hidden = !ps.length; if (!ps.length) { L.replaceChildren(); return; }
+  L.replaceChildren(...ps.map(P => {
+    const r = document.createElement('div'), fl = P.fl | 0, where = P.pk && ctx.placeName ? '🎱 ' + (ctx.placeName(P.pk) || 'inside') : fl & 8 ? 'paused' : fl & 16 ? '🏁 racing' : fl & 32 ? 'riding along' : fl & 64 ? '🚶 on foot' : '🏍️ riding';
+    r.className = 'fr'; r.innerHTML = '<span><b></b><small></small></span><button class="mb sm">FIND</button><button class="mb sm">CALL</button>';
+    r.firstChild.firstChild.textContent = P.name; r.firstChild.lastChild.textContent = where + (P.d < 1e8 ? ' · ' + (P.d < 1000 ? Math.round(P.d) + ' m' : (P.d / 1000).toFixed(1) + ' km') : '');
+    r.children[1].onclick = () => ctx.social && ctx.social.find(P); r.children[2].onclick = () => ctx.social && ctx.social.call(P); return r;
+  }));
+}
+setInterval(() => { if (!$('mMPP').hidden) friends(); }, 2000);
 ctx.onNet = mpUI;
 mpIn.room.oninput = () => { mpIn.room.value = mpIn.room.value.toUpperCase().replace(/[^A-Z0-9]/g, ''); };
 function mpGo(room) {

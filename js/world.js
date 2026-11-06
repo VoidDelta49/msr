@@ -106,7 +106,7 @@ const GEN=[]; // roadside houses the generator placed this load (map maker bakes
 // the doorway, t = building type, n = what the passenger calls it. Front of a building = +z turned by ry (normal (sin ry, cos ry)).
 // n = how the passenger says it (Taglish), l = the map label
 const DOORS=[],DOORN={shop:['tindahan','Shop'],house:['bahay namin','House'],nipa:['kubo namin','Nipa hut'],house2:['bahay namin','House'],bahay:['bahay na bato','Bahay na bato'],bunga:['bahay namin','Bungalow'],sari:['sari-sari store','Sari-sari store'],
-  chapel:['kapilya','Chapel'],warehouse:['bodega','Warehouse'],stall:['puwesto namin','Stall'],cottage:['cottage','Cottage'],resort:['resort','Resort'],tower:['opisina','Office tower'],church:['simbahan','Church']};
+  chapel:['kapilya','Chapel'],bar:['tambayan','Billiards & bar'],warehouse:['bodega','Warehouse'],stall:['puwesto namin','Stall'],cottage:['cottage','Cottage'],resort:['resort','Resort'],tower:['opisina','Office tower'],church:['simbahan','Church']};
 function door(x,z,ry,d,t,out=1.3){const fx=Math.sin(ry),fz=Math.cos(ry),[n,l]=DOORN[t]||['doon','Building'];DOORS.push({x:x+fx*(d/2+out),z:z+fz*(d/2+out),ix:x+fx*(d/2-.6),iz:z+fz*(d/2-.6),t,n,l})}
 /* roads: Catmull-Rom splines, terrain-following heights, junction levelling, surface lookup: see js/roads.js (pure, so tools/roads.mjs
    tests it). island.json road = {pts, w, hwy?, closed?, kind?}; kind 'strip' = airstrip (concrete, runway markings, no poles/houses) */
@@ -284,8 +284,8 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   // ----- building variations (Build 11.45): house2 bahay bunga sari chapel lighthouse warehouse stall cottage resort -----
   // [type, x, z, ry, w, d] like 'house' (front = +z rotated by ry); BD = default w, d. No rand(): colours come from the position hash, so
   // editing one never reshuffles the island. They reuse the shophouse lists (bl = lit windows, roofs, awn) and add a few of their own.
-  const BD={house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12],tower:[20,20],cave:[56,44]};
-  const TW=[[],[],[],[]],RK=[],SM=[],SK=[],CRY=[],PL=[],PR=[],GL=[],DK=[],TH=[],LHB=[],LHL=[],LHC=[],TINM=new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),WH=[];
+  const BD={bar:[12,11],house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12],tower:[20,20],cave:[56,44]};
+  const BARS=[],TW=[[],[],[],[]],RK=[],SM=[],SK=[],CRY=[],PL=[],PR=[],GL=[],DK=[],TH=[],LHB=[],LHL=[],LHC=[],TINM=new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),WH=[];
   const nb=(L,x,y,z,ry,sx,sy,sz,c)=>L.push({x,y,z,ry,sx,sy,sz,c}); // box standing on y
   const at=(x,z,ry,a,d)=>({x:x+Math.cos(ry)*a+Math.sin(ry)*d,z:z-Math.sin(ry)*a+Math.cos(ry)*d}); // a along the width, d towards the front
   for(const b of BLD){const t=b[0],D=BD[t];if(!D)continue;const[,x,z,ry=0,w=D[0],d=D[1]]=b,[q,q2]=hq(x,z),f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo;if(sl>=2.4)continue;
@@ -340,6 +340,10 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
         const m=P(a,dd),sc=hv(n+80);if(n%2){SM.push({x:m.x,y:lo,z:m.z,sx:1.1+sc*1.2,sy:2+sc*3.5,sz:1.1+sc*1.2,c:0xd6cdbd});addOBB(m.x,m.z,.7,.7,ry)}else SK.push({x:m.x,y:lo+Hh,z:m.z,sx:.8+sc,sy:2+sc*3,sz:.8+sc,c:0xcfc4b0})}
       for(const[a,dd,c]of[[-Ws*.5,-4,0x7de8ff],[-Ws*.62,2,0x9d8cff],[-Ws*.3,-12,0x7de8ff],[Ws*.4,4,0x9d8cff],[Ws*.7,-2,0x7de8ff],[G+2,Ds-3,0x7de8ff],[-G-2,Ds-3,0x7de8ff],[Ws/2+G+2,-Ds+3,0x9d8cff],[Ws/2-G-2,-Ds+3,0x9d8cff]]){const m=P(a,dd);CRY.push({x:m.x,y:lo,z:m.z,ry:hv(a*3)*6,sx:.6,sy:1.6+hv(dd)*1.6,sz:.6,c});CRY.push({x:m.x+.7,y:lo,z:m.z-.4,ry:hv(a)*6,sx:.4,sy:1+hv(a+dd)*1.2,sz:.4,c})}
       const pm=P(-Ws*.45,-4);nb(PL,pm.x,lo+.02,pm.z,ry,16,.12,11,0x2fb7e8)}
+    else if(t==='bar'){const h=4.2+S,fr=P(0,d/2+1.2),dr=P(0,d/2+.04),sg=P(0,d/2+.09); // billiards & bar (data/interiors.json 'billiards': ENTER at the door)
+      nb(PL,x,y,z,ry,w,h,d,0x2b3346);PR.push({x,y:y+h,z,ry,sx:w+.8,sy:1.1,sz:d+.9,c:0x45464d});awn.push({x:fr.x,y:lo+2.75,z:fr.z,ry,sx:w*.92,sy:.12,sz:2.3,c:0xb3261e});
+      nb(DK,dr.x,lo,dr.z,ry,1.8,2.35,.12,0x4a2f1f);for(const k of[-1,1]){const g=P(k*w*.3,d/2+.04);nb(GL,g.x,lo+.95,g.z,ry,2.4,1.25,.1,0xffffff)}
+      BARS.push({x:sg.x,z:sg.z,y:lo+3.4,ry,w});addOBB(x,z,w/2,d/2,ry)}
     else if(t==='resort'){const h=6.6+S,fr=P(0,d/2+1.6),sg=P(0,d/2+.1),pl=P(0,d/2+10),pd=P(0,d/2+10);
       bl[1].push({x,y,z,ry,sx:w,sy:h,sz:d,c:col});roofs.push({x,y:y+h,z,ry,sx:w+.8,sy:.32,sz:d+.8,c:0xd9d4c8});
       awn.push({x:fr.x,y:lo+3.2,z:fr.z,ry,sx:7,sy:.16,sz:3.4,c:0xf4f4f0});awn.push({x:sg.x,y:y+h+.9,z:sg.z,ry,sx:w*.42,sy:1.3,sz:.16,c:0x18a0a0});
@@ -349,6 +353,10 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   nbi(PL,()=>aoGeo(ub(),.62,0,.6),()=>vstd(0xffffff,.85),true,FAR.tree);nbi(DK,ub,()=>std(0x1d1f22,.9),false,FAR.mid);nbi(GL,ub,()=>lampMat([1.6,1.35,.85],[.35,.4,.5]),false,FAR.mid);
   nbi(PR,()=>prism(1,1.6,1),()=>TINM,true,FAR.tree);nbi(WH,ub,()=>TINM,true,FAR.big);nbi(TH,()=>new THREE.ConeGeometry(1,1,4).rotateY(PI/4).translate(0,.5,0),()=>std(0xffffff,1),true,FAR.tree);
   nbi(LHB,()=>new THREE.CylinderGeometry(1,.93,1,16).translate(0,.5,0),()=>std(0xffffff,.6),true,FAR.big);nbi(LHL,()=>new THREE.CylinderGeometry(1,1,1,12).translate(0,.5,0),()=>lampMat([2.4,2,1.1],[.5,.5,.5]),false,FAR.big);
+  if(BARS.length){const c=document.createElement('canvas');c.width=512;c.height=128;const g=c.getContext('2d');g.textAlign='center';g.textBaseline='middle';g.font='900 64px system-ui, sans-serif'; // the neon sign over a bar's door
+    for(const[t2,col,y2]of[['BILLIARDS','#ff3fa4',46],['· BAR · GINBILOG ·','#38e0ff',104]]){g.font=y2<60?'900 66px system-ui, sans-serif':'800 30px system-ui, sans-serif';g.shadowColor=col;for(const b of[24,10,4]){g.shadowBlur=b;g.fillStyle=col;g.fillText(t2,256,y2)}g.shadowBlur=0;g.fillStyle='rgba(255,255,255,.8)';g.fillText(t2,256,y2)}
+    const tx=new THREE.CanvasTexture(c);tx.colorSpace=THREE.SRGBColorSpace;const sm=new THREE.MeshBasicMaterial({map:tx,transparent:true,toneMapped:false,depthWrite:false});
+    for(const b of BARS){const m=new THREE.Mesh(new THREE.PlaneGeometry(Math.min(7,b.w*.62),1.7),sm);m.position.set(b.x,b.y,b.z);m.rotation.y=b.ry;m.name='barSign';m.updateMatrix();freeze(m);scene.add(m);cullFar(m,FAR.mid)}}
   const TWM=glowMat(vstd(0xffffff,.45,.15,tTower),tTowerG);
   TW.forEach((L,k)=>nbi(L,()=>{const F=[8,13,20,30][k],g=new THREE.BoxGeometry(20,F*3.3,20).translate(0,F*1.65,0),uv=g.attributes.uv;for(let i=0;i<uv.count;i++){if((i>>2)===2||(i>>2)===3)uv.setXY(i,.01,.99);else uv.setY(i,uv.getY(i)*F/4)}return aoGeo(g,.6,0,F*3.3,.5)},()=>TWM,true,FAR.big)); // glass towers: 4 height classes, the window texture tiles per floor
   nbi(RK,()=>aoGeo(ub(),.7,0,1,.5),()=>vstd(0xffffff,.95),true,FAR.big);nbi(SM,()=>new THREE.ConeGeometry(1,1,6).translate(0,.5,0),()=>std(0xffffff,.95),true,FAR.mid);nbi(SK,()=>new THREE.ConeGeometry(1,1,6).rotateX(PI).translate(0,-.5,0),()=>std(0xffffff,.95),false,FAR.mid);

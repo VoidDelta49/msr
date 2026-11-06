@@ -207,6 +207,16 @@ export const POSES = {
   dazed: (o, t) => set(o, -.5, -.45, 1.5, 1.35, -.15, -.35, -.25 + .15 * Math.sin(t * 5), .35),
   pillion: (o, t) => set(o, .95, .95, 1.3, 1.3, -1.45, -1.45, .02 * Math.sin(t * .9), -.08),
   jump: (o, t, k) => set(o, .5 * k, .5 * k, .5 * k, .2 * k, -.9 * k, -.6 * k, 0, -.1 * k),
+  // interiors (data/interiors.json people) and you: lining up a shot (k = 1 the stroke), a drink to the lips every few seconds,
+  // wiping the bar, a raised glass; stagger = walking drunk (ph = stride phase like walk, k = how drunk)
+  cue: (o, t, k) => { const st = Math.max(0, Math.sin(t * 1.4)) * .35 * (k ?? 1); return set(o, 1.35 + st, 1.05 - st * .3, .25, -.1, -.35, -.15, .55, -1.05); },
+  drink: (o, t) => { const c = (t * .18) % 1, up = c < .22 ? Math.sin(c / .22 * Math.PI) : 0; return set(o, .1, .55 + 2.15 * up, 0, 0, 0, 0, .05 + .45 * up, .05 * up); },
+  bartend: (o, t) => { const s = Math.sin(t * 2.6); return set(o, 1 + .25 * s, .85 - .2 * Math.cos(t * 2.6), 0, 0, 0, 0, -.3, -.28); },
+  cheers: (o, t) => set(o, .1, 2.6 + .06 * Math.sin(t * 7), 0, 0, 0, 0, .2, .04),
+  stagger: (o, t, k, ph) => {
+    const s = Math.sin(ph), c = Math.cos(ph), w = Math.sin(t * 1.7) * .5 + Math.sin(t * 3.3) * .25, a = .45 * k + .1, b = .3 + .5 * k;
+    return set(o, -a * s + .45 * w + .2, a * s - .45 * w + .2, b * s + .1, -b * s + .1, -(.15 + .8 * Math.max(0, c)), -(.15 + .8 * Math.max(0, -c)), -.25 + .2 * Math.sin(t * 2.3), -.18 + .14 * w);
+  },
   // dogs: fl fr bl br head tail body
   dogWalk: (o, t, k, ph) => { const s = Math.sin(ph) * .55 * k; return set(o, s, -s, -s, s, -.05, .25 * Math.sin(t * 9), 0, 0); },
   dogStand: (o, t) => set(o, 0, 0, 0, 0, .05 * Math.sin(t * .7), .35 * Math.sin(t * 7), 0, 0),

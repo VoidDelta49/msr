@@ -34,6 +34,10 @@ import { NPC } from './npc.js';
 import { keySwitch, killSwitch, starter, quickStart } from './ignition.js';
 import { GPU_TYPES } from './world.js';
 import { fxTick, bikeFx, splash } from './particles.js';
+import { addAct, pickAct } from './act.js';
+import { placesFrame } from './places.js';
+import { EF } from './effects.js';
+import './social.js';
 
 /* ---------- data ---------- */
 // loaded by menu.js on PLAY; stage() moves its loading bar (fractions continue after the download's 0–70%)
@@ -116,15 +120,20 @@ function getOff() {
 function footView() { F.cp = F.fp ? 0 : .25; $('bCam').textContent = F.fp ? 'CAM: 1ST' : 'CAM: 3RD'; }
 function footCamToggle() { F.fp = !F.fp; footView(); figBody(!F.fp); }
 function footOff() { // back on the bike (or the bike was reset under us): F.on is cleared by foot.js mount() / here
+  if (ctx.inside && ctx.exitInside) ctx.exitInside(true); // reset / bike switch inside a building: out first (places.js)
   F.on = false; document.body.classList.remove('foot'); figShow(false); B.rider.forEach(m => m.visible = ctx.camMode === 1);
   if (F.prevCam === 0 && ctx.camMode === 1) toggleCam(); F.prevCam = 1; S.thr = S.brake = 0; $('bCam').textContent = ctx.camMode ? 'CAM: 3RD' : 'CAM: 1ST';
 }
 ctx.footOff = () => { if (F.on) footOff(); }; // ride.js: hopping on a friend's bike while walking
 function getOn() { const why = mount(); if (why) return say(why, 1400); footOff(); say('On the bike. K = key, then hold R to start', 2200); }
+// the on-foot context button (act.js): GET ON next to the bike; places.js adds ENTER / EXIT / ORDER / BUY / SHOOT / DRINK
+addAct(() => F.on && nearBike() ? { label: 'GET ON', pri: 3, d: Math.hypot(F.x - S.x, F.z - S.z), run: getOn } : null, 'bike');
+function footAct() { const a = pickAct(); if (a) a.run(); else if (!ctx.inside) say('Walk up to your bike to get on', 1400); }
 // the bike waits where it was parked: brake on, clutch in, nothing else
 function footTick(dt) {
   S.thr = 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; S.back = false;
-  footStep(footInput(dt), dt);
+  const inp = footInput(dt); if (F.animT > 0) { inp.mx = inp.mz = 0; inp.jump = false; } // drinking / taking a shot: stand still
+  inp.drunk = F.dk || 0; inp.fast = EF.energy > 0; footStep(inp, dt);
 }
 
 /* ---------- camera / animation ---------- */
@@ -170,7 +179,7 @@ function visuals(dt, now) {
   if (!ctx.GAR && Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); } // pinch / wheel / Options FOV, speed widening, and leaving the garage's 40°
   if (LK.id === null && av > 1.5) { const k = Math.exp(-dt * 3); LK.y *= k; LK.p *= k; if (Math.abs(LK.y) < .002) LK.y = 0; if (Math.abs(LK.p) < .002) LK.p = 0; }
   if (ctx.GAR) studioFrame(dt, now);
-  else if (F.on) { figPose(); footCam(camera, dt, H); }
+  else if (F.on) { figPose(); footCam(camera, dt, H, ctx.camFit); }
   else if (ctx.camMode === 0) {
     LK.yr += (clamp(S.yaw * .12, -.25, .25) - LK.yr) * (1 - Math.exp(-dt * 8)); B.cam.rotation.set(-(S.th + (S.wp || 0)) * .4, LK.yr, S.lean * .35); camera.rotation.set(-.3 + LK.p, LK.y, 0);
     const vib = S.running ? .0007 * (.4 + S.rpm / 9000) : 0, ph = now * S.rpm / 60 * 2 * Math.PI; camera.position.set(Math.sin(ph * .5) * vib, Math.sin(ph) * vib, 0);
@@ -180,7 +189,7 @@ function visuals(dt, now) {
   }
   if (!ctx.GAR) dayNight(); // the studio has its own lights
   dom('wg', 'rotate(' + (S.steer * WMAX() * 57.3).toFixed(1) + ')', (e, v) => e.setAttribute('transform', v)); dom('cluFill', (S.cl * 100).toFixed(0) + '%', (e, v) => e.style.height = v); dom('bKey', !!S.key, (e, v) => e.classList.toggle('on', v)); dom('bKill', !!S.kill, (e, v) => e.classList.toggle('on', v)); dom('brkFill', (S.brake * 100).toFixed(0) + '%', (e, v) => e.style.setProperty('--p', v)); dom('thrg', (S.thr * 36).toFixed(1) + 'px', (e, v) => e.style.backgroundPositionY = v);
-  const fb = ctx.GAR || ctx.OPT || ctx.paused || ctx.ride || ctx.racing || S.crashed ? '' : F.on ? (nearBike() ? 'GET ON' : '') : !offBlock() ? 'GET OFF' : ''; // the touch button (F on a keyboard)
+  const fb = ctx.GAR || ctx.OPT || ctx.paused || ctx.ride || ctx.racing || S.crashed ? '' : F.on ? ((pickAct() || {}).label || '') : !offBlock() ? 'GET OFF' : ''; // the touch button (F / E on a keyboard): on foot whatever act.js offers
   dom('bFoot', fb, (e, v) => { e.textContent = v; e.hidden = !v; });
   animMarker(now); wpAnim(now);
 }
@@ -195,7 +204,7 @@ $('bounceB').onclick = () => { if (RP.ok) bounce(); };
 
 /* ---------- wiring ---------- */
 Object.assign(actions, {
-  shift: d => F.on ? (d > 0 && (TC.jump = 1)) : ctx.drive.shift(ctx.spec, S, d, ctx.bcfg), start: d => ctx.GAR ? (d && startEngine()) : starter(d), key: keySwitch, kill: killSwitch, cam: () => F.on ? footCamToggle() : toggleCam(), garage: openGarage, foot: () => F.on ? getOn() : getOff(),
+  shift: d => F.on ? (d > 0 && (TC.jump = 1)) : ctx.drive.shift(ctx.spec, S, d, ctx.bcfg), start: d => ctx.GAR ? (d && startEngine()) : starter(d), key: keySwitch, kill: killSwitch, cam: () => F.on ? footCamToggle() : toggleCam(), garage: openGarage, foot: () => F.on ? footAct() : getOff(),
   opts: () => ctx.OPT ? closeOpts() : openOpts(), closeOpts,
 });
 O.onPerf = () => updPerf(API);
@@ -258,6 +267,7 @@ function loop(t) {
   raceTick(dt);
   if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); if (RP.ok) tickRapier(dt); garageFrame(); }
   else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; if (F.on) footTick(dt); else input(dt); if (RP.ok) tickRapier(dt); missions(dt); wpTick(); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
+  if (!ctx.paused && !ctx.OPT && !ctx.GAR) placesFrame(dt, t / 1000); // drinks wearing off, the room you're in (places.js)
   if (BN.on) benchDrive(dt); const P1 = performance.now(); // benchmark: this frame's scripted pose (bench.js); P1..P3, C1 = stage stamps for it
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }

@@ -16,7 +16,7 @@ globalThis.addEventListener ??= () => { };
 const { NPC, npcEnv, npcStep, npcClear, poseOf, npcDoors } = await import(J('js/npc.js'));
 const { resolveLook, ROLES, PARTS } = await import(J('js/figlook.js'));
 const DATA = JSON.parse(readFileSync(path.join(ROOT, 'data/npc.json'), 'utf8'));
-const POSES = ['stand', 'walk', 'run', 'phone', 'hail', 'wave', 'chat', 'squat', 'sit', 'stretch', 'sweep', 'look', 'flinch', 'dazed', 'pillion', 'idle']; // js/figure.js POSES (+ idle = stand)
+const POSES = ['stand', 'walk', 'run', 'phone', 'hail', 'wave', 'chat', 'squat', 'sit', 'stretch', 'sweep', 'look', 'flinch', 'dazed', 'pillion', 'cue', 'drink', 'bartend', 'cheers', 'stagger', 'idle']; // js/figure.js POSES (+ idle = stand)
 
 const mul = a => () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const box = (cx, cz, hx, hz, ry = 0) => ({ cx, cz, hx, hz, ry, c: Math.cos(ry), s: -Math.sin(ry) });

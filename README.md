@@ -83,6 +83,20 @@ People walk the sidewalks of every road on the island and do everyday things: **
 
 **Bodies:** `js/figure.js` is the character system for everyone: the rider on foot, a friend's walker, the pedestrians, their dogs and a passenger on your bike share one body recipe (the rider's chunky boxes, torso profile, round head) with bones, 16 colour roles and optional parts, and one pose library (walk, run, phone, hail, chat, squat, sit, sweep...). The whole crowd is one draw call: poses and outfits are per-instance data and the shader bends the limbs, so 30 people cost the same draws as one. Mobile budget, built in: a fixed pool that lives in a ring around you (spawning out of view), off-screen people are not drawn, far people think less often, walls come from a grid, no shadow-map casting (contact blobs instead), fewer people on the Low preset and at night. Logic in `js/npc.js` is headless (`node tools/npc.mjs`).
 
+## Buildings, shops and drinks (11.83)
+
+**Going in:** some buildings have an inside. Walk up to the front door of the **Tambayan Billiards & Bar** (across the road from the parking lot, pink BILLIARDS neon over the door) and the on-foot button says **ENTER**. Inside: two pool tables under green lamps, a bar counter with stools and a bottle shelf, a jukebox, a tv with the PBA game, round tables, ceiling fans, and regulars (a bartender wiping the counter, people on stools and at the tables with a drink, someone lining up a shot). **EXIT** at the door takes you back out onto the step.
+
+**Shops and consumables:** **ORDER** at the counter opens the menu: ginbilog, beer, a litro of strong beer, softdrinks, water, sisig, chicharon. Sari-sari stores sell at the front door (**BUY**), no going in. You start with ₱300; fares from giving pedestrians a ride go into the same wallet. Whatever you buy goes in your hands: the button says **DRINK** / **EAT** (with its icon) and you drink it right there.
+
+**Drunk:** one ginbilog is plenty. Walking, the stick turns under you, you sway sideways, can't sprint and stagger; the screen wobbles, swims and splits into a drifting double image; the horizon tilts. On a bike you can't ride, at all: steering is mostly the gin's (and for seconds at a time your bars go the wrong way), the throttle surges and dies on its own, the brake gets grabbed. Counter-steering doesn't help. It wears off in about three minutes; kape, water and sisig take some of it away.
+
+**Billiards:** walk up to a table: **SHOOT** strikes the cue ball away from where you stand (the first shot is the break), balls click, bank and drop; a scratch comes back on the spot, **RACK** when the table's clear. Drunk, your aim wanders.
+
+**Friends (multiplayer):** tap a friend's name tag while either of you is on foot: 👋 **WAVE**, 🍶 **TREAT** (buy them a drink: you pay, it lands in their hands), 🥂 **CHEERS** (you drink what you carry, they get a CHEERS button to clink back and drink theirs), 📍 **CALL** (your spot, or the door of the building you're in, becomes their waypoint, from anywhere). MULTIPLAYER in the menu lists everyone with where they are (riding, on foot, which building) and FIND / CALL. Friends in the same building see each other inside; a drunk friend sways. (Needs the relay redeployed: `server/README.md`.)
+
+**As data:** `data/interiors.json` (rooms: which building types they belong to, size, colours, props, counters, people and their poses) and `data/shop.json` (items with prices and effects, shops, what sari-sari stores sell at the door, what you can treat a friend to). A new interior, item or shop is a data entry; effects live in `js/effects.js`.
+
 ## Multiplayer (Build 9.0)
 
 Main menu > MULTIPLAYER: type a name, then JOIN a room code or make a NEW ROOM and share its code (up to 8 riders per room). Everyone rides their own bike with their own physics; other riders appear as ghost bikes (no collisions) with their real bike and paint, a name tag and a cyan dot on the minimap.
@@ -112,6 +126,7 @@ Keyboard:
 - Click / Aerox / NMAX: `Space` is the rear brake lever (CBS on the Click). NMAX Tech MAX: `Q` / `Ctrl` Y-Shift down a level, `E` / `Shift` back up
 - Smash: `E` / `Q` shift (no clutch), `Space` is the rear brake. Carb version: no pump to prime, but a cold start cranks longer
 - `X` (hold): walk the bike backwards
+- On foot: `WASD` walk, `Shift` run, `Space` jump, `F` / `E` = the context button (GET ON, ENTER, EXIT, ORDER, BUY, SHOOT, DRINK)
 - `K`: ignition key, `T`: kill switch, `R` (hold): starter, `C`: camera, `G`: garage (bike picker is at the top), `O`: options (`Esc` closes), `Esc`: pause menu (also ☰ in the top bar)
 
 ## Project layout
@@ -148,6 +163,14 @@ js/figure.js          character system: body/dog geometry with bones + colour ro
 js/npc.js             pedestrians' brains (headless): spawning ring, sidewalks, doors, activities, dodging, the ride; npcfig.js draws them
 js/particles.js      particles: tyre smoke, dust, splashes; one GPU-animated ring-buffer pool, one draw, hidden when empty
 data/npc.json         pedestrian archetypes, outfits, activities, ride settings, lines
+js/interior.js        building interiors (headless): pocket rooms above their building, walls, EXIT / ORDER / SHOOT spots, camera fit; interiorfig.js draws them
+js/places.js          going in and out, shops, drinking, pool shots: the glue; act.js = the on-foot context button (ENTER, ORDER, DRINK, GET ON...)
+js/shop.js            money, the bag, buying (headless); shopui.js = the shop panel
+js/effects.js         what you consume does to you: drunk (walking, riding, the screen), sober, energy (headless)
+js/pool.js            billiards physics (headless, nine-ball rack)
+js/social.js          friends: wave, treat a drink, cheers, call over; friend list in MULTIPLAYER
+data/interiors.json   interiors: rooms, props, counters, people
+data/shop.json        items (price, effects), shops, walk-up stores, friend treats
 server/               Cloudflare Worker + Durable Object relay (one room per code)
 js/audio.js (+ engine-worklet.js), controls.js, garage.js, options.js, missions.js, config.js, state.js, util.js
 ```

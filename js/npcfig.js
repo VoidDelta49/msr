@@ -14,6 +14,7 @@ import { F } from './foot.js';
 import { say } from './hud.js';
 import { blip } from './audio.js';
 import { beacon, MI } from './missions.js';
+import { earn } from './shop.js';
 import { setWaypoint, clearWaypoint, WP } from './map.js';
 import { lampsOn } from './lights.js';
 import { NPC, npcEnv, npcStep, poseOf } from './npc.js';
@@ -65,7 +66,7 @@ function onEvent(e) {
       const d = e.door; say2(`${nm}: "${line('board', a, d.n)}" Drop-off marked on the map`, 3600); blip('ok');
       dest.position.set(d.x, H(d.x, d.z), d.z); dest.visible = true; setWaypoint(d.x, d.z, 'Drop-off: ' + (d.l || d.n)); break;
     }
-    case 'arrive': ST.rides = (ST.rides | 0) + 1; ST.fare = (ST.fare | 0) + e.fare; saveST(); say2(`${nm}: "${line('arrive')}" +₱${e.fare} · ${ST.rides} ride${ST.rides > 1 ? 's' : ''}, ₱${ST.fare} total`, 3600); blip('ok'); endRide(); break;
+    case 'arrive': ST.rides = (ST.rides | 0) + 1; ST.fare = (ST.fare | 0) + e.fare; saveST(); earn(e.fare); // the fare goes in your wallet (shop.js) say2(`${nm}: "${line('arrive')}" +₱${e.fare} · ${ST.rides} ride${ST.rides > 1 ? 's' : ''}, ₱${ST.fare} total`, 3600); blip('ok'); endRide(); break;
     case 'thrown': say2(`${nm}: "${line('thrown')}"`, 2400); blip('thud', 3); endRide(); break;
     case 'left': say2(`${nm}: "${line('left')}"`, 2200); endRide(); break;
     case 'bump': say2(`${nm}: "${line('bump')}"`, 1300); blip('thud', 2); break;
@@ -74,7 +75,7 @@ function onEvent(e) {
 function endRide() { dest.visible = false; if (WP.on && WP.n.startsWith('Drop-off')) clearWaypoint(); }
 
 export function npcFrame(dt, now) {
-  const on = (cfg.npc ?? 'auto') !== 'off' && !ctx.GAR;
+  const on = (cfg.npc ?? 'auto') !== 'off' && !ctx.GAR && !ctx.inside; // inside a building (places.js) the street is out of sight
   people.mesh.visible = dogs.mesh.visible = SH.visible = LEASH.visible = MK.visible = on;
   const night = lampsOn(), cap = on ? Math.round((D.pool[cfg.gfx] ?? D.pool.med) * (D.density[cfg.npc ?? 'auto'] ?? 1) * (night ? D.night : 1)) : 0;
   const me = F.on ? F : S; camera.getWorldDirection(v3); const cl = Math.hypot(v3.x, v3.z) || 1;

@@ -107,4 +107,9 @@ export function dayNight() {
   head.position.set(S.x + f * .9, S.zH + .95, S.z + g * .9);
   head.target.position.set(S.x + (f * Math.cos(sd) - g * Math.sin(sd)) * 22, S.zH - 1.5, S.z + (g * Math.cos(sd) + f * Math.sin(sd)) * 22);
   head.intensity = 900 * gate * (1 - sstep(-4, 4, el) * .7);
+  // inside a building (interior.js): its own warm lamplight whatever the hour (same lights, new colours: nothing recompiles)
+  if (ctx.inside) {
+    hemi.color.setHex(0xffe6c4); hemi.groundColor.setHex(0x8a6a50); hemi.intensity = IBL ? 1.6 : 2.2; sun.color.setHex(0xffd9a8); sun.intensity = 1.6;
+    if (IBL) scene.environmentIntensity = .25; renderer.toneMappingExposure = 1.12; if (GRADE.night) GRADE.night.value = 0;
+  }
 }
