@@ -4,13 +4,14 @@ import { S, ctx } from './state.js';
 import { cfg } from './config.js';
 import { initAudio } from './audio.js';
 import { F } from './foot.js';
+import { EF, drunkK, drunkRide } from './effects.js';
 
 export const actions = {};
 export const K = {}, TC = { back: 0, st: 0, stId: null, thr: 0, thrId: null, brk: 0, brkId: null, clu: 0, wa: 0, cluId: null, rev: 0, jump: 0 };
 addEventListener('keydown', e => {
   if (e.repeat || (e.target.type === 'text')) return; K[e.code] = true; const A = actions; if (ctx.MENU) return; // pause menu open (menu.js)
   if (e.code === 'KeyF') A.foot(); // get off / on the bike (foot.js)
-  if (F.on) { if (e.code === 'Space') TC.jump = 1; if (e.code === 'KeyC') A.cam(); } // on foot: Shift runs and Space jumps, the bike's keys do nothing
+  if (F.on) { if (e.code === 'Space') TC.jump = 1; if (e.code === 'KeyC') A.cam(); if (e.code === 'KeyE') A.foot(); } // on foot: Shift runs, Space jumps, E / F = the context button (act.js), the bike's keys do nothing
   else {
     if (e.code === 'KeyE' || e.code === 'ShiftLeft') A.shift(1); if (e.code === 'KeyQ' || e.code === 'ControlLeft') A.shift(-1);
     if (e.code === 'KeyR') A.start(1); if (e.code === 'KeyK') A.key(); if (e.code === 'KeyT') A.kill(); if (e.code === 'KeyC') A.cam(); if (e.code === 'KeyG') A.garage();
@@ -38,14 +39,18 @@ const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (
 $('bUp').onpointerdown = () => { buzz(10); actions.shift(1); }; $('bDn').onpointerdown = () => { buzz(10); actions.shift(-1); }; $('bKey').onpointerdown = () => { buzz(12); actions.key(); }; $('bKill').onpointerdown = () => { buzz(12); actions.kill(); };
 ptr($('bStart'), () => { buzz(15); $('bStart').classList.add('on'); actions.start(1); }, null, () => { $('bStart').classList.remove('on'); actions.start(0); }); // hold to crank
 
+// what the rider's hands are doing (before the gin gets a say: effects.js drunkRide)
+const HND = { thr: 0, brake: 0, steer: 0 }, DR = {};
 export function input(dt) {
   const kT = K.KeyW || K.ArrowUp, kB = K.KeyS || K.ArrowDown, kS = ((K.KeyD || K.ArrowRight) ? 1 : 0) - ((K.KeyA || K.ArrowLeft) ? 1 : 0);
-  S.thr = TC.thrId !== null ? TC.thr : appr(S.thr, kT ? 1 : 0, (kT ? 3.5 : 9) * dt);
+  HND.thr = TC.thrId !== null ? TC.thr : appr(HND.thr, kT ? 1 : 0, (kT ? 3.5 : 9) * dt);
   // scooter / rotary semi-auto: no clutch lever, so Space is the rear brake instead
   const cvt = ctx.spec.type !== 'manual', kBr = kB || (cvt && K.Space);
   // analog lever: touch sets the pull directly, keys squeeze it on progressively (hold longer = harder)
-  S.brake = TC.brkId !== null ? TC.brk : appr(S.brake, kBr ? 1 : 0, (kBr && cfg.analogBrk !== false ? 2.5 : 12) * dt);
-  if (TC.stId === null) TC.wa = appr(TC.wa, 0, 5 * dt); const wt = TC.stId !== null || TC.wa !== 0, tgt = wt ? TC.wa / WMAX() : kS; S.steer = wt ? tgt : appr(S.steer, tgt, (kS ? 2.2 : 4) * dt);
+  HND.brake = TC.brkId !== null ? TC.brk : appr(HND.brake, kBr ? 1 : 0, (kBr && cfg.analogBrk !== false ? 2.5 : 12) * dt);
+  if (TC.stId === null) TC.wa = appr(TC.wa, 0, 5 * dt); const wt = TC.stId !== null || TC.wa !== 0, tgt = wt ? TC.wa / WMAX() : kS; HND.steer = wt ? tgt : appr(HND.steer, tgt, (kS ? 2.2 : 4) * dt);
+  // drunk: steering, throttle and brake are mostly not yours any more (effects.js); sober this passes them straight through
+  const o = drunkRide(HND.steer, HND.thr, HND.brake, drunkK(), EF.t, DR); S.steer = o.steer; S.thr = o.thr; S.brake = o.brake;
   if (cvt) S.cl = 0;
   else { if (TC.cluId === null) TC.clu = appr(TC.clu, 0, 5 * dt); S.cl = K.Space ? appr(S.cl, 1, 8 * dt) : TC.cluId !== null ? TC.clu : appr(S.cl, TC.clu, 2.5 * dt); }
   S.back = !!(TC.back || K.KeyX);

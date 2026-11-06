@@ -1,0 +1,18 @@
+{
+  "_doc": "Shops and consumables (js/shop.js, effects in js/effects.js). items: name, icon, price (pesos), fx = { effect: amount } with effect one of drunk (0..1.5, .8 = can't ride), sober (takes drunk away), energy (seconds of faster sprinting); use = the button verb; line = what you say when you have it. shops: name, items (ids), greet (the seller's lines), doors = building types (data/map 'buildings' / world.js door types) where you can buy at the front door without going in. Interiors put a shop behind a counter (data/interiors.json). treat = what you can buy a friend in multiplayer. A new item or shop is data only.",
+  "items": {
+    "ginbilog": { "name": "Ginbilog", "icon": "🍶", "price": 75, "fx": { "drunk": 0.8 }, "use": "DRINK", "desc": "Gin in the round bottle. One is plenty.", "line": ["Tagay!", "Isang shot lang…", "Bottoms up!"] },
+    "beer": { "name": "Beer (pale pilsen)", "icon": "🍺", "price": 60, "fx": { "drunk": 0.28 }, "use": "DRINK", "desc": "Ice-cold, sweating bottle.", "line": ["Ahh, malamig.", "Cheers!"] },
+    "redhorse": { "name": "Strong beer (litro)", "icon": "🍾", "price": 95, "fx": { "drunk": 0.55 }, "use": "DRINK", "desc": "The big one. Share it, or don't.", "line": ["Isang litro, pare.", "Hindi ako lasing…"] },
+    "softdrink": { "name": "Softdrinks", "icon": "🥤", "price": 25, "fx": { "sober": 0.08, "energy": 20 }, "use": "DRINK", "desc": "Sweet, fizzy, in a plastic bag with a straw.", "line": ["Sarap!"] },
+    "kape": { "name": "Kapeng barako", "icon": "☕", "price": 30, "fx": { "sober": 0.3, "energy": 30 }, "use": "DRINK", "desc": "Strong local coffee. Helps a little.", "line": ["Gising na gising.", "Mainit pa."] },
+    "water": { "name": "Bottled water", "icon": "💧", "price": 20, "fx": { "sober": 0.15 }, "use": "DRINK", "desc": "You'll thank yourself later.", "line": ["Tubig muna."] },
+    "sisig": { "name": "Sisig (pulutan)", "icon": "🍳", "price": 120, "fx": { "sober": 0.2, "energy": 40 }, "use": "EAT", "desc": "Sizzling plate. Soaks up the gin.", "line": ["Sizzling!", "Pulutan muna."] },
+    "chicharon": { "name": "Chicharon", "icon": "🥓", "price": 35, "fx": { "sober": 0.06 }, "use": "EAT", "desc": "Crunchy, with vinegar.", "line": ["Crunchy."] }
+  },
+  "shops": {
+    "bar": { "name": "Bar counter", "items": ["ginbilog", "beer", "redhorse", "softdrink", "water", "sisig", "chicharon"], "greet": ["Ano sa 'yo, boss?", "Malamig pa 'yung beer.", "Isang ginbilog? Sige!", "Order na, pare."] },
+    "sari": { "name": "Sari-sari store", "doors": ["sari"], "items": ["softdrink", "kape", "water", "chicharon", "ginbilog", "beer"], "greet": ["Pabili? Ano po 'yun?", "Tingi lang po kami.", "Ano'ng bibilhin mo, iho?"] }
+  },
+  "treat": ["ginbilog", "beer", "softdrink"]
+}

@@ -1,0 +1,38 @@
+{
+  "_doc": "Building interiors (js/interior.js logic, js/interiorfig.js drawing). An interior belongs to building types ('at': world.js door types); walk up to such a building's front door and ENTER. It is built as a room 'pocket' metres above that building (so the minimap, friends and the map still put you there) and you walk it like the island. Local coordinates: metres from the room's centre on the floor, x to the right as you come in, z toward the front door (the front wall is z = d/2), y up. 'door.x' = where the doorway is on the front wall. Props (k): pool (billiard table, playable: SHOOT), counter (w, d), shelf (bottles, back wall), stool, table (round), chair, jukebox, rack (cues on a wall), sign (neon text: text, color, y), board (menu with the shop's prices: shop), plant, fan (ceiling), tv. ry = turn in radians. 'shops': a counter you ORDER at (shop id in data/shop.json, r = reach). 'people': archetype from data/npc.json, pose from js/figure.js POSES, y = lift (sitting), ry (0 faces the back wall, 3.14 faces the door). A new interior is data only: an entry here + a building type in 'at'.",
+  "pocket": 300,
+  "interiors": {
+    "billiards": {
+      "name": "Tambayan Billiards & Bar", "at": ["bar"], "w": 14, "d": 18, "h": 3.8,
+      "floor": "#7a5236", "floor2": "#694530", "wall": "#4f6488", "wall2": "#6a4a34", "trim": "#d8aa52", "ceil": "#4a4a52",
+      "door": { "x": 0, "w": 1.7 },
+      "props": [
+        { "k": "pool", "x": -3.3, "z": -0.4 },
+        { "k": "pool", "x": 3.3, "z": -0.4 },
+        { "k": "counter", "x": 0, "z": -6.7, "w": 9, "d": 0.85 },
+        { "k": "shelf", "x": 0, "z": -8.7, "w": 8 },
+        { "k": "stool", "x": -3.6, "z": -5.85 }, { "k": "stool", "x": -1.8, "z": -5.85 }, { "k": "stool", "x": 1.8, "z": -5.85 }, { "k": "stool", "x": 3.6, "z": -5.85 },
+        { "k": "table", "x": -4.8, "z": 5.4 }, { "k": "chair", "x": -5.8, "z": 5.4, "ry": -1.57 }, { "k": "chair", "x": -3.8, "z": 5.4, "ry": 1.57 },
+        { "k": "table", "x": 4.8, "z": 5.4 }, { "k": "chair", "x": 3.8, "z": 5.4, "ry": -1.57 }, { "k": "chair", "x": 5.8, "z": 5.4, "ry": 1.57 },
+        { "k": "jukebox", "x": -6.55, "z": -3.4, "ry": 1.57 },
+        { "k": "rack", "x": 6.85, "z": -0.4, "ry": -1.57 },
+        { "k": "sign", "x": 0, "z": -8.85, "y": 3.05, "text": "TAMBAYAN", "color": "#ff3fa4" },
+        { "k": "sign", "x": -6.88, "z": 3.2, "y": 2.6, "ry": 1.57, "text": "BILLIARDS", "color": "#38e0ff" },
+        { "k": "board", "x": 6.88, "z": -5.6, "y": 1.9, "ry": -1.57, "shop": "bar" },
+        { "k": "tv", "x": 6.85, "z": 3.6, "y": 2.3, "ry": -1.57 },
+        { "k": "plant", "x": -6.3, "z": 8.3 }, { "k": "plant", "x": 6.3, "z": 8.3 },
+        { "k": "fan", "x": 0, "z": 4 }, { "k": "fan", "x": 0, "z": -3.6 }
+      ],
+      "shops": [ { "shop": "bar", "x": 0, "z": -5.5, "r": 1.7 } ],
+      "people": [
+        { "arch": "tambay", "x": 0.4, "z": -7.75, "ry": 3.14, "pose": "bartend", "who": "bartender" },
+        { "arch": "sando", "x": -3.6, "z": -5.85, "ry": 0, "pose": "seat", "y": -0.13 },
+        { "arch": "office", "x": 1.8, "z": -5.85, "ry": 0, "pose": "drink", "y": -0.13, "sit": true },
+        { "arch": "sando", "x": 4.75, "z": 0.6, "ry": 1.57, "pose": "cue" },
+        { "arch": "tambay", "x": 5.6, "z": -2.4, "ry": 2.4, "pose": "chat" },
+        { "arch": "lolo", "x": -5.8, "z": 5.4, "ry": -1.57, "pose": "drink", "y": -0.4, "sit": true },
+        { "arch": "tita", "x": -3.8, "z": 5.4, "ry": 1.57, "pose": "seat", "y": -0.4 }
+      ]
+    }
+  }
+}

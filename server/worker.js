@@ -86,6 +86,18 @@ function cleanRide(m) {
   return r;
 }
 
+// friends (js/social.js): wave / treat (a drink id) / cheers / clink / call (a spot + place name) / thanks, always to one player
+function cleanSoc(m) {
+  const OPS = ['wave', 'treat', 'cheers', 'clink', 'call', 'thanks'];
+  if (!OPS.includes(m.op) || !Number.isInteger(m.to) || m.to < 1 || m.to > 255) return null; const r = { t: 'soc', op: m.op, to: m.to };
+  if (m.op === 'treat') { if (typeof m.item !== 'string' || !/^[a-z0-9_]{1,16}$/.test(m.item)) return null; r.item = m.item; }
+  if (m.op === 'call') {
+    if (!num(m.x) || !num(m.z) || Math.abs(m.x) > 5000 || Math.abs(m.z) > 5000) return null; r.x = m.x; r.z = m.z;
+    if (typeof m.place === 'string') r.place = m.place.replace(/[^\p{L}\p{N} &'.-]/gu, '').trim().slice(0, 32);
+  }
+  return r;
+}
+
 export class Room extends DurableObject {
   constructor(ctx, env) { super(ctx, env); this.lim = new Map(); } // per-socket buckets (in memory: reset if the room hibernates, which is fine)
   // everyone in the room (the attachment survives hibernation)
@@ -147,6 +159,7 @@ export class Room extends DurableObject {
       me.look = look; ws.serializeAttachment(me); out = { t: 'look', look };
     } else if (m.t === 'race') { out = cleanRace(m); if (!out) return; }
     else if (m.t === 'ride') { out = cleanRide(m); if (!out) return; }
+    else if (m.t === 'soc') { out = cleanSoc(m); if (!out) return; }
     else return;
     out.from = me.id; const data = JSON.stringify(out);
     if (out.to) { if (out.to === me.id) return; for (const [w, a] of this.list(ws)) if (a.id === out.to) try { w.send(data); } catch (e) { } }

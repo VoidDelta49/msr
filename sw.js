@@ -18,6 +18,9 @@ async function files() {
   if (map['@dimforge/rapier3d-compat']) urls.add(abs(map['@dimforge/rapier3d-compat'].replace('.mjs', '.wasm'))); // fetched by rapier.mjs at init
   urls.add(abs('data/map/island.json?v=' + V));
   urls.add(abs('data/changelog.json?v=' + V));
+  urls.add(abs('data/npc.json?v=' + V));
+  urls.add(abs('data/interiors.json?v=' + V));
+  urls.add(abs('data/shop.json?v=' + V));
   const ix = abs('data/bikes/index.json?v=' + V); urls.add(ix);
   for (const id of await (await fetch(ix)).json()) urls.add(abs(`data/bikes/${id}.json?v=${V}`));
   // files reached through a prefix entry ("three/addons/": ...) aren't listed in the importmap: find them in our own modules

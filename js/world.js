@@ -102,6 +102,12 @@ const nearLM=(x,z)=>[...LMF.lot,...LMF.gas].some(F=>{const[a,d]=F.loc(x,z),h=F.t
 const atGas=(x,z)=>LMF.gas.some(F=>{const[a,d]=F.loc(x,z);return Math.abs(a)<6&&Math.abs(d)<3.5});
 // @terrain-end
 const GEN=[]; // roadside houses the generator placed this load (map maker bakes them into 'buildings')
+// Front doors (npc.js: people walk in and out of them, a passenger's drop-off): x, z = the front step outside, ix, iz = just inside
+// the doorway, t = building type, n = what the passenger calls it. Front of a building = +z turned by ry (normal (sin ry, cos ry)).
+// n = how the passenger says it (Taglish), l = the map label
+const DOORS=[],DOORN={shop:['tindahan','Shop'],house:['bahay namin','House'],nipa:['kubo namin','Nipa hut'],house2:['bahay namin','House'],bahay:['bahay na bato','Bahay na bato'],bunga:['bahay namin','Bungalow'],sari:['sari-sari store','Sari-sari store'],
+  chapel:['kapilya','Chapel'],bar:['tambayan','Billiards & bar'],warehouse:['bodega','Warehouse'],stall:['puwesto namin','Stall'],cottage:['cottage','Cottage'],resort:['resort','Resort'],tower:['opisina','Office tower'],church:['simbahan','Church']};
+function door(x,z,ry,d,t,out=1.3){const fx=Math.sin(ry),fz=Math.cos(ry),[n,l]=DOORN[t]||['doon','Building'];DOORS.push({x:x+fx*(d/2+out),z:z+fz*(d/2+out),ix:x+fx*(d/2-.6),iz:z+fz*(d/2-.6),t,n,l})}
 /* roads: Catmull-Rom splines, terrain-following heights, junction levelling, surface lookup: see js/roads.js (pure, so tools/roads.mjs
    tests it). island.json road = {pts, w, hwy?, closed?, kind?}; kind 'strip' = airstrip (concrete, runway markings, no poles/houses) */
 const {ROADS,nearRoad,bumpAt,BUMPS}=buildRoads(MD,terrBase);
@@ -262,7 +268,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   // ----- town (población): shophouses with tin roofs, plaza + church, market, jeepneys -----
   const bl=[[],[],[]],roofs=[],awn=[];
   function shop(x,z,w,d,ry){const fl=rand()<.3?0:rand()<.65?1:2,h=[3.2,6,8.8][fl];bl[fl].push({x,y:0,z,ry,sx:w,sy:h,sz:d,c:pastel()});roofs.push({x,y:h,z,ry,sx:w+.6,sy:.22,sz:d+.8,c:TIN[(rand()*TIN.length)|0]});
-    if(fl===0&&rand()<.7)awn.push({x:x+Math.sin(ry)*(d/2+.9),y:2.5,z:z+Math.cos(ry)*(d/2+.9),ry,sx:w*.9,sy:.1,sz:1.8,c:new THREE.Color().setHSL(rand(),.7,.5)});addOBB(x,z,w/2,d/2,ry)}
+    if(fl===0&&rand()<.7)awn.push({x:x+Math.sin(ry)*(d/2+.9),y:2.5,z:z+Math.cos(ry)*(d/2+.9),ry,sx:w*.9,sy:.1,sz:1.8,c:new THREE.Color().setHSL(rand(),.7,.5)});addOBB(x,z,w/2,d/2,ry);door(x,z,ry,d,'shop')}
   function edge(ax,az,bx,bz,ry){const L=Math.hypot(bx-ax,bz-az),ux=(bx-ax)/L,uz=(bz-az)/L;let s=0;while(s<L-6){const w=6+rand()*4.5,d=8+rand()*3;if(s+w>L)break;
     const back=d/2;shop(ax+ux*(s+w/2)-Math.sin(ry)*back,az+uz*(s+w/2)-Math.cos(ry)*back,w,d,ry);s+=w+.6+rand()*1.6}}
   function block(x0,z0,x1,z1,sides='nsew'){const I=4.6;
@@ -274,16 +280,17 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   const hcol=(q,q2)=>new THREE.Color().setHSL(q,.35+q2*.3,.62+((q*7.31)%1)*.18),hq=(x,z)=>[hash2(Math.round(x*10),Math.round(z*10)),hash2(Math.round(z*10)+7,Math.round(x*10)-3)];
   for(const b of BLD)if(b[0]==='shop'){const[,x,z,ry=0,w=8,d=9.5,fl=1]=b,[q,q2]=hq(x,z),f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo,F=clamp(Math.round(fl)-1,0,2),h=[3.2,6,8.8][F]+sl+.25,y=f.lo-.25;
     bl[F].push({x,y,z,ry,sx:w,sy:h,sz:d,c:hcol(q,q2)});roofs.push({x,y:y+h,z,ry,sx:w+.6,sy:.22,sz:d+.8,c:TIN[(q2*TIN.length)|0]});
-    if(F===0&&q<.7)awn.push({x:x+Math.sin(ry)*(d/2+.9),y:f.lo+2.5,z:z+Math.cos(ry)*(d/2+.9),ry,sx:w*.9,sy:.1,sz:1.8,c:new THREE.Color().setHSL(q2,.7,.5)});addOBB(x,z,w/2,d/2,ry)}
+    if(F===0&&q<.7)awn.push({x:x+Math.sin(ry)*(d/2+.9),y:f.lo+2.5,z:z+Math.cos(ry)*(d/2+.9),ry,sx:w*.9,sy:.1,sz:1.8,c:new THREE.Color().setHSL(q2,.7,.5)});addOBB(x,z,w/2,d/2,ry);door(x,z,ry,d,'shop')}
   // ----- building variations (Build 11.45): house2 bahay bunga sari chapel lighthouse warehouse stall cottage resort -----
   // [type, x, z, ry, w, d] like 'house' (front = +z rotated by ry); BD = default w, d. No rand(): colours come from the position hash, so
   // editing one never reshuffles the island. They reuse the shophouse lists (bl = lit windows, roofs, awn) and add a few of their own.
-  const BD={house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12],tower:[20,20],cave:[56,44]};
-  const TW=[[],[],[],[]],RK=[],SM=[],SK=[],CRY=[],PL=[],PR=[],GL=[],DK=[],TH=[],LHB=[],LHL=[],LHC=[],TINM=new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),WH=[];
+  const BD={bar:[12,11],house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12],tower:[20,20],cave:[56,44]};
+  const BARS=[],TW=[[],[],[],[]],RK=[],SM=[],SK=[],CRY=[],PL=[],PR=[],GL=[],DK=[],TH=[],LHB=[],LHL=[],LHC=[],TINM=new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),WH=[];
   const nb=(L,x,y,z,ry,sx,sy,sz,c)=>L.push({x,y,z,ry,sx,sy,sz,c}); // box standing on y
   const at=(x,z,ry,a,d)=>({x:x+Math.cos(ry)*a+Math.sin(ry)*d,z:z-Math.sin(ry)*a+Math.cos(ry)*d}); // a along the width, d towards the front
   for(const b of BLD){const t=b[0],D=BD[t];if(!D)continue;const[,x,z,ry=0,w=D[0],d=D[1]]=b,[q,q2]=hq(x,z),f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo;if(sl>=2.4)continue;
     const y=f.lo-.25,lo=f.lo,S=sl+.25,col=hcol(q,q2),tin=TIN[(q2*TIN.length)|0],P=(a,dd)=>at(x,z,ry,a,dd),hue=n=>new THREE.Color().setHSL((q*n)%1,.7,.5);
+    if(t!=='lighthouse'&&t!=='cave')door(x,z,ry,d,t,t==='bahay'||t==='bunga'||t==='resort'?2.6:1.3);
     if(t==='house2'){const h=6.2+S,fr=P(0,d/2),bk=P(0,d/2+.75),rl=P(0,d/2+1.45);
       bl[1].push({x,y,z,ry,sx:w,sy:h,sz:d,c:col});PR.push({x,y:y+h,z,ry,sx:w+.8,sy:1.2,sz:d+.9,c:tin});
       nb(PL,bk.x,lo+3.1,bk.z,ry,w*.78,.18,1.5,0xd9d5cc);nb(PL,rl.x,lo+3.28,rl.z,ry,w*.78,.85,.09,0xffffff);nb(DK,fr.x,lo,fr.z,ry,1.1,2.1,.14,0x3a2a1c);addOBB(x,z,w/2,d/2,ry)}
@@ -333,6 +340,10 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
         const m=P(a,dd),sc=hv(n+80);if(n%2){SM.push({x:m.x,y:lo,z:m.z,sx:1.1+sc*1.2,sy:2+sc*3.5,sz:1.1+sc*1.2,c:0xd6cdbd});addOBB(m.x,m.z,.7,.7,ry)}else SK.push({x:m.x,y:lo+Hh,z:m.z,sx:.8+sc,sy:2+sc*3,sz:.8+sc,c:0xcfc4b0})}
       for(const[a,dd,c]of[[-Ws*.5,-4,0x7de8ff],[-Ws*.62,2,0x9d8cff],[-Ws*.3,-12,0x7de8ff],[Ws*.4,4,0x9d8cff],[Ws*.7,-2,0x7de8ff],[G+2,Ds-3,0x7de8ff],[-G-2,Ds-3,0x7de8ff],[Ws/2+G+2,-Ds+3,0x9d8cff],[Ws/2-G-2,-Ds+3,0x9d8cff]]){const m=P(a,dd);CRY.push({x:m.x,y:lo,z:m.z,ry:hv(a*3)*6,sx:.6,sy:1.6+hv(dd)*1.6,sz:.6,c});CRY.push({x:m.x+.7,y:lo,z:m.z-.4,ry:hv(a)*6,sx:.4,sy:1+hv(a+dd)*1.2,sz:.4,c})}
       const pm=P(-Ws*.45,-4);nb(PL,pm.x,lo+.02,pm.z,ry,16,.12,11,0x2fb7e8)}
+    else if(t==='bar'){const h=4.2+S,fr=P(0,d/2+1.2),dr=P(0,d/2+.04),sg=P(0,d/2+.09); // billiards & bar (data/interiors.json 'billiards': ENTER at the door)
+      nb(PL,x,y,z,ry,w,h,d,0x2b3346);PR.push({x,y:y+h,z,ry,sx:w+.8,sy:1.1,sz:d+.9,c:0x45464d});awn.push({x:fr.x,y:lo+2.75,z:fr.z,ry,sx:w*.92,sy:.12,sz:2.3,c:0xb3261e});
+      nb(DK,dr.x,lo,dr.z,ry,1.8,2.35,.12,0x4a2f1f);for(const k of[-1,1]){const g=P(k*w*.3,d/2+.04);nb(GL,g.x,lo+.95,g.z,ry,2.4,1.25,.1,0xffffff)}
+      BARS.push({x:sg.x,z:sg.z,y:lo+3.4,ry,w});addOBB(x,z,w/2,d/2,ry)}
     else if(t==='resort'){const h=6.6+S,fr=P(0,d/2+1.6),sg=P(0,d/2+.1),pl=P(0,d/2+10),pd=P(0,d/2+10);
       bl[1].push({x,y,z,ry,sx:w,sy:h,sz:d,c:col});roofs.push({x,y:y+h,z,ry,sx:w+.8,sy:.32,sz:d+.8,c:0xd9d4c8});
       awn.push({x:fr.x,y:lo+3.2,z:fr.z,ry,sx:7,sy:.16,sz:3.4,c:0xf4f4f0});awn.push({x:sg.x,y:y+h+.9,z:sg.z,ry,sx:w*.42,sy:1.3,sz:.16,c:0x18a0a0});
@@ -342,6 +353,10 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   nbi(PL,()=>aoGeo(ub(),.62,0,.6),()=>vstd(0xffffff,.85),true,FAR.tree);nbi(DK,ub,()=>std(0x1d1f22,.9),false,FAR.mid);nbi(GL,ub,()=>lampMat([1.6,1.35,.85],[.35,.4,.5]),false,FAR.mid);
   nbi(PR,()=>prism(1,1.6,1),()=>TINM,true,FAR.tree);nbi(WH,ub,()=>TINM,true,FAR.big);nbi(TH,()=>new THREE.ConeGeometry(1,1,4).rotateY(PI/4).translate(0,.5,0),()=>std(0xffffff,1),true,FAR.tree);
   nbi(LHB,()=>new THREE.CylinderGeometry(1,.93,1,16).translate(0,.5,0),()=>std(0xffffff,.6),true,FAR.big);nbi(LHL,()=>new THREE.CylinderGeometry(1,1,1,12).translate(0,.5,0),()=>lampMat([2.4,2,1.1],[.5,.5,.5]),false,FAR.big);
+  if(BARS.length){const c=document.createElement('canvas');c.width=512;c.height=128;const g=c.getContext('2d');g.textAlign='center';g.textBaseline='middle';g.font='900 64px system-ui, sans-serif'; // the neon sign over a bar's door
+    for(const[t2,col,y2]of[['BILLIARDS','#ff3fa4',46],['· BAR · GINBILOG ·','#38e0ff',104]]){g.font=y2<60?'900 66px system-ui, sans-serif':'800 30px system-ui, sans-serif';g.shadowColor=col;for(const b of[24,10,4]){g.shadowBlur=b;g.fillStyle=col;g.fillText(t2,256,y2)}g.shadowBlur=0;g.fillStyle='rgba(255,255,255,.8)';g.fillText(t2,256,y2)}
+    const tx=new THREE.CanvasTexture(c);tx.colorSpace=THREE.SRGBColorSpace;const sm=new THREE.MeshBasicMaterial({map:tx,transparent:true,toneMapped:false,depthWrite:false});
+    for(const b of BARS){const m=new THREE.Mesh(new THREE.PlaneGeometry(Math.min(7,b.w*.62),1.7),sm);m.position.set(b.x,b.y,b.z);m.rotation.y=b.ry;m.name='barSign';m.updateMatrix();freeze(m);scene.add(m);cullFar(m,FAR.mid)}}
   const TWM=glowMat(vstd(0xffffff,.45,.15,tTower),tTowerG);
   TW.forEach((L,k)=>nbi(L,()=>{const F=[8,13,20,30][k],g=new THREE.BoxGeometry(20,F*3.3,20).translate(0,F*1.65,0),uv=g.attributes.uv;for(let i=0;i<uv.count;i++){if((i>>2)===2||(i>>2)===3)uv.setXY(i,.01,.99);else uv.setY(i,uv.getY(i)*F/4)}return aoGeo(g,.6,0,F*3.3,.5)},()=>TWM,true,FAR.big)); // glass towers: 4 height classes, the window texture tiles per floor
   nbi(RK,()=>aoGeo(ub(),.7,0,1,.5),()=>vstd(0xffffff,.95),true,FAR.big);nbi(SM,()=>new THREE.ConeGeometry(1,1,6).translate(0,.5,0),()=>std(0xffffff,.95),true,FAR.mid);nbi(SK,()=>new THREE.ConeGeometry(1,1,6).rotateX(PI).translate(0,-.5,0),()=>std(0xffffff,.95),false,FAR.mid);
@@ -357,7 +372,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     else{const pz=mesh(new THREE.PlaneGeometry(62,40).rotateX(-PI/2),std(0x6fae4a,.9),118,.02,28,F);pz.receiveShadow=true;scene.add(freeze(pz))}
     const ct=mesh(new THREE.PlaneGeometry(15,28).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tCourt,roughness:.7}),98,.03,28,F);scene.add(freeze(ct));
     inst(mergeGeometries([new THREE.CylinderGeometry(.1,.1,3.2,6).translate(0,1.6,0),new THREE.BoxGeometry(1.8,1.1,.08).translate(0,3.4,.3)]),std(0xdedede,.5),[{...W(98,14.6),y,ry},{...W(98,41.4),y,ry:ry+PI}],true,FAR.small);obb(98,14.6,.2,.2);obb(98,41.4,.2,.2)}
-  for(const F of LMF.church){const ch=new THREE.Group(),w=F.W(128,62);ch.position.set(w.x,F.y,w.z);ch.rotation.y=F.ry;scene.add(ch);
+  for(const F of LMF.church){{const a=F.W(128,45.2),b=F.W(128,49);DOORS.push({x:a.x,z:a.z,ix:b.x,iz:b.z,t:'church',n:DOORN.church[0],l:DOORN.church[1]})}const ch=new THREE.Group(),w=F.W(128,62);ch.position.set(w.x,F.y,w.z);ch.rotation.y=F.ry;scene.add(ch);
     // with batching (batch.js) each part is a one-instance prop: plain colours, so the whole church joins the shared material's draw
     const cm=MULTI?(g,m,x,y,z)=>inst(g.translate(x,y,z),m,[{x:w.x,y:F.y,z:w.z,ry:F.ry}],true,FAR.big):(g,m,x,y,z)=>{const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=o.receiveShadow=true;ch.add(o);return o};
     cm(new THREE.BoxGeometry(13,10,24).translate(0,5,0),stone,0,0,0);cm(prism(14,5,25),std(0x8a3b2b,.7),0,10,0);
@@ -391,8 +406,8 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   inst(...pair({g:aoGeo(trig,.6),m:vstd(0xffffff,.45,.3)},{g:mergeGeometries([tw(-.2,.72,.3),tw(-.2,-.72,.3),tw(1.42,0,.3)]),m:std(0x111111,.8)}),tri,true,FAR.small); // wheels: bike front/rear + sidecar
   // houses along the roads outside town: concrete bungalows and nipa huts
   const hb=[],hr=[],nipa=[],GH=PROPS.houses||{every:0};
-  const hut=(x,z,ry)=>{const f=foot(x,z,2.25,2.1,ry);if(f.hi-f.lo<.9){nipa.push({x,y:f.lo,z,ry,sx:4.5,sy:2.6,sz:4.2,c:0xb59a5e});addOBB(x,z,2.3,2.2,ry);return true}}; // stilts (1 m) absorb up to .9 m of slope
-  const house=(x,z,ry,w,d,c,rc)=>{const f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo;if(sl<2.4){hb.push({x,y:f.lo-.25,z,ry,sx:w,sy:3.35+sl,sz:d,c});hr.push({x,y:f.hi+3.1,z,ry,sx:w+.8,sy:1,sz:d+.9,c:rc});addOBB(x,z,w/2,d/2,ry);return true}}; // walls reach down to the low corner
+  const hut=(x,z,ry)=>{const f=foot(x,z,2.25,2.1,ry);if(f.hi-f.lo<.9){nipa.push({x,y:f.lo,z,ry,sx:4.5,sy:2.6,sz:4.2,c:0xb59a5e});addOBB(x,z,2.3,2.2,ry);door(x,z,ry,4.4,'nipa');return true}}; // stilts (1 m) absorb up to .9 m of slope
+  const house=(x,z,ry,w,d,c,rc)=>{const f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo;if(sl<2.4){hb.push({x,y:f.lo-.25,z,ry,sx:w,sy:3.35+sl,sz:d,c});hr.push({x,y:f.hi+3.1,z,ry,sx:w+.8,sy:1,sz:d+.9,c:rc});addOBB(x,z,w/2,d/2,ry);door(x,z,ry,d,'house');return true}}; // walls reach down to the low corner
   const R1=v=>Math.round(v*10)/10,R4=v=>Math.round(v*1e4)/1e4;
   if(GH.every>0)for(const r of ROADS){if(!r.hwy&&r.w!==6)continue;for(let i=6;i<r.s.length-6;i+=Math.max(2,Math.round(GH.every))){const s=r.s[i];for(const sd of[-1,1]){if(rand()>GH.chance)continue;
     const off=r.w/2+8+rand()*5,x=s.x-s.tz*off*sd,z=s.z+s.tx*off*sd;if(rd(x,z,TOWN,10)<1)continue;const q=nearRoad(x,z);if(q&&q.d<r.w/2+5)continue;
@@ -562,4 +577,4 @@ function zones(x,z,o){const inl=inland(x,z),gx=inland(x+20,z)-inland(x-20,z),gz=
   o.river=1-sstep(8,90,Math.sqrt(bd));o.rx=bx;o.rz=bz;o.town=1-sstep(0,130,rd(x,z,TOWN));
   o.paddy=1-sstep(0,90,rd(x,z,PADDY));
   const dv=Math.hypot(x-VOL.x,z-VOL.z);o.volc=1-sstep(60,420,dv);o.wild=(1-o.town)*sstep(0,50,inl)*(1-sstep(90,160,VOL.h*Math.exp(-Math.pow(dv/VOL.r,1.8))));return o}
-export { zones, atGas, LMF, GEN, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPT, mapHi, MAPV };
+export { zones, atGas, LMF, GEN, DOORS, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPT, mapHi, MAPV };

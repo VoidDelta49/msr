@@ -152,7 +152,33 @@ if (AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx || cfg.mblur) {
   pipe = new THREE.RenderPipeline(renderer); pipe.outputColorTransform = false; pipe.outputNode = out;
 }
 export const BX = { post: true, noShadow: false }; // benchmark ablations (bench.js): post false = render the scene straight to the canvas; noShadow = never redraw the shadow map
-export const draw = () => { if (MB) MB.update(camera, performance.now()); pipe && BX.post ? pipe.render() : renderer.render(scene, camera); };
+// Drunk (effects.js): its own small pipeline, built the first time it is needed (drunkFx(): entering a bar or buying a drink) and drawn
+// INSTEAD of the normal one while DRUNK.k > 0, so sober it costs nothing at all. One pass over the scene: the picture wobbles (two slow
+// sine warps), swims in and out, splits into a drifting double image, smears a little (a 4-tap blur that grows with k), then tone
+// mapping and a warm, pulsing vignette. The grade / FXAA / N64 filter are left out while it runs (you won't notice).
+export const DRUNK = { k: 0, t: 0, pipe: null, busy: false };
+export async function drunkFx() {
+  if (DRUNK.pipe || DRUNK.busy) return; DRUNK.busy = true;
+  try {
+    const T = await import('three/tsl'), sp = T.pass(scene, camera, AA.ms ? { samples: AA.ms } : {}), col = sp.getTextureNode();
+    if (AA.ms) { const rt = sp.renderTarget; rt.storeMultisampledColorBuffer = false; rt.storeMultisampledDepthBuffer = rt.storeMultisampledStencilBuffer = false; }
+    const k = DRUNK.ku = T.uniform(0), t = DRUNK.tu = T.uniform(0), u = T.screenUV;
+    const warp = T.vec2(T.sin(u.y.mul(7.5).add(t.mul(1.7))).add(T.sin(u.y.mul(17).sub(t.mul(2.9))).mul(.35)), T.cos(u.x.mul(6.2).add(t.mul(1.3)))).mul(k.mul(.011));
+    const zoom = T.float(1).sub(k.mul(.035).mul(T.sin(t.mul(.7)).add(1.2))), uu = u.sub(.5).mul(zoom).add(.5).add(warp);
+    const off = T.vec2(T.sin(t.mul(.83)), T.cos(t.mul(.61)).mul(.45)).mul(k.mul(.03)), bl = T.vec2(k.mul(.0035));
+    const a = col.sample(uu).rgb, b = col.sample(uu.add(off)).rgb, c = col.sample(uu.add(bl)).rgb.add(col.sample(uu.sub(bl)).rgb).mul(.5);
+    let rgb = T.mix(T.mix(a, c, k.mul(.6)), b, k.mul(.42));
+    let out = T.renderOutput(T.vec4(rgb, 1));
+    const v = u.sub(.5).mul(T.vec2(1.2, 1)).length(), pulse = T.sin(t.mul(1.1)).mul(.08).add(.92), vg = T.smoothstep(.95, .2, v.mul(T.float(1).add(k.mul(.35)).mul(pulse)));
+    const warm = T.mix(T.vec3(1), T.vec3(1.06, .98, .9), k);
+    out = T.vec4(out.rgb.mul(warm).mul(T.mix(T.float(1), vg, k.mul(.7))), 1);
+    const p = new THREE.RenderPipeline(renderer); p.outputColorTransform = false; p.outputNode = out; DRUNK.pipe = p;
+  } catch (e) { console.warn('drunk pass', e); } finally { DRUNK.busy = false; }
+}
+export const draw = () => {
+  if (DRUNK.pipe && DRUNK.k > .01 && BX.post) { DRUNK.ku.value = DRUNK.k; DRUNK.tu.value = DRUNK.t; DRUNK.pipe.render(); return; }
+  if (MB) MB.update(camera, performance.now()); pipe && BX.post ? pipe.render() : renderer.render(scene, camera);
+};
 // Shader warm-up, during loading: build every material's shader/pipeline now instead of on first use (the first
 // crash, switching to 3rd person, a new area coming into view). Everything hidden is shown and frustum culling is off
 // for the duration. compileAsync links the programs in parallel where the driver allows (KHR_parallel_shader_compile on

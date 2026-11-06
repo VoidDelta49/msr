@@ -356,3 +356,21 @@ body.gar #bFoot,body.opt #bFoot,body.menu #bFoot{display:none}
 #bmSet{background:#a78bfa;color:#120a2a;border-color:#a78bfa;font-weight:800}
 #bmCard [hidden]{display:none}
 @media (prefers-reduced-motion:reduce){#bmCard,#bmHint{transition:none}}
+/* friends' social panel (social.js): same banner look as #ride, buttons wrap */
+#soc{position:fixed;top:calc(58px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:var(--glass);padding:8px;border-radius:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;z-index:8;max-width:calc(100vw - 2 * var(--mini,140px) - 40px);font-size:13px;border:1px solid rgba(255,120,200,.6)}
+#soc[hidden]{display:none}#socT{flex:1 1 140px;min-width:0}#socB{display:flex;flex-wrap:wrap;gap:8px}
+#soc .b{height:40px;padding:0 10px;white-space:nowrap}#soc .hot{background:#ff78c8;color:#1a0410;border-color:#ff78c8}
+/* shop panel (shopui.js): a card on the right, scrolls when long; the walker keeps walking (walk off and it closes) */
+#shop{position:fixed;top:calc(52px + env(safe-area-inset-top));right:calc(8px + env(safe-area-inset-right));bottom:calc(8px + env(safe-area-inset-bottom));width:min(360px,calc(100vw - 16px));z-index:9;display:flex;align-items:flex-start;pointer-events:none}
+#shop[hidden]{display:none}
+#shopC{pointer-events:auto;max-height:100%;overflow:auto;width:100%;background:rgba(14,12,18,.88);border:1px solid rgba(255,176,32,.5);border-radius:12px;padding:10px;color:var(--ink);font:13px system-ui;box-sizing:border-box}
+#shopH{display:flex;align-items:center;gap:8px}#shopN{flex:1;font-size:16px}#shopM{color:var(--ok);font-weight:800}
+#shopG{display:block;color:#ffd166;margin:4px 0 8px}
+#shopC .srow{display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid rgba(255,255,255,.08)}
+#shopC .si{font-size:22px;width:28px;text-align:center}#shopC .sn{flex:1;min-width:0;display:flex;flex-direction:column}#shopC .sn small{color:var(--dim);font-size:11px}
+#shopC .srow .b{flex:none;min-width:84px;height:36px}#shopBag h4{margin:10px 0 2px;color:#8fdcf2}
+body.gar #shop,body.menu #shop,body.opt #shop,body.gar #soc,body.menu #soc{display:none}
+/* friends list (MULTIPLAYER, menu.js) */
+#mpFr{display:flex;flex-direction:column;gap:6px;margin:8px 0}#mpFr[hidden]{display:none}
+#mpFr .fr{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:8px;padding:6px 8px}
+#mpFr .fr span{flex:1;min-width:0;display:flex;flex-direction:column}#mpFr .fr small{color:#9aa3ad}

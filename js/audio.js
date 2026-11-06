@@ -372,6 +372,13 @@ const SFX = {
   tink(t) { const f = rr(2200, 3700) * pv('tinkHz'), g = pv('tink'); tn(t, f, f * .985, .35, .045 * g); tn(t, f * 2.7, f * 2.65, .2, .015 * g); }, // exhaust / engine cooling ping
   splash(t) { nb(t, .5, 'bandpass', 900, .6, .5); nb(t, .9, 'lowpass', 500, .6, .4); for (let i = 0; i < 4; i++) { const f = rr(300, 600); tn(t + .1 + i * rr(.05, .12), f, f * 2.2, .1, .06); } }, // into the sea
   clank(t, a) { const f = rr(500, 1400), k = .3 + .7 * a; [1, 2.76, 5.4].forEach((m, i) => tn(t, f * m, f * m * .99, .22 / (i + 1), .08 * k / (i + 1))); nb(t, .05, 'bandpass', 3000, 1, .1 * k); }, // loose metal bouncing on tarmac
+  // interiors (interiorfig / places.js): billiard balls kissing, a ball dropping into a pocket, a cushion, a gulp, a door, a hiccup
+  ball(t, a) { const k = Math.min(1, .15 + a * .25), f = rr(2600, 3400); tn(t, f, f * .96, .03, .09 * k); nb(t, .012, 'bandpass', 5200, 2, .07 * k); },
+  pocket(t) { tn(t, 380, 180, .12, .12); nb(t + .05, .1, 'lowpass', 600, .7, .15); tn(t + .14, 300, 160, .1, .06); },
+  cushion(t, a) { const k = Math.min(1, a * .3); nb(t, .05, 'lowpass', 420, .8, .18 * k); },
+  gulp(t) { for (let i = 0; i < 3; i++) { const o = t + i * .32; tn(o, 210, 120, .12, .14); nb(o + .02, .08, 'lowpass', 700, .8, .08); } tn(t + 1.05, 600, 900, .08, .03); },
+  door(t) { nb(t, .25, 'lowpass', 300, .7, .3); tn(t, 120, 70, .2, .12); nb(t + .02, .04, 'bandpass', 2400, 2, .06); },
+  hic(t) { tn(t, 420, 900, .07, .09, 'triangle'); nb(t, .03, 'bandpass', 1400, 1.5, .05); },
   crunch(t, a) { const k = Math.min(1, a / 9); nb(t, .07, 'bandpass', 1500, .8, .35 * k); nb(t + .03, .1, 'bandpass', 3500, 1.2, .2 * k); SFX.clank(t + .02, k); for (let i = 0; i < 4; i++) tn(t + rr(.05, .3), rr(4000, 8000), rr(3000, 6000), .08, .03 * k); },
 };
 function rattle(t, g) { const r = pv('rattle', 0); if (r > 0) { nb(t + .02, .14, 'bandpass', 1700, 1.3, g * r); nb(t + .07, .1, 'bandpass', 2300, 1.5, g * r * .7); } } // loose body panels (scooters) clatter after a hit

@@ -101,6 +101,7 @@ function text(m) {
   else if (m.t === 'look') { const p = NET.peers.get(m.from); if (p) { p.look = m.look; p.lk = JSON.stringify(m.look); } }
   else if (m.t === 'race') { if (NET.on.race) NET.on.race(m); }
   else if (m.t === 'ride') { if (NET.on.ride) NET.on.ride(m); } // tricycle passengers (ride.js)
+  else if (m.t === 'soc') { if (NET.on.soc) NET.on.soc(m); } // friends: wave, treat, cheers, call (social.js)
   else if (m.t === 'pong') { const r = performance.now() - m.c; NET.rtt = NET.rtt ? NET.rtt * .6 + r * .4 : r; if (NET.rtt > 900) slowUntil = performance.now() + 10000; }
   else if (m.t === 'err') { NET.err = m.msg || m.code; changed(); }
 }
@@ -123,12 +124,14 @@ function clearPeers() { for (const P of [...NET.peers.values()]) delPeer(P); ctx
 //        64 the rider is off the bike on foot (bike parked, nobody on it), 128 this packet is the WALKER, not the bike: x y z = feet,
 //        quat = heading only, v = walking speed, the rest 0. While on foot the walker goes out at the normal rate and the parked bike once
 //        a second, so the relay (which only checks type 1 + 44 bytes) needs no change. Receivers keep the two in separate buffers.
+//        A walker packet's rpm bytes carry how drunk the walker is (byte 2, 0..255, effects.js drunkK): their figure sways.
+//        Which building a walker is in needs no bits: interiors sit at a fixed height above their building (interior.js pockets).
 const OUT = new DataView(new ArrayBuffer(PKT)), I16 = 32767;
 const GP = new THREE.Vector3(), GQ = new THREE.Quaternion(), UP = new THREE.Vector3(0, 1, 0);
 const flags = () => (S.running ? 1 : 0) | (S.crashed ? 2 : 0) | (S.brake > .1 && !F.on ? 4 : 0) | (ctx.paused || ctx.GAR ? 8 : 0) | (ctx.racing ? 16 : 0) | (ctx.ride ? 32 : 0) | (F.on ? 64 : 0);
 function packWalk() {
   const d = OUT; for (let i = 0; i < PKT; i++) d.setUint8(i, 0);
-  d.setUint8(0, 1); d.setUint8(1, flags() | 128); d.setUint32(4, performance.now() >>> 0, true);
+  d.setUint8(0, 1); d.setUint8(1, flags() | 128); d.setUint8(2, Math.max(0, Math.min(255, Math.round((F.dk || 0) * 255)))); d.setUint32(4, performance.now() >>> 0, true);
   d.setFloat32(8, F.x, true); d.setFloat32(12, F.y, true); d.setFloat32(16, F.z, true);
   GQ.setFromAxisAngle(UP, F.psi); d.setInt16(22, GQ.y * I16, true); d.setInt16(26, GQ.w * I16, true);
   d.setInt16(40, Math.max(-I16, Math.min(I16, Math.round(F.spd * 100))), true);
@@ -155,7 +158,7 @@ function bin(buf) {
     qx: q(20), qy: q(22), qz: q(24), qw: q(26), lean: g(28), th: g(30), st: g(32), sl: g(34), rh: g(36), by: g(38), v: d.getInt16(41, true) / 100 };
   const W = !!(s.fl & 128), SN = W ? (P.ws || (P.ws = [])) : P.snaps; // the walker has its own buffer (flag 128), same clock
   const last = SN[SN.length - 1]; if (last && s.t <= last.t) { if (last.t - s.t < 60000) return; SN.length = 0; if (!W) { P.off = null; P.sm = null; } } // stale, or the sender reloaded
-  if (W) { s.psi = 2 * Math.atan2(s.qy, s.qw); if (P.off === null) return; } else if (!(s.fl & 64) && P.ws) P.ws.length = 0; // back on the bike: drop the walker
+  if (W) { s.psi = 2 * Math.atan2(s.qy, s.qw); s.dr = (s.rpm & 255) / 255; if (P.off === null) return; } else if (!(s.fl & 64) && P.ws) P.ws.length = 0; // back on the bike: drop the walker
   // clock offset: the smallest (arrival - send time) seen is the least-delayed packet; creep up slowly for clock drift
   const o = now - s.t; P.off = P.off === null || o < P.off ? o : P.off + (o - P.off) * .002;
   // jitter (how much later than the best case this packet came) and the sender's packet spacing size the playout delay
@@ -217,8 +220,11 @@ export function netFrame(dt, now) {
     const me = at(), bd = Math.hypot(o.position.x - me.x, o.position.z - me.z), wk = b.fl & 64 ? walker(P, now, dt) : null;
     if (!wk && P.walk) P.walk.visible = false;
     P.x = wk ? wk.position.x : o.position.x; P.z = wk ? wk.position.z : o.position.z; P.d = Math.hypot(P.x - me.x, P.z - me.z);
+    // a friend inside a building (interior.js pocket, places.js ctx.pocketOf): drawn only when we are in the same room
+    P.pk = wk && ctx.pocketOf ? ctx.pocketOf(wk.position.x, wk.position.y, wk.position.z) : ''; const room = (ctx.inside ? ctx.inside.key : '') === P.pk;
     SPH.center.copy(o.position); o.visible = !ctx.GAR && bd < 350 && !(b.fl & 32) && FR.intersectsSphere(SPH); // the studio is private: no one else in it
-    if (wk) { SPH.center.copy(wk.position); wk.visible = !ctx.GAR && P.d < 350 && FR.intersectsSphere(SPH); }
+    if (ctx.inside) o.visible = false; // the bikes are outside (and 300 m below)
+    if (wk) { SPH.center.copy(wk.position); wk.visible = !ctx.GAR && P.d < 350 && room && FR.intersectsSphere(SPH); }
     dots.push(P); mk += (P.x / 3 | 0) + ',' + (P.z / 3 | 0) + ';';
     tag(P, now);
   }
@@ -240,7 +246,8 @@ function walker(P, now, dt) {
   if (Math.hypot(b.x - a.x, b.z - a.z) > 15) { a = b; f = 1; } // teleport (bike reset): no slide across the map
   const m = P.walk, k = 1 - Math.exp(-Math.min(dt, .1) / .07), tx = lerp(a.x, b.x, f), ty = lerp(a.y, b.y, Math.min(1, f)), tz = lerp(a.z, b.z, f);
   if (!m.userData.on || m.position.distanceTo(v3.set(tx, ty, tz)) > 6) { m.position.set(tx, ty, tz); m.userData.on = true; } else m.position.lerp(v3, k);
-  const da = Math.atan2(Math.sin(b.psi - a.psi), Math.cos(b.psi - a.psi)); m.rotation.set(0, a.psi + da * Math.min(1, f), 0);
+  const da = Math.atan2(Math.sin(b.psi - a.psi), Math.cos(b.psi - a.psi)), dr = b.dr || 0, ts = now / 1000; // drunk friends sway (packet byte 2)
+  m.rotation.set(dr * .06 * Math.sin(ts * 1.7), a.psi + da * Math.min(1, f), dr * (.12 * Math.sin(ts * 1.3) + .05 * Math.sin(ts * 3.1)));
   return m;
 }
 // build (or swap) a player's model when their bike / paint changes; at most one build per frame (each is a hitch),
@@ -257,6 +264,7 @@ function tag(P, now) {
   v3.copy((w || P.inst.o).position); v3.y += w ? 2.05 : 1.95; v3.project(camera); if (v3.z > 1) { e.hidden = true; return; }
   const x = Math.round((v3.x * .5 + .5) * W), y = Math.round((.5 - v3.y * .5) * Hh); e.hidden = false;
   if (x !== P.tx || y !== P.ty) { P.tx = x; P.ty = y; e.style.transform = `translate(${x}px,${y}px) translate(-50%,-100%)`; }
-  const away = now - P.seen > 8000, info = away ? 'away' : P.d < 90 ? Math.round(P.d) + ' m · ' + ((ctx.rideIcon && ctx.rideIcon(P)) || '🏁') : Math.round(P.d / 10) * 10 + ' m';
+  const emo = P.emoT > now ? P.emo + ' ' : '', inn = P.pk && !(ctx.inside && ctx.inside.key === P.pk) ? ' · 🎱 inside' : ''; // social.js emotes, a friend in a building
+  const away = now - P.seen > 8000, info = emo + (away ? 'away' : P.d < 90 ? Math.round(P.d) + ' m · ' + ((F.on || P.fl & 64 ? '👋' : ctx.rideIcon && ctx.rideIcon(P)) || '🏁') : Math.round(P.d / 10) * 10 + ' m') + inn;
   if (info !== P.ti) { P.ti = info; e.lastChild.textContent = info; }
 }

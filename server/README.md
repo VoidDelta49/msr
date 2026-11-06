@@ -23,7 +23,9 @@ Local test: `npx wrangler dev` (relay on http://127.0.0.1:8787).
   version, 4001 = full, 4002 = flooding, 4003 = page not allowed), `pong`, plus forwarded client messages with `from` added.
 - Client → server text (max 1 KB): only `ping`, `look {bike, parts:{key: index}}` (stored for later joiners) and `race`
   (`op, to, rid` + `mode` (sprint / parcel / food) for ask and go + `x, z` for go, `time` for fin; see js/race.js). Anything else, or extra fields, is dropped. `to: id` = only
-  that player; the server adds `echo` to `go` so both racers start together.
+  that player; the server adds `echo` to `go` so both racers start together. `ride` (passengers, js/ride.js) and `soc` (friends, js/social.js:
+  `op` wave / treat / cheers / clink / call / thanks + `to`; `item` (a-z0-9_, ≤16) for treat; `x, z` (±5 km) and `place` (≤32 letters) for call) go to one player.
+  `soc` was added without a PROTO bump: an older relay drops it silently (the friend actions then do nothing), so redeploy to enable it.
 - Binary: bike state (exactly 44 bytes, layout in js/net.js `pack()`, finite position within ±5 km); the server prepends the sender id byte.
 - Change the format → bump `PROTO` in both `worker.js` and `js/net.js`, redeploy. Old cached clients get a "reload" message.
 

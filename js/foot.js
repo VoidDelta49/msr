@@ -8,6 +8,7 @@
 // the jump has coyote time + an input buffer + variable height, and the camera state (view bob F.bp / F.ba, landing / take-off spring
 // F.dip) lives here so it is deterministic and testable; footfig.js only reads it.
 import { S, ctx } from './state.js';
+import { drunkWalk } from './effects.js';
 
 export const F = { on: false, fp: false, eye: 1.4, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, psi: 0, cy: 0, cp: .25, gnd: true, spd: 0,
   rs: 0,             // sprint amount 0..1 (eased)
@@ -35,7 +36,10 @@ export const FC = {
   MAXV: 1.5,           // get off only when the bike is slower than this (m/s)
 };
 let env = null;
+// env: { H(x, z) ground, SEA level, OBBS boxes, noBike: true inside a building (the parked bike is outside, below) }. Inside an interior
+// main.js swaps in the room's flat floor and walls (interior.js), and the island's back on the way out.
 export const footEnv = e => { env = e; };
+export const footEnvNow = () => env;
 
 // bike footprint(s) as boxes in the OBB format of world.js: a lying capsule is ~.6 x 1.8 m; a sidecar adds a second box on the right
 export function bikeBoxes(b, sc) {
@@ -43,7 +47,7 @@ export function bikeBoxes(b, sc) {
   if (sc) out.push({ cx: b.x + lx * sc * (ctx.spec?.scX ?? .95), cz: b.z + lz * sc * (ctx.spec?.scX ?? .95), hx: .5, hz: 1, c, s });
   return out;
 }
-const bikeNow = () => bikeBoxes(S, ctx.spec && ctx.spec.sc);
+const bikeNow = () => env && env.noBike ? [] : bikeBoxes(S, ctx.spec && ctx.spec.sc);
 
 // push the circle (P.x, P.z, r) out of box b; false if it didn't touch. Removes the velocity going into the surface.
 function resolve(P, b, r) {
@@ -91,23 +95,27 @@ export function dismount() {
   }
   return 'No room to get off here';
 }
-export const nearBike = () => Math.hypot(F.x - S.x, F.z - S.z) < FC.REACH && F.gnd;
+export const nearBike = () => !(env && env.noBike) && Math.hypot(F.x - S.x, F.z - S.z) < FC.REACH && !(Math.abs(F.y - (S.zH ?? F.y)) > 3) && F.gnd;
 // Get back on if close enough; the bike is exactly where it was parked.
 export function mount() { if (!F.on) return ''; if (!nearBike()) return 'Walk up to the bike first'; F.on = false; return ''; }
 
 const TAU = 2 * Math.PI, wrap = a => { a %= TAU; return a > Math.PI ? a - TAU : a < -Math.PI ? a + TAU : a; };
 // inp: { mx, mz } stick (mx right, mz forward, camera-relative, length <= 1; shorter = slower), run, jump (pressed this frame OR held),
-// held (jump button still down; only false cuts a rising jump short, undefined = don't cut)
+// held (jump button still down; only false cuts a rising jump short, undefined = don't cut), drunk (0..1, effects.js drunkK()),
+// fast (energy drink: sprint a little faster)
+const DW = {};
 function sub(inp, h) {
   const L = Math.hypot(inp.mx, inp.mz), mag = Math.min(1, L), sy = Math.sin(F.cy), cy = Math.cos(F.cy);
-  const ux = L > 1e-6 ? inp.mx / L : 0, uz = L > 1e-6 ? inp.mz / L : 0;           // stick direction, camera-relative
-  const dx = -sy * uz + cy * ux, dz = -cy * uz - sy * ux;                           // forward = (-sin cy, -cos cy), right = (cos cy, -sin cy)
+  let ux = L > 1e-6 ? inp.mx / L : 0, uz = L > 1e-6 ? inp.mz / L : 0;             // stick direction, camera-relative
   F.t += h;
+  const dk = inp.drunk || 0, dw = dk > 0 ? drunkWalk(dk, F.t, DW) : null;           // drunk: the stick turns under you, you sway, no sprinting
+  if (dw && mag > .05) { const c = Math.cos(dw.ang), s = Math.sin(dw.ang), x = ux * c - uz * s; uz = ux * s + uz * c; ux = x; }
+  const dx = -sy * uz + cy * ux, dz = -cy * uz - sy * ux;                           // forward = (-sin cy, -cos cy), right = (cos cy, -sin cy)
   // sprint builds up and drops off smoothly; in first person walking backwards can't sprint and strafing / backpedalling are slower
-  const canRun = !!inp.run && mag > .3 && !(F.fp && uz < -.3);
+  const canRun = !!inp.run && mag > .3 && !(F.fp && uz < -.3) && (!dw || dw.run);
   F.rs += Math.max(-h / FC.RS_OUT, Math.min(h / FC.RS_IN, (canRun ? 1 : 0) - F.rs));
-  const sc = F.fp ? 1 - .3 * Math.max(0, -uz) - .12 * Math.abs(ux) : 1;
-  const tsp = (FC.WALK + (FC.RUN - FC.WALK) * F.rs) * mag * sc, tx = dx * tsp, tz = dz * tsp, vsp = Math.hypot(F.vx, F.vz);
+  const sc = (F.fp ? 1 - .3 * Math.max(0, -uz) - .12 * Math.abs(ux) : 1) * (dw ? dw.slow : 1);
+  const tsp = (FC.WALK + (FC.RUN * (inp.fast ? 1.18 : 1) - FC.WALK) * F.rs) * mag * sc, tx = dx * tsp, tz = dz * tsp, vsp = Math.hypot(F.vx, F.vz);
   if (F.gnd) {
     if (mag < .05) { // stick released: friction (constant + speed-proportional) brings you to a firm stop with a soft tail
       const k = vsp > 1e-6 ? Math.max(0, vsp - (FC.FRIC0 + FC.FRICK * vsp) * h) / vsp : 0; F.vx *= k; F.vz *= k;
@@ -119,7 +127,8 @@ function sub(inp, h) {
     const ex = tx - F.vx, ez = tz - F.vz, el = Math.hypot(ex, ez), st = Math.min(el, FC.AIR * h);
     if (el > 1e-6) { F.vx += ex / el * st; F.vz += ez / el * st; }
   }
-  if (mag > .05) { const d = wrap(Math.atan2(-dx, -dz) - F.psi), stp = d * (1 - Math.exp(-FC.TK * h)); F.psi = wrap(F.psi + Math.max(-FC.TURN * h, Math.min(FC.TURN * h, stp))); }
+  if (dw && F.gnd) { const rx = Math.cos(F.psi), rz = -Math.sin(F.psi); F.vx += rx * dw.side * h; F.vz += rz * dw.side * h; } // the sideways stagger (even standing still)
+  if (mag > .05) { const tk = FC.TK * (dw ? dw.turn : 1), d = wrap(Math.atan2(-dx, -dz) - F.psi), stp = d * (1 - Math.exp(-tk * h)); F.psi = wrap(F.psi + Math.max(-FC.TURN * h, Math.min(FC.TURN * h, stp))); }
   // jump: coyote time after walking off an edge, a short input buffer before landing, and holding the button keeps hopping
   F.coy = F.gnd ? FC.COY : F.coy - h; F.jb = inp.jump ? FC.JBUF : F.jb - h;
   if (F.jb > 0 && (F.gnd || F.coy > 0)) { F.vy = FC.JUMP; F.gnd = false; F.coy = 0; F.jb = 0; F.dv -= .7; } // the dv kick: the camera dips as the legs push off

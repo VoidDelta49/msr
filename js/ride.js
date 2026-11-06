@@ -29,6 +29,7 @@ const SEATS = [[.76, .34], [1.18, .34]], SEAT_Y = .57; // bench places in bike (
 const PAX_KG = 65, NEAR = 9, ASK_MS = 15000, FLY_S = 3.2;
 const R = { seats: [0, 0], on: null, ask: null, inb: null, bcT: 0, sentK: '', ejectAt: 0, wasCr: false, camPos: null, kind: '', bike: '' };
 ctx.ride = null;
+ctx.paxBusy = k => k === 'trike' ? !!R.seats[1] : !!R.seats[0]; // npcfig.js: a friend already has the seat a pedestrian would take (theirs: behind you, or the sidecar's back seat)
 
 /* ---------- little seated passengers: one vertex-coloured mesh each ---------- */
 const MFig = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .65, metalness: .05 });
@@ -126,7 +127,7 @@ const myKind = () => ctx.spec.sc ? 'trike' : ctx.spec.pil ? 'pillion' : '';
 const seatsOf = k => k === 'trike' ? 2 : k ? 1 : 0;
 const free = (k, s) => k === 'trike' ? !s || !s[0] || !s[1] : !!k && (!s || !s[0]);
 const hostV = P => { const n = P.snaps.length; return n ? Math.abs(P.snaps[n - 1].v) : 0; };
-function canBoard(P) { const k = kindOf(P.look); return !!k && P.d < NEAR && free(k, P.seats) && !(P.fl & (2 | 8 | 16 | 32 | 64)) && hostV(P) < 2 && Math.abs(S.v) < 1.5 && !S.crashed && !ctx.spec.sc && !R.seats[0] && !R.seats[1]; } // fl: crashed, paused / garage, racing, riding along, on foot. On foot yourself is fine: P.d is from the walker (net.js) and board() gets you off your feet first
+function canBoard(P) { const k = kindOf(P.look); return !!k && P.d < NEAR && free(k, P.seats) && !(P.fl & (2 | 8 | 16 | 32 | 64)) && hostV(P) < 2 && Math.abs(S.v) < 1.5 && !S.crashed && !ctx.spec.sc && !R.seats[0] && !R.seats[1] && !ctx.npcPax; } // fl: crashed, paused / garage, racing, riding along, on foot. On foot yourself is fine: P.d is from the walker (net.js) and board() gets you off your feet first
 ctx.rideIcon = P => { const k = kindOf(P.look); if (!k || P.d >= 40 || ctx.ride || ctx.spec.sc || (P.fl & 64)) return ''; return k === 'trike' ? (free(k, P.seats) ? '🛺' : '🛺 full') : (free(k, P.seats) && hostV(P) < 2 ? '🏍️+1' : ''); };
 
 /* ---------- panel ---------- */
@@ -162,7 +163,7 @@ function onMsg(m) {
   if (m.op === 'seats') { P.seats = [m.seats[0] | 0, m.seats[1] | 0]; return; }
   if (m.op === 'ask') { // we drive: someone wants a lift
     const no = why => send({ t: 'ride', op: 'no', to: P.id, why });
-    const k = myKind(); if (!k) return no('nosc'); if (!free(k, R.seats)) return no('full'); if (S.crashed || R.inb || R.ask || ctx.ride || ctx.racing || ctx.GAR || F.on) return no('busy'); if (P.d > NEAR) return no('far');
+    const k = myKind(); if (!k) return no('nosc'); if (!free(k, R.seats) || (ctx.npcPax && (k === 'pillion' || R.seats[0]))) return no('full'); if (S.crashed || R.inb || R.ask || ctx.ride || ctx.racing || ctx.GAR || F.on) return no('busy'); if (P.d > NEAR) return no('far');
     R.inb = { id: P.id, until: performance.now() + ASK_MS };
     panel(P.name + (k === 'trike' ? ' wants to ride in your sidecar' : ' wants to ride on the back'), 'OK', () => accept(P.id), null, null, () => { no('busy'); R.inb = null; close(); });
     blip('click'); return;
@@ -184,7 +185,8 @@ function onMsg(m) {
 function accept(id) {
   const P = NET.peers.get(id); R.inb = null; close(); if (!P) return;
   const k = myKind(); if (!k || S.crashed || !free(k, R.seats) || P.d > NEAR + 3 || Math.abs(S.v) > 3 || ctx.ride || ctx.racing || ctx.GAR || F.on) { send({ t: 'ride', op: 'no', to: id, why: P.d > NEAR + 3 ? 'far' : 'busy' }); return; }
-  const seat = R.seats[0] ? 1 : 0; R.seats[seat] = id; R.bcT = 0; send({ t: 'ride', op: 'ok', to: id, seat }); say(P.name + (k === 'trike' ? ' hopped in' : ' hopped on'), 1500); // a pillion bike only has seat 0
+  if (ctx.npcPax && (k === 'pillion' || R.seats[0])) { send({ t: 'ride', op: 'no', to: id, why: 'full' }); return; }
+  const seat = ctx.npcPax ? 0 : R.seats[0] ? 1 : 0; R.seats[seat] = id; R.bcT = 0; send({ t: 'ride', op: 'ok', to: id, seat }); say(P.name + (k === 'trike' ? ' hopped in' : ' hopped on'), 1500); // a pillion bike only has seat 0
 }
 
 /* ---------- passenger ---------- */
@@ -244,8 +246,9 @@ export function rideFrame(dt, now) {
   if (S.crashed && !R.wasCr && (R.seats[0] || R.seats[1])) { ejectAll('me', B.body, B.root, S.v, R.seats); R.ejectAt = now + FLY_S * 1000; say('Everybody out!', 1500); }
   R.wasCr = S.crashed;
   if (R.ejectAt && now > R.ejectAt) { R.ejectAt = 0; R.seats = [0, 0]; R.bcT = 0; }
-  S.paxM = mk === 'trike' ? ((R.seats[0] ? 1 : 0) + (R.seats[1] ? 1 : 0)) * PAX_KG : 0; // sidecar: physics.js
-  if (withPassenger(ctx.spec, mk === 'pillion' && R.seats[0] && !ctx.GAR ? PAX_KG : 0)) setMass(); // pillion: moves the centre of mass (spec.js; not in the garage, which shows the bike's own numbers)
+  const npc = ctx.npcPax ? 1 : 0; // a pedestrian riding with us (npcfig.js): sits behind us, or on the sidecar's back seat
+  S.paxM = mk === 'trike' ? ((R.seats[0] ? 1 : 0) + (R.seats[1] ? 1 : 0) + npc) * PAX_KG : 0; // sidecar: physics.js
+  if (withPassenger(ctx.spec, mk === 'pillion' && (R.seats[0] || npc) && !ctx.GAR ? PAX_KG : 0)) setMass(); // pillion: moves the centre of mass (spec.js; not in the garage, which shows the bike's own numbers)
   if (R.ejectAt) hideHost('me'); else drawSeats('me', { body: B.body, kind: mk, G: B.G, rider: B.rider }, R.seats, !S.crashed && !ctx.GAR);
   const sk = R.seats.join();
   if (on && mk && (sk !== R.sentK || ((R.seats[0] || R.seats[1]) && now - R.bcT > 4000)) && (R.bcT === 0 || now - R.bcT > 400)) { R.sentK = sk; R.bcT = now; send({ t: 'ride', op: 'seats', seats: R.seats.slice() }); }
