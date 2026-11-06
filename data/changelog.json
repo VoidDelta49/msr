@@ -1,4 +1,7 @@
 [
+  { "v": "11.82", "d": "2026-11-06", "t": [
+    "Particles: tyre smoke from burnouts, wheelspin and locked wheels on tarmac, dust kicked up off-road, a dust trail when a crash slides, and a splash when you ride into the sea. One small pool drawn in a single call and animated on the GPU, so it costs nothing while no smoke is in the air; fewer puffs on Low quality."
+  ] },
   { "v": "11.81", "d": "2026-11-06", "t": [
     "Pedestrians: people now walk the sidewalks of every road and do everyday things. Sando boys hang out, squat and chat, people walk their dogs (the dog sniffs, sits and waits on a leash), students in school uniforms with backpacks and ties head about, and titas, lolos, office workers, joggers and tambays fill in the rest. They go in and out of buildings' front doors, cross the street, jump out of the way of a fast bike, sit down dazed if you clip one, and wave when you walk past.",
     "Give a ride: some people wave you down (yellow marker above them). Stop next to one on a bike with a free seat and they hop on behind you (or into the sidecar); a front door somewhere on the island, a house, a store, the church, becomes the drop-off. Stop there and they walk inside. Fares and rides given are kept on your phone.",

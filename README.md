@@ -146,6 +146,7 @@ js/race.js            tap-to-race between two riders
 js/ride.js            passengers: hop into a friend's sidecar or on the back of any bike, cartoon ejections on a crash
 js/figure.js          character system: body/dog geometry with bones + colour roles, GPU-posed one-draw crowds, pose library (figlook.js: outfits as data)
 js/npc.js             pedestrians' brains (headless): spawning ring, sidewalks, doors, activities, dodging, the ride; npcfig.js draws them
+js/particles.js      particles: tyre smoke, dust, splashes; one GPU-animated ring-buffer pool, one draw, hidden when empty
 data/npc.json         pedestrian archetypes, outfits, activities, ride settings, lines
 server/               Cloudflare Worker + Durable Object relay (one room per code)
 js/audio.js (+ engine-worklet.js), controls.js, garage.js, options.js, missions.js, config.js, state.js, util.js
