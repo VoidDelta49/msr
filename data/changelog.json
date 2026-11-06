@@ -1,4 +1,9 @@
 [
+  { "v": "11.80", "d": "2026-11-06", "t": [
+    "MSAA: the 4-sample colour buffer is no longer written back to memory after the scene is drawn (only the smoothed result is ever read). On phones this saves tens of megabytes of memory traffic a frame; without motion blur the 4-sample depth buffer is dropped the same way.",
+    "Benchmark: a phase now measures for its full time once frames have settled. Switching post-processing off makes the game build its shaders again, which on a phone took most of that phase and left only a fraction of a second (12 frames) to measure, so its cost came out wrong (even negative). A phase that never settles is marked CUT SHORT and left out of the verdict.",
+    "Benchmark: hitches are now judged per event (how often the frame after a shadow refresh or dash upload hitches, against frames with no event), which is fair for the dash upload that only happens in first person."
+  ] },
   { "v": "11.79", "d": "2026-11-05", "t": [
     "New benchmark: Options > System > Benchmark reloads the game, then rides a fixed route for about a minute and a half and records frame times, CPU time per stage, GPU time (where the device has a GPU timer), draw calls and every hitch with what came just before it (shadow-map refresh, dash upload, memory cleanup, sky update). It then repeats one stretch with shadow-map updates, post-processing and resolution switched off to price each, and once more at the end to catch the phone slowing down as it heats up. The report is plain text in the same tab, with a Copy report button.",
     "Fixed: the first frame after PLAY could carry a negative time step on a slow load, which froze the bike's physics for as long as the load had blocked the screen (up to a couple of seconds)."

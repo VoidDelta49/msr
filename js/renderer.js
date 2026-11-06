@@ -118,6 +118,10 @@ export let MB = null;
 let pipe = null, scenePass = null;
 if (AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx || cfg.mblur) {
   const T = await import('three/tsl'); scenePass = T.pass(scene, camera, AA.ms ? { samples: AA.ms } : {}); AA.rt = scenePass.renderTarget.samples; /* what the target really carries (tools/options.mjs) */
+  // MSAA: only the resolved (1-sample) colour is ever read, so the 4-sample buffer need not be written back to memory: on a phone's tiled
+  // GPU that store is 4 x 8 bytes per pixel every frame (~47 MB at 1808x812). Depth: motion blur samples the multisampled depth texture,
+  // so it is kept then; without motion blur nothing reads it. The scene is one render pass (no viewport/transmission textures split it).
+  if (AA.ms) { const rt = scenePass.renderTarget; rt.storeMultisampledColorBuffer = false; if (!cfg.mblur) rt.storeMultisampledDepthBuffer = rt.storeMultisampledStencilBuffer = false; }
   let src = scenePass;
   if (cfg.mblur) { const { motionBlur } = await import('./mblur.js'), m = motionBlur(scenePass, { gpu: !!renderer.backend.isWebGPUBackend, taps: Q.lite ? 5 : Q.shadow >= 2048 ? 8 : 6 }); MB = m.MB; src = m.node; }
   let out = T.renderOutput(src);

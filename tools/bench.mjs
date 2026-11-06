@@ -35,6 +35,7 @@ try {
     ok(by.a1.flagged.shadow === 0 && by.a4.flagged.shadow === 0, 'the "shadow-map updates off" phases still redrew the shadow map');
     ok(by.hwy.flagged.shadow >= 1, 'no shadow-map refresh at all on the highway (the flag is not being recorded)');
     ok(by.fp.flagged.dash >= 1, 'no dash upload in the first-person phase');
+    for (const p of P) ok(!p.cut && p.secs >= 2, `phase ${p.id}: cut short (${p.secs} s recorded): it never settled, or the end condition is counting warm-up time again`);
     ok(/VERDICT/.test(j.text) && /== Parked in town/.test(j.text), 'report text is missing its sections');
     const s = await pg.evaluate(async () => { const c = window.__cpm, R = await import('./js/renderer.js'); return { hid: document.getElementById('bench').hidden, flag: sessionStorage.getItem('cpmBench'), opts: !document.getElementById('opts').hidden, tab: document.querySelector('#oTabs [aria-selected=true]')?.textContent, post: R.BX.post, noShadow: R.BX.noShadow, rs: c.renderer._rs, tod: c.cfg.tod, tough: c.cfg.tough, run: document.body.classList.contains('benching'), shown: document.getElementById('oBench')?.textContent.length > 500 }; });
     ok(s.hid && !s.run, 'the overlay should be gone when the run ends'); ok(s.flag === null, 'the armed flag should be cleared'); ok(s.opts && s.tab === 'System', 'the report should open in Options > System');

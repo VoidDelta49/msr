@@ -72,7 +72,7 @@ function enter(i) { // set up phase i: the ablation, the camera, the start of th
   ST.i = i; const P = PHASES[i], a = A[P.a || 'ref'];
   BX.noShadow = !a[0]; BX.post = !!a[1]; if (renderer._rs !== a[2]) { renderer._rs = a[2]; setDPR(); }
   if (ctx.camMode !== P.cam) CB.toggleCam();
-  ST.R = ST.routes[P.route] || (ST.routes[P.route] = route(P.route)); ST.R.k = 0; ST.dist = 0; ST.el = 0; ST.t0 = 0; ST.rec = false; ST.fresh = true; ST.fc = 0; nF = nR = nC = 0; recDist = 0; lastR = lastC = -1;
+  ST.R = ST.routes[P.route] || (ST.routes[P.route] = route(P.route)); ST.R.k = 0; ST.dist = 0; ST.el = 0; ST.t0 = 0; ST.rec = false; ST.fresh = true; ST.fc = 0; ST.r0 = 0; ST.last = []; nF = nR = nC = 0; recDist = 0; lastR = lastC = -1;
   $('benchT').textContent = `${i + 1}/${PHASES.length}  ${P.name}`; $('benchP').style.width = (i / PHASES.length * 100) + '%';
 }
 
@@ -82,8 +82,10 @@ export function benchFrame(t, j0, p1, p2, p3, d0, c1, j1, hudUp, shRef) {
   if (ctx.OPT || ctx.GAR || ctx.paused) return end(false, 'a menu was opened'); // the numbers would be wrong from here on
   if (!ST.t0) { ST.t0 = t; lastT = t; ST.el = 0; return; }
   const P = PHASES[ST.i], iv = t - lastT; lastT = t; ST.el = (t - ST.t0) / 1000;
-  ST.fc++; // recording starts after the warm-up time AND some frames (a slow device spends its first frames compiling)
-  if (!ST.rec && ST.el >= P.warm && ST.fc >= (P.a && P.a !== 'ref' ? 8 : 5)) { ST.rec = true; nF = nR = nC = 0; recDist = 0; lastR = lastC = -1; }
+  ST.fc++; const Lq = ST.last; Lq.push(iv); if (Lq.length > 4) Lq.shift();
+  // recording starts after the warm-up time AND some frames AND once frames are no longer stalled (the last 4 within ~3x of each other): an ablation that changes the render
+  // target (post-processing off = straight to the canvas, no MSAA) compiles every pipeline again, which can take seconds on a phone
+  if (!ST.rec && ST.el >= P.warm && ST.fc >= (P.a && P.a !== 'ref' ? 8 : 5) && Lq.length === 4 && Math.max(...Lq) <= Math.min(...Lq) * 3 + 25) { ST.rec = true; ST.r0 = t; nF = nR = nC = 0; recDist = 0; lastR = lastC = -1; }
   if (ST.rec && nF < MAXF) {
     const i = nF++; F_IV[i] = iv; F_CPU[i] = j1 - j0; F_PHY[i] = p1 - j0; F_VIS[i] = p2 - p1; F_AUD[i] = p3 - p2; F_HUD[i] = d0 - p3; F_CUL[i] = c1 - d0; F_DRW[i] = j1 - c1;
     const info = renderer.info.render; F_DC[i] = info.drawCalls; F_TRI[i] = info.triangles;
@@ -94,7 +96,10 @@ export function benchFrame(t, j0, p1, p2, p3, d0, c1, j1, hudUp, shRef) {
     renderer.resolveTimestampsAsync('compute').then(ms => { if (ST && ST.rec && typeof ms === 'number' && ms !== lastC && nC < MAXF) G_C[nC++] = lastC = ms; }).catch(() => { });
   }
   if (t - lastUi > 300) { lastUi = t; $('benchP').style.width = ((ST.i + Math.min(1, ST.el / (P.warm + P.secs))) / PHASES.length * 100) + '%'; }
-  if (ST.rec && (ST.el >= P.warm + P.secs && nF >= 12 || ST.el >= (P.warm + P.secs) * 3)) { ST.res.push(summary(P)); if (ST.i + 1 < PHASES.length) enter(ST.i + 1); else end(true); }
+  // a phase ends after P.secs of RECORDED time (not time since the phase began: a long compile used to eat the measuring window,
+  // leaving 12 frames); a phase that never settles gives up after a generous cap and is marked as cut short
+  const recS = ST.rec ? (t - ST.r0) / 1000 : 0, cap = ST.el >= (P.warm + P.secs) * 3 + 20;
+  if (ST.rec && recS >= P.secs && nF >= 12 || cap) { const r = summary(P); r.cut = recS < P.secs * .8; ST.res.push(r); if (ST.i + 1 < PHASES.length) enter(ST.i + 1); else end(true); }
 }
 let lastUi = 0;
 
@@ -103,12 +108,12 @@ const r1 = x => Math.round(x * 10) / 10, r2 = x => Math.round(x * 100) / 100;
 const avg = (a, n) => { let s = 0; for (let i = 0; i < n; i++) s += a[i]; return n ? s / n : 0; };
 const spread = (a, n) => { const s = a.slice(0, n).sort(), q = p => s.length ? s[Math.min(s.length - 1, Math.floor(s.length * p))] : 0; return { avg: r2(avg(a, n)), p50: r2(q(.5)), p95: r2(q(.95)), p99: r2(q(.99)), max: r2(s[s.length - 1] || 0) }; };
 function summary(P) {
-  const n = nF, iv = spread(F_IV, n), th = iv.p50 * 1.5 + 1.5, H = { n: 0, over33: 0, over50: 0, shadow: 0, dash: 0, gc: 0, bake: 0, cpu: 0, other: 0 }, W = [], fr = { shadow: 0, dash: 0, gc: 0, bake: 0 };
-  for (let i = 0; i < n; i++) { const f = F_FL[i]; if (f & 1) fr.shadow++; if (f & 2) fr.dash++; if (f & 4) fr.gc++; if (f & 8) fr.bake++; }
+  const n = nF, iv = spread(F_IV, n), th = iv.p50 * 1.5 + 1.5, H = { n: 0, over33: 0, over50: 0, shadow: 0, dash: 0, gc: 0, bake: 0, cpu: 0, other: 0, plain: 0 }, W = [], fr = { shadow: 0, dash: 0, gc: 0, bake: 0, plain: 0 };
+  for (let i = 0; i < n - 1; i++) { const f = F_FL[i]; if (f & 1) fr.shadow++; if (f & 2) fr.dash++; if (f & 4) fr.gc++; if (f & 8) fr.bake++; if (!f) fr.plain++; } // (the last frame has no next frame to judge)
   for (let i = 1; i < n; i++) { // a long frame is blamed on what the PREVIOUS frame's callback did (that is what delayed this one)
     const x = F_IV[i]; if (x > 33.4) H.over33++; if (x > 50) H.over50++; if (x <= th) continue; H.n++; const f = F_FL[i - 1];
     if (f & 1) H.shadow++; if (f & 2) H.dash++; if (f & 4) H.gc++; if (f & 8) H.bake++;
-    if (!f) { if (F_CPU[i - 1] > x * .5) H.cpu++; else H.other++; } W.push([x, i - 1]);
+    if (!f) { H.plain++; if (F_CPU[i - 1] > x * .5) H.cpu++; else H.other++; } W.push([x, i - 1]);
   }
   W.sort((a, b) => b[0] - a[0]);
   H.worst = W.slice(0, 3).map(([x, i]) => ({ ms: r1(x), what: [1, 2, 4, 8].filter(b => F_FL[i] & b).map(b => FL[b]).join('+') || '-', cpu: r1(F_CPU[i]), phys: r1(F_PHY[i]), vis: r1(F_VIS[i]), draw: r1(F_DRW[i]) }));
@@ -138,18 +143,23 @@ function verdict(R) {
     else if (cp > iv * .8) L.push(`CPU-bound at 100 km/h: the CPU needs ${r1(cp)} ms of a ${r1(iv)} ms frame (${Math.round(cp / iv * 100)}%).`);
     else L.push(`Neither side is the limit at 100 km/h: GPU ${r1(gp)} ms and CPU ${r1(cp)} ms inside a ${r1(iv)} ms frame (headroom ${r1(iv - Math.max(gp, cp))} ms). Frames are waiting on the display or the system.`);
     for (const [id, what] of [['a1', 'Shadow-map updates (receivers still sample the map)'], ['a2', 'Post-processing (grade, AA, filters, motion blur)'], ['a3', 'Full resolution (vs half)']]) {
-      const p = R[id]; if (!p) continue; const floor = Math.max(.7, a0.iv.avg * .04); // under ~4% of a frame is run-to-run noise
+      const p = R[id]; if (!p || p.cut) continue; const floor = Math.max(.7, a0.iv.avg * .04); // under ~4% of a frame is run-to-run noise
       const m = x => Math.abs(x) < floor ? 'nothing measurable' : r1(x) + ' ms', d = [], gi = g(p); if (gi != null && g(a0) != null) d.push(`GPU ${m(g(a0) - gi)}`); d.push(`CPU ${m(a0.cpu.avg - p.cpu.avg)}`, `frame ${m(a0.iv.avg - p.iv.avg)}`); L.push(`${what} cost per frame: ${d.join(', ')}.`);
     }
     if (R.a4) L.push(`With everything off: frame ${r1(R.a4.iv.avg)} ms, CPU ${r1(R.a4.cpu.avg)} ms${g(R.a4) != null ? `, GPU ${r1(g(R.a4))} ms` : ''}.`);
   }
   if (a0 && a0b) { const f = a0b.iv.avg / a0.iv.avg, gg = g(a0) && g(a0b) ? g(a0b) / g(a0) : f; L.push(`Throttle check: the same stretch took ${r1(a0b.iv.avg)} ms vs ${r1(a0.iv.avg)} ms at the start (${f >= 1 ? '+' : ''}${Math.round((f - 1) * 100)}%)${g(a0) ? `, GPU ${gg >= 1 ? '+' : ''}${Math.round((gg - 1) * 100)}%` : ''}${gg > 1.1 || f > 1.1 ? ': the device is slowing down as it warms up.' : '.'}`); }
-  const T = { n: 0, shadow: 0, dash: 0, gc: 0, bake: 0, cpu: 0, other: 0 }, FR = { frames: 0, shadow: 0, dash: 0, gc: 0, bake: 0 };
-  for (const id of ['park', 'town', 'hwy', 'fp', 'a0', 'a0b']) { const p = R[id]; if (!p) continue; for (const k in T) T[k] += p.hitch[k]; FR.frames += p.frames; for (const k of ['shadow', 'dash', 'gc', 'bake']) FR[k] += p.flagged[k]; }
+  // hitch rate after each kind of event vs after frames with none: a per-event comparison is fair even when an event only happens in
+  // one phase (the dash only uploads in first person), which a share-of-all-hitches figure was not
+  const T = { n: 0, shadow: 0, dash: 0, gc: 0, bake: 0, cpu: 0, other: 0, plain: 0 }, FR = { frames: 0, shadow: 0, dash: 0, gc: 0, bake: 0, plain: 0 };
+  for (const id of ['park', 'town', 'hwy', 'fp', 'a0', 'a0b']) { const p = R[id]; if (!p) continue; for (const k in T) T[k] += p.hitch[k] || 0; FR.frames += p.frames; for (const k of ['shadow', 'dash', 'gc', 'bake', 'plain']) FR[k] += p.flagged[k] || 0; }
   if (T.n) {
-    L.push(`Hitches (frames over 1.5x the median): ${T.n} in ${FR.frames} frames. Blamed on the frame before: ` + ['shadow', 'dash', 'gc', 'bake'].map(k => `${{ shadow: 'shadow refresh', dash: 'dash upload', gc: 'GC', bake: 'env bake' }[k]} ${T[k]} (${Math.round(T[k] / T.n * 100)}% of hitches, ${r1(FR[k] / FR.frames * 100)}% of frames)`).join(', ') + `, slow CPU ${T.cpu}, GPU/system ${T.other}.`);
-    L.push(`Read it as: a cause whose share of hitches is well above its share of frames is a real cause; about equal means coincidence.`);
+    const base = FR.plain ? T.plain / FR.plain : 0, pc = x => Math.round(x * 100) + '%', NM = { shadow: 'shadow refresh', dash: 'dash upload', gc: 'GC', bake: 'env bake' };
+    L.push(`Hitches (frames over 1.5x the median): ${T.n} in ${FR.frames} frames; ${pc(base)} of frames with no event are followed by one (slow CPU ${T.cpu}, GPU/system ${T.other}).`);
+    const ev = ['shadow', 'dash', 'gc', 'bake'].filter(k => FR[k]).map(k => { const r = T[k] / FR[k], x = base ? r / base : 0; return `${NM[k]} ${pc(r)} of ${FR[k]}${FR[k] < 10 ? ' (too few to tell)' : x > 1.5 ? ` (${r1(x)}x: a real cause)` : ' (about the same: coincidence)'}`; });
+    if (ev.length) L.push(`After each event, how often the next frame hitches: ${ev.join(', ')}.`);
   } else L.push('No hitches in the normal-settings phases.');
+  const cut = Object.values(R).filter(p => p.cut); if (cut.length) L.push(`Cut short (never settled, too few frames to trust): ${cut.map(p => p.name.replace(/^\.\.\. /, '')).join(', ')}.`);
   return L;
 }
 function report(R, D) {
@@ -158,7 +168,7 @@ function report(R, D) {
     `Settings: ${['gfx', 'aa', 'ibl', 'grade', 'nightFx', 'n64', 'mblur', 'mbAmt', 'retro', 'gpuCull', 'forceGL', 'bike'].map(k => k + '=' + cfg[k]).join(' ')} (test runs at noon, uncapped, auto-res off, Tough mode on)`, '', 'VERDICT', ...verdict(Object.fromEntries(R.map(p => [p.id, p]))).map(x => ' - ' + x)];
   for (const p of R) {
     const h = p.hitch, gp = p.gpu;
-    out.push('', `== ${p.name} · ${p.secs} s · ${p.frames} frames (${p.fps} fps, display ~${Math.round(p.refresh)} Hz)`, ` frame ms  ${row(p.iv)}`,
+    out.push('', `== ${p.name}${p.cut ? ' (CUT SHORT)' : ''} · ${p.secs} s · ${p.frames} frames (${p.fps} fps, display ~${Math.round(p.refresh)} Hz)`, ` frame ms  ${row(p.iv)}`,
       ` cpu ms    ${row(p.cpu)}`, `   stages avg: physics ${p.parts.phys} · visuals ${p.parts.vis} · audio ${p.parts.aud} · hud ${p.parts.hud} · cull ${p.parts.cull} · draw ${p.parts.draw}`,
       gp ? ` gpu ms    render ${row(gp.render)}${gp.compute ? `\n           compute ${row(gp.compute)}` : ''}  (${gp.samples} samples)` : ' gpu ms    n/a',
       ` load      ${p.draws} draws · ${p.tris}k tris`,
