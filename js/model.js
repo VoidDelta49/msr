@@ -431,14 +431,14 @@ function scooter(ct) {
   mk(box(.03, .04, .03), MC, ct, 0, .62, -.15);                                                               // bag hook
   // front body: the upper cowl slopes forward and down from under the handlebar cover to a beak just ahead of the front axle
   // (the headlamps sit on it), then the chin steps back over the wheel; narrows to a V at the nose
-  const NOSE = [[-.72, .7], [-.66, .755], [-.56, .825], [-.46, .895], [-.38, .935]];
-  mk(taper(prof([...NOSE, [-.25, .93], [-.21, .7], [-.16, .38], [-.3, .33], [-.36, .45], [-.44, .56], [-.56, .615], [-.68, .66]], .42, .02), [[-.72, .3], [-.6, .52], [-.45, .84], [-.32, 1]]), MP, ct, 0, 0, 0); // front body
-  mk(taper(prof([...NOSE.map(([z, y]) => [z, y + .022]), ...NOSE.slice().reverse().map(([z, y]) => [z + .01, y - .025])], .2, .008), [[-.73, .15], [-.6, .4], [-.4, 1]]), MK, ct, 0, 0, 0); // gloss black centre V on top of the cowl
+  const NOSE = [[-.69, .72], [-.64, .767], [-.55, .832], [-.46, .895], [-.38, .935]];
+  mk(taper(prof([...NOSE, [-.25, .93], [-.21, .7], [-.16, .38], [-.3, .33], [-.36, .45], [-.44, .565], [-.55, .625], [-.655, .675]], .42, .02), [[-.69, .32], [-.58, .54], [-.45, .84], [-.32, 1]]), MP, ct, 0, 0, 0); // front body
+  mk(taper(prof([...NOSE.map(([z, y]) => [z, y + .022]), ...NOSE.slice().reverse().map(([z, y]) => [z + .01, y - .025])], .2, .008), [[-.70, .15], [-.58, .4], [-.4, 1]]), MK, ct, 0, 0, 0); // gloss black centre V on top of the cowl
   for (const s of [-1, 1]) for (const [y, z] of [[.66, -.37], [.72, -.35]]) mk(box(.024, .024, .13), MB, ct, s * .212, y, z, -.75, 0, 0); // 2026 side-fairing ducts (open slots)
   B.decal = MDec; for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.15, .034), MDec, ct, s * .153, .66, .44, 0, s * PI / 2, -.14 * s); // 3D "Click" badge
   for (const s of [-1, 1]) { // twin LED headlamps on the beak's outer corners, DRL strip up each top edge, signals in the wings
-    mk(box(.085, .05, .02), MK, ct, s * .085, .79, -.635, .95, 0, s * .55); mk(box(.07, .03, .02), MHead, ct, s * .087, .795, -.64, .95, 0, s * .55);
-    tube([s * .1, .785, -.67], [s * .175, .925, -.46], .008, MHead, ct, 4); mk(box(.02, .026, .07), MAmb, ct, s * .125, .735, -.6, .5, 0, 0);
+    mk(box(.085, .05, .02), MK, ct, s * .08, .8, -.612, .95, 0, s * .55); mk(box(.065, .028, .02), MHead, ct, s * .082, .805, -.617, .95, 0, s * .55);
+    tube([s * .095, .795, -.645], [s * .175, .925, -.46], .008, MHead, ct, 4); mk(box(.02, .026, .07), MAmb, ct, s * .123, .745, -.58, .5, 0, 0);
   }
   mk(prof([[-.02, .33], [.14, .33], [.18, .6], [.1, .72], [0, .72], [-.06, .56]], .26, .015), MK, ct, 0, 0, 0); // under-seat tunnel
   mk(prof([[.04, .7], [.4, .74], [.72, .785], [.87, .775], [.9, .72], [.8, .63], [.56, .53], [.34, .5], [.16, .5], [.06, .58]], .3, .03), MP, ct, 0, 0, 0); // rear body
