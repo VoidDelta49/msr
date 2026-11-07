@@ -102,10 +102,14 @@ const wdisc = (g, r, c) => { g.fillStyle = WCOL[c]; g.beginPath(); g.arc(0, 0, r
 function wheelFaces(g, sp) {
   const S = sp.rim + .02;
   for (const s of [-1, 1]) {
-    const st = (sp.sx || []).some(x => Math.sign(x) === s), key = JSON.stringify(['f', S, sp.lip, sp.n, sp.w, sp.to, sp.r0, sp.r1, sp.sc, sp.hub, sp.hc, st ? [sp.sr, sp.sw] : 0]);
+    const st = (sp.sx || []).some(x => Math.sign(x) === s), key = JSON.stringify(['f', S, sp.lip, sp.n, sp.w, sp.to, sp.y || 0, sp.r0, sp.r1, sp.sc, sp.hub, sp.hc, st ? [sp.sr, sp.sw] : 0]);
     wheelPlane(g, S, s, s * .016, wheelTile(key, S, (c, k) => {
       c.fillStyle = WCOL[sp.sc]; const w = Math.max(sp.w, 2.2 / k);
-      for (let i = 0; i < sp.n; i++) for (const o of sp.to ? [-sp.to, sp.to] : [0]) { c.save(); c.rotate(i * 2 * PI / sp.n + o); c.fillRect(-w / 2, -sp.r1, w, sp.r1 - sp.r0); c.restore(); }
+      if (sp.y) { // Y spokes: a stem from the hub to radius y, splitting into two arms that reach the rim 2 * to apart
+        c.strokeStyle = WCOL[sp.sc]; c.lineWidth = w; c.lineCap = 'round';
+        for (let i = 0; i < sp.n; i++) { const a = i * 2 * PI / sp.n, P = (r, d) => [Math.sin(a + d) * r, -Math.cos(a + d) * r];
+          c.beginPath(); c.moveTo(...P(sp.r0, 0)); c.lineTo(...P(sp.y, 0)); c.lineTo(...P(sp.r1, -sp.to)); c.moveTo(...P(sp.y, 0)); c.lineTo(...P(sp.r1, sp.to)); c.stroke(); }
+      } else for (let i = 0; i < sp.n; i++) for (const o of sp.to ? [-sp.to, sp.to] : [0]) { c.save(); c.rotate(i * 2 * PI / sp.n + o); c.fillRect(-w / 2, -sp.r1, w, sp.r1 - sp.r0); c.restore(); }
       c.strokeStyle = WCOL.R; wring(c, sp.rim, sp.lip); if (sp.hub) wdisc(c, sp.hub, sp.hc);
       if (st) { c.strokeStyle = WCOL.G; wring(c, sp.sr, sp.sw); }
     }));
@@ -121,7 +125,7 @@ function wheelFaces(g, sp) {
 // wheel: chunky low-poly tyre torus + flat faces (spokes: twin = "Y" pairs; disc on the right; ex = extra pinstripes / alloy drum)
 function wheelG(R, t, rim, spokes, sw, twin, disc = .11, ex = {}) {
   const g = new THREE.Group(); mk(new THREE.TorusGeometry(R, t, 6, 20), MR, g, 0, 0, 0, 0, PI / 2);
-  wheelFaces(g, { rim, lip: .013, n: spokes, w: sw, to: twin ? .15 : 0, r0: .045, r1: rim + .015, sc: 'R', hub: .05, hc: 'R', sx: ex.sx, sr: ex.sr, sw: ex.sw, plates: [...(disc ? [[.058, disc, 'disc']] : []), ...(ex.plates || [])] });
+  wheelFaces(g, { rim, lip: .013, n: spokes, w: sw, to: ex.y ? ex.to : twin ? .15 : 0, y: ex.y, r0: .045, r1: rim + .015, sc: 'R', hub: .05, hc: 'R', sx: ex.sx, sr: ex.sr, sw: ex.sw, plates: [...(disc ? [[.058, disc, 'disc']] : []), ...(ex.plates || [])] });
   return g;
 }
 // sport wheel: fat tyre (torus squashed to width wx), rim with paint pinstripes (MRS), 5 split "Y" spokes, floating discs
@@ -411,13 +415,14 @@ function sport(ct) {
 // 14" wheels (100/80-14 rear ≈ 0.258 m radius), 1.28 m wheelbase, ~26.5° rake, 769 mm seat, unit-swing engine/CVT
 // case on the left. Reference: white/black/blue. Sharp front with a black face and swept LED eyes at the nose, white
 // wings, black handlebar cover with the meter, black tunnel and floor, big white rear panels over a black lower rear,
-// tail lamp under the grab rail, long plate hanger, chunky black muffler with an aluminium end cap, black twin-spoke wheels.
+// tail lamp under the grab rail, long plate hanger, chunky black muffler with an aluminium end plate, black 5 Y-spoke wheels.
 // 2026 ("Game Changer Upgrade", Top Gear PH): open vents/ducts in the side fairings, a one-piece sculpted grab bar, bag hook
 // by the floor, 3D "Click" badge on the rear body (gold on the matte Smart Edition: the decal colour hd, pseudo-letters).
+const CLICKW = { y: .095, to: .16 }; // the Click's 5 split Y spokes (stem out to 9.5 cm, arms ~18 degrees apart at the rim)
 function scooter(ct) {
   const rw = .258, rake = .46, headY = .86, fork = (headY - rw) / Math.cos(rake), headZ = -.64 + fork * Math.sin(rake);
   B.G = { rw, rearZ: .64, fork, rake, pivotY: .34, pivotZ: .02, swingX: -.1 }; B.wheelCol = 0x1c1d21; B.cargo = { y: .82, z: .46 }; B.fenderPaint = true; // body-colour front fender
-  B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .64); ct.add(B.rearH); B.rearW = wheelG(.215, .045, .175, 5, .022, true, 0); B.rearH.add(B.rearW);
+  B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .64); ct.add(B.rearH); B.rearW = wheelG(.215, .045, .175, 5, .017, true, 0, CLICKW); B.rearH.add(B.rearW);
   mk(arc(.27, .295, 1.3, 2.55, .11), MK, B.rearH, 0, 0, 0);                                                  // rear hugger
   // unit swing: engine + CVT case pivots with the rear wheel (stretched between pivot and axle each frame)
   B.swing = mk(prof([[-.5, -.07], [-.5, .06], [-.2, .1], [.42, .08], [.5, .02], [.46, -.06], [.2, -.09]], .12, .015), MG, ct, -.1, .3, .33);
@@ -442,14 +447,14 @@ function scooter(ct) {
     tube([s * .095, .795, -.645], [s * .175, .925, -.46], .008, MHead, ct, 4); mk(box(.02, .026, .07), MAmb, ct, s * .123, .745, -.58, .5, 0, 0);
   }
   mk(prof([[-.02, .33], [.14, .33], [.18, .6], [.1, .72], [0, .72], [-.06, .56]], .26, .015), MK, ct, 0, 0, 0); // under-seat tunnel
-  mk(prof([[.04, .7], [.3, .76], [.55, .81], [.75, .855], [.86, .87], [.9, .84], [.88, .78], [.8, .68], [.56, .55], [.34, .51], [.16, .5], [.06, .58]], .3, .03), MP, ct, 0, 0, 0); // rear body (sweeps up to the tail like the real one)
+  mk(prof([[.04, .7], [.3, .755], [.55, .81], [.75, .85], [.85, .865], [.88, .845], [.87, .79], [.8, .68], [.56, .55], [.34, .51], [.16, .5], [.06, .58]], .3, .03), MP, ct, 0, 0, 0); // rear body (sweeps up to the tail like the real one)
   mk(prof([[.12, .47], [.3, .45], [.52, .51], [.62, .4], [.5, .3], [.18, .3]], .26, .01), MK, ct, 0, 0, 0);  // lower rear cover
-  mk(prof([[0, .73], [.05, .765], [.3, .79], [.55, .835], [.74, .87], [.8, .875], [.83, .85], [.75, .825], [.3, .755], [.02, .71]], .3, .03, 2), MS, ct, 0, 0, 0); // seat
+  mk(prof([[-.09, .69], [-.06, .735], [.03, .755], [.19, .76], [.37, .81], [.54, .86], [.72, .885], [.83, .895], [.84, .87], [.72, .855], [.54, .83], [.37, .78], [.19, .715], [.03, .7], [-.04, .625], [-.085, .635]], .3, .03, 2), MS, ct, 0, 0, 0); // seat: thick, its nose hangs over the tunnel, rising to the tail
   for (const s of [-1, 1]) mk(prof([[.56, .83], [.62, .865], [.84, .885], [.86, .86], [.8, .845], [.62, .825]], .04, .01), MK, ct, s * .125, 0, 0); // 2026 one-piece grab bar: sculpted side
   mk(prof([[.78, .86], [.84, .885], [.88, .87], [.86, .845]], .29, .012), MK, ct, 0, 0, 0);                    // ... joined behind the seat
-  mk(box(.16, .045, .03), MTail, ct, 0, .8, .9, .5); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .76, .885);
-  mk(prof([[.74, .62], [.84, .64], [.96, .4], [.92, .34], [.82, .42]], .11, .012), MK, ct, 0, 0, 0);         // plate hanger
-  mk(box(.2, .12, .008), MPl, ct, 0, .38, .958, .35); for (const s of [-1, 1]) mk(box(.05, .028, .045), MAmb, ct, s * .09, .58, .84);
+  mk(box(.16, .045, .03), MTail, ct, 0, .815, .875, .5); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .775, .86);
+  mk(prof([[.74, .69], [.92, .705], [.93, .68], [1.03, .385], [1.005, .37], [.87, .63], [.76, .645]], .07, .01), MK, ct, 0, 0, 0); // plate hanger: thin stalk down and back
+  mk(box(.2, .12, .008), MPl, ct, 0, .47, .99, .4);
   // steering
   T0 = [headZ, headY]; RK = rake;
   const tilt = new THREE.Group(); tilt.position.set(0, headY, headZ); tilt.rotation.x = rake; ct.add(tilt);
@@ -457,14 +462,14 @@ function scooter(ct) {
   for (const s of [-1, 1]) mk(cyl(.02, .02, .42), MC, st, s * .07, -.22, 0);
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
   for (const s of [-1, 1]) mk(cyl(.03, .027, .3, 8), MK, B.slider, s * .07, .15, 0);
-  B.frontW = wheelG(.215, .043, .175, 5, .022, true, .1); B.slider.add(B.frontW);
+  B.frontW = wheelG(.215, .043, .175, 5, .017, true, .1, CLICKW); B.slider.add(B.frontW);
   // big body-colour front fender with a forward beak (drawn as bike-frame offsets from the axle, turned into the slider's raked frame)
   const fs = ([dz, dy]) => [-dy * Math.sin(rake) + dz * Math.cos(rake), dy * Math.cos(rake) + dz * Math.sin(rake)];
   mk(taper(prof([[.12, .272], [.04, .306], [-.06, .312], [-.14, .296], [-.21, .268], [-.17, .254], [-.1, .27], [-.04, .281], [.04, .277], [.12, .25]].map(fs), .13, .01), [[-.36, .45], [-.2, 1]]), MF, B.slider, 0, 0, 0);
   mk(box(.045, .065, .085), MK, B.slider, .08, .02, .06);
-  // handlebar cover (black, pointed front) with the meter on top
-  mk(prof([[-.19, .07], [-.1, .035], [.09, .03], [.12, .085], [.05, .13], [-.08, .14], [-.2, .105]], .5, .022), MK, st, 0, 0, 0);
-  clusterPlane(st, 0, .172, .03, -1.05, .26);
+  // handlebar cover (black wedge: low pointed front over the cowl, high just ahead of the bars) with the meter on its rear face
+  mk(prof([[-.11, .02], [-.02, .03], [.1, .03], [.13, .11], [.05, .2], [-.01, .205], [-.06, .17], [-.11, .06]], .5, .022), MK, st, 0, 0, 0);
+  clusterPlane(st, 0, .155, .09, -.71, .24);
   controls(st, .12, .02, .31, .23, [.27, .2, -.05]);
   // rider: upright, feet flat on the floorboard
   rider(ct, [1.07, .3, -.1], [1.43, .25], [.25, 1.11, 0, -.58, .66], [[.14, .84, .12, -.05, .42, .14], [.16, .56, -.12, .08, .44, .11]]);
@@ -472,10 +477,10 @@ function scooter(ct) {
   B.exh = new THREE.Group(); ct.add(B.exh);
   B.buildExh = (s, cf) => {
     B.exh.clear(); const col = [0x1a1b1e, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, .45, .5), L = [1, .85, .75][s];
-    tube([.05, .2, -.02], [.13, .25, .26], .022, MC, B.exh);
-    const P = [[.24, .36], [.24 + .4 * L, .42], [.32 + .42 * L, .4], [.32 + .42 * L, .28], [.32, .22], [.22, .27]];
-    mk(prof(P, .1, .015), m, B.exh, .17, 0, 0); mk(cyl(.026, .026, .05, 8), MC, B.exh, .17, .33, .34 + .43 * L, PI / 2);
-    if (s === 0) mk(prof([[.3, .37], [.6, .41], [.6, .35], [.3, .3]], .012, .004), MAlu, B.exh, .225, 0, 0); // heat guard
+    tube([.05, .2, -.02], [.13, .2, .3], .022, MC, B.exh); tube([.13, .2, .3], [.16, .21, .42], .022, MC, B.exh);
+    const e = .4 + .41 * L, P = [[.38, .25], [.4, .34], [.4 + .38 * L, .34 + .09 * L], [e, .34 + .08 * L], [e, .3], [.46, .18]];
+    mk(prof(P, .1, .015), m, B.exh, .17, 0, 0); mk(box(.075, .08, .02), MC, B.exh, .17, .34 + .03 * L, e + .025, .25); // body angled up to the back, alloy end plate
+    if (s === 0) mk(prof([[.41, .33], [.6, .375], [.58, .3], [.45, .24]], .012, .004), MAlu, B.exh, .225, 0, 0); // heat guard at the front of the can
     batchExh();
   };
 }
