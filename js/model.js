@@ -251,8 +251,8 @@ function drawLivery(kind, paint, lv = '') {
     poly(W, -.34, .865, -.1, .885, .08, .91, .08, .885, -.1, .86, -.34, .84);                    // tank sweep
     poly(ac, -.34, .83, -.1, .85, .08, .875, .08, .862, -.1, .838, -.34, .818);                  // accent
     poly(W, .05, .7, .42, .755, .42, .775, .05, .72); poly(ac, .05, .68, .42, .735, .42, .745, .05, .69); // side cover stripes
-  } else {                // Click 125i (reference photos): white wings and floor skirt, gloss black front face, apron, vent slashes and lower rear
-    poly(K, -.8, .5, -.535, .6, -.485, .72, -.42, .865, -.37, .9, -.2, .9, -.2, 1.2, -.8, 1.2); // black front face (thin band at the front edge + the top)
+  } else {                // Click 125i (reference photos): body-colour beak, wings and floor skirt, black under the beak, apron, vent slashes and lower rear
+    poly(K, -.8, .58, -.66, .64, -.7, .69, -.8, .69);                                             // black under the beak (headlamp housings)
     poly(K, -.8, .36, -.32, .36, -.3, .45, -.38, .55, -.8, .57);                               // lower apron (the floor skirt below stays body colour)
     if (lv !== 'm') { // two-tone Standard (2026: Pearl Sylvestris Gray, Pearl Arctic White, Obsidian Black); the matte Smart Edition is solid colour
       poly(K, -.40, .62, -.26, .72, -.26, .735, -.40, .64); poly(K, -.38, .665, -.25, .785, -.25, .8, -.38, .68); // wing vent slashes
@@ -416,9 +416,9 @@ function sport(ct) {
 // by the floor, 3D "Click" badge on the rear body (gold on the matte Smart Edition: the decal colour hd, pseudo-letters).
 function scooter(ct) {
   const rw = .258, rake = .46, headY = .86, fork = (headY - rw) / Math.cos(rake), headZ = -.64 + fork * Math.sin(rake);
-  B.G = { rw, rearZ: .64, fork, rake, pivotY: .34, pivotZ: .02, swingX: -.1 }; B.wheelCol = 0x1c1d21; B.cargo = { y: .78, z: .46 };
+  B.G = { rw, rearZ: .64, fork, rake, pivotY: .34, pivotZ: .02, swingX: -.1 }; B.wheelCol = 0x1c1d21; B.cargo = { y: .78, z: .46 }; B.fenderPaint = true; // body-colour front fender
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .64); ct.add(B.rearH); B.rearW = wheelG(.215, .045, .175, 5, .022, true, 0); B.rearH.add(B.rearW);
-  mk(arc(.27, .295, 1.3, 2.55, .11), MF, B.rearH, 0, 0, 0);                                                  // rear hugger
+  mk(arc(.27, .295, 1.3, 2.55, .11), MK, B.rearH, 0, 0, 0);                                                  // rear hugger
   // unit swing: engine + CVT case pivots with the rear wheel (stretched between pivot and axle each frame)
   B.swing = mk(prof([[-.5, -.07], [-.5, .06], [-.2, .1], [.42, .08], [.5, .02], [.46, -.06], [.2, -.09]], .12, .015), MG, ct, -.1, .3, .33);
   mk(prof([[-.12, .2], [.06, .2], [.08, .38], [-.1, .4]], .16, .015), MG, ct, -.02, 0, 0);                 // cylinder + head
@@ -429,11 +429,17 @@ function scooter(ct) {
   mk(prof([[-.4, .31], [-.3, .27], [.24, .27], [.34, .33], [.3, .345], [-.32, .345]], .335, .012), MP, ct, 0, 0, 0); // floor side skirt (body colour, pointed front)
   mk(prof([[-.27, .9], [-.2, .88], [-.15, .62], [-.12, .33], [-.21, .33], [-.24, .65]], .38, .015), MK, ct, 0, 0, 0); // inner leg shield
   mk(box(.03, .04, .03), MC, ct, 0, .62, -.15);                                                               // bag hook
-  mk(prof([[-.52, .62], [-.46, .76], [-.4, .88], [-.36, .92], [-.25, .92], [-.21, .7], [-.16, .38], [-.3, .33], [-.36, .45], [-.42, .53], [-.5, .56]], .42, .03), MP, ct, 0, 0, 0); // front body
-  mk(prof([[-.585, .58], [-.53, .66], [-.47, .74], [-.44, .7], [-.46, .56], [-.54, .55]], .26, .02), MK, ct, 0, 0, 0); // black nose
+  // front body: the upper cowl slopes forward and down from under the handlebar cover to a beak just ahead of the front axle
+  // (the headlamps sit on it), then the chin steps back over the wheel; narrows to a V at the nose
+  const NOSE = [[-.72, .7], [-.66, .755], [-.56, .825], [-.46, .895], [-.38, .935]];
+  mk(taper(prof([...NOSE, [-.25, .93], [-.21, .7], [-.16, .38], [-.3, .33], [-.36, .45], [-.44, .56], [-.56, .615], [-.68, .66]], .42, .02), [[-.72, .3], [-.6, .52], [-.45, .84], [-.32, 1]]), MP, ct, 0, 0, 0); // front body
+  mk(taper(prof([...NOSE.map(([z, y]) => [z, y + .022]), ...NOSE.slice().reverse().map(([z, y]) => [z + .01, y - .025])], .2, .008), [[-.73, .15], [-.6, .4], [-.4, 1]]), MK, ct, 0, 0, 0); // gloss black centre V on top of the cowl
   for (const s of [-1, 1]) for (const [y, z] of [[.66, -.37], [.72, -.35]]) mk(box(.024, .024, .13), MB, ct, s * .212, y, z, -.75, 0, 0); // 2026 side-fairing ducts (open slots)
   B.decal = MDec; for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.15, .034), MDec, ct, s * .153, .66, .44, 0, s * PI / 2, -.14 * s); // 3D "Click" badge
-  for (const s of [-1, 1]) { mk(box(.12, .034, .022), MHead, ct, s * .07, .62, -.567, .6, 0, s * .42); mk(box(.04, .02, .02), MAmb, ct, s * .12, .67, -.535, .6, 0, s * .3); } // LED eyes, signals
+  for (const s of [-1, 1]) { // twin LED headlamps on the beak's outer corners, DRL strip up each top edge, signals in the wings
+    mk(box(.085, .05, .02), MK, ct, s * .085, .79, -.635, .95, 0, s * .55); mk(box(.07, .03, .02), MHead, ct, s * .087, .795, -.64, .95, 0, s * .55);
+    tube([s * .1, .785, -.67], [s * .175, .925, -.46], .008, MHead, ct, 4); mk(box(.02, .026, .07), MAmb, ct, s * .125, .735, -.6, .5, 0, 0);
+  }
   mk(prof([[-.02, .33], [.14, .33], [.18, .6], [.1, .72], [0, .72], [-.06, .56]], .26, .015), MK, ct, 0, 0, 0); // under-seat tunnel
   mk(prof([[.04, .7], [.4, .74], [.72, .785], [.87, .775], [.9, .72], [.8, .63], [.56, .53], [.34, .5], [.16, .5], [.06, .58]], .3, .03), MP, ct, 0, 0, 0); // rear body
   mk(prof([[.12, .47], [.3, .45], [.52, .51], [.62, .4], [.5, .3], [.18, .3]], .26, .01), MK, ct, 0, 0, 0);  // lower rear cover
@@ -451,7 +457,10 @@ function scooter(ct) {
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
   for (const s of [-1, 1]) mk(cyl(.03, .027, .3, 8), MK, B.slider, s * .07, .15, 0);
   B.frontW = wheelG(.215, .043, .175, 5, .022, true, .1); B.slider.add(B.frontW);
-  mk(arc(.265, .29, .95 + rake, 2.65 + rake, .11), MF, B.slider, 0, 0, 0); mk(box(.045, .065, .085), MK, B.slider, .08, .02, .06);
+  // big body-colour front fender with a forward beak (drawn as bike-frame offsets from the axle, turned into the slider's raked frame)
+  const fs = ([dz, dy]) => [-dy * Math.sin(rake) + dz * Math.cos(rake), dy * Math.cos(rake) + dz * Math.sin(rake)];
+  mk(taper(prof([[.12, .272], [.04, .306], [-.06, .312], [-.14, .296], [-.21, .268], [-.17, .254], [-.1, .27], [-.04, .281], [.04, .277], [.12, .25]].map(fs), .13, .01), [[-.36, .45], [-.2, 1]]), MF, B.slider, 0, 0, 0);
+  mk(box(.045, .065, .085), MK, B.slider, .08, .02, .06);
   // handlebar cover (black, pointed front) with the meter on top
   mk(prof([[-.19, .07], [-.1, .035], [.09, .03], [.12, .085], [.05, .13], [-.08, .14], [-.2, .105]], .5, .022), MK, st, 0, 0, 0);
   clusterPlane(st, 0, .172, .03, -1.05, .26);
