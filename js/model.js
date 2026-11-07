@@ -416,7 +416,7 @@ function sport(ct) {
 // by the floor, 3D "Click" badge on the rear body (gold on the matte Smart Edition: the decal colour hd, pseudo-letters).
 function scooter(ct) {
   const rw = .258, rake = .46, headY = .86, fork = (headY - rw) / Math.cos(rake), headZ = -.64 + fork * Math.sin(rake);
-  B.G = { rw, rearZ: .64, fork, rake, pivotY: .34, pivotZ: .02, swingX: -.1 }; B.wheelCol = 0x1c1d21; B.cargo = { y: .78, z: .46 }; B.fenderPaint = true; // body-colour front fender
+  B.G = { rw, rearZ: .64, fork, rake, pivotY: .34, pivotZ: .02, swingX: -.1 }; B.wheelCol = 0x1c1d21; B.cargo = { y: .82, z: .46 }; B.fenderPaint = true; // body-colour front fender
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .64); ct.add(B.rearH); B.rearW = wheelG(.215, .045, .175, 5, .022, true, 0); B.rearH.add(B.rearW);
   mk(arc(.27, .295, 1.3, 2.55, .11), MK, B.rearH, 0, 0, 0);                                                  // rear hugger
   // unit swing: engine + CVT case pivots with the rear wheel (stretched between pivot and axle each frame)
@@ -428,7 +428,8 @@ function scooter(ct) {
   mk(prof([[-.3, .27], [.1, .27], [.12, .33], [-.3, .33]], .32, .012), MK, ct, 0, 0, 0); mk(box(.29, .008, .4), MRib, ct, 0, .335, -.1); // floor + ribbed mat
   mk(prof([[-.4, .31], [-.3, .27], [.24, .27], [.34, .33], [.3, .345], [-.32, .345]], .335, .012), MP, ct, 0, 0, 0); // floor side skirt (body colour, pointed front)
   mk(prof([[-.27, .9], [-.2, .88], [-.15, .62], [-.12, .33], [-.21, .33], [-.24, .65]], .38, .015), MK, ct, 0, 0, 0); // inner leg shield
-  mk(box(.03, .04, .03), MC, ct, 0, .62, -.15);                                                               // bag hook
+  mk(box(.03, .04, .03), MC, ct, 0, .62, -.15);
+  mk(prof([[-.38, .3], [-.33, .15], [-.22, .125], [.1, .125], [.2, .2], [.2, .29]], .2, .012), MK, ct, 0, 0, 0); // black belly under the floorboard (132 mm ground clearance)                                                               // bag hook
   // front body: the upper cowl slopes forward and down from under the handlebar cover to a beak just ahead of the front axle
   // (the headlamps sit on it), then the chin steps back over the wheel; narrows to a V at the nose
   const NOSE = [[-.69, .72], [-.64, .767], [-.55, .832], [-.46, .895], [-.38, .935]];
@@ -441,12 +442,12 @@ function scooter(ct) {
     tube([s * .095, .795, -.645], [s * .175, .925, -.46], .008, MHead, ct, 4); mk(box(.02, .026, .07), MAmb, ct, s * .123, .745, -.58, .5, 0, 0);
   }
   mk(prof([[-.02, .33], [.14, .33], [.18, .6], [.1, .72], [0, .72], [-.06, .56]], .26, .015), MK, ct, 0, 0, 0); // under-seat tunnel
-  mk(prof([[.04, .7], [.4, .74], [.72, .785], [.87, .775], [.9, .72], [.8, .63], [.56, .53], [.34, .5], [.16, .5], [.06, .58]], .3, .03), MP, ct, 0, 0, 0); // rear body
+  mk(prof([[.04, .7], [.3, .76], [.55, .81], [.75, .855], [.86, .87], [.9, .84], [.88, .78], [.8, .68], [.56, .55], [.34, .51], [.16, .5], [.06, .58]], .3, .03), MP, ct, 0, 0, 0); // rear body (sweeps up to the tail like the real one)
   mk(prof([[.12, .47], [.3, .45], [.52, .51], [.62, .4], [.5, .3], [.18, .3]], .26, .01), MK, ct, 0, 0, 0);  // lower rear cover
-  mk(prof([[0, .73], [.05, .765], [.3, .775], [.55, .785], [.74, .8], [.79, .78], [.75, .75], [.02, .71]], .3, .03, 2), MS, ct, 0, 0, 0); // seat
-  for (const s of [-1, 1]) mk(prof([[.56, .77], [.62, .805], [.84, .815], [.86, .79], [.8, .775], [.62, .765]], .04, .01), MK, ct, s * .125, 0, 0); // 2026 one-piece grab bar: sculpted side
-  mk(prof([[.78, .79], [.84, .815], [.88, .8], [.86, .775]], .29, .012), MK, ct, 0, 0, 0);                    // ... joined behind the seat
-  mk(box(.16, .045, .03), MTail, ct, 0, .72, .888, .5); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .7, .865);
+  mk(prof([[0, .73], [.05, .765], [.3, .79], [.55, .835], [.74, .87], [.8, .875], [.83, .85], [.75, .825], [.3, .755], [.02, .71]], .3, .03, 2), MS, ct, 0, 0, 0); // seat
+  for (const s of [-1, 1]) mk(prof([[.56, .83], [.62, .865], [.84, .885], [.86, .86], [.8, .845], [.62, .825]], .04, .01), MK, ct, s * .125, 0, 0); // 2026 one-piece grab bar: sculpted side
+  mk(prof([[.78, .86], [.84, .885], [.88, .87], [.86, .845]], .29, .012), MK, ct, 0, 0, 0);                    // ... joined behind the seat
+  mk(box(.16, .045, .03), MTail, ct, 0, .8, .9, .5); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .76, .885);
   mk(prof([[.74, .62], [.84, .64], [.96, .4], [.92, .34], [.82, .42]], .11, .012), MK, ct, 0, 0, 0);         // plate hanger
   mk(box(.2, .12, .008), MPl, ct, 0, .38, .958, .35); for (const s of [-1, 1]) mk(box(.05, .028, .045), MAmb, ct, s * .09, .58, .84);
   // steering
