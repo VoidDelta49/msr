@@ -10,7 +10,7 @@ import { cfg, save, BUILD, GLOBAL_DEF, AA_MODES, QUALITY } from './config.js';
 export const O = { onPerf: null, setDPR: null, api: '', live: false, gpu: false, aa: null, snap };
 
 /* ---------- what needs a reload ---------- */
-const RELOAD = { gfx: 'Quality', aa: 'Anti-aliasing', ibl: 'Sky lighting', grade: 'Colour grading', nightFx: 'Night vision', n64: 'N64 filter', mblur: 'Motion blur', gpuCull: 'GPU culling', forceGL: 'Force WebGL' };
+const RELOAD = { gfx: 'Quality', aa: 'Anti-aliasing', ibl: 'Sky lighting', grade: 'Colour grading', nightFx: 'Night vision', n64: 'N64 filter', mblur: 'Motion blur', gpuCull: 'GPU culling', bundles: 'Render bundles', forceGL: 'Force WebGL' };
 let boot = null; // the RELOAD values the running game was built with
 function snap() { boot = {}; for (const k in RELOAD) boot[k] = cfg[k]; }
 const pending = () => O.live && boot ? Object.keys(RELOAD).filter(k => cfg[k] !== boot[k]) : [];
@@ -87,6 +87,7 @@ function tGfx() {
     slider('mbAmt', 'Motion blur strength', 'How long the shutter stays open: longer streaks at the same speed.', !cfg.mblur) +
     sec('ADVANCED') +
     sw('gpuCull', 'GPU culling', gpuOff ? 'WebGPU only (this session runs WebGL 2).' : 'Hides off-screen props on the GPU. WebGPU only.', gpuOff) +
+    sw('bundles', 'Render bundles', gpuOff ? 'WebGPU only (this session runs WebGL 2).' : 'Records the static town once and replays it every frame: much less CPU work per frame. WebGPU only.', gpuOff) +
     sw('forceGL', 'Force WebGL', 'Use WebGL 2 even where WebGPU works. Try it if the game glitches or crashes.');
 }
 const tCtl = () => sec('TOUCH') +

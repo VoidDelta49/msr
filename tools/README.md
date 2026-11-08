@@ -36,7 +36,7 @@ For a custom experiment write a 10-line script on `tools/lib/headless.mjs` (`cre
 ## Limits (know what a green run does NOT cover)
 - Flat ground, no Rapier: suspension heave/pitch, walls, crashes, tricycle roll are NOT simulated (only the bike solver is).
 - Touch/HUD layout is checked by `layout.mjs` + `layout-dom.mjs` (not the main menu or garage; the options panel has its own browser check, `options.mjs`). Changing a button label or size in the top bar / banner / engine buttons: re-run both, they fail if a label stops fitting.
-- Rendering, audio, other UI, multiplayer, WebGPU: only checked statically (syntax/imports/data) or by `smoke.mjs` in a real browser. Draw calls: `smoke.mjs --perf` (exact counts; timings on swiftshader mean nothing). `smoke.mjs --webgpu` runs WebGPU on swiftshader's Vulkan (GPU culling included) and fails if the game fell back to WebGL.
+- Rendering, audio, other UI, multiplayer, WebGPU: only checked statically (syntax/imports/data) or by `smoke.mjs` in a real browser. Draw calls: `smoke.mjs --perf` (exact counts; timings on swiftshader mean nothing). `smoke.mjs --webgpu` runs WebGPU on swiftshader's Vulkan (GPU culling included) and fails if the game fell back to WebGL. It also fails if the render bundles (`js/bundle.js`, the static town recorded once) are not active or had to move objects back out.
 - Baseline tolerance is 4% (absolute floors for times); `test.mjs` fails on drift so intended changes need `--update` plus a note in the commit.
 - When a new bike is added: `check` validates its JSON/sound profile and `test` fails with "new metric" until `--update` is run.
 

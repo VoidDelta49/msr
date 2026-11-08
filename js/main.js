@@ -23,6 +23,7 @@ import { G as GARAGE, buildGarage, garageFrame } from './garage.js';
 import { initStudio, enter as studioIn, leave as studioOut, studioFrame } from './studio.js';
 import { O, openOpts, closeOpts, showOpts } from './options.js';
 import { BN, benchInit, benchDrive, benchFrame, benchStart } from './bench.js';
+import { bundleStatic, BUNDLE } from './bundle.js';
 import { autoRes, resScale, jankStart, jankEnd, jankText } from './perf.js';
 import { cull } from './gpucull.js';
 import './layout.js'; // HUD + touch-control layout (after controls.js: needs body.touch)
@@ -95,7 +96,7 @@ stage('Starting physics', .8);
 if (!await initRapier()) throw new Error("Couldn't load the physics engine (" + RP.err + '). Check your connection and try again.');
 stage('Preparing the bike', .85); setBike(); save(); rideInit();
 // build every shader now, behind the title screen (see renderer.js warm())
-stage('Compiling shaders', .9); initStudio(); cull(camera); ctx.warmMs = await warm(); stage('Ready', 1);
+stage('Compiling shaders', .9); initStudio(); bundleStatic(); cull(camera); /* bundle.js: the static island into render bundles (WebGPU) */ ctx.warmMs = await warm(); stage('Ready', 1);
 
 function startEngine() {
   // garage stand only (REV button, debug hook): no key / starter ritual there
@@ -277,4 +278,4 @@ renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFr
 O.setDPR = setDPR; O.gpu = GPU; O.aa = AA; O.live = true; O.snap(); // options.js: what the loaded game was built with, to tell which changes still need a reload
 if (ctx.mpWant) { const w = ctx.mpWant; ctx.mpWant = null; netJoin(w.room, w.name, w.url); } // MULTIPLAYER > JOIN before the game had loaded
 O.api = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { NPC, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };
+window.__cpm = { BUNDLE, NPC, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };

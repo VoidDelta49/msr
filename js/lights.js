@@ -12,14 +12,18 @@ let lvl = -1;
 // Objects drawn only with the lamps on (light pools, halos): by day their opacity is 0, so drawing them was pure fill-rate on
 // additive quads. batch.js / world.js register the batched ones (whole objects, so their own culling never fights this).
 export const lampsOn = () => lvl > 0, isNight = m => NIGHTM.has(m), nightOnly = o => { NIGHT.push(o); o.visible = lvl > 0; return o; };
+export const LAMP_HOOKS = []; // called with the new level after it changed (bundle.js: lit windows in render bundles)
 export function setLamps(v) {
   v = Math.round(v * 200) / 200; if (v === lvl) return; lvl = v; LAMP.value = v;
   for (const o of NIGHT) o.visible = v > 0;
   for (const m of GLOWM) { m.emissiveIntensity = v * 1.15; const l = liteOf(m); if (l !== m) l.emissiveIntensity = v * 1.15; }
+  for (const f of LAMP_HOOKS) f(v);
 }
 // building material with lit windows / signs: emissiveMap = the lit twin of its colour map (intensity 0 by day)
 export function glowMat(m, map) { m.emissive.set(0xffffff); m.emissiveMap = map; m.emissiveIntensity = 0; GLOWM.push(m); return m; }
 // batch.js: a merged copy of a glow material has to follow the lamp level too
+// glowing: a material whose emissive intensity follows the lamps (its Low-preset Lambert twin too); bundle.js keeps those objects checked every frame
+export const glowing = m => GLOWM.includes(m) || GLOWM.some(g => liteOf(g) === m);
 export const isGlow = m => GLOWM.includes(m), glowTrack = m => { m.emissiveIntensity = Math.max(lvl, 0) * 1.15; GLOWM.push(m); return m; };
 
 // bulb / lamp lens: dull grey by day, hot warm white at night (values > 1 so the tone mapper burns it out)

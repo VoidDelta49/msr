@@ -155,6 +155,7 @@ data/map/island.json  the island layout (coast, features, river, roads, town blo
 js/renderer.js        WebGPU/WebGL setup and fallback, quality preset
 js/perf.js            culling, terrain LOD, merging, Lambert materials, auto resolution
 js/gpucull.js         WebGPU compute culling + indirect draws for instanced props
+js/bundle.js          WebGPU render bundles: the static town recorded once, replayed per frame
 js/bench.js           in-game benchmark (Options > System): scripted ride, frame/CPU/GPU timings, hitch causes, ablations, text report
 js/net.js             multiplayer: relay connection, state packets, interpolated ghost bikes, name tags
 js/race.js            tap-to-race between two riders
@@ -191,6 +192,7 @@ Sound is fully synthesized WebAudio, no samples: an AudioWorklet engine voice bu
 - **Auto resolution** (on by default): drops render resolution in 10% steps (down to 55%) when the game can't hold the screen's refresh rate, and creeps back up when it can.
 - **Culling**: props are static instanced chunks (700 m); off-screen chunks are skipped in the main and shadow pass. Small one-off props hide past 220 / 550 m.
 - **GPU culling** (WebGPU only, on by default, reloads): each prop type is one instanced mesh for the whole island; a compute pass culls every instance against the view and its draw distance each frame and draws the survivors with an indirect draw. Props near the bike are kept for the shadow pass. On WebGL the chunked culling above is used.
+- **Render bundles** (WebGPU only, on by default, reloads; Options > Graphics > Advanced): the frozen, opaque island objects (buildings, chunked props, signs, wires, the GPU-culled prop meshes) are moved into `BundleGroup`s by area (250 m cells, 1000 m for big objects). Each cell's draw commands are recorded once and replayed with one `executeBundles`, which saves most of three.js's per-object CPU work. Whole cells are frustum-culled per camera. A cell is recorded again when something in it changes (visibility from distance culling or night-only objects, instance counts, materials, textures, matrices), when the lamp level changes lit windows, and when three re-creates a texture. Bundles run before the opaque list, so the sky and the transparents still come after them.
 - **Instant main menu**: the page opens on a plain-HTML menu (bike picker, options, controls) in a fraction of a second. three.js, Rapier and the game modules download in the background with a progress bar and are only parsed and built when you tap PLAY.
 - **Shader warm-up**: while the loading bar shows "Compiling shaders", every material's shader is built up front (in parallel where the browser supports it), so switching camera, crashing or riding into a new area doesn't stall on a shader compile.
 - **Terrain LOD**: the ground is 5×5 tiles of 280 m, frustum-culled, each at 5 / 10 / 20 m detail by distance, with skirts so seams never show. Physics still uses the full-detail heights.

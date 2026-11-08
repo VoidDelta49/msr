@@ -28,9 +28,11 @@ try {
   const r = await pg.evaluate(async () => {
     const c = window.__cpm, S = c.S, out = {}; c.reset && c.reset();
     for (const id of Object.keys(c.ctx.bikes)) { c.setBike(id); await new Promise(r => setTimeout(r, 150)); out[id] = { v: +S.v.toFixed(2), x: Number.isFinite(S.x) }; }
-    return { bikes: out, build: document.getElementById('mFoot').textContent, gpu: !!c.renderer.backend.isWebGPUBackend };
+    return { bikes: out, build: document.getElementById('mFoot').textContent, gpu: !!c.renderer.backend.isWebGPUBackend, bun: { on: c.BUNDLE.on, n: c.BUNDLE.objects, ej: c.BUNDLE.ejected } };
   });
   if (a.includes('--webgpu') && !r.gpu) errs.push('--webgpu: the game is running on WebGL (WebGPU device lost or unavailable)');
+  if (r.gpu && (!r.bun.on || r.bun.n < 20)) errs.push(`render bundles (bundle.js) not active on WebGPU: ${JSON.stringify(r.bun)}`); // (static town: ~150 objects)
+  if (r.gpu && r.bun.ej) errs.push(`render bundles: ${r.bun.ej} object(s) kept changing and were moved back out of the bundles (bundle.js eject)`);
   const bad = Object.entries(r.bikes).filter(([, v]) => !v.x).map(([k]) => k); if (bad.length) errs.push('non-finite position after switching to ' + bad.join(', '));
   if (a.includes('--perf')) for (let i = 0; i < 5; i++) { console.log(await pg.evaluate(perfProbe, [i, +(opt('--top') || 14)])); if (opt('--shot')) await pg.screenshot({ path: opt('--shot').replace(/(\.png)?$/, '-' + i + '.png') }); }
   else if (opt('--shot')) await pg.screenshot({ path: opt('--shot') });
