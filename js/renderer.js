@@ -141,7 +141,10 @@ if (AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx || cfg.mblur) {
     c = T.mix(c, T.vec3(l).mul(T.vec3(.86, .95, 1.14)), k);                                                   // cool grey-blue
     out = T.vec4(c.add(c.oneMinus().mul(n.mul(.045))), 1);                                                   // lift the blacks
   }
-  if (AA.fx) { const { fxaa } = await import('three/addons/tsl/display/FXAANode.js'); out = fxaa(out); }
+  // FXAA samples its input's neighbours, so everything above is first drawn into a full-screen texture. That input is display-space
+  // 0..1 colour, so 8 bits per channel and no depth buffer (three's default would be RGBA16F + depth: 12 bytes written per pixel
+  // instead of 4, every frame, then read back several times by FXAA). The canvas is 8-bit anyway, so nothing visible is lost.
+  if (AA.fx) { const { default: FXAANode } = await import('three/addons/tsl/display/FXAANode.js'); out = new FXAANode(T.rtt(out, null, null, { type: THREE.UnsignedByteType, depthBuffer: false })); }
   if (cfg.n64) {
     const b = new Uint8Array(64), BY = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]; BY.forEach((v, i) => { b[i * 4] = b[i * 4 + 1] = b[i * 4 + 2] = Math.round((v + .5) / 16 * 255); b[i * 4 + 3] = 255; });
     const bt = new THREE.DataTexture(b, 4, 4); bt.magFilter = bt.minFilter = THREE.NearestFilter; bt.wrapS = bt.wrapT = THREE.RepeatWrapping; bt.generateMipmaps = false; bt.needsUpdate = true;

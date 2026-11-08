@@ -139,13 +139,22 @@ function verdict(R) {
   if (a0) {
     const gp = g(a0), cp = a0.cpu.avg, iv = a0.iv.avg;
     if (gp == null) L.push(`GPU timer not available here, so read the "switched off" rows: the frame time they save is the GPU time that feature costs.`);
+    else if (gp > iv * .8 && cp > iv * .8) L.push(`GPU and CPU both near the limit at 100 km/h: GPU ${r1(gp)} ms, CPU ${r1(cp)} ms of a ${r1(iv)} ms frame (they run side by side, so either one alone can make a frame miss the display's beat).`);
     else if (gp > iv * .8) L.push(`GPU-bound at 100 km/h: the GPU needs ${r1(gp)} ms of a ${r1(iv)} ms frame (${Math.round(gp / iv * 100)}%).`);
     else if (cp > iv * .8) L.push(`CPU-bound at 100 km/h: the CPU needs ${r1(cp)} ms of a ${r1(iv)} ms frame (${Math.round(cp / iv * 100)}%).`);
     else L.push(`Neither side is the limit at 100 km/h: GPU ${r1(gp)} ms and CPU ${r1(cp)} ms inside a ${r1(iv)} ms frame (headroom ${r1(iv - Math.max(gp, cp))} ms). Frames are waiting on the display or the system.`);
+    // Each ablation is compared with the reference as it would have measured at that moment: a straight line from the first reference run
+    // (a0) to the last (a0b), since a phone warms up and slows down across the run (a fixed a0 once made shadows "cost -1.3 ms CPU").
+    // Switching a feature off can't make the frame slower, so a negative cost is drift or noise, reported as nothing measurable.
+    const ab = ['a1', 'a2', 'a3', 'a4'], ok = a0b && !a0b.cut, at = id => ok ? (ab.indexOf(id) + 1) / (ab.length + 1) : 0, lerp = (x, y, f) => x == null || y == null ? x : x + (y - x) * f;
     for (const [id, what] of [['a1', 'Shadow-map updates (receivers still sample the map)'], ['a2', 'Post-processing (grade, AA, filters, motion blur)'], ['a3', 'Full resolution (vs half)']]) {
-      const p = R[id]; if (!p || p.cut) continue; const floor = Math.max(.7, a0.iv.avg * .04); // under ~4% of a frame is run-to-run noise
-      const m = x => Math.abs(x) < floor ? 'nothing measurable' : r1(x) + ' ms', d = [], gi = g(p); if (gi != null && g(a0) != null) d.push(`GPU ${m(g(a0) - gi)}`); d.push(`CPU ${m(a0.cpu.avg - p.cpu.avg)}`, `frame ${m(a0.iv.avg - p.iv.avg)}`); L.push(`${what} cost per frame: ${d.join(', ')}.`);
+      const p = R[id]; if (!p || p.cut) continue; const floor = Math.max(.7, a0.iv.avg * .04), f = at(id); // under ~4% of a frame is run-to-run noise
+      const m = x => x < floor ? 'nothing measurable' : r1(x) + ' ms', d = [], gi = g(p), gr = ok ? lerp(g(a0), g(a0b), f) : g(a0);
+      if (gi != null && gr != null) d.push(`GPU ${m(gr - gi)}`);
+      d.push(`CPU ${m(lerp(a0.cpu.avg, ok ? a0b.cpu.avg : a0.cpu.avg, f) - p.cpu.avg)}`, `frame ${m(lerp(a0.iv.avg, ok ? a0b.iv.avg : a0.iv.avg, f) - p.iv.avg)}`); L.push(`${what} cost per frame: ${d.join(', ')}.`);
     }
+    // where the CPU time goes when the frame is CPU-heavy: almost all of it is usually the draw stage (three.js work per object)
+    if (cp > iv * .6 && a0.parts.draw > cp * .6) L.push(`CPU: ${r1(a0.parts.draw)} of its ${r1(cp)} ms is the draw stage (three.js work per object, ~${a0.draws} draw calls), ${r1(cp - a0.parts.draw)} ms the rest of the frame.`);
     if (R.a4) L.push(`With everything off: frame ${r1(R.a4.iv.avg)} ms, CPU ${r1(R.a4.cpu.avg)} ms${g(R.a4) != null ? `, GPU ${r1(g(R.a4))} ms` : ''}.`);
   }
   if (a0 && a0b) { const f = a0b.iv.avg / a0.iv.avg, gg = g(a0) && g(a0b) ? g(a0b) / g(a0) : f; L.push(`Throttle check: the same stretch took ${r1(a0b.iv.avg)} ms vs ${r1(a0.iv.avg)} ms at the start (${f >= 1 ? '+' : ''}${Math.round((f - 1) * 100)}%)${g(a0) ? `, GPU ${gg >= 1 ? '+' : ''}${Math.round((gg - 1) * 100)}%` : ''}${gg > 1.1 || f > 1.1 ? ': the device is slowing down as it warms up.' : '.'}`); }

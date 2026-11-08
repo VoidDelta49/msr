@@ -26,16 +26,18 @@ export const isGlow = m => GLOWM.includes(m), glowTrack = m => { m.emissiveInten
 export function lampMat(on = [2.3, 1.8, 1], off = [.55, .55, .5]) {
   const m = new THREE.MeshBasicNodeMaterial(); m.colorNode = mix(vec3(...off), vec3(...on), LAMP); return m;
 }
+// Pools and halos are additive (the sum doesn't depend on order) and write no depth, so the back faces need no separate pass:
+// forceSinglePass stops three from drawing every transparent DoubleSide object twice (back faces, then front faces).
 const radial = () => { const f = clamp(float(1).sub(uv().sub(.5).length().mul(2)), 0, 1); return f.mul(f); };
 // light on the ground: flat quad, tinted per instance (c), strength k. Add sx/sz per instance.
 export function poolMat(k = .55) {
   const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-  m.colorNode = vec3(1, .86, .6); m.opacityNode = radial().mul(LAMP).mul(k); NIGHTM.add(m); return m;
+  m.colorNode = vec3(1, .86, .6); m.opacityNode = radial().mul(LAMP).mul(k); m.forceSinglePass = true; NIGHTM.add(m); return m;
 }
 // glow around a lamp seen from afar: two crossed quads, faded out near the camera so it never fills the screen
 export function haloMat(k = .6) {
   const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide });
-  m.colorNode = vec3(1, .8, .45); m.opacityNode = radial().mul(LAMP).mul(k).mul(smoothstep(4, 18, positionWorld.sub(cameraPosition).length())); NIGHTM.add(m); return m;
+  m.colorNode = vec3(1, .8, .45); m.opacityNode = radial().mul(LAMP).mul(k).mul(smoothstep(4, 18, positionWorld.sub(cameraPosition).length())); m.forceSinglePass = true; NIGHTM.add(m); return m;
 }
 export const POOL_GEO = () => new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
 // Ground-hugging pools (build 11.36): a flat quad floated over sloped / uneven ground, so each pool is an N x N grid whose

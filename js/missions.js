@@ -56,13 +56,13 @@ export const MI = ctx.MI = { q: null, pins: [], pk: 'idle', arm: true, ay: 0, re
 /* ---------- world objects (all created at load, hidden, so the shader warm-up covers them) ---------- */
 const beamG = new THREE.CylinderGeometry(1.1, 1.1, 40, 10, 1, true).translate(0, 20, 0);
 export function beacon(c, r) {
-  const g = new THREE.Group(), pm = { color: c, transparent: true, depthWrite: false, side: THREE.DoubleSide };
+  const g = new THREE.Group(), pm = { color: c, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true }; // one colour + opacity: the layers blend the same in any order, so no separate back-face pass
   const ring = new THREE.Mesh(new THREE.RingGeometry(r - .6, r, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ ...pm, opacity: .75, polygonOffset: true, polygonOffsetFactor: -2 }));
   ring.position.y = .1; g.add(ring, new THREE.Mesh(beamG, new THREE.MeshBasicMaterial({ ...pm, opacity: .3 })));
   g.visible = false; scene.add(g); return g;
 }
 const destB = beacon(0x43e07a, DR), nextB = beacon(0xffd23f, DR), orbB = Array.from({ length: NORB }, () => beacon(0x3ad7ff, ORB_R)), metB = Array.from({ length: NMET }, () => beacon(0xe6efff, MR)), hareB = beacon(0x6670ff, 12), ALLB = [destB, nextB, hareB, ...orbB, ...metB];
-const PO = { polygonOffset: true, polygonOffsetFactor: -2 }, bm = (c, o, x) => new THREE.MeshBasicMaterial({ color: c, transparent: true, depthWrite: false, side: THREE.DoubleSide, opacity: o, ...x });
+const PO = { polygonOffset: true, polygonOffsetFactor: -2 }, bm = (c, o, x) => new THREE.MeshBasicMaterial({ color: c, transparent: true, depthWrite: false, side: THREE.DoubleSide, forceSinglePass: true, opacity: o, ...x }); // (as beacon(): order-free, one pass)
 const ringG = new THREE.RingGeometry(HR - .6, HR, 40).rotateX(-Math.PI / 2), hardG = new THREE.RingGeometry(HR + .6, HR + 1.3, 40).rotateX(-Math.PI / 2);
 // Every hub slot's ring, beam and red outer ring (bike-locked jobs) live in two BatchedMeshes (Build 11.43): all the rings in
 // one, all the beams in the other, the type colour per instance. Two draws for every beacon in view instead of 2-3 each.
