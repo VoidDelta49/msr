@@ -10,7 +10,7 @@ import { cfg, save, BUILD, GLOBAL_DEF, AA_MODES, QUALITY } from './config.js';
 export const O = { onPerf: null, setDPR: null, api: '', live: false, gpu: false, aa: null, snap };
 
 /* ---------- what needs a reload ---------- */
-const RELOAD = { gfx: 'Quality', aa: 'Anti-aliasing', ibl: 'Sky lighting', grade: 'Colour grading', bloom: 'Bloom', shade: 'Outlines', nightFx: 'Night vision', n64: 'N64 filter', mblur: 'Motion blur', gpuCull: 'GPU culling', bundles: 'Render bundles', forceGL: 'Force WebGL' };
+const RELOAD = { gfx: 'Quality', aa: 'Anti-aliasing', ibl: 'Sky lighting', grade: 'Colour grading', bloom: 'Bloom', shade: 'Outlines', nightFx: 'Night vision', grass: 'Grass', n64: 'N64 filter', mblur: 'Motion blur', gpuCull: 'GPU culling', bundles: 'Render bundles', forceGL: 'Force WebGL' };
 let boot = null; // the RELOAD values the running game was built with
 function snap() { boot = {}; for (const k in RELOAD) boot[k] = cfg[k]; }
 const pending = () => O.live && boot ? Object.keys(RELOAD).filter(k => cfg[k] !== boot[k]) : [];
@@ -83,6 +83,7 @@ function tGfx() {
     sw('grade', 'Colour grading', 'Warm highlights, cool shadows, a soft contrast curve and a light vignette.') +
     sw('bloom', 'Bloom', lowQ ? 'Needs Medium or High quality.' : 'Street lamps, lit windows, headlights and the sun glow softly.', lowQ) +
     sw('shade', 'Outlines', lowQ ? 'Needs Medium or High quality.' : 'A thin ink outline round near things: your bike, people, cars and buildings.', lowQ) +
+    sw('grass', 'Grass', 'Swaying grass round you on the fields and hills, drawn by the GPU. Bends under the bike. Count and reach follow the quality preset.') +
     sw('nightFx', 'Night vision', 'Dim areas lose their colour at night, as they do to your eyes.') +
     sw('n64', 'N64 colour filter', '15-bit colour with an ordered dither, like the N64 framebuffer.') +
     sw('mblur', 'Motion blur', 'Speed blur when you ride fast, like GTA San Andreas: it fades in from 60 km/h and is full at 130. Costs nothing below that.') +

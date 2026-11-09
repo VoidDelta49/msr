@@ -7,6 +7,7 @@ import { scene, ctex, std, vcol, ANISO, GPU } from './renderer.js';
 import { cfg, Q, BUILD } from './config.js';
 import { attribute, texture, uv, vec2, vec3, float, select, positionWorld, cameraPosition, time, normalMap, mix, smoothstep } from 'three/tsl';
 import { gpuInst, finishGpuInst } from './gpucull.js';
+import { buildGrass } from './grass.js';
 import * as T from './tex.js';
 import { glowMat, lampMat, poolMat, haloMat, poolPatches, HALO_GEO, nightOnly, isNight, lampsOn } from './lights.js';
 import { mkTex } from './tex.js';
@@ -203,27 +204,32 @@ function seaMat(tSea){
   m.roughnessNode=mix(float(.06),float(.24),smoothstep(25,900,d));
   return m;
 }
+const TWN2=FEAT.find(f=>f.name==='town2');let GW,GCOL,GMH; // terrain grass density / colour / height per vertex, for the GPU grass (grass.js), built at the end once every footprint is in OBBS
 {
   // terrain mesh with vertex colours
   const N=TN,SZ=TSZ,geo=new THREE.PlaneGeometry(SZ,SZ,N,N).rotateX(-PI/2).translate(GX,0,GZ),pos=geo.attributes.position,col=new Float32Array(pos.count*3),c=new THREE.Color();
   const C={sand:new THREE.Color(0xe2d2a2),grass:new THREE.Color(0x76a845),grass2:new THREE.Color(0x5e9438),forest:new THREE.Color(0x3d6b2c),rock:new THREE.Color(0x7c746a),ash:new THREE.Color(0x55504c),town:new THREE.Color(0xb3a98f),rice:new THREE.Color(0x9fd24a),rice2:new THREE.Color(0x7dbf3c),bed:new THREE.Color(0x8a7a5a),dry:new THREE.Color(0xa3ab4e),dirt:new THREE.Color(0x9c8a5e),wet:new THREE.Color(0xb8a57a)};
+  GW=new Float32Array(pos.count); // grass density per vertex (grass.js): 0 on sand, rock, town lots, paddies, roads and their shoulders
   for(let i=0;i<pos.count;i++){const x=pos.getX(i),z=pos.getZ(i),h=H(x,z,true),cutAmt=GRD.trimmed(),inl=inland(x,z);pos.setY(i,h);
-    const dv=Math.hypot(x-VOL.x,z-VOL.z),dt=Math.hypot(x-TERR.x,z-TERR.z),n=fbm(x*.03,z*.03);
+    const dv=Math.hypot(x-VOL.x,z-VOL.z),dt=Math.hypot(x-TERR.x,z-TERR.z),n=fbm(x*.03,z*.03);let gw=0;
     if(lastCarve>.4)c.copy(C.bed);
     else if(h<SEA+1.3&&inl<90)c.copy(C.sand);
     else if(rd(x,z,TOWN,10)<1)c.copy(C.town).lerp(C.grass,n*.35);
     else if(CITY&&inCity(x,z,6))c.copy(C.town).lerp(C.rock,.3+n*.25);
     else if(dt<TERR.r-30)c.copy((Math.floor(h/2.4)&1)?C.rice:C.rice2);
-    else if(h>115||dv<45)c.copy(dv<30?C.ash:C.rock).lerp(C.forest,sstep(140,110,h)*.5);
-    else if(h>14)c.copy(C.forest).lerp(C.grass2,n*.5);
-    else c.copy(C.grass).lerp(C.grass2,n);
-    if(h>SEA+1.3&&h<60&&lastCarve<.4){const dp=sstep(.55,.75,fbm(x*.008+3,z*.008));c.lerp(C.dry,dp*.6)} // sun-dried grass patches
-    {const rw=RF.length?roughMax(x,z):0;if(rw>0&&h>SEA+1.3&&lastCarve<.4)c.lerp(fbm(x*.07+5,z*.07)>.5?C.rock:C.dirt,rw*.8)} // rocky off-road fields
+    else if(h>115||dv<45){c.copy(dv<30?C.ash:C.rock).lerp(C.forest,sstep(140,110,h)*.5);gw=dv<45?0:sstep(140,110,h)*.4}
+    else if(h>14){c.copy(C.forest).lerp(C.grass2,n*.5);gw=.75+n*.25}
+    else{c.copy(C.grass).lerp(C.grass2,n);gw=1}
+    if(h>SEA+1.3&&h<60&&lastCarve<.4){const dp=sstep(.55,.75,fbm(x*.008+3,z*.008));c.lerp(C.dry,dp*.6);gw*=1-dp*.35} // sun-dried grass patches
+    {const rw=RF.length?roughMax(x,z):0;if(rw>0&&h>SEA+1.3&&lastCarve<.4){c.lerp(fbm(x*.07+5,z*.07)>.5?C.rock:C.dirt,rw*.8);gw*=1-rw}} // rocky off-road fields
     if(h<SEA+.7&&inl<90)c.lerp(C.wet,.5); // wet sand at the waterline
     const q=nearRoad(x,z);if(q&&lastCarve<.4){const k=1-sstep(q.w/2,q.w/2+2.6,q.d);if(k>0)c.lerp(C.dirt,k*.65)} // worn dirt shoulders
-    if(cutAmt>.15)c.lerp(cutAmt>3?C.rock:C.dirt,sstep(.15,2,cutAmt)*.75); // graded cut bank beside a road: bare earth, so the road reads against the grass
-    col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b}
-  const MH=new Float32Array(pos.count);for(let i=0;i<pos.count;i++)MH[i]=pos.getY(i);GRD.setMH(MH);
+    if(q)gw*=sstep(q.w/2+1.5,q.w/2+4.5,q.d); // no grass on the road or the worn shoulder
+    if(cutAmt>.15){c.lerp(cutAmt>3?C.rock:C.dirt,sstep(.15,2,cutAmt)*.75);gw*=1-sstep(.15,1,cutAmt)} // graded cut bank beside a road: bare earth, so the road reads against the grass
+    if(h<SEA+1.6||lastCarve>.15||(TWN2&&rd(x,z,TWN2,4)<1)||(PADDY&&rd(x,z,PADDY,3)<1)||nearLM(x,z))gw=0;
+    GW[i]=gw;col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b}
+  GCOL=col;
+  const MH=GMH=new Float32Array(pos.count);for(let i=0;i<pos.count;i++)MH[i]=pos.getY(i);GRD.setMH(MH);
   // baked AO: valleys and gullies (lower than the ground ~10 m around) darker, ridges a touch brighter
   {const W=N+1,ao=new Float32Array(pos.count);for(let j=0;j<W;j++)for(let i=0;i<W;i++){const k=i+W*j;let s=0,c=0;for(const[a,b]of[[-2,0],[2,0],[0,-2],[0,2],[-2,-2],[2,2],[-2,2],[2,-2]]){const ii=i+a,jj=j+b;if(ii>=0&&jj>=0&&ii<W&&jj<W){s+=MH[ii+W*jj];c++}}
     ao[k]=clamp(1-(s/c-MH[k])*.07,.7,1.08)}for(let i=0;i<pos.count;i++){col[i*3]*=ao[i];col[i*3+1]*=ao[i];col[i*3+2]*=ao[i]}}
@@ -660,6 +666,11 @@ finishBatches(scene);
 buildUnder(UG,addOBB);if(UG.portal)buildPortal(UG); // Ilalim: the caves (their walls go in OBBS before Rapier reads them) and the dark passage in the hall
 const marker=new THREE.Mesh(new THREE.BoxGeometry(1.4,.02,2.4),new THREE.MeshBasicMaterial({color:0x43e07a,transparent:true,opacity:.45,depthWrite:false}));
 const arrow=new THREE.Mesh(new THREE.ConeGeometry(.35,.8,4).rotateX(PI),new THREE.MeshBasicMaterial({color:0x43e07a}));
+{ // GPU grass (grass.js): building footprints (OBBs bigger than a tree trunk or a rail) get no grass, then bake + build
+  const W=TN+1,X0=GX-TSZ/2,Z0=GZ-TSZ/2;
+  for(const b of OBBS){if(b.hx*b.hz<2||UG.has(b.cx,b.cz))continue;const R=Math.hypot(b.hx,b.hz)+3,i0=Math.max(0,Math.floor((b.cx-R-X0)/TS)),i1=Math.min(W-1,Math.ceil((b.cx+R-X0)/TS)),j0=Math.max(0,Math.floor((b.cz-R-Z0)/TS)),j1=Math.min(W-1,Math.ceil((b.cz+R-Z0)/TS));
+    for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const dx=X0+i*TS-b.cx,dz=Z0+j*TS-b.cz,a=dx*b.c+dz*b.s,d=-dx*b.s+dz*b.c;if(Math.abs(a)<b.hx+2.5&&Math.abs(d)<b.hz+2.5)GW[i+W*j]=0}}
+  buildGrass({MH:GMH,col:GCOL,gw:GW,W,x0:X0,z0:Z0,ts:TS});GW=GCOL=GMH=null}
 export const GPU_TYPES=finishGpuInst(scene);
 marker.visible=arrow.visible=false;liteMaterials(scene);scene.add(marker,arrow);
 

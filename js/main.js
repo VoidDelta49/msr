@@ -26,6 +26,7 @@ import { BN, benchInit, benchDrive, benchFrame, benchStart } from './bench.js';
 import { bundleStatic, BUNDLE } from './bundle.js';
 import { autoRes, resScale, jankStart, jankEnd, jankText } from './perf.js';
 import { cull } from './gpucull.js';
+import { grassFrame } from './grass.js';
 import './layout.js'; // HUD + touch-control layout (after controls.js: needs body.touch)
 import { NET, netFrame, join as netJoin, leave as netLeave } from './net.js';
 import { raceTick } from './race.js';
@@ -260,6 +261,7 @@ function mbState() {
 
 /* ---------- loop ---------- */
 let capT = 0, last = performance.now(), lastDraw = 0, fN = 0, fT = 0, crashCam = false;
+const GPB = { get x() { return S.x; }, get z() { return S.z; }, r: 1.4 }, GPF = { x: 0, z: 0, r: .7 }; // what presses the grass down (grass.js): the bike, the walker
 function loop(t) {
   requestAnimationFrame(loop);
   // FPS cap (Options): a steady 60 looks smoother than a wobbly 95-120 on a 120 Hz screen (every missed vsync is a
@@ -274,7 +276,7 @@ function loop(t) {
   if (BN.on) benchDrive(dt); const P1 = performance.now(); // benchmark: this frame's scripted pose (bench.js); P1..P3, C1 = stage stamps for it
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); npcFrame(dt, t); blobTick(H); bikeFx(dt); const P2 = performance.now(); updAudio(); const P3 = performance.now(); const fp = ctx.camMode === 0 || ctx.GAR; if (t - lastDraw > (fp ? 100 : 50)) { const hold = fp && sun.shadow.needsUpdate; if (!hold) lastDraw = t; hudUp = drawCluster(fp, hold); drawMini(MAP, MAPV); } /* never upload the dash in the frame that redraws the shadow map (two GPU bursts in one frame): it goes next frame */ const D0 = performance.now(); if (MB) mbState(); renderer.info.reset(); let shRef = sun.shadow.needsUpdate; if (BX.noShadow) { shRef = false; sun.shadow.needsUpdate = false; } let C1 = D0; /* benchmark: no shadow-map pass */ if (!ctx.mapCover) { cull(camera); fxTick(camera); C1 = performance.now(); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0); if (BN.on) benchFrame(t, J0, P1, P2, P3, D0, C1, J1, hudUp, shRef);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); npcFrame(dt, t); blobTick(H); bikeFx(dt); const P2 = performance.now(); updAudio(); const P3 = performance.now(); const fp = ctx.camMode === 0 || ctx.GAR; if (t - lastDraw > (fp ? 100 : 50)) { const hold = fp && sun.shadow.needsUpdate; if (!hold) lastDraw = t; hudUp = drawCluster(fp, hold); drawMini(MAP, MAPV); } /* never upload the dash in the frame that redraws the shadow map (two GPU bursts in one frame): it goes next frame */ const D0 = performance.now(); if (MB) mbState(); renderer.info.reset(); let shRef = sun.shadow.needsUpdate; if (BX.noShadow) { shRef = false; sun.shadow.needsUpdate = false; } let C1 = D0; /* benchmark: no shadow-map pass */ if (!ctx.mapCover) { cull(camera); grassFrame(camera, F.on ? [GPB, (GPF.x = F.x, GPF.z = F.z, GPF)] : [GPB], !ctx.inside && !(ctx.ug && ctx.ug.on)); fxTick(camera); C1 = performance.now(); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0); if (BN.on) benchFrame(t, J0, P1, P2, P3, D0, C1, J1, hudUp, shRef);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.gpu = GPU; O.aa = AA; O.live = true; O.snap(); // options.js: what the loaded game was built with, to tell which changes still need a reload
