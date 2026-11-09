@@ -5,7 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { PI, clamp, sstep, fbm, rand, hash2 } from './util.js';
 import { scene, ctex, std, vcol, ANISO, GPU } from './renderer.js';
 import { cfg, Q, BUILD } from './config.js';
-import { attribute, texture, uv, vec2, vec3, float, select } from 'three/tsl';
+import { attribute, texture, uv, vec2, vec3, float, select, positionWorld, cameraPosition, time, normalMap, mix, smoothstep } from 'three/tsl';
 import { gpuInst, finishGpuInst } from './gpucull.js';
 import * as T from './tex.js';
 import { glowMat, lampMat, poolMat, haloMat, poolPatches, HALO_GEO, nightOnly, isNight, lampsOn } from './lights.js';
@@ -182,10 +182,27 @@ const pastel=()=>new THREE.Color().setHSL(rand(),.35+rand()*.3,.62+rand()*.18);
 const TIN=[0xa8492f,0x2f5f9a,0x3d7a4a,0xb9bcc0,0x8a2f2f,0xc96f2a];
 const tDet=mkTex(T.detail(),260,{aniso:ANISO});
 const tRoad=mkTex(T.roadSt(),0,{aniso:ANISO}),tHwy=mkTex(T.roadHwy(),0,{aniso:ANISO});
-const WC=[1,2,3].map(n=>T.walls(n)),tW=WC.map(c=>mkTex(c)),tWG=WC.map(c=>mkTex(c.glow)),tTin=mkTex(T.tin()),tBark=mkTex(T.bark()),tFrond=mkTex(T.frond()),tLeaf=mkTex(T.leaves()),tJeep=mkTex(T.jeep());
+const WC=[1,2,3].map(n=>T.walls(n)),tW=WC.map(c=>mkTex(c)),tWG=WC.map(c=>mkTex(c.glow)),tWR=WC.map(c=>T.dataTex(c.rough)),tTin=mkTex(T.tin()),tBark=mkTex(T.bark()),tFrond=mkTex(T.frond()),tLeaf=mkTex(T.leaves()),tJeep=mkTex(T.jeep());
 const TWC=T.tower(),tTower=mkTex(TWC),tTowerG=mkTex(TWC.glow);
 // materials for instanced geometry (vertexColors: white from vcol(), the instance colour tints)
 const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:mt,map:map||null,vertexColors:true});
+// roughness map (PBR, 11.98): the map holds the real roughness, so the material's own value becomes 1 (three multiplies them)
+const rgh=(m,t)=>{if(!Q.lite){m.roughnessMap=t;m.roughness=1}return m};
+// The sea (11.98 PBR): water is a dielectric (no metalness, ~2 % reflectance head-on), so it is dark looking down and turns
+// into a mirror of the sky toward the horizon (Fresnel, through the IBL environment). Two copies of a wave normal map
+// (tex.js waves()) scroll across each other in world space at different scales, speeds and directions, so the sun lays a
+// glittering path on it and the reflections ripple. Far away the ripples are finer than a pixel: instead of shimmering
+// they become roughness (a wider, softer sun path), which is what real sea does at a distance. Low keeps the old material.
+const seaGeo=()=>{const g=new THREE.PlaneGeometry(8000,8000).rotateX(-PI/2);if(!Q.lite)g.computeTangents();return g}; // tangents: the wave normals' frame (uv derivatives across 8 km lose precision)
+function seaMat(tSea){
+  if(Q.lite)return new THREE.MeshStandardMaterial({color:0x2a88a6,map:tSea,roughness:.2,metalness:.15,transparent:true,opacity:.9});
+  const m=new THREE.MeshStandardNodeMaterial({color:0x2a88a6,map:tSea,roughness:.08,metalness:0,transparent:true,opacity:.9}),tN=T.dataTex(T.waves(),ANISO);
+  const p=positionWorld.xz,t=time,d=positionWorld.sub(cameraPosition).length();
+  const a=texture(tN,p.mul(1/31).add(vec2(t.mul(.009),t.mul(.005)))).xyz,b=texture(tN,p.mul(1/11).add(vec2(t.mul(-.006),t.mul(.014)))).xyz;
+  m.normalNode=normalMap(a.add(b).mul(.5),vec2(mix(float(1),float(.35),smoothstep(60,700,d))));
+  m.roughnessNode=mix(float(.06),float(.24),smoothstep(25,900,d));
+  return m;
+}
 {
   // terrain mesh with vertex colours
   const N=TN,SZ=TSZ,geo=new THREE.PlaneGeometry(SZ,SZ,N,N).rotateX(-PI/2).translate(GX,0,GZ),pos=geo.attributes.position,col=new Float32Array(pos.count*3),c=new THREE.Color();
@@ -232,7 +249,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   {const{b,ids}=staticBatch(TG,tmat);b.receiveShadow=true;b.name='terrain';scene.add(b);
     TL.forEach(([x0,z0],i)=>addLOD([0,1,2,3].map(l=>{const id=ids[i*4+l];return{set visible(v){b.setVisibleAt(id,v)}}}),x0,z0,x0+TT*TS,z0+TT*TS))}
   geo.dispose();
-  const sea=new THREE.Mesh(new THREE.PlaneGeometry(8000,8000).rotateX(-PI/2),new THREE.MeshStandardMaterial({color:0x2a88a6,map:mkTex(T.sea(),400),roughness:.2,metalness:.15,transparent:true,opacity:.9}));sea.position.y=SEA;scene.add(freeze(sea));
+  const sea=new THREE.Mesh(seaGeo(),seaMat(mkTex(T.sea(),400)));sea.position.y=SEA;scene.add(freeze(sea));
   // rice paddies: patchwork texture with dikes
   for(let k=0;k<80;k++)rand(); // the old paddy texture drew 80 rand() values; keep the island layout identical
   const tPad=mkTex(T.paddy());
@@ -432,7 +449,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   nbi(RK,()=>vcol(ub(),.7,0,1,.5),()=>vstd(0xffffff,.95),true,FAR.big);nbi(SM,()=>new THREE.ConeGeometry(1,1,6).translate(0,.5,0),()=>std(0xffffff,.95),true,FAR.mid);nbi(SK,()=>new THREE.ConeGeometry(1,1,6).rotateX(PI).translate(0,-.5,0),()=>std(0xffffff,.95),false,FAR.mid);
   nbi(CRY,()=>new THREE.OctahedronGeometry(1,0).scale(1,1.5,1).translate(0,1.5,0),()=>new THREE.MeshBasicMaterial({color:0xffffff}),false,FAR.mid); // crystals glow day and night
   nbi(LHC,()=>new THREE.ConeGeometry(1,1,12).translate(0,.5,0),()=>std(0xffffff,.7),true,FAR.big);
-  [1,2,3].forEach((n,i)=>inst(vcol(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6/(n)),glowMat(vstd(0xffffff,.85,0,tW[i]),tWG[i]),bl[i]));
+  [1,2,3].forEach((n,i)=>inst(vcol(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6/(n)),glowMat(rgh(vstd(0xffffff,.85,0,tW[i]),tWR[i]),tWG[i]),bl[i]));
   inst(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),roofs);inst(new THREE.BoxGeometry(1,1,1),std(0xffffff,.7),awn,false,FAR.small);
   // landmarks: original coordinates, mapped through each one's frame F (W = world position, F.y = levelled ground)
   const mesh=(g,m,X,Y,Z,F,r0=0)=>{const o=new THREE.Mesh(g,m),w=F.W(X,Z);o.position.set(w.x,F.y+Y,w.z);o.rotation.y=F.ry+r0;return o};
@@ -489,7 +506,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     if(rand()<.35){if(clear(2.3,2.2)&&hut(x,z,ry))GEN.push(['nipa',R1(x),R1(z),R4(ry)])}
     else{const w=6+rand()*3,d=6+rand()*2.5,c=pastel(),rc=TIN[(rand()*TIN.length)|0];if(clear(w/2,d/2)&&house(x,z,ry,w,d,c,rc))GEN.push(['house',R1(x),R1(z),R4(ry),R1(w),R1(d)])}}}}
   for(const b of BLD){const[t,x,z,ry=0,w=7,d=7]=b;if(t==='nipa')hut(x,z,ry);else if(t==='house'){const[q,q2]=hq(x,z);house(x,z,ry,w,d,hcol(q,q2),TIN[(q2*TIN.length)|0])}}
-  inst(vcol(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6),glowMat(vstd(0xffffff,.85,0,tW[0]),tWG[0]),hb,true,FAR.tree);
+  inst(vcol(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6),glowMat(rgh(vstd(0xffffff,.85,0,tW[0]),tWR[0]),tWG[0]),hb,true,FAR.tree);
   inst(prism(1,1.6,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),hr,true,FAR.tree);
   // roof in the hut's instance space (hut scale 4.5/2.6/4.2, roof 4.4/2.4/4.4 sitting 2.6 m up); its colour divided by the
   // hut's instance tint, which now multiplies it too

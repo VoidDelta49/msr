@@ -7,18 +7,19 @@ import { clone as skelClone } from 'three/addons/utils/SkeletonUtils.js';
 import { attribute, uniformArray, texture, uv, vec2, vec3, float, step, select, instancedBufferAttribute, smoothstep } from 'three/tsl';
 import { PI } from './util.js';
 import { scene, std, sun } from './renderer.js';
+import { Q } from './config.js';
 import * as T from './tex.js';
 import { mkTex } from './tex.js';
 import { cluTex } from './hud.js';
 import { prof, JACKET, JEAN, HELM, VISOR, SHOE, GLOVE, TORSO_PTS, humanGeo, bakeFigure, riderPal, optMask } from './figure.js';
 
 // MP = painted panels (white in the paint colour + the livery texture), MK = glossy black panels (the real bikes are two-tone)
-const MP = std(0xffffff, .3, .2), MK = std(0x15161a, .28, .3), MB = std(0x141518, .6, .2), MR = std(0x0d0d0d, .95), MC = std(0xd5dae0, .22, 1), ME = std(0x2a2c30, .45, .6),
+const MP = std(0xffffff, .36, .2), MK = std(0x15161a, .34, .3), MB = std(0x141518, .6, .2), MR = std(0x0d0d0d, .95), MC = std(0xd5dae0, .22, 1), ME = std(0x2a2c30, .45, .6),
   MS = std(0x1b1b1b, .85), MG = std(0x2b2e33, .8), MRd = std(0x223344, .7), MTail = std(0x330000, .4, 0, 0xff1a1a), MHead = std(0xfff8e0, .2, 0, 0xfff4d0),
   MAmb = std(0x3a2400, .4, 0, 0xff9a1a);
 // Carbon fiber: one 2x2 twill canvas texture shared by every carbon part. Fenders (MF) and wheel spokes (MW) have their own
 // materials so each garage option can switch just its parts; MCF is plain carbon (fenders, wheels, muffler cover).
-const MF = std(0x15161a, .28, .3), MW = std(0x50545b, .4, .6);
+const MF = std(0x15161a, .34, .3), MW = std(0x50545b, .4, .6);
 const CF = (() => {
   const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
   for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
@@ -34,10 +35,16 @@ const MCF = new THREE.MeshStandardMaterial({ color: 0x8a9099, map: CF, roughness
 function carbon(m, on, col, tint) {
   const want = on ? CF : (m.userData.base || null);
   if (m.map !== want) { if (!!m.map !== !!want) m.needsUpdate = true; m.map = want; }
-  if (on) { m.color.set(tint ? col : 0x8a9099); if (tint) m.color.lerp(MCF.color, .25); m.roughness = .22; m.metalness = .1; }
-  else { m.color.set(m.userData.base ? 0xffffff : col); m.roughness = m.userData.r; m.metalness = m.userData.mt; }
+  if (on) { m.color.set(tint ? col : 0x8a9099); if (tint) m.color.lerp(MCF.color, .25); m.roughness = .22; m.metalness = .1; m.userData.cc = 1; }
+  else { m.color.set(m.userData.base ? 0xffffff : col); m.roughness = m.userData.r; m.metalness = m.userData.mt; m.userData.cc = m.userData.cc0 || 0; }
 }
 for (const m of [MP, MF, MW, MK]) m.userData = { r: m.roughness, mt: m.metalness };
+// Clearcoat (11.98 PBR): real bike paint is a coloured base under a clear lacquer, so it carries two highlights: a soft
+// one from the base (metal flake: some metalness, mid roughness) and a sharp, colourless mirror of the sky on top. Carbon
+// is always lacquered. userData.cc = coat strength (0..1), ccr = coat roughness; cc0 = the stock value carbon() returns to.
+// Read by writePal() into the palette (PB.z / PB.w), drawn by palMat() (MeshPhysical on Medium / High, ignored on Low).
+const coat = (m, cc, ccr = .06) => { m.userData.cc = m.userData.cc0 = cc; m.userData.ccr = ccr; return m; };
+coat(MP, 1); coat(MK, 1, .05); coat(MF, .8); coat(MW, 0); MCF.userData = { cc: 1, cc0: 1, ccr: .05 };
 const box = (w, h, d) => new THREE.BoxGeometry(w, h, d), cyl = (a, b, h, s = 8) => new THREE.CylinderGeometry(a, b, h, s);
 function mk(geo, m, par, x, y, z, rx = 0, ry = 0, rz = 0) { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); o.rotation.set(rx, ry, rz); o.castShadow = true; par.add(o); return o; }
 // prof(): low-poly panels from a side profile, extruded (figure.js, shared with the people)
@@ -593,7 +600,7 @@ function cone(a, b, r0, r1, m, par, seg = 8) {
   const A = new THREE.Vector3(...a), D = new THREE.Vector3(...b).sub(A), L = D.length(), o = mk(cyl(r1, r0, L, seg), m, par, 0, 0, 0);
   o.position.copy(A).addScaledVector(D, .5); o.quaternion.setFromUnitVectors(UP, D.normalize()); return o;
 }
-const MFrm = std(0x3fae2a, .32, .45);
+const MFrm = std(0x3fae2a, .36, .45); MFrm.userData.cc = .9; MFrm.userData.ccr = .07;
 function h2(ct, v) {
   const rw = .326, rake = .4276, headY = .92, fz = -.725, fy = .30, fork = (headY - fy) / Math.cos(rake), headZ = fz + fork * Math.sin(rake), R = v === 1;
   B.G = { rw, rearZ: .73, fork, rake, pivotY: .46, pivotZ: .14, swingX: 0 }; B.wheelCol = 0x15161a; B.cargo = { y: .9, z: .62 }; B.fenderPaint = false;
@@ -684,7 +691,7 @@ function h2(ct, v) {
 // Leftovers with their own textures (grille, plate, floor mat, decal, cluster) are merged per material per group.
 const PN = 48, PA = [], PB = [], PE = [], PAL = new Map();
 for (let i = 0; i < PN; i++) { PA.push(new THREE.Vector4(1, 1, 1, .5)); PB.push(new THREE.Vector4()); PE.push(new THREE.Vector4()); }
-function writePal(m, i) { const c = m.color, e = m.emissive, k = m.emissiveIntensity; PA[i].set(c.r, c.g, c.b, m.roughness); PB[i].set(m.metalness, m === MWF ? 3 : m.map === LIV.t ? 1 : m.map === CF ? 2 : 0, 0, 0); PE[i].set(e.r * k, e.g * k, e.b * k, 0); }
+function writePal(m, i) { const c = m.color, e = m.emissive, k = m.emissiveIntensity; PA[i].set(c.r, c.g, c.b, m.roughness); PB[i].set(m.metalness, m === MWF ? 3 : m.map === LIV.t ? 1 : m.map === CF ? 2 : 0, m.userData.cc || 0, m.userData.ccr || .06); PE[i].set(e.r * k, e.g * k, e.b * k, 0); }
 function palIdx(m) { let i = PAL.get(m); if (i === undefined) { i = Math.min(PAL.size, PN - 1); PAL.set(m, i); writePal(m, i); } return i; }
 function syncPal() { for (const [m, i] of PAL) writePal(m, i); }
 const palable = m => m.isMeshStandardMaterial && !m.vertexColors && !m.transparent && !m.alphaTest && (!m.map || m.map === LIV.t || m.map === CF);
@@ -692,13 +699,14 @@ const palable = m => m.isMeshStandardMaterial && !m.vertexColors && !m.transpare
 // players (snapshot() below) get their own frozen copy (same shader code, so three reuses the compiled program).
 function palMat(PA, PB, PE, lt) {
   const uA = uniformArray(PA, 'vec4'), uB = uniformArray(PB, 'vec4'), uE = uniformArray(PE, 'vec4');
-  const m = new THREE.MeshStandardNodeMaterial(), i = attribute('pal', 'float').add(.5).toInt(), a = uA.element(i), b = uB.element(i), u = uv();
+  const m = Q.lite ? new THREE.MeshStandardNodeMaterial() : new THREE.MeshPhysicalNodeMaterial(), i = attribute('pal', 'float').add(.5).toInt(), a = uA.element(i), b = uB.element(i), u = uv();
   const liv = texture(lt, u.mul(vec2(1 / (LZ1 - LZ0), 1 / (LY1 - LY0))).add(vec2(-LZ0 / (LZ1 - LZ0), -LY0 / (LY1 - LY0)))), cf = texture(CF, u.mul(4));
   // wheel faces (mode 3, see "flat wheel faces"): the colour comes from palette entries 0 / 1 / 2 by the texture's R / G / B, black = dark parts
   const wt = texture(WTX, u), isW = b.y.greaterThan(2.5), wsum = wt.r.add(wt.g).add(wt.b).min(1), wk = float(1).sub(wsum);
   const ent = j => uA.element(j).rgb.mul(select(uB.element(j).y.greaterThan(1.5), cf.rgb, vec3(1))), wmix = (f, dark) => f(0).mul(wt.r).add(f(1).mul(wt.g)).add(f(2).mul(wt.b)).add(float(dark).mul(wk));
   m.colorNode = select(isW, ent(0).mul(wt.r).add(ent(1).mul(wt.g)).add(ent(2).mul(wt.b)).add(vec3(WDARK.r, WDARK.g, WDARK.b).mul(wk)), a.rgb.mul(select(b.y.greaterThan(1.5), cf.rgb, select(b.y.greaterThan(.5), liv.rgb, vec3(1)))));
   m.roughnessNode = select(isW, wmix(j => uA.element(j).w, .6), a.w); m.metalnessNode = select(isW, wmix(j => uB.element(j).x, .3), b.x); m.emissiveNode = uE.element(i).rgb;
+  if (m.isMeshPhysicalNodeMaterial) { m.clearcoatNode = select(isW, wmix(j => uB.element(j).z, 0), b.z); m.clearcoatRoughnessNode = select(isW, wmix(j => uB.element(j).w, .1), b.w); } // lacquer (see coat())
   m.maskNode = select(isW, step(.4, wt.a), float(1)); return m;
 }
 const WDARK = new THREE.Color(0x14161a), MT = palMat(PA, PB, PE, LIV.t);
@@ -829,6 +837,7 @@ function underbone(ct, v) {
 // rail, wire grille on the bike side, spare-wheel cover on the back, stainless fender over its own wheel, chrome bumpers.
 const MSS = std(0xd3d7dc, .34, .55), MDia = std(0xb0b4ba, .55, .5), MGls = new THREE.MeshStandardMaterial({ color: 0x9fb4c4, roughness: .05, metalness: .2, transparent: true, opacity: .28, depthWrite: false }), MVin = std(0xc81c1c, .45, .05), MSil = std(0xb3b8bf, .35, .75),
   MDecY = new THREE.MeshStandardMaterial({ map: DEC, alphaTest: .5, roughness: .4, color: 0xf2b632 });
+MVin.userData.cc = .35; MVin.userData.ccr = .25; // vinyl bench: a thin satin sheen
 // Generic: any bike whose data/bikes/<id>.json has a "sidecar" block and a part option with sc: 1 gets it. The body is
 // built in its own group, slid along z (dz) so it centres on the bike's wheelbase; the struts run from the bike's own
 // frame points (sidecar.struts: [x, y, z, y on the sidecar wall], ct coordinates) to the sidecar's bike-side wall.
@@ -942,7 +951,7 @@ function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see build
 // 2025 (PH 1 Aug 2025, "Mio" dropped, MAX Series): extended angular XMAX-style headlamp housing with twin LED lamps, short smoked
 // screen, forged-carbon-look trim under the headlamp and on the inner fairings (SP: red accents instead, red wheels and red seat
 // stitching: paint lv 'r'), pointed LED tail lamp with the signals sticking out at each side, new 230 mm rear disc.
-const MTrim = std(0x202226, .4, .2), MStch = std(0x2a2c30, .6, .1); MTrim.userData = { r: .4, mt: .2 };
+const MTrim = std(0x202226, .4, .2), MStch = std(0x2a2c30, .6, .1); MTrim.userData = { r: .4, mt: .2 }; coat(MTrim, .6, .12);
 // 14" alloys (110/80-14, 140/70-14 ≈ 0.27 m), 1,350 mm wheelbase, ~26° rake, 790 mm seat. Reference photos: sharp front apron
 // with a black V face and twin LED eyes, small smoked visor, high centre tunnel between the floorboards, long stepped seat, high
 // sharp tail with split grab handles, twin rear shocks, liquid-cooled unit swing (radiator cover on the right), big black

@@ -85,6 +85,26 @@ export function sea() { // light wave streaks on a soft blue-green ramp (multipl
   return paint(64, 64, (x, y) => { const v = n[y * 64 + x], s = Math.sin((y + n[((y * 3) & 63) * 64 + x] * 18) * .6); return ramp(R(0xb8c4c8, 0xd2dcdf, 0xe9eff0, 0xffffff), v * .6 + (s > .85 ? .5 : 0), x, y); });
 }
 
+// Sea surface normals (PBR water): a tileable height field of a dozen sine swells with integer wave numbers (so it wraps),
+// fixed phases from a hash (no rnd(): the seeded texture sequence must not shift), turned into a tangent-space normal map
+// (RGB = n * .5 + .5, linear). world.js scrolls two copies of it at different scales and speeds.
+export function waves(N = 128) {
+  const W = [[1, 0, 1], [0, 1, .9], [2, 1, .55], [-1, 2, .5], [3, -1, .35], [1, 3, .32], [-3, 2, .25], [4, 1, .22], [2, -4, .18], [5, 3, .12], [-4, -5, .1], [6, -2, .09]]
+    .map(([a, b, amp], i) => { const h = Math.imul(i * 2654435761 + 97, 2246822519) >>> 0; return [a, b, amp / Math.hypot(a, b), (h / 4294967296) * Math.PI * 2]; });
+  const c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d'), im = g.createImageData(N, N), k = Math.PI * 2 / N, S = .24; // S: slope scale (rms tilt ~ 16 deg)
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let dx = 0, dy = 0; for (const [a, b, amp, ph] of W) { const cc = Math.cos((a * x + b * y) * k + ph) * amp * S; dx += cc * a; dy += cc * b; } // dh/dx, dh/dy
+    const l = Math.hypot(dx, dy, 1), o = (y * N + x) * 4;
+    im.data[o] = Math.round((-dx / l * .5 + .5) * 255); im.data[o + 1] = Math.round((-dy / l * .5 + .5) * 255); im.data[o + 2] = Math.round((1 / l * .5 + .5) * 255); im.data[o + 3] = 255;
+  }
+  g.putImageData(im, 0, 0); return c;
+}
+// a data texture (normal / roughness maps): linear, repeating, mipmapped
+export function dataTex(canvas, aniso = 1) {
+  const t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.NoColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.minFilter = THREE.LinearMipmapLinearFilter; t.anisotropy = aniso; return t;
+}
+
 /* ---------- buildings ---------- */
 // Walls, one 32x32 block per floor (white: the instance colour paints the house). Ground floor of n-storey shophouses:
 // a roll-up shutter under a sign board; upper floors: jalousie windows with sills. n = 1 also serves the bungalows.
@@ -117,6 +137,20 @@ export function walls(n) {
     const pane = ground && n === 1 ? (x < 16 ? 0 : 1) : x < 16 ? 0 : 1; if (hs(f, pane, 1) > .55) return [0, 0, 0];
     const k = hs(f, pane, 2), c = k < .12 ? [140, 190, 255] : k < .55 ? [255, 226, 160] : [255, 198, 118], d = ly % 3 === 0 ? .55 : 1;
     return c.map(v => Math.round(v * d));
+  });
+  // roughness twin (PBR, G channel = roughness, linear): glass panes nearly mirror-smooth, so the windows catch the sky
+  // and the sun at an angle while the plaster stays matt; sills and slab edges (painted concrete) a little smoother,
+  // the steel shutter and the sign board in between. Pure geometry, no rnd() (the seeded sequence must not shift).
+  cv.rough = paint(W, H, (x, y) => {
+    const f = Math.floor(y / 32), ly = y - f * 32, ground = f === n - 1; let r = .88;
+    const win = ground && n === 1 ? (x >= 3 && x < 10 || x >= 22 && x < 29) && ly >= 10 && ly < 22 : !ground && (x >= 4 && x < 14 || x >= 18 && x < 28) && ly >= 8 && ly < 22;
+    if (ly === 31) r = .7;
+    else if (ground && n > 1 && ly >= 4 && ly < 10 && x > 1 && x < 30) r = .45;
+    else if (ground && n > 1 && ly >= 12 && x > 3 && x < 28) r = .5;
+    else if (ground && n === 1 && x >= 12 && x < 20 && ly >= 12) r = .6;
+    else if (win) r = (ly % 3 === 0) ? .4 : .1;                                         // jalousie slat edge / glass
+    else if (ly === 22 && ((x >= 2 && x < 11) || (x >= 17 && x < 30))) r = .65;
+    const g = Math.round(r * 255); return [g, g, g];
   });
   return cv;
 }

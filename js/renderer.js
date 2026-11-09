@@ -90,11 +90,22 @@ if (IBL) {
   envScene = new THREE.Scene(); const dome = new THREE.Mesh(SKYU.geo, SKYU.envMat); dome.frustumCulled = false; envScene.add(dome);
   ENVG.c = T.uniform(new THREE.Color(0x3a4a2a)); const gm = new THREE.MeshBasicNodeMaterial({ fog: false }); gm.colorNode = ENVG.c;
   const fl = new THREE.Mesh(new THREE.CircleGeometry(Q.fog * .85, 24).rotateX(-Math.PI / 2), gm); fl.position.y = -3; fl.frustumCulled = false; envScene.add(fl);
-  pmrem = new THREE.PMREMGenerator(renderer); envRT = pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: 64 });
+  // 11.98 PBR: a ring of distant hills on the horizon (ground colour at the foot, fading into the sky's horizon haze at the
+  // crest), so chrome, paint and glass reflect a skyline instead of a sharp sky / floor split. Its outline is a fixed sum
+  // of sines (no randomness: the same every load); 2-5 degrees high, a few pixels tall even in the 64 px bake.
+  {
+    const R = Q.fog * .8, g = new THREE.CylinderGeometry(R, R, 1, 96, 1, true), P = g.attributes.position;
+    for (let i = 0; i < P.count; i++) if (P.getY(i) > 0) { const a = Math.atan2(P.getZ(i), P.getX(i)); P.setY(i, R * (.035 + .05 * (.5 + .3 * Math.sin(a * 3 + 1) + .2 * Math.sin(a * 7 + 4) + .12 * Math.sin(a * 13 + 2)))); } else P.setY(i, -3);
+    const hm = new THREE.MeshBasicNodeMaterial({ fog: false, side: THREE.DoubleSide }), k = T.positionLocal.y.div(R * .12).clamp(0, 1);
+    hm.colorNode = T.mix(ENVG.c.mul(1.15), SKYU.hor, k.mul(.5).add(.3)); const h = new THREE.Mesh(g, hm); h.frustumCulled = false; envScene.add(h);
+  }
+  // bake size: 128 px faces on High (sharper chrome / paint / glass reflections), 64 on Medium; re-bakes are rare (sky moves)
+  ENVG.size = Q.shadow >= 2048 ? 128 : 64;
+  pmrem = new THREE.PMREMGenerator(renderer); envRT = pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: ENVG.size });
   scene.environment = envRT.texture;
 }
 export const PC = { bake: 0 }; // event counters the benchmark reads (bench.js)
-export function bakeEnv() { if (envRT) PC.bake++, pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: 64, renderTarget: envRT }); }
+export function bakeEnv() { if (envRT) PC.bake++, pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: ENVG.size, renderTarget: envRT }); }
 export const hemi = new THREE.HemisphereLight(0xdcecff, 0x55653a, 1.15); scene.add(hemi);
 export const sun = new THREE.DirectionalLight(0xffeccc, 2.8); sun.castShadow = Q.shadow > 0; sun.shadow.mapSize.set(Q.shadow || 1024, Q.shadow || 1024);
 { const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; sun.shadow.camera.layers.enable(1); scene.add(sun, sun.target); // shadow camera also sees layer 1 = shadow-only proxies (model.js)
