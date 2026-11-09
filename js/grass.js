@@ -1,4 +1,4 @@
-// GPU grass (Build 11.99): a field of grass tufts round the camera, placed, coloured and animated entirely on the GPU.
+// GPU grass (Build 11.98): a field of grass tufts round the camera, placed, coloured and animated entirely on the GPU.
 // One draw: an InstancedBufferGeometry of G x G tufts with NO per-instance data. The vertex shader turns instanceIndex
 // into a world grid cell (the grid is snapped to the camera, so a cell always gets the same tuft: no swimming while
 // riding), jitters it with a hash of the cell, reads the ground height, grass density and ground colour from two
