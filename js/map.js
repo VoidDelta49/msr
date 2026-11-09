@@ -1,7 +1,8 @@
 // Full-screen map + waypoint. Tap the minimap (or press M): the game pauses and the map opens out of the minimap's circle, turns north-up and
 // eases out to a wider view. Drag to pan (it coasts), pinch / wheel to zoom, tap to drop a pin (it snaps to quest pins, gas stations and named
 // places), SET WAYPOINT to ride to it. The waypoint is a violet beacon in the world, a pin or rim arrow plus the distance on the minimap
-// (hud.js reads ctx.WP), and it clears itself when you arrive or with CLEAR. Esc / M / the X button close it back into the minimap.
+// (hud.js reads ctx.WP), a violet route along the roads (route.js, recalculated when you leave it) on both maps, a floating
+// tag with the distance over the spot, and it clears itself when you arrive or with CLEAR. Esc / M / the X button close it back into the minimap.
 import { $, PI, clamp } from './util.js';
 import { ctx } from './state.js';
 import { at } from './foot.js';
@@ -9,21 +10,39 @@ import { say } from './hud.js';
 import { blip } from './audio.js';
 import { beacon } from './missions.js';
 import { H, SEA, ROADS, MAPV, MAPT, mapHi } from './world.js';
+import * as THREE from 'three';
+import { scene } from './renderer.js';
+import { makeRouter } from './route.js';
 
 /* ---------- waypoint ---------- */
-export const WP = ctx.WP = { on: false, x: 0, z: 0, n: '' };
+export const WP = ctx.WP = { on: false, x: 0, z: 0, n: '', path: null };
 ctx.wpK = ''; // changes with the waypoint so the minimap redraws
 const wpB = beacon(0xa78bfa, 8);
 const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { } };
+let RT = null, chk = 0, tagT = '';
+const tagC = document.createElement('canvas'); tagC.width = 256; tagC.height = 128;
+const tagX = new THREE.CanvasTexture(tagC); tagX.colorSpace = THREE.SRGBColorSpace;
+const tag = new THREE.Sprite(new THREE.SpriteMaterial({ map: tagX, sizeAttenuation: false, depthTest: false, depthWrite: false, fog: false, toneMapped: false }));
+tag.scale.set(.24, .12, 1); tag.center.set(.5, 0); tag.renderOrder = 999; tag.visible = false; scene.add(tag);
+function drawTag(t) { // violet pill with the distance and a pointer down to the spot
+  if (t === tagT) return; tagT = t; const g = tagC.getContext('2d'); g.clearRect(0, 0, 256, 128);
+  g.fillStyle = '#a78bfa'; g.strokeStyle = '#fff'; g.lineWidth = 5; g.beginPath(); g.roundRect(28, 8, 200, 76, 38); g.moveTo(112, 84); g.lineTo(128, 118); g.lineTo(144, 84); g.fill(); g.stroke();
+  g.fillStyle = '#a78bfa'; g.fillRect(110, 78, 36, 9); g.fillStyle = '#fff'; g.font = '800 40px system-ui'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(t, 128, 47); tagX.needsUpdate = true;
+}
+function reroute() { const P = at(); RT ||= makeRouter(ROADS); WP.path = RT.route(P.x, P.z, WP.x, WP.z); ctx.wpK = 'w' + (WP.x | 0) + ',' + (WP.z | 0) + ',' + WP.path.length; }
 export function setWaypoint(x, z, n) {
-  WP.on = true; WP.x = x; WP.z = z; WP.n = n || 'Waypoint'; wpB.position.set(x, H(x, z), z); wpB.visible = true; ctx.wpK = 'w' + (x | 0) + ',' + (z | 0);
+  WP.on = true; WP.x = x; WP.z = z; WP.n = n || 'Waypoint'; const y = H(x, z); wpB.position.set(x, y, z); wpB.visible = tag.visible = true; tag.position.set(x, y + 9, z); tagT = ''; reroute();
 }
-export function clearWaypoint() { WP.on = false; wpB.visible = false; ctx.wpK = ''; }
-export function wpTick() { // arrival check (the game loop, while riding or walking)
+export function clearWaypoint() { WP.on = false; WP.path = null; wpB.visible = tag.visible = false; ctx.wpK = ''; }
+export function wpTick() { // arrival check, route trimming and recalculation (the game loop, while riding or walking)
   if (!WP.on) return; const P = at();
-  if (Math.hypot(P.x - WP.x, P.z - WP.z) < 14) { clearWaypoint(); say('You have arrived', 2400); blip('ok'); buzz(40); }
+  if (Math.hypot(P.x - WP.x, P.z - WP.z) < 14) { clearWaypoint(); say('You have arrived', 2400); blip('ok'); buzz(40); return; }
+  const p = WP.path; let bi = 0, bd = 1e9; for (let i = 0; i < Math.min(p.length, 40); i++) { const d = Math.hypot(p[i][0] - P.x, p[i][1] - P.z); if (d < bd) { bd = d; bi = i; } }
+  if (bi) p.splice(0, bi); p[0] = [P.x, P.z]; // the route starts where you are
+  if (bd > 30 && ++chk > 30) { chk = 0; reroute(); } // off the route for half a second or so: recalculate
 }
-export function wpAnim(now) { if (WP.on) { const k = 1 + Math.sin(now * 3) * .06; wpB.scale.set(k, 1, k); } }
+export function wpAnim(now) { if (WP.on) { const k = 1 + Math.sin(now * 3) * .06; wpB.scale.set(k, 1, k); drawTag(fmt10(dist(WP.x, WP.z))); } }
+const fmt10 = m => m < 1000 ? Math.round(m / 10) * 10 + ' m' : (m / 1000).toFixed(1) + ' km';
 const dist = (x, z) => { const P = at(); return Math.hypot(P.x - x, P.z - z); };
 const fmt = m => m < 1000 ? Math.round(m) + ' m' : (m / 1000).toFixed(1) + ' km';
 const eta = m => { const s = m / 11; return s < 60 ? Math.max(5, Math.round(s / 5) * 5) + ' s' : Math.round(s / 60) + ' min'; }; // straight line at ~40 km/h
@@ -196,7 +215,7 @@ function draw(now) {
   for (const p of ctx.mpDots || []) { proj(p.x, p.z); if (!on(PX, PY, 10)) continue; g.fillStyle = '#3ad7ff'; g.strokeStyle = '#0b1a22'; g.lineWidth = 1.5; g.beginPath(); g.arc(PX, PY, 5, 0, 7); g.fill(); g.stroke(); }
   proj(P.x, P.z); const mx = PX, my = PY;
   if (WP.on) { // route line + the waypoint
-    proj(WP.x, WP.z); g.save(); g.setLineDash([9, 8]); g.lineDashOffset = -now * .03; g.strokeStyle = 'rgba(167,139,250,.95)'; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(mx, my); g.lineTo(PX, PY); g.stroke(); g.restore();
+    g.save(); g.strokeStyle = 'rgba(167,139,250,.95)'; g.lineWidth = 5; g.lineCap = 'round'; g.beginPath(); for (const [x, z] of WP.path) { proj(x, z); g.lineTo(PX, PY); } g.stroke(); g.restore(); proj(WP.x, WP.z);
     const pu = (now % 1600) / 1600; g.strokeStyle = `rgba(167,139,250,${.7 * (1 - pu)})`; g.lineWidth = 3; g.beginPath(); g.arc(PX, PY, 8 + 22 * pu, 0, 7); g.stroke(); pin(PX, PY, '#a78bfa', 1.1);
   }
   if (pend) { // the pin being placed: drops in with a little overshoot, then a ripple

@@ -275,10 +275,12 @@ export function drawMini(MAP, V) { // V = world.js MAPV {cx, cz, w metres, n px}
   const WP = ctx.WP;
   if (WP && WP.on) {
     const dx = (px(WP.x) - u) * Z, dz = (pz(WP.z) - v) * Z, X = dx * ca - dz * sa, Y = dx * sa + dz * ca, d = Math.hypot(X, Y), f = d > 54 ? 54 / d : 1, cx = 70 + X * f, cy = 70 + Y * f;
+    let m = 0, q = null; mm.strokeStyle = '#a78bfa'; mm.lineWidth = 3.5; mm.lineCap = mm.lineJoin = 'round'; mm.beginPath(); // the route (map.js WP.path); its length is the distance shown
+    for (const p of WP.path || []) { const ex = (px(p[0]) - u) * Z, ez = (pz(p[1]) - v) * Z; mm.lineTo(70 + ex * ca - ez * sa, 70 + ex * sa + ez * ca); if (q) m += Math.hypot(p[0] - q[0], p[1] - q[1]); q = p; } mm.stroke();
     mm.fillStyle = '#a78bfa'; mm.strokeStyle = '#fff'; mm.lineWidth = 1.6;
     if (f < 1) { mm.save(); mm.translate(cx, cy); mm.rotate(Math.atan2(Y, X)); mm.beginPath(); mm.moveTo(8, 0); mm.lineTo(-5, -6); mm.lineTo(-2, 0); mm.lineTo(-5, 6); mm.closePath(); mm.fill(); mm.stroke(); mm.restore(); }
     else { mm.beginPath(); mm.arc(cx, cy, 5.5, 0, 7); mm.fill(); mm.stroke(); mm.fillStyle = '#fff'; mm.beginPath(); mm.arc(cx, cy, 1.8, 0, 7); mm.fill(); }
-    const m = Math.hypot(P.x - WP.x, P.z - WP.z), t = m < 1000 ? (m | 0) + ' m' : (m / 1000).toFixed(1) + ' km'; mm.font = 'bold 9px system-ui'; const w = mm.measureText(t).width + 12;
+    const t = m < 1000 ? (m | 0) + ' m' : (m / 1000).toFixed(1) + ' km'; mm.font = 'bold 9px system-ui'; const w = mm.measureText(t).width + 12;
     mm.fillStyle = 'rgba(10,12,16,.75)'; rr(mm, 70 - w / 2, 111, w, 15, 7.5); mm.fill(); mm.fillStyle = '#e9e3ff'; mm.fillText(t, 70, 118.8);
   }
   mm.fillStyle = '#ffb020'; mm.beginPath(); mm.moveTo(70, 62); mm.lineTo(76, 76); mm.lineTo(70, 72); mm.lineTo(64, 76); mm.fill();

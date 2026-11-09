@@ -83,10 +83,16 @@ if (cor.edge > .5) problems.push(`CORRIDOR ground within 2 m of the edge of ${na
 // report: hairpin inner edge (same road, informational)
 let hair = 0; for (const r of ROADS) for (let i = 0; i < r.s.length; i++) { const s = r.s[i], nx = -s.tz, nz = s.tx; for (const o of [-r.w / 2 + .6, r.w / 2 - .6]) { const x = s.x + nx * o, z = s.z + nz * o, q0 = nearRoad(x, z); if (!q0 || q0.d >= q0.w / 2 || nearBump(x, z)) continue; const q1 = nearRoad(x + D, z); if (q1 && q1.d < q1.w / 2 && q1.i === q0.i && Math.abs(q1.h - q0.h) / D > .3) hair++ } }
 
+// waypoint routing (js/route.js): routes between random road points must mostly follow the roads, not fall back to a straight line
+const { makeRouter } = await import(pathToFileURL(path.join(ROOT, 'js/route.js')).href);
+const RT = makeRouter(ROADS), pick = () => { const r = ROADS[(rand() * ROADS.length) | 0], s = r.s[(rand() * r.n) | 0]; return [s.x, s.z]; };
+let rtOk = 0, rtMs = 0; for (let i = 0; i < 40; i++) { const [a, b] = [pick(), pick()], t0 = performance.now(), p = RT.route(a[0], a[1], b[0], b[1]); rtMs = Math.max(rtMs, performance.now() - t0); if (p.length > 2 || Math.hypot(a[0] - b[0], a[1] - b[1]) < 20) rtOk++; }
+if (rtOk < 32) problems.push(`ROUTE only ${rtOk} of 40 random road-to-road routes found a path (${RT.nodes} nodes): the road graph is broken up`);
+
 if (verbose) {
   console.log(`junctions (${JUNCTIONS.length}):`);
   for (const j of JUNCTIONS) console.log(`  (${f2(j.x)}, ${f2(j.z)}) level ${f3(j.h0)} m, set by ${name(ROADS[j.primary])}; ` + j.members.map(m => `${name(ROADS[m.road])} ${m.len} samples, blend ${m.T.map(x => x ? x + ' m' : 'grade ramp').join(' / ')}`).join('; '));
 }
-console.log(`roads: ${ROADS.length} roads, ${JUNCTIONS.length} junctions levelled, ${overlaps} overlap points checked, worst overlap mismatch ${f3(worstOv.d)} m; corridor: mesh over ribbon max ${f2(cor.up)} m, ground at road edge max ${f2(cor.edge)} m` + (hp.n ? ` (hairpin apexes, info: ${hp.n} points in ${hp.spots.size} spots up to ${f2(hp.up)} m)` : '') + (hair ? `; info: ${hair} samples on the inner edge of tight hairpins climb over 30% (one road, not a junction)` : ''));
+console.log(`roads: ${ROADS.length} roads, ${JUNCTIONS.length} junctions levelled, ${overlaps} overlap points checked, worst overlap mismatch ${f3(worstOv.d)} m; corridor: mesh over ribbon max ${f2(cor.up)} m, ground at road edge max ${f2(cor.edge)} m` + (hp.n ? ` (hairpin apexes, info: ${hp.n} points in ${hp.spots.size} spots up to ${f2(hp.up)} m)` : '') + `; route ${rtOk}/40, worst ${rtMs.toFixed(0)} ms` + (hair ? `; info: ${hair} samples on the inner edge of tight hairpins climb over 30% (one road, not a junction)` : ''));
 for (const p of problems) console.log('FAIL ' + p);
 process.exit(problems.length ? 1 : 0);
