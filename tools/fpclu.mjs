@@ -36,7 +36,7 @@ for (const id of ids) {
     for (let i = 0; i < 7; i++) for (let j = 0; j < 5; j++) {
       n++; p.set((i / 6 - .5) * w * .9, (j / 4 - .5) * h * .9, 0).applyMatrix4(P.matrixWorld); q.copy(p).project(cam);
       if (Math.abs(q.x) <= 1 && Math.abs(q.y) <= 1 && q.z < 1) onScr++;
-      const d = cp.distanceTo(p), hit = new THREE.Raycaster(cp, p.clone().sub(cp).normalize(), 0, d - .002).intersectObjects(c.scene.children, true).find(x => x.object.visible && x.object !== P);
+      const d = cp.distanceTo(p), rc = new THREE.Raycaster(cp, p.clone().sub(cp).normalize(), 0, d - .002), hit = (rc.camera = c.camera, rc).intersectObjects(c.scene.children, true).find(x => x.object.visible && x.object !== P);
       if (!hit) seen++; else occ.push(hit.point.clone().applyMatrix4(inv).toArray().map(x => +x.toFixed(3)));
     }
     return { id, seen: seen / n, onScreen: onScr / n, facing: +facing.toFixed(2), dist: +cp.distanceTo(pc).toFixed(3), occluders: occ.slice(0, 3) };
