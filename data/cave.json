@@ -1,0 +1,41 @@
+{
+  "note": "Ilalim: the underground cave system under the Underground River Cave (Build 11.99). Read by js/under.js (logic, headless) and js/underfig.js (drawing). Chambers: x, z (metres, local to 'origin', x east, z south), r radius, y floor height, h ceiling height above the floor, kind (look and props). Tunnels: [from, to, width, height, bend] between chamber ids; bend pushes the middle sideways (fraction of the length). The system is built far off the island at 'origin' (the ground there is the cave floor) and reached through the dark passage in the cave hall ('portal': a = along the hall's width, d = towards its front, as world.js builds the hall). tools/under.mjs checks it.",
+  "name": "Ilalim",
+  "origin": [-2900, -2600],
+  "portal": { "a": 23, "d": 2, "w": 7, "depth": 4.5 },
+  "spawn": "mouth",
+  "chambers": [
+    { "id": "mouth", "x": 0, "z": 70, "r": 7, "y": 46, "h": 6.5, "kind": "mouth" },
+    { "id": "entry", "x": 0, "z": 0, "r": 11, "y": 41, "h": 8, "kind": "plain" },
+    { "id": "gallery", "x": -10, "z": -75, "r": 22, "y": 37, "h": 12, "kind": "glow" },
+    { "id": "shaft", "x": 105, "z": -70, "r": 18, "y": 35, "h": 30, "kind": "shaft" },
+    { "id": "grotto", "x": -95, "z": -130, "r": 30, "y": 31, "h": 15, "kind": "crystal" },
+    { "id": "columns", "x": -190, "z": -55, "r": 26, "y": 34, "h": 13, "kind": "columns" },
+    { "id": "lake", "x": 45, "z": -165, "r": 34, "y": 30, "h": 18, "kind": "lake" },
+    { "id": "bats", "x": 185, "z": -165, "r": 20, "y": 30, "h": 12, "kind": "glow" },
+    { "id": "cathedral", "x": -50, "z": -255, "r": 44, "y": 24, "h": 30, "kind": "cathedral" },
+    { "id": "pool", "x": -205, "z": -195, "r": 24, "y": 26, "h": 11, "kind": "pool" },
+    { "id": "narrows", "x": 125, "z": -260, "r": 14, "y": 23, "h": 8, "kind": "plain" },
+    { "id": "falls", "x": -160, "z": -320, "r": 26, "y": 18.5, "h": 22, "kind": "falls" },
+    { "id": "deep", "x": 50, "z": -345, "r": 28, "y": 18, "h": 16, "kind": "crystal" }
+  ],
+  "tunnels": [
+    ["mouth", "entry", 8, 6.5, 0],
+    ["entry", "gallery", 9, 7, 0.12],
+    ["gallery", "shaft", 8, 7, -0.15],
+    ["gallery", "grotto", 9, 8, 0.1],
+    ["grotto", "columns", 8, 7, -0.12],
+    ["gallery", "lake", 9, 8, 0.08],
+    ["shaft", "bats", 7, 6.5, 0.15],
+    ["bats", "narrows", 7, 6, -0.1],
+    ["lake", "narrows", 8, 7, 0.1],
+    ["grotto", "cathedral", 10, 9, -0.08],
+    ["columns", "pool", 8, 7, 0.14],
+    ["pool", "falls", 8, 7, -0.1],
+    ["cathedral", "falls", 10, 9, 0.1],
+    ["cathedral", "deep", 10, 8, -0.12],
+    ["narrows", "deep", 7, 6.5, 0.12],
+    ["lake", "cathedral", 9, 8, 0]
+  ],
+  "lamps": ["mouth", "entry", "gallery", "lake", "cathedral", "grotto"]
+}

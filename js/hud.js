@@ -249,7 +249,7 @@ export function drawCluster(inWorld = true, hold = false) { // hold: redraw the 
 /* minimap */
 const mm = $('mini').getContext('2d'); let miniKey = '';
 export function drawMini(MAP, V) { // V = world.js MAPV {cx, cz, w metres, n px}
-  const P = at(), MI0 = ctx.MI, k = (P.x * 2 | 0) + ',' + (P.z * 2 | 0) + ',' + (P.psi * 100 | 0) + ',' + (MI0 ? MI0.pk : '') + (ctx.mpK || '') + (ctx.wpK || '');
+  const P0 = at(), U = ctx.ug, P = U && U.on && U.portal ? { x: U.portal.x, z: U.portal.z, psi: P0.psi } : P0, MI0 = ctx.MI, k = (P.x * 2 | 0) + ',' + (P.z * 2 | 0) + ',' + (P.psi * 100 | 0) + ',' + (MI0 ? MI0.pk : '') + (ctx.mpK || '') + (ctx.wpK || '');
   if (k === miniKey) return; miniKey = k;
   mm.clearRect(0, 0, 140, 140); mm.save(); mm.beginPath(); mm.arc(70, 70, 68, 0, 7); mm.clip();
   const px = x => ((x - V.cx) / V.w + .5) * V.n, pz = z => ((z - V.cz) / V.w + .5) * V.n, u = px(P.x), v = pz(P.z), Z = 2.6;

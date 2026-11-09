@@ -37,6 +37,7 @@ import { GPU_TYPES } from './world.js';
 import { fxTick, bikeFx, splash } from './particles.js';
 import { addAct, pickAct } from './act.js';
 import { placesFrame } from './places.js';
+import { underFrame, underFit } from './undergo.js';
 import { EF } from './effects.js';
 import './social.js';
 
@@ -49,6 +50,7 @@ for (const d of await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=$
 
 const SPAWN = (F => ({ ...F.W(62, 30), psi: Math.PI / 2 - F.ry }))(LMF.lot[0]); // in the parking lot, wherever the map puts it
 function reset() {
+  if (ctx.ugReset) ctx.ugReset(); // back up from Ilalim (undergo.js)
   if (F.on) footOff(); // reset / bike swap while walking: back on the bike
   Object.assign(S, {
     x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: 0, running: false, key: false, kill: false, tip: false, cr: 0, cranking: false, cT: 0, keyT: 0, stT: 0, fi: 0, warm: S.warm || 0, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, leanV: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
@@ -180,12 +182,12 @@ function visuals(dt, now) {
   if (!ctx.GAR && Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); } // pinch / wheel / Options FOV, speed widening, and leaving the garage's 40°
   if (LK.id === null && av > 1.5) { const k = Math.exp(-dt * 3); LK.y *= k; LK.p *= k; if (Math.abs(LK.y) < .002) LK.y = 0; if (Math.abs(LK.p) < .002) LK.p = 0; }
   if (ctx.GAR) studioFrame(dt, now);
-  else if (F.on) { figPose(); footCam(camera, dt, H, ctx.camFit); }
+  else if (F.on) { figPose(); footCam(camera, dt, H, underFit() || ctx.camFit); }
   else if (ctx.camMode === 0) {
     LK.yr += (clamp(S.yaw * .12, -.25, .25) - LK.yr) * (1 - Math.exp(-dt * 8)); B.cam.rotation.set(-(S.th + (S.wp || 0)) * .4, LK.yr, S.lean * .35); camera.rotation.set(-.3 + LK.p, LK.y, 0);
     const vib = S.running ? .0007 * (.4 + S.rpm / 9000) : 0, ph = now * S.rpm / 60 * 2 * Math.PI; camera.position.set(Math.sin(ph * .5) * vib, Math.sin(ph) * vib, 0);
   } else {
-    const bx = Math.sin(S.psi), bz = Math.cos(S.psi), ox = bx * Math.cos(LK.y) + bz * Math.sin(LK.y), oz = bz * Math.cos(LK.y) - bx * Math.sin(LK.y); tmp.set(S.x + ox * 4.2, 1.9 + S.zH + LK.p * 4, S.z + oz * 4.2); camera.position.lerp(tmp, 1 - Math.exp(-dt * 5)); camera.position.y = Math.max(camera.position.y, H(camera.position.x, camera.position.z) + .6);
+    const bx = Math.sin(S.psi), bz = Math.cos(S.psi), ox = bx * Math.cos(LK.y) + bz * Math.sin(LK.y), oz = bz * Math.cos(LK.y) - bx * Math.sin(LK.y); tmp.set(S.x + ox * 4.2, 1.9 + S.zH + LK.p * 4, S.z + oz * 4.2); camera.position.lerp(tmp, 1 - Math.exp(-dt * 5)); camera.position.y = Math.max(camera.position.y, H(camera.position.x, camera.position.z) + .6); if (ctx.ugCam) ctx.ugCam(camera.position, S.x, 1.4 + S.zH, S.z); // underground: never inside the rock
     camera.lookAt(S.x - bx * 2, 1 + S.zH, S.z - bz * 2);
   }
   if (!ctx.GAR) dayNight(); // the studio has its own lights
@@ -268,7 +270,7 @@ function loop(t) {
   raceTick(dt);
   if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); if (RP.ok) tickRapier(dt); garageFrame(); }
   else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; if (F.on) footTick(dt); else input(dt); if (RP.ok) tickRapier(dt); missions(dt); wpTick(); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
-  if (!ctx.paused && !ctx.OPT && !ctx.GAR) placesFrame(dt, t / 1000); // drinks wearing off, the room you're in (places.js)
+  if (!ctx.paused && !ctx.OPT && !ctx.GAR) { placesFrame(dt, t / 1000); underFrame(dt); } // Ilalim: the dark passage down and the way back up (undergo.js) // drinks wearing off, the room you're in (places.js)
   if (BN.on) benchDrive(dt); const P1 = performance.now(); // benchmark: this frame's scripted pose (bench.js); P1..P3, C1 = stage stamps for it
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }

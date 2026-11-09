@@ -67,6 +67,7 @@ export function poolPatches(list, hf, N = 8, lift = .07) {
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+  g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(V * list.length * 3).map((_, i) => i % 3 === 1 ? 1 : 0), 3)); // MeshBasic reads it with an environment map set (IBL)
   g.setIndex(new THREE.BufferAttribute(idx, 1)); g.computeBoundingSphere(); return g;
 }
 export const HALO_GEO = () => { const a = new THREE.PlaneGeometry(1, 1), b = new THREE.PlaneGeometry(1, 1).rotateY(Math.PI / 2); return mergeTwo(a, b); };
@@ -86,7 +87,7 @@ export function beamMeshes() {
   for (let j = 0; j <= NV; j++) for (let i = 0; i <= NU; i++) uvs.set([i / NU, j / NV], (j * (NU + 1) + i) * 2);
   for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) { const a = j * (NU + 1) + i, b = a + 1, c = a + NU + 1, d = c + 1; idx.push(a, b, c, b, d, c); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3).setUsage(THREE.DynamicDrawUsage));
-  g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2)); g.setIndex(idx);
+  g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2)); g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(n * 3).map((_, i) => i % 3 === 1 ? 1 : 0), 3)); g.setIndex(idx);
   const pm = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   const u = uv(), across = float(1).sub(u.x.mul(2).sub(1).pow(2)), along = smoothstep(.02, .4, u.y).mul(float(1).sub(u.y).pow(1.3));
   pm.colorNode = vec3(1, .93, .8); pm.opacityNode = across.mul(along).mul(HEAD).mul(.22); pm.forceSinglePass = true; NIGHTM.add(pm);

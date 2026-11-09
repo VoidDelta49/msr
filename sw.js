@@ -21,6 +21,7 @@ async function files() {
   urls.add(abs('data/npc.json?v=' + V));
   urls.add(abs('data/interiors.json?v=' + V));
   urls.add(abs('data/shop.json?v=' + V));
+  urls.add(abs('data/cave.json?v=' + V));
   const ix = abs('data/bikes/index.json?v=' + V); urls.add(ix);
   for (const id of await (await fetch(ix)).json()) urls.add(abs(`data/bikes/${id}.json?v=${V}`));
   // files reached through a prefix entry ("three/addons/": ...) aren't listed in the importmap: find them in our own modules

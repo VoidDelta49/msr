@@ -13,6 +13,7 @@ export const tyreF = x => x <= 1 ? Math.sin(1.5707963 * x) : KS + (1 - KS) / (1 
 // grip multiplier of what is under the bike: asphalt and town lots 1, worn dirt shoulder, grass, paddy mud
 const Z = {};
 export function surfaceMu(x, z) {
+  if (ctx.ug && ctx.ug.has(x, z)) return ctx.ug.mu(x, z); // Ilalim: packed dirt and rock, slick in the lake (under.js)
   const nr = ctx.nearRoad ? ctx.nearRoad(x, z) : null, hw = nr ? nr.w / 2 + .3 : 0;
   if (nr && nr.d < hw) return 1;
   let mu = .62;

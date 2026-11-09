@@ -13,6 +13,8 @@ import { mkTex } from './tex.js';
 import { DRAW, FAR, freeze, cullFar, cullFarSphere, addLOD, liteMaterials, mergeByMaterial } from './perf.js';
 import { buildRoads, groundModel } from './roads.js';
 import { MULTI, batchInst, finishBatches, staticBatch } from './batch.js';
+import { makeUnder } from './under.js';
+import { buildUnder, buildPortal } from './underfig.js';
 
 // N64-style textures (tex.js): tiny, dithered, bilinear. Tiling scale ~ what the old 256 px speck textures had.
 const tAsph=mkTex(T.asphalt()),tCon=mkTex(T.concrete());
@@ -123,7 +125,9 @@ const {ROADS,nearRoad,bumpAt,BUMPS}=buildRoads(MD,terrBase);
 // Map size follows the coast: the terrain grid is centred on the island and covers its widest radius + 80 m of sea,
 // rounded up to whole tiles. Terrain tiles, LOD, road chunks, prop culling and physics heights all derive from it.
 const CMAX=Math.max(...CR);
-const GRD=groundModel({terr,carve:()=>lastCarve,nearRoad,bumpAt,GX,GZ,TSZ,TS}),HA=GRD.HA,meshH=GRD.meshH,H=GRD.H; // roads.js: drawn mesh + physics ground next to roads
+const GRD=groundModel({terr,carve:()=>lastCarve,nearRoad,bumpAt,GX,GZ,TSZ,TS}),HA=GRD.HA,meshH=GRD.meshH,H0=GRD.H; // roads.js: drawn mesh + physics ground next to roads
+// Ilalim (under.js, Build 11.99): the underground caves are built far off the island; there the ground is the cave floor
+const UG=makeUnder(await (await fetch('data/cave.json?v='+BUILD)).json()),H=(x,z,m)=>UG.has(x,z)?UG.floor(x,z):H0(x,z,m);
 const roadH=(x,z)=>H(x,z);
 // Lowest / highest DRAWN ground under a footprint (centre, corners, edge midpoints). Props are placed on this, not on
 // terr(): the analytic terrain has detail the 5 m mesh can't show and ignores the road cuts/fills, so props placed on it
@@ -340,6 +344,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     else if(t==='tower'){const fl=b[6]||13,k=fl<=10?0:fl<=16?1:fl<=24?2:3,h=[8,13,20,30][k]*3.3,tint=new THREE.Color().setHSL(.5+q*.1,.25,.72+q2*.22),pw=w*1.4,pd=d*1.4;
       TW[k].push({x,y,z,ry,sx:w/20,sy:1,sz:d/20,c:tint});nb(PL,x,y,z,ry,pw,6.4,pd,0x9b9a94);nb(PL,x,y+h,z,ry,w*.5,3,d*.5,0x8f959b);if(k>1)nb(PL,x,y+h+3,z,ry,.4,k*4,.4,0xd0d0d0);addOBB(x,z,pw/2,pd/2,ry)}
     else if(t==='cave'){ // sunken rock hall: roofed, a mouth at the front and one at the back, pillars, stalagmites, glowing crystals, a pool. The floor is the terrain (a levelled 'flat' basin round it)
+      UG.setHall(x,z,ry,w,d);UG.hallY=lo; // the dark passage down to Ilalim (under.js / underfig.js / undergo.js) in the side wall
       const Hh=10,Ws=w/2,Ds=d/2,G=6,rk=(a,dd,sw,sd,hg,y0=lo,c=0xcfc4b0,r2=0)=>{const m=P(a,dd);nb(RK,m.x,y0,m.z,ry+r2,sw,hg,sd,c);if(hg>=4&&y0===lo)addOBB(m.x,m.z,sw/2,sd/2,ry)},
         seg=(a0,a1,dd,th)=>rk((a0+a1)/2,dd,a1-a0,th,Hh),hv=n=>hash2(Math.round(x*10)+n*17,Math.round(z*10)-n*5);
       seg(-Ws,-G,Ds-2.5,5);seg(G,Ws,Ds-2.5,5);seg(-Ws,Ws/2-G,-Ds+2.5,5);seg(Ws/2+G,Ws,-Ds+2.5,5);rk(-Ws+2.5,0,5,d-10,Hh);rk(Ws-2.5,0,5,d-10,Hh);
@@ -347,9 +352,9 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
       rk((-Ws-1+hx-6)/2,0,hx-6+Ws+1,d+2,1.8,lo+Hh,0xb2aa9c);rk((hx+6+Ws+1)/2,0,Ws+1-hx-6,d+2,1.8,lo+Hh,0xb2aa9c);rk(hx,(6+Ds+1)/2,12,Ds+1-6,1.8,lo+Hh,0xb2aa9c);rk(hx,-(6+Ds+1)/2,12,Ds+1-6,1.8,lo+Hh,0xb2aa9c);
       rk(0,0,w*.8,d*.8,4,lo+Hh+1.8,0xcfc4b0,.1);rk(-Ws*.15,Ds*.1,w*.5,d*.5,4,lo+Hh+5.8,0xd8cdb8,.5);rk(Ws*.1,0,w*.28,d*.3,3.5,lo+Hh+9.8,0xb2aa9c,.9);
       for(const[a,dd]of[[-Ws*.55,-8],[-Ws*.1,12],[Ws*.35,-10],[Ws*.55,10],[-Ws*.6,14],[0,-18]])rk(a,dd,3.4,3.4,Hh,lo,0xd8cdb8,hv(a)-.5);
-      for(let n=0;n<16;n++){const a=(hv(n)-.5)*(w-14),dd=(hv(n+40)-.5)*(d-14);if(Math.abs(a-(Ws/2*(Ds-dd)/(2*Ds)))<5||Math.hypot(a-hx,dd)<7)continue; // keep the line between the mouths clear
+      for(let n=0;n<16;n++){const a=(hv(n)-.5)*(w-14),dd=(hv(n+40)-.5)*(d-14);if(Math.abs(a-(Ws/2*(Ds-dd)/(2*Ds)))<5||Math.hypot(a-hx,dd)<7||Math.hypot(a-UG.D.portal.a,dd-UG.D.portal.d)<8)continue; // keep the line between the mouths clear
         const m=P(a,dd),sc=hv(n+80);if(n%2){SM.push({x:m.x,y:lo,z:m.z,sx:1.1+sc*1.2,sy:2+sc*3.5,sz:1.1+sc*1.2,c:0xd6cdbd});addOBB(m.x,m.z,.7,.7,ry)}else SK.push({x:m.x,y:lo+Hh,z:m.z,sx:.8+sc,sy:2+sc*3,sz:.8+sc,c:0xcfc4b0})}
-      for(const[a,dd,c]of[[-Ws*.5,-4,0x7de8ff],[-Ws*.62,2,0x9d8cff],[-Ws*.3,-12,0x7de8ff],[Ws*.4,4,0x9d8cff],[Ws*.7,-2,0x7de8ff],[G+2,Ds-3,0x7de8ff],[-G-2,Ds-3,0x7de8ff],[Ws/2+G+2,-Ds+3,0x9d8cff],[Ws/2-G-2,-Ds+3,0x9d8cff]]){const m=P(a,dd);CRY.push({x:m.x,y:lo,z:m.z,ry:hv(a*3)*6,sx:.6,sy:1.6+hv(dd)*1.6,sz:.6,c});CRY.push({x:m.x+.7,y:lo,z:m.z-.4,ry:hv(a)*6,sx:.4,sy:1+hv(a+dd)*1.2,sz:.4,c})}
+      for(const[a,dd,c]of[[-Ws*.5,-4,0x7de8ff],[-Ws*.62,2,0x9d8cff],[-Ws*.3,-12,0x7de8ff],[Ws*.4,4,0x9d8cff],[Ws*.7,-2,0x7de8ff],[G+2,Ds-3,0x7de8ff],[-G-2,Ds-3,0x7de8ff],[Ws/2+G+2,-Ds+3,0x9d8cff],[Ws/2-G-2,-Ds+3,0x9d8cff]]){if(Math.hypot(a-UG.D.portal.a,dd-UG.D.portal.d)<7)continue;const m=P(a,dd);CRY.push({x:m.x,y:lo,z:m.z,ry:hv(a*3)*6,sx:.6,sy:1.6+hv(dd)*1.6,sz:.6,c});CRY.push({x:m.x+.7,y:lo,z:m.z-.4,ry:hv(a)*6,sx:.4,sy:1+hv(a+dd)*1.2,sz:.4,c})}
       const pm=P(-Ws*.45,-4);nb(PL,pm.x,lo+.02,pm.z,ry,16,.12,11,0x2fb7e8)}
     else if(t==='lookout'){ // Build 11.92: hilltop lookout tower, the island's 'triangle rule' landmark: bamboo legs, braces, a deck, a thatch hat and a beacon lit at night
       const Ht=25,hw=w/2-.3,lg=[[-1,-1],[1,-1],[-1,1],[1,1]].map(([a,e])=>{const p=P(a*hw,e*hw);return{x:p.x,z:p.z,g:foot(p.x,p.z,.3,.3,ry).lo}}),g0=Math.min(...lg.map(l=>l.g)),top=Math.max(...lg.map(l=>l.g))+Ht;
@@ -477,9 +482,12 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   if(GH.every>0)for(const r of ROADS){if(!r.hwy&&r.w!==6)continue;for(let i=6;i<r.s.length-6;i+=Math.max(2,Math.round(GH.every))){const s=r.s[i];for(const sd of[-1,1]){if(rand()>GH.chance)continue;
     const off=r.w/2+8+rand()*5,x=s.x-s.tz*off*sd,z=s.z+s.tx*off*sd;if(rd(x,z,TOWN,10)<1)continue;const q=nearRoad(x,z);if(q&&q.d<r.w/2+5)continue;
     const h=terr(x,z);if(h<SEA+1.2||lastCarve>.05||h>45||rd(x,z,PADDY)<2)continue;
-    const ry=Math.atan2(-s.tz,s.tx)+(sd>0?PI:0);
-    if(rand()<.35){if(hut(x,z,ry))GEN.push(['nipa',R1(x),R1(z),R4(ry)])}
-    else{const w=6+rand()*3,d=6+rand()*2.5,c=pastel(),rc=TIN[(rand()*TIN.length)|0];if(house(x,z,ry,w,d,c,rc))GEN.push(['house',R1(x),R1(z),R4(ry),R1(w),R1(d)])}}}}
+    const ry=Math.atan2(-s.tz,s.tx)+(sd>0?PI:0),cr=Math.cos(ry),sr=Math.sin(ry);
+    // 11.99: the whole footprint must clear every road (a curve or a side road could run through a corner). Tested after the
+    // random draws below are made, so a skipped house never shifts rand() for the rest of the island.
+    const clear=(hw,hd)=>{for(const[a,e]of[[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1],[-1,0],[1,0]]){const px=x+cr*a*hw+sr*e*hd,pz=z-sr*a*hw+cr*e*hd,p=nearRoad(px,pz);if(p&&p.d<p.w/2+1)return false}return true};
+    if(rand()<.35){if(clear(2.3,2.2)&&hut(x,z,ry))GEN.push(['nipa',R1(x),R1(z),R4(ry)])}
+    else{const w=6+rand()*3,d=6+rand()*2.5,c=pastel(),rc=TIN[(rand()*TIN.length)|0];if(clear(w/2,d/2)&&house(x,z,ry,w,d,c,rc))GEN.push(['house',R1(x),R1(z),R4(ry),R1(w),R1(d)])}}}}
   for(const b of BLD){const[t,x,z,ry=0,w=7,d=7]=b;if(t==='nipa')hut(x,z,ry);else if(t==='house'){const[q,q2]=hq(x,z);house(x,z,ry,w,d,hcol(q,q2),TIN[(q2*TIN.length)|0])}}
   inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6),glowMat(vstd(0xffffff,.85,0,tW[0]),tWG[0]),hb,true,FAR.tree);
   inst(prism(1,1.6,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),hr,true,FAR.tree);
@@ -632,6 +640,7 @@ const freeBays=[];
     inst(new THREE.BoxGeometry(1,1,1),new THREE.MeshBasicMaterial({color:0x43e07a,transparent:true,opacity:.25,depthWrite:false}),[{...W(gx,gz),y:y+.03,ry,sx:12,sy:.01,sz:7}],false,FAR.small)}
 }
 finishBatches(scene);
+buildUnder(UG,addOBB);if(UG.portal)buildPortal(UG); // Ilalim: the caves (their walls go in OBBS before Rapier reads them) and the dark passage in the hall
 const marker=new THREE.Mesh(new THREE.BoxGeometry(1.4,.02,2.4),new THREE.MeshBasicMaterial({color:0x43e07a,transparent:true,opacity:.45,depthWrite:false}));
 const arrow=new THREE.Mesh(new THREE.ConeGeometry(.35,.8,4).rotateX(PI),new THREE.MeshBasicMaterial({color:0x43e07a}));
 export const GPU_TYPES=finishGpuInst(scene);
@@ -646,4 +655,4 @@ function zones(x,z,o){const inl=inland(x,z),gx=inland(x+20,z)-inland(x-20,z),gz=
 if(VOL.h)AMB.push({k:'steam',x:VOL.x,y:terr(VOL.x,VOL.z)+1,z:VOL.z,r:VOL.craterR*.5}); // fumaroles in the crater
 if(PADDY)AMB.push({k:'fly',x:(PADDY.x0+PADDY.x1)/2,y:terr((PADDY.x0+PADDY.x1)/2,(PADDY.z0+PADDY.z1)/2)+.6,z:(PADDY.z0+PADDY.z1)/2,r:Math.min(PADDY.x1-PADDY.x0,PADDY.z1-PADDY.z0)*.45});
 if(TERR.r)AMB.push({k:'fly',x:TERR.x,y:terr(TERR.x,TERR.z)+.6,z:TERR.z,r:TERR.r*.5});
-export { AMB, FALLS, zones, atGas, LMF, GEN, DOORS, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPT, mapHi, MAPV };
+export { UG, AMB, FALLS, zones, atGas, LMF, GEN, DOORS, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPT, mapHi, MAPV };

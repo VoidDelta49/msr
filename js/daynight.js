@@ -9,6 +9,7 @@ import { S, ctx } from './state.js';
 import { renderer, scene, camera, sun, hemi, head, SKYU, GRADE, IBL, ENVG, BLOOM, bakeEnv } from './renderer.js';
 import { setLamps, beamMeshes, HEAD, BEAM } from './lights.js';
 import { H } from './world.js';
+import { UGDAY } from './underfig.js';
 import { F, at } from './foot.js';
 
 const LAT = 12.88 * Math.PI / 180, LON = 121.77, R = Math.PI / 180;
@@ -82,6 +83,7 @@ function beam(px, py, pz, fx, fz) {
 sun.shadow.autoUpdate = false; const LEAD = 10, REBASE = 8, UP = new THREE.Vector3(0, 1, 0);
 const SHL = { x: NaN, z: NaN, y: NaN, d: new THREE.Vector3(0, -1, 0), r: new THREE.Vector3(), u: new THREE.Vector3(), c: new THREE.Vector3() }; // shadow window: the point it was centred for + latched light direction
 let last = -1e9, gate = 0, bakeEl = 1e9, bakeT = 0;
+const FOGN = scene.fog.near, FOGF = scene.fog.far;
 export function dayNight() {
   const ms = gameMs();
   if (ms - last > 2000 || ms < last) { last = ms; astro(ms); } // astronomy every 2 s of game time; lighting every frame (cheap)
@@ -92,10 +94,14 @@ export function dayNight() {
   scene.fog.color.copy(SKYU.hor.value); scene.background.copy(SKYU.hor.value);
   key(el, 7, hemi.color); key(el, 8, hemi.groundColor); hemi.intensity = key(el, 9); grade(el); if (GRADE.night) GRADE.night.value = night;
   if (IBL) { // the sky now lights the scene through scene.environment: the hemisphere light stays as a weaker fill
-    hemi.intensity *= .6; scene.environmentIntensity = .7;
+    hemi.intensity *= .6; scene.environmentIntensity = .62;
     ENVG.c.value.copy(hemi.groundColor).multiplyScalar(.55 + .45 * key(el, 9));
     if (Math.abs(el - bakeEl) > .5 || ms - bakeT > 6e4 || ms < bakeT) { bakeEl = el; bakeT = ms; bakeEnv(); } // the sky moved enough (or a minute passed: moon, Options hour change)
   }
+  // dark places (11.99): deep in the cave hall the sky light is mostly blocked (under.js shelter: 0 outside .. 1 deep under the roof),
+  // and below in Ilalim there is none at all (see the end). The sun is already kept out by the roof's shadow.
+  const UGs = ctx.ug, under = !!(UGs && UGs.on), P0 = at(), sh = !under && UGs && UGs.shelter ? UGs.shelter(P0.x, P0.z) : 0; ctx.shelter = sh;
+  if (sh > 0) { hemi.intensity *= 1 - .72 * sh; if (IBL) scene.environmentIntensity *= 1 - .8 * sh; }
   // one directional light: the sun by day, the moon (scaled by its phase) after dusk, so shadows keep working
   const moonUp = sstep(0, .15, MOON.y), useMoon = el < -4;
   if (useMoon) { tv.copy(MOON.y > .05 ? MOON : tv.set(.3, 1, .2).normalize()); sun.color.setHex(0x9fb2ff); sun.intensity = .55 * (.15 + .85 * SKY.phase) * moonUp * sstep(-6, -10, el); }
@@ -119,12 +125,13 @@ export function dayNight() {
   setLamps(sstep(3, -3, el)); // street lamps, lit windows and signs come on around sunset (el 3° .. −3°)
   renderer.toneMappingExposure = 1 + .5 * night;                                     // a bit of "eye adaptation" so night stays playable
   // headlight: on with the engine from dusk to dawn (real bikes have it always on, but in daylight it adds nothing)
-  gate += ((S.running && el < 4 && !S.crashed ? 1 : 0) - gate) * .2;
+  const dark = under || sh > .5; // underground / deep in the hall the lamp is needed at any hour
+  gate += ((S.running && (el < 4 || dark) && !S.crashed ? 1 : 0) - gate) * .2;
   const f = -Math.sin(S.psi), g = -Math.cos(S.psi), sd = Math.sin(S.delta || 0) * .6;
   head.position.set(S.x + f * .9, S.zH + .95, S.z + g * .9);
   head.target.position.set(S.x + (f * Math.cos(sd) - g * Math.sin(sd)) * 22, S.zH - 1.5, S.z + (g * Math.cos(sd) + f * Math.sin(sd)) * 22);
-  head.intensity = 900 * gate * (1 - sstep(-4, 4, el) * .7);
-  const hb = ctx.inside ? 0 : gate * (1 - sstep(-6, 2, el)); HEAD.value = hb; BM.pool.visible = BM.cone.visible = hb > .005;
+  head.intensity = 900 * gate * (dark ? 1 : 1 - sstep(-4, 4, el) * .7);
+  const hb = ctx.inside || F.on ? 0 : gate * (dark ? 1 : 1 - sstep(-6, 2, el)); HEAD.value = hb; BM.pool.visible = BM.cone.visible = hb > .005;
   if (hb > .005) {
     const hp = head.position, ht = head.target.position, dx = ht.x - hp.x, dz = ht.z - hp.z, dl = Math.hypot(dx, dz) || 1;
     beam(hp.x, S.zH || 0, hp.z, dx / dl, dz / dl); BM.cone.position.copy(hp); BM.cone.lookAt(ht);
@@ -132,6 +139,18 @@ export function dayNight() {
   if (BLOOM.k) { // bloom: subtle in daylight (sun disc, chrome glints), stronger as the lamps come on
     BLOOM.k.value = ctx.inside ? .3 : .25 + .15 * sstep(10, -2, el) + .2 * night; BLOOM.th.value = ctx.inside ? 1.4 : 1.6 - .1 * night;
   }
+  // on foot in the dark (underground, deep in the hall): a hand torch. The same spot light, moved to the walker (no light added)
+  if (F.on && (under || sh > .4) && !ctx.inside) {
+    const fx = -Math.sin(F.psi), fz = -Math.cos(F.psi); head.position.set(F.x + fx * .35, F.y + 1.35, F.z + fz * .35);
+    head.target.position.set(F.x + fx * 12, F.y - .2, F.z + fz * 12); head.intensity = 420;
+  }
+  UGDAY.value = sstep(-6, 8, el); // daylight at Ilalim's way out and down its shaft
+  if (under) { // Ilalim: no sky. A faint cold fill so the rock reads, then whatever glows: crystals, glowworms, lamps, your headlight
+    hemi.color.setHex(0x3a4656); hemi.groundColor.setHex(0x16120e); hemi.intensity = IBL ? .17 : .24; sun.intensity = 0;
+    if (IBL) scene.environmentIntensity = .04; renderer.toneMappingExposure = 1.15; if (GRADE.night) GRADE.night.value = .5;
+    scene.fog.color.setHex(0x030405); scene.background.copy(scene.fog.color); scene.fog.near = 6; scene.fog.far = 150;
+    if (BLOOM.k) { BLOOM.k.value = .55; BLOOM.th.value = 1.15; }
+  } else if (scene.fog.far !== FOGF) { scene.fog.near = FOGN; scene.fog.far = FOGF; }
   // inside a building (interior.js): its own warm lamplight whatever the hour (same lights, new colours: nothing recompiles)
   if (ctx.inside) {
     hemi.color.setHex(0xffe6c4); hemi.groundColor.setHex(0x8a6a50); hemi.intensity = IBL ? 1.6 : 2.2; sun.color.setHex(0xffd9a8); sun.intensity = 1.6;

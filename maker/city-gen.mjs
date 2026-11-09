@@ -109,8 +109,10 @@ for (const [x, z, r, n] of [[-950, 2100, 30, 'buhangin1'], [-1060, 2118, 22, 'bu
 feat({ type: 'hill', x: -960, z: 2100, h: 0, r: 1, label: 'Tatlong Buhangin', lp: 0 });
 
 // nothing generated may stand on a road (the hand-placed villas, cottages and the odd row end near a curved road)
-const sd2 = (px, pz, a, b) => { const ex = b[0] - a[0], ez = b[1] - a[1], t = Math.max(0, Math.min(1, ((px - a[0]) * ex + (pz - a[1]) * ez) / (ex * ex + ez * ez || 1))); return Math.hypot(a[0] + ex * t - px, a[1] + ez * t - pz) };
-const onRoad = b => M.roads.some(r => { const P = r.closed ? [...r.pts, r.pts[0]] : r.pts; for (let i = 1; i < P.length; i++) if (sd2(b[1], b[2], P[i - 1], P[i]) < r.w / 2 + Math.max(b[4] || 7, b[5] || 7) * .45) return true; return false });
+// 11.99: tested against the game's real road splines (Catmull-Rom, not the straight lines between the points: a curve bulges out
+// by metres) over the whole footprint, with a 1 m kerb. tools/roads.mjs fails on any building left on a road (ONROAD).
+const { groundOf, intoRoad } = await import('../tools/lib/ground.mjs'), GR = groundOf(M);
+const onRoad = b => intoRoad(GR.nearRoad, GR.TB.terr, b).by > -1;
 const n0 = M.buildings.length; M.buildings = M.buildings.filter(b => b[7] !== G || !onRoad(b)); console.log('city-gen: dropped', n0 - M.buildings.length, 'buildings on roads');
 writeFileSync(FILE, JSON.stringify(M));
 console.log('city-gen:', M.buildings.filter(b => b[7] === G).length, 'buildings,', M.roads.filter(r => r[G]).length, 'roads,', M.islands.filter(i => i[G]).length, 'islands');

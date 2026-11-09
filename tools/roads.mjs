@@ -5,6 +5,7 @@
 //   SEAM       a closed road does not close exactly (first height != last height)
 //   OVERLAP    two road surfaces overlap but disagree on the height there (the old step at crossings / branches, up to 0.5 m)
 //   GRADE      a road is steeper than its own grade limit (levelling a junction must not create a ramp)
+//   ONROAD     a building's footprint reaches into a road surface (the cave, which its trail runs through, excepted)
 //   STEP       the ground height jumps between two points 25 cm apart that belong to different roads (intentional speed bumps excluded)
 // Also reports (not a failure): grade along the INNER edge of tight hairpins, where the height follows the nearest centre-line point.
 // Exit 0 = pass. Used by tools/test.mjs.
@@ -28,6 +29,10 @@ const terrBase = TB.terrBase, { ROADS, nearRoad, roadsAt, bumpAt, BUMPS, JUNCTIO
 const problems = [], name = r => `r${r.id}${MD.roads[r.id].id ? ' (' + MD.roads[r.id].id + ')' : ''}`;
 const f2 = v => v.toFixed(1), f3 = v => v.toFixed(3);
 const nearBump = (x, z) => BUMPS.some(k => { const al = k.ax === 'z' ? z - k.z : x - k.x, cr = k.ax === 'z' ? x - k.x : z - k.z; return Math.abs(al) < .8 && Math.abs(cr) < 4.5 });
+
+// ONROAD: every building footprint (tools/lib/ground.mjs FOOT) against the real splines, 30 cm of tolerance
+{ const { intoRoad } = await import('./lib/ground.mjs');
+  for (const B of MD.buildings || []) { if (B[0] === 'cave') continue; const r = intoRoad(nearRoad, TB.terr, B); if (r.by > .3) problems.push(`ONROAD ${B[0]} at (${f2(B[1])}, ${f2(B[2])}) reaches ${f2(r.by)} m into a road at (${f2(r.at[0])}, ${f2(r.at[1])}): move it (maker/city-gen.mjs drops its own)`) } }
 
 // SEAM
 for (const r of ROADS) if (r.closed && Math.abs(r.s[0].h - r.s[r.s.length - 1].h) > 1e-6) problems.push(`SEAM ${name(r)}: closed road starts at ${f3(r.s[0].h)} m and ends at ${f3(r.s[r.s.length - 1].h)} m`);
