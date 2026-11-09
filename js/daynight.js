@@ -6,8 +6,9 @@ import * as THREE from 'three';
 import { clamp, sstep } from './util.js';
 import { gameMs, Q } from './config.js';
 import { S, ctx } from './state.js';
-import { renderer, scene, camera, sun, hemi, head, SKYU, GRADE, IBL, ENVG, bakeEnv } from './renderer.js';
-import { setLamps } from './lights.js';
+import { renderer, scene, camera, sun, hemi, head, SKYU, GRADE, IBL, ENVG, BLOOM, bakeEnv } from './renderer.js';
+import { setLamps, beamMeshes, HEAD, BEAM } from './lights.js';
+import { H } from './world.js';
 import { F, at } from './foot.js';
 
 const LAT = 12.88 * Math.PI / 180, LON = 121.77, R = Math.PI / 180;
@@ -33,20 +34,21 @@ export function astro(ms) {
 
 // palette keyed by sun elevation in degrees: zenith, horizon (= fog), cloud, sun glow, sun colour, sun ×, hemi sky, hemi ground, hemi ×
 const KEYS = [
-  [-18, 0x03060e, 0x0b1020, 0x10141e, 0x000000, 0x000000, 0, 0x3a4a78, 0x10140e, .22],
-  [-10, 0x050a1a, 0x121a30, 0x181c2a, 0x000000, 0x000000, 0, 0x3e4e80, 0x121610, .24],
+  [-18, 0x03060e, 0x0b1020, 0x10141e, 0x000000, 0x000000, 0, 0x42568e, 0x12160f, .27],
+  [-10, 0x050a1a, 0x121a30, 0x181c2a, 0x000000, 0x000000, 0, 0x465892, 0x141812, .29],
   [-5, 0x14204a, 0x5a4a6e, 0x4a3a52, 0x6a2a20, 0x000000, 0, 0x6070a0, 0x1c2018, .36],
   [0, 0x2e528e, 0xe89858, 0xf09a70, 0xff7a30, 0xff8a40, .9, 0xb8b4c8, 0x3a3a2a, .65],
-  [6, 0x4a80c8, 0xe6cca6, 0xffe2c0, 0xffb060, 0xffc890, 2.1, 0xd0dcef, 0x4c5a34, .95],
-  [20, 0x4b8fd8, 0xc6dcea, 0xf4f4f4, 0x302820, 0xffeccc, 2.8, 0xdcecff, 0x55653a, 1.15],
+  [6, 0x4a80c8, 0xe6c49a, 0xffdcb4, 0xffa850, 0xffc080, 2.3, 0xcad4ea, 0x56553a, .9],
+  [12, 0x4a88d2, 0xd4d6d0, 0xfaf0e2, 0x60482c, 0xffdcb0, 2.75, 0xd6e2f4, 0x585e3c, 1],
+  [24, 0x4b8fd8, 0xc6dcea, 0xf4f4f4, 0x302820, 0xfff0d4, 3.1, 0xdcecff, 0x5c6440, .98],
 ];
 // colour grade keyed by sun elevation: shadow tint, highlight tint, contrast, vibrance, vignette (renderer.js GRADE)
 const GK = [
   [-18, [.80, .90, 1.20], [1.04, .97, .90], .16, .30, .34], // moonlit night: blue shadows, warm lamp highlights
   [-6, [.86, .86, 1.16], [1.10, .94, .96], .18, .40, .30],  // blue hour: violet shadows, rosy highlights
   [0, [.90, .96, 1.10], [1.14, 1.00, .84], .22, .55, .26],  // sunrise / sunset: teal shadows, gold highlights
-  [10, [.93, .98, 1.08], [1.08, 1.03, .94], .22, .58, .22], // golden-ish morning / afternoon
-  [30, [.95, 1.00, 1.07], [1.03, 1.03, 1.01], .20, .70, .18], // midday: clean, bright, saturated (neutral highlights keep the sky blue)
+  [10, [.92, .97, 1.09], [1.09, 1.03, .92], .24, .6, .22], // golden-ish morning / afternoon
+  [30, [.94, .99, 1.07], [1.03, 1.03, 1.01], .25, .70, .18], // midday: clean, bright, saturated (neutral highlights keep the sky blue)
 ];
 function grade(el) {
   if (!GRADE.sh) return; let k = 0; while (k < GK.length - 2 && el > GK[k + 1][0]) k++;
@@ -62,6 +64,21 @@ function key(el, i, out) {
   return a[i] + (b[i] - a[i]) * t;
 }
 
+// headlight beam (lights.js): ground patch draped over the real ground ahead of the lamp + the cone in the air
+const BM = beamMeshes(); scene.add(BM.pool, BM.cone); const BP = BM.pool.geometry.attributes.position, bq = { x: NaN, z: NaN, a: NaN };
+function beam(px, py, pz, fx, fz) {
+  if (Math.hypot(px - bq.x, pz - bq.z) < .03 && Math.abs(Math.atan2(fx, fz) - bq.a) < .002) return; bq.x = px; bq.z = pz; bq.a = Math.atan2(fx, fz); // parked: keep the patch
+  const { NU, NV, near, far, w0, w1 } = BEAM, a = BP.array, rx = -fz, rz = fx;
+  for (let j = 0; j <= NV; j++) {
+    const v = j / NV, d = near + (far - near) * v, w = w0 + (w1 - w0) * v, cx = px + fx * d, cz = pz + fz * d;
+    for (let i = 0; i <= NU; i++) {
+      const o = (i / NU - .5) * w, x = cx + rx * o, z = cz + rz * o; let y = H(x, z);
+      if (!(Math.abs(y - py) < 3)) y = py; // under a bridge, off a ledge, in the sea: keep it at the bike's level
+      a.set([x, y + .06, z], (j * (NU + 1) + i) * 3);
+    }
+  }
+  BP.needsUpdate = true;
+}
 sun.shadow.autoUpdate = false; const LEAD = 10, REBASE = 8, UP = new THREE.Vector3(0, 1, 0);
 const SHL = { x: NaN, z: NaN, y: NaN, d: new THREE.Vector3(0, -1, 0), r: new THREE.Vector3(), u: new THREE.Vector3(), c: new THREE.Vector3() }; // shadow window: the point it was centred for + latched light direction
 let last = -1e9, gate = 0, bakeEl = 1e9, bakeT = 0;
@@ -107,6 +124,14 @@ export function dayNight() {
   head.position.set(S.x + f * .9, S.zH + .95, S.z + g * .9);
   head.target.position.set(S.x + (f * Math.cos(sd) - g * Math.sin(sd)) * 22, S.zH - 1.5, S.z + (g * Math.cos(sd) + f * Math.sin(sd)) * 22);
   head.intensity = 900 * gate * (1 - sstep(-4, 4, el) * .7);
+  const hb = ctx.inside ? 0 : gate * (1 - sstep(-6, 2, el)); HEAD.value = hb; BM.pool.visible = BM.cone.visible = hb > .005;
+  if (hb > .005) {
+    const hp = head.position, ht = head.target.position, dx = ht.x - hp.x, dz = ht.z - hp.z, dl = Math.hypot(dx, dz) || 1;
+    beam(hp.x, S.zH || 0, hp.z, dx / dl, dz / dl); BM.cone.position.copy(hp); BM.cone.lookAt(ht);
+  }
+  if (BLOOM.k) { // bloom: subtle in daylight (sun disc, chrome glints), stronger as the lamps come on
+    BLOOM.k.value = ctx.inside ? .3 : .25 + .15 * sstep(10, -2, el) + .2 * night; BLOOM.th.value = ctx.inside ? 1.4 : 1.6 - .1 * night;
+  }
   // inside a building (interior.js): its own warm lamplight whatever the hour (same lights, new colours: nothing recompiles)
   if (ctx.inside) {
     hemi.color.setHex(0xffe6c4); hemi.groundColor.setHex(0x8a6a50); hemi.intensity = IBL ? 1.6 : 2.2; sun.color.setHex(0xffd9a8); sun.intensity = 1.6;

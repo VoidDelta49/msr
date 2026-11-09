@@ -3,7 +3,7 @@
 // windows use an emissive map on the building materials. Everything is driven by one level (0 day .. 1 night) that
 // daynight.js sets every frame, so nothing recompiles when the lights come on.
 import * as THREE from 'three';
-import { uniform, vec3, uv, materialReference, float, clamp, smoothstep, mix, positionWorld, cameraPosition } from 'three/tsl';
+import { uniform, vec3, uv, materialReference, float, clamp, smoothstep, mix, positionWorld, cameraPosition, normalView, positionView } from 'three/tsl';
 import { liteOf } from './perf.js';
 
 export const LAMP = uniform(0);
@@ -74,4 +74,29 @@ function mergeTwo(a, b) { // tiny merge (indexed planes) without importing the a
   const g = new THREE.BufferGeometry(), pa = a.attributes, pb = b.attributes, n = pa.position.count;
   for (const k of ['position', 'normal', 'uv']) { const A = pa[k], B = pb[k], o = new Float32Array(A.array.length * 2); o.set(A.array); o.set(B.array, A.array.length); g.setAttribute(k, new THREE.BufferAttribute(o, A.itemSize)); }
   const ia = a.index.array, ib = b.index.array, I = new Uint16Array(ia.length * 2); I.set(ia); for (let i = 0; i < ib.length; i++) I[ia.length + i] = ib[i] + n; g.setIndex(new THREE.BufferAttribute(I, 1)); return g;
+}
+
+// Headlight beam (night only): the SpotLight lights the road, these make the beam READ. A soft hot patch on the ground ahead
+// (a small grid that daynight.js drapes over the real ground every frame, so it hugs slopes and kerbs) and a faint volumetric cone
+// in the air from the lamp, brightest face-on and fading at its silhouette and towards its end, faded out right by the camera.
+// Both are additive, write no depth and scale with HEAD (0 .. 1), so turning the lamp on never changes a shader.
+export const HEAD = uniform(0), BEAM = { NU: 4, NV: 10, near: 3.5, far: 26, w0: 2.2, w1: 9 };
+export function beamMeshes() {
+  const { NU, NV } = BEAM, n = (NU + 1) * (NV + 1), uvs = new Float32Array(n * 2), idx = [];
+  for (let j = 0; j <= NV; j++) for (let i = 0; i <= NU; i++) uvs.set([i / NU, j / NV], (j * (NU + 1) + i) * 2);
+  for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) { const a = j * (NU + 1) + i, b = a + 1, c = a + NU + 1, d = c + 1; idx.push(a, b, c, b, d, c); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3).setUsage(THREE.DynamicDrawUsage));
+  g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2)); g.setIndex(idx);
+  const pm = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
+  const u = uv(), across = float(1).sub(u.x.mul(2).sub(1).pow(2)), along = smoothstep(.02, .4, u.y).mul(float(1).sub(u.y).pow(1.3));
+  pm.colorNode = vec3(1, .93, .8); pm.opacityNode = across.mul(along).mul(HEAD).mul(.22); pm.forceSinglePass = true; NIGHTM.add(pm);
+  const pool = new THREE.Mesh(g, pm); pool.frustumCulled = false; pool.matrixAutoUpdate = false; pool.visible = false; pool.name = 'headPool';
+  // cone along +z from the lamp (apex at the origin), aimed each frame with lookAt
+  const L = 17, cg = new THREE.CylinderGeometry(.07, 2.9, L, 18, 1, true).translate(0, -L / 2, 0).rotateX(-Math.PI / 2);
+  const cm = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false });
+  const t = float(1).sub(uv().y), face = normalView.dot(positionView.normalize().negate()).abs();
+  cm.colorNode = vec3(1, .92, .78); cm.opacityNode = face.pow(2.2).mul(float(1).sub(t).pow(1.8)).mul(smoothstep(0, .06, t)).mul(smoothstep(2.5, 8, positionWorld.sub(cameraPosition).length())).mul(HEAD).mul(.075);
+  cm.forceSinglePass = true; NIGHTM.add(cm);
+  const cone = new THREE.Mesh(cg, cm); cone.frustumCulled = false; cone.visible = false; cone.name = 'headCone';
+  return { pool, cone };
 }

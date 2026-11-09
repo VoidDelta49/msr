@@ -2,7 +2,7 @@
 // Browser smoke test: serves the repo, opens it in headless Chromium, taps PLAY, waits for the game to start, then drives it through
 // window.__cpm (the debug hook) and fails on any console error / page error.  NEEDS a browser, which the other tools don't:
 //   npm i playwright-core && npx playwright-core install chromium-headless-shell     (in a scratch dir, NOT in the repo)
-//   PW=/path/to/node_modules/playwright-core node tools/smoke.mjs [--bike click125] [--shot out.png] [--webgpu] [--perf [--top N]] [--gfx low|med|high] [--tod 0-23] [--aa fxaa|msaa4|...] [--mblur 0|1]
+//   PW=/path/to/node_modules/playwright-core node tools/smoke.mjs [--bike click125] [--shot out.png] [--webgpu] [--perf [--top N]] [--gfx low|med|high] [--tod 0-23] [--aa fxaa|msaa4|...] [--mblur 0|1] [--bloom 0|1]
 // Default renderer is WebGL 2 (sessionStorage cpmGL, like the game's own fallback). --webgpu runs WebGPU on swiftshader's Vulkan
 // (11.77: without --enable-features=Vulkan --use-vulkan=swiftshader the canvas swap chain can't be created, the device is lost and the
 // game reloads into WebGL) and fails if the game still ended up on WebGL. GPU culling runs for real there (one-pass path).
@@ -20,7 +20,7 @@ let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', 
 const pg = await br.newPage({ viewport: { width: 900, height: 500 } });
 pg.on('pageerror', e => errs.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 300)); });
 try {
-  const bike = opt('--bike'), gfx = opt('--gfx'), tod = opt('--tod'), aa = opt('--aa'), mb = opt('--mblur'), set = { ...(bike && { bike }), ...(gfx && { gfx }), ...(tod && { tod: +tod }), ...(aa && { aa }), ...(mb && { mblur: mb === '1' }) };
+  const bike = opt('--bike'), gfx = opt('--gfx'), tod = opt('--tod'), aa = opt('--aa'), mb = opt('--mblur'), bl = opt('--bloom'), set = { ...(bike && { bike }), ...(gfx && { gfx }), ...(tod && { tod: +tod }), ...(aa && { aa }), ...(mb && { mblur: mb === '1' }), ...(bl && { bloom: bl === '1' }) };
   if (Object.keys(set).length) await pg.addInitScript(o => localStorage.setItem('cpmme', JSON.stringify(o)), set);
   if (!a.includes('--webgpu')) await pg.addInitScript(() => sessionStorage.setItem('cpmGL', '1'));
   await pg.goto(url); await pg.click('#mPlay');

@@ -116,7 +116,12 @@ export const AA = (() => {
 // (bright lamps and the sun streak at full strength). MB = its per-frame controller, null when off.
 export let MB = null;
 let pipe = null, scenePass = null;
-if (AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx || cfg.mblur) {
+// Bloom (Options, Medium/High): bright parts of the linear frame (lamp lenses, lit windows and signs, the sun disc, headlights, chrome
+// glints) bleed a soft glow. three's BloomNode on the scene pass, before tone mapping, so only real HDR highlights (> threshold) bloom,
+// not bright paint. A 5-mip blur (wide mips turned down) at a fraction of the resolution. Strength and threshold are uniforms that daynight.js moves with the
+// sun (subtle at noon, strongest at night), so nothing recompiles.
+export const BLOOM = { on: !!cfg.bloom && !Q.lite, k: null, th: null };
+if (BLOOM.on || AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx || cfg.mblur) {
   const T = await import('three/tsl'); scenePass = T.pass(scene, camera, AA.ms ? { samples: AA.ms } : {}); AA.rt = scenePass.renderTarget.samples; /* what the target really carries (tools/options.mjs) */
   // MSAA: only the resolved (1-sample) colour is ever read, so the 4-sample buffer need not be written back to memory: on a phone's tiled
   // GPU that store is 4 x 8 bytes per pixel every frame (~47 MB at 1808x812). Depth: motion blur samples the multisampled depth texture,
@@ -124,6 +129,12 @@ if (AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx || cfg.mblur) {
   if (AA.ms) { const rt = scenePass.renderTarget; rt.storeMultisampledColorBuffer = false; if (!cfg.mblur) rt.storeMultisampledDepthBuffer = rt.storeMultisampledStencilBuffer = false; }
   let src = scenePass;
   if (cfg.mblur) { const { motionBlur } = await import('./mblur.js'), m = motionBlur(scenePass, { gpu: !!renderer.backend.isWebGPUBackend, taps: Q.lite ? 5 : Q.shadow >= 2048 ? 8 : 6 }); MB = m.MB; src = m.node; }
+  if (BLOOM.on) {
+    const { bloom } = await import('three/addons/tsl/display/BloomNode.js'), b = bloom(scenePass.getTextureNode(), .3, 0, 1.5);
+    b.setResolutionScale(Q.shadow >= 2048 ? .5 : .35); b.smoothWidth.value = .3;
+    [1.2, 1, .55, .22, .08].forEach((k, i) => b.bloomTintColors[i].setScalar(k)); // tight glows: the widest mips would wash a whole lit road over the frame BLOOM.k = b.strength; BLOOM.th = b.threshold;
+    src = T.vec4(src.rgb.add(b.rgb), 1);
+  }
   let out = T.renderOutput(src);
   if (cfg.grade) {
     const G = GRADE; G.sh = T.uniform(new THREE.Color(.95, .98, 1.06)); G.hi = T.uniform(new THREE.Color(1.05, 1.02, .96)); G.con = T.uniform(.2); G.vib = T.uniform(.45); G.vig = T.uniform(.22);
