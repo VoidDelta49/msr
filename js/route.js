@@ -40,3 +40,15 @@ export function makeRouter(ROADS) {
   }
   return { route, nodes: X.length };
 }
+// Keep a route ([[x, z], ...], path[0] = the rider) in step with the rider at (x, z): find the closest point on the route's own legs
+// (path[1] onwards, within the next ~40 points), drop what's behind it and start the line at the rider. Returns how far the rider is
+// from the route; path[0] is the rider's position from last frame and is never measured, or nothing would ever count as off route.
+export function follow(p, x, z) {
+  let bd = Math.hypot(p[1][0] - x, p[1][1] - z), bj = 1, bq = p[1];
+  for (let j = 1; j < Math.min(p.length - 1, 41); j++) {
+    const [ax, az] = p[j], [cx, cz] = p[j + 1], ux = cx - ax, uz = cz - az, L = ux * ux + uz * uz, t = L ? Math.max(0, Math.min(1, ((x - ax) * ux + (z - az) * uz) / L)) : 0;
+    const qx = ax + ux * t, qz = az + uz * t, d = Math.hypot(qx - x, qz - z); if (d < bd) { bd = d; bj = j; bq = [qx, qz]; }
+  }
+  if (bd < 30) { p.splice(1, bj - 1); p[1] = bq; } // on the route: trim to where you are along it (the end point stays the waypoint)
+  p[0] = [x, z]; return bd;
+}

@@ -1,4 +1,5 @@
 [
+  {"v": "11.97", "d": "2026-11-09", "t": ["Waypoint route: if you head off the other way instead of following it, it now works out a new route from where you are (before, the line just stretched back to where it started)"]},
   {"v": "11.96", "d": "2026-11-09", "t": ["Particles are see-through again (tyre smoke, dust, exhaust puffs had turned into solid grey squares)", "Map: place names no longer pile on top of each other or the markers; less important ones step aside or wait until you zoom in"]},
   {"v": "11.95", "d": "2026-11-09", "t": ["Waypoints: a violet route along the roads on the minimap and map (recalculated when you ride off it), the minimap distance follows the route, and a floating tag with the distance marks the spot in the world"]},
   {"v": "11.94", "d": "2026-11-09", "t": ["Performance: all street-lamp lenses share one shader (three.js r187 material instances), so loading compiles 3 fewer shaders"]},

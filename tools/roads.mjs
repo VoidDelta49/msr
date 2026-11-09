@@ -88,11 +88,22 @@ const { makeRouter } = await import(pathToFileURL(path.join(ROOT, 'js/route.js')
 const RT = makeRouter(ROADS), pick = () => { const r = ROADS[(rand() * ROADS.length) | 0], s = r.s[(rand() * r.n) | 0]; return [s.x, s.z]; };
 let rtOk = 0, rtMs = 0; for (let i = 0; i < 40; i++) { const [a, b] = [pick(), pick()], t0 = performance.now(), p = RT.route(a[0], a[1], b[0], b[1]); rtMs = Math.max(rtMs, performance.now() - t0); if (p.length > 2 || Math.hypot(a[0] - b[0], a[1] - b[1]) < 20) rtOk++; }
 if (rtOk < 32) problems.push(`ROUTE only ${rtOk} of 40 random road-to-road routes found a path (${RT.nodes} nodes): the road graph is broken up`);
+// following it (map.js wpTick -> follow()): riding the route keeps you on it and trims it; riding the other way must count as off route
+const { follow } = await import(pathToFileURL(path.join(ROOT, 'js/route.js')).href);
+let fwOk = 0, bkOk = 0, fwN = 0; for (let i = 0; i < 20; i++) {
+  const [a, b] = [pick(), pick()], p = RT.route(a[0], a[1], b[0], b[1]); if (p.length < 12) continue; fwN++;
+  const f = p.map(q => q.slice()); let worst = 0; for (let k = 1; k < 10; k++) for (let t = 0; t < 1; t += .1) worst = Math.max(worst, follow(f, p[k][0] + (p[k + 1][0] - p[k][0]) * t, p[k][1] + (p[k + 1][1] - p[k][1]) * t));
+  if (worst < 30 && f.length < p.length) fwOk++;
+  const g = p.map(q => q.slice()), ux = p[1][0] - p[3][0], uz = p[1][1] - p[3][1], L = Math.hypot(ux, uz) || 1; let far = 0; // straight away from where the route goes
+  for (let m = 0; m <= 80; m += 2) far = follow(g, p[0][0] + ux / L * m, p[0][1] + uz / L * m); if (far > 30) bkOk++;
+}
+if (fwOk < fwN) problems.push(`ROUTE following: ${fwN - fwOk} of ${fwN} routes counted as off route (or not trimmed) while riding along them`);
+if (bkOk < fwN * .8) problems.push(`ROUTE following: only ${bkOk} of ${fwN} routes noticed riding 80 m the wrong way (no recalculation would happen)`);
 
 if (verbose) {
   console.log(`junctions (${JUNCTIONS.length}):`);
   for (const j of JUNCTIONS) console.log(`  (${f2(j.x)}, ${f2(j.z)}) level ${f3(j.h0)} m, set by ${name(ROADS[j.primary])}; ` + j.members.map(m => `${name(ROADS[m.road])} ${m.len} samples, blend ${m.T.map(x => x ? x + ' m' : 'grade ramp').join(' / ')}`).join('; '));
 }
-console.log(`roads: ${ROADS.length} roads, ${JUNCTIONS.length} junctions levelled, ${overlaps} overlap points checked, worst overlap mismatch ${f3(worstOv.d)} m; corridor: mesh over ribbon max ${f2(cor.up)} m, ground at road edge max ${f2(cor.edge)} m` + (hp.n ? ` (hairpin apexes, info: ${hp.n} points in ${hp.spots.size} spots up to ${f2(hp.up)} m)` : '') + `; route ${rtOk}/40, worst ${rtMs.toFixed(0)} ms` + (hair ? `; info: ${hair} samples on the inner edge of tight hairpins climb over 30% (one road, not a junction)` : ''));
+console.log(`roads: ${ROADS.length} roads, ${JUNCTIONS.length} junctions levelled, ${overlaps} overlap points checked, worst overlap mismatch ${f3(worstOv.d)} m; corridor: mesh over ribbon max ${f2(cor.up)} m, ground at road edge max ${f2(cor.edge)} m` + (hp.n ? ` (hairpin apexes, info: ${hp.n} points in ${hp.spots.size} spots up to ${f2(hp.up)} m)` : '') + `; route ${rtOk}/40, worst ${rtMs.toFixed(0)} ms, follow ${fwOk}/${fwN} wrong-way ${bkOk}/${fwN}` + (hair ? `; info: ${hair} samples on the inner edge of tight hairpins climb over 30% (one road, not a junction)` : ''));
 for (const p of problems) console.log('FAIL ' + p);
 process.exit(problems.length ? 1 : 0);
