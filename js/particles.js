@@ -127,6 +127,7 @@ const AMBK = { // per kind: spawn range (m), rate (/s, may depend on night), emi
   steam: [1600, () => 1.8, a => { const [x, z] = dR(a, a.r); emit(FX.steam, x, a.y, z, .4, 1.2, 0); }],
   leaf: [160, () => 1.6, a => { const [x, z] = dR(a, a.r); emit(FX.leaf, x, a.y, z, .3, 0, .2); }],
   fly: [140, () => ctx.night > .5 ? 7 : 0, a => { const [x, z] = dR(a, a.r); emit(FX.fly, x, terr(x, z) + r(.3, 1.6), z, 0, 0, 0); }],
+  fount: [120, () => 6, a => emit(FX.spray, a.x + r(-.3, .3), a.y, a.z + r(-.3, .3), 0, 2.2, 0, .8)],
   flag: [2400, () => ctx.night > .4 ? 1.4 : 0, a => emit(FX.beacon, a.x, a.y - 4.6, a.z, 0, 0, 0)],
 };
 function ambFx(cp, dt, t) {

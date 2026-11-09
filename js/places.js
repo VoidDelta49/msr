@@ -10,7 +10,7 @@ import { BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { camera, DRUNK, drunkFx, MB } from './renderer.js';
 import { DOORS, H, OBBS } from './world.js';
-import { F, footEnv, footEnvNow } from './foot.js';
+import { F, footEnv, footEnvNow, nearBoxes } from './foot.js';
 import { addAct } from './act.js';
 import { IN, interiorEnv, interiorFor, pocket, enterPos, exitPos, interact, aimFrom, breakSpeed, camFit, pocketKey } from './interior.js';
 import { showRoom, hideRoom, roomFrame } from './interiorfig.js';
@@ -36,7 +36,7 @@ let outEnv = null, far0 = camera.far, pending = null, hicT = 8, wasFoot = false,
 // out of a door or backing up to a wall doesn't put the camera inside the walls. Inside, interior.js camFit keeps it in the room.
 function outFit(tx, ty, tz, cx, cy, cz) {
   const dx = cx - tx, dz = cz - tz, L = Math.hypot(dx, dz); if (L < .05) return 1; let t = 1;
-  for (const b of OBBS) {
+  for (const b of nearBoxes(OBBS, tx, tz)) {
     if (Math.abs(b.cx - tx) > 12 || Math.abs(b.cz - tz) > 12 || b.hx < .6 || b.hz < .6) continue; // small things (posts, rails) don't block the view
     const ox = tx - b.cx, oz = tz - b.cz, lx = ox * b.c + oz * b.s, lz = -ox * b.s + oz * b.c, ux = dx * b.c + dz * b.s, uz = -dx * b.s + dz * b.c;
     if (Math.abs(lx) < b.hx && Math.abs(lz) < b.hz) continue; // the walker is inside this box (a doorway): ignore it

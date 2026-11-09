@@ -40,9 +40,15 @@ function islD(x,z,I){const F=I.F,n=F.length;let d=1e18,ins=false;for(let i=0,j=n
   const ex=bx-ax,ez=bz-az;let t=((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez||1);t=t<0?0:t>1?1:t;const dx=ax+ex*t-x,dz=az+ez*t-z,q=dx*dx+dz*dz;if(q<d)d=q}return ins?Math.sqrt(d):-Math.sqrt(d)}
 // an island can only win when it is nearer than the coast: outside its box by g, its distance is at most -g (exact skip).
 // One-entry memo: the terrain build asks twice per vertex (height + colour).
+// Build 11.93: a coarse signed-distance grid per island (16 m cells, built once), bilinear; the exact outline is only
+// walked within 40 m of its coast. The big city island has ~700 outline points: walking them for every terrain vertex took seconds.
+const SDC=16;for(const I of ISL){const x0=I.x0-220,z0=I.z0-220,nx=Math.ceil((I.x1-I.x0+440)/SDC)+1,nz=Math.ceil((I.z1-I.z0+440)/SDC)+1,G=new Float32Array(nx*nz);
+  for(let j=0;j<nz;j++)for(let i=0;i<nx;i++)G[i+nx*j]=islD(x0+i*SDC,z0+j*SDC,I);I.sd={x0,z0,nx,nz,G}}
+function islSD(x,z,I){const q=I.sd,fx=(x-q.x0)/SDC,fz=(z-q.z0)/SDC,i=Math.min(q.nx-2,Math.max(0,Math.floor(fx))),j=Math.min(q.nz-2,Math.max(0,Math.floor(fz))),u=fx-i,v=fz-j,G=q.G,k=i+q.nx*j;
+  const d=(G[k]*(1-u)+G[k+1]*u)*(1-v)+(G[k+q.nx]*(1-u)+G[k+q.nx+1]*u)*v;return Math.abs(d)<40?islD(x,z,I):d}
 let iX=NaN,iZ=NaN,iV=0;
 const inland=(x,z)=>{if(x===iX&&z===iZ)return iV;let v=coastR(Math.atan2(z-ICZ,x-ICX))-Math.hypot(x-ICX,z-ICZ);
-  for(const I of ISL)if(x>I.x0-220&&x<I.x1+220&&z>I.z0-220&&z<I.z1+220){const gx=Math.max(I.x0-x,0,x-I.x1),gz=Math.max(I.z0-z,0,z-I.z1),g=Math.sqrt(gx*gx+gz*gz);if(g>0&&-g<=v)continue;const d=islD(x,z,I);if(d>v)v=d}
+  for(const I of ISL)if(x>I.x0-220&&x<I.x1+220&&z>I.z0-220&&z<I.z1+220){const gx=Math.max(I.x0-x,0,x-I.x1),gz=Math.max(I.z0-z,0,z-I.z1),g=Math.sqrt(gx*gx+gz*gz);if(g>0&&-g<=v)continue;const d=islSD(x,z,I);if(d>v)v=d}
   iX=x;iZ=z;return iV=v};
 // Terrain grid = a square (5 m vertices, 280 m tiles) round the bounding box of all land + 80 m of sea; tiles, LOD, road chunks, props, minimap follow it.
 const TS=5,TILE=280,LB=(()=>{let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(let i=0;i<720;i++){const t=i/720*2*PI,r=coastR(t),x=ICX+Math.cos(t)*r,z=ICZ+Math.sin(t)*r;x0=Math.min(x0,x);x1=Math.max(x1,x);z0=Math.min(z0,z);z1=Math.max(z1,z)}
@@ -51,7 +57,7 @@ const EXT=Math.max(LB.x1-LB.x0,LB.z1-LB.z0)/2,TSZ=Math.ceil((2*EXT+160)/TILE)*TI
 const rectD=(x,z,hx,hz,cx=0,cz=0)=>Math.hypot(Math.max(Math.abs(x-cx)-hx,0),Math.max(Math.abs(z-cz)-hz,0));
 const rd=(x,z,r,pad=0)=>rectD(x,z,(r.x1-r.x0)/2+pad,(r.z1-r.z0)/2+pad,(r.x0+r.x1)/2,(r.z0+r.z1)/2); // distance to a {x0,z0,x1,z1} rect
 const TOWN=MD.town,PADDY=MD.paddy,FEAT=MD.features,HL=MD.hills,PROPS=MD.props;
-const RF=FEAT.filter(f=>f.type==='rough'),roughMax=(x,z)=>{let m=0;for(const f of RF)m=Math.max(m,roughW(f,x,z));return m},CITY=FEAT.find(f=>f.name==='city');
+const RF=FEAT.filter(f=>f.type==='rough'),roughMax=(x,z)=>{let m=0;for(const f of RF)m=Math.max(m,roughW(f,x,z));return m},CITY=FEAT.find(f=>f.name==='city'),CITYS=FEAT.filter(f=>f.name==='city'),inCity=(x,z,p=0)=>CITYS.some(f=>rd(x,z,f,p)<1); // Build 11.93: the city is several levelled districts
 const VOL=FEAT.find(f=>f.type==='volcano')||{x:1e6,z:1e6,h:0,r:1,crater:0,craterR:1},TERR=FEAT.find(f=>f.type==='terraces')||{x:1e6,z:1e6,r:0};
 for(const f of FEAT)if(f.type==='ridge'){const p=f.pts;f.bb=[Math.min(...p.map(q=>q[0]))-3*f.w,Math.max(...p.map(q=>q[0]))+3*f.w,Math.min(...p.map(q=>q[1]))-3*f.w,Math.max(...p.map(q=>q[1]))+3*f.w]}
 // distance to a polyline; PD.h = the 3rd coordinate (if any) interpolated at the nearest point (ridge crest heights)
@@ -185,7 +191,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     if(lastCarve>.4)c.copy(C.bed);
     else if(h<SEA+1.3&&inl<90)c.copy(C.sand);
     else if(rd(x,z,TOWN,10)<1)c.copy(C.town).lerp(C.grass,n*.35);
-    else if(CITY&&rd(x,z,CITY,6)<1)c.copy(C.town).lerp(C.rock,.3+n*.25);
+    else if(CITY&&inCity(x,z,6))c.copy(C.town).lerp(C.rock,.3+n*.25);
     else if(dt<TERR.r-30)c.copy((Math.floor(h/2.4)&1)?C.rice:C.rice2);
     else if(h>115||dv<45)c.copy(dv<30?C.ash:C.rock).lerp(C.forest,sstep(140,110,h)*.5);
     else if(h>14)c.copy(C.forest).lerp(C.grass2,n*.5);
@@ -216,7 +222,9 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     g.setAttribute('color',new THREE.Float32BufferAttribute(cc,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(ix);return g}
   // Build 11.43: every tile at every level is one piece of ONE BatchedMesh (one multi-draw for all the ground in view, sorted
   // front to back); perf.js switches a tile's level by showing one piece and hiding the others.
-  const TL=[],TG=[];for(let tj=0;tj<N/TT;tj++)for(let ti=0;ti<N/TT;ti++){const x0=ti*TT*TS-SZ/2+GX,z0=tj*TT*TS-SZ/2+GZ;TL.push([x0,z0]);for(const st of[1,2,4,8])TG.push(tile(ti*TT,tj*TT,st))}
+  // Build 11.93: a tile that is all deep sea bed (never seen through the water) is not built at all: the island map grew, most of the new square is sea
+  const deep=(i0,j0)=>{for(let j=0;j<=TT;j++)for(let i=0;i<=TT;i++)if(MH[i0+i+W*(j0+j)]>-9.5)return false;return true};
+  const TL=[],TG=[];for(let tj=0;tj<N/TT;tj++)for(let ti=0;ti<N/TT;ti++){if(deep(ti*TT,tj*TT))continue;const x0=ti*TT*TS-SZ/2+GX,z0=tj*TT*TS-SZ/2+GZ;TL.push([x0,z0]);for(const st of[1,2,4,8])TG.push(tile(ti*TT,tj*TT,st))}
   {const{b,ids}=staticBatch(TG,tmat);b.receiveShadow=true;b.name='terrain';scene.add(b);
     TL.forEach(([x0,z0],i)=>addLOD([0,1,2,3].map(l=>{const id=ids[i*4+l];return{set visible(v){b.setVisibleAt(id,v)}}}),x0,z0,x0+TT*TS,z0+TT*TS))}
   geo.dispose();
@@ -285,7 +293,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   // ----- building variations (Build 11.45): house2 bahay bunga sari chapel lighthouse warehouse stall cottage resort -----
   // [type, x, z, ry, w, d] like 'house' (front = +z rotated by ry); BD = default w, d. No rand(): colours come from the position hash, so
   // editing one never reshuffles the island. They reuse the shophouse lists (bl = lit windows, roofs, awn) and add a few of their own.
-  const BD={bar:[12,11],house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12],tower:[20,20],cave:[56,44],lookout:[7,7],ruin:[30,26],balete:[18,18],rest:[11,6],falls:[22,14]};
+  const BD={bar:[12,11],house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12],tower:[20,20],cave:[56,44],lookout:[7,7],ruin:[30,26],balete:[18,18],rest:[11,6],falls:[22,14],park:[60,40]};
   const FREE={lookout:1,ruin:1,balete:1,falls:1}; // Build 11.92 landmarks: each piece finds its own ground, so they may stand on a slope
   const BARS=[],TW=[[],[],[],[]],RK=[],SM=[],SK=[],CRY=[],PL=[],PR=[],GL=[],DK=[],TH=[],LHB=[],LHL=[],LHC=[],TINM=new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),WH=[];
   const LK=[],BT=[],LF=[],FW=[],LFX=LF;
@@ -293,7 +301,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   const at=(x,z,ry,a,d)=>({x:x+Math.cos(ry)*a+Math.sin(ry)*d,z:z-Math.sin(ry)*a+Math.cos(ry)*d}); // a along the width, d towards the front
   for(const b of BLD){const t=b[0],D=BD[t];if(!D)continue;const[,x,z,ry=0,w=D[0],d=D[1]]=b,[q,q2]=hq(x,z),f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo;if(sl>=2.4&&!FREE[t])continue;if(FREE[t]||t==='rest')CLR.push([x,z,Math.max(w,d)*.5+(t==='balete'?12:t==='lookout'?8:6)]);
     const y=f.lo-.25,lo=f.lo,S=sl+.25,col=hcol(q,q2),tin=TIN[(q2*TIN.length)|0],P=(a,dd)=>at(x,z,ry,a,dd),hue=n=>new THREE.Color().setHSL((q*n)%1,.7,.5);
-    if(t!=='lighthouse'&&t!=='cave'&&t!=='rest'&&!FREE[t])door(x,z,ry,d,t,t==='bahay'||t==='bunga'||t==='resort'?2.6:1.3);
+    if(t!=='lighthouse'&&t!=='cave'&&t!=='rest'&&t!=='park'&&!FREE[t])door(x,z,ry,d,t,t==='bahay'||t==='bunga'||t==='resort'?2.6:1.3);
     if(t==='house2'){const h=6.2+S,fr=P(0,d/2),bk=P(0,d/2+.75),rl=P(0,d/2+1.45);
       bl[1].push({x,y,z,ry,sx:w,sy:h,sz:d,c:col});PR.push({x,y:y+h,z,ry,sx:w+.8,sy:1.2,sz:d+.9,c:tin});
       nb(PL,bk.x,lo+3.1,bk.z,ry,w*.78,.18,1.5,0xd9d5cc);nb(PL,rl.x,lo+3.28,rl.z,ry,w*.78,.85,.09,0xffffff);nb(DK,fr.x,lo,fr.z,ry,1.1,2.1,.14,0x3a2a1c);addOBB(x,z,w/2,d/2,ry)}
@@ -384,6 +392,13 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
       const sh=P(0,-D2+3.05),pc=P(0,-D2+7.5),py=foot(pc.x,pc.z,4,4,ry).lo+.3;FW.push({x:sh.x,y:py-.4,z:sh.z,ry,h:Hf-1.4+(gl-py),w:5.6,px:pc.x,pz:pc.z,py});
       for(let k=0;k<11;k++){const a=k/11*6.283+.5;if(Math.abs(Math.sin(a))>.92&&Math.cos(a)>-.4&&Math.sin(a)<0)continue;const bx=pc.x+Math.cos(a)*6.6,bz=pc.z+Math.sin(a)*6.6,s2=1+hv(k+50)*1.3;nb(RK,bx,foot(bx,bz,.6,.6,ry).lo-.3,bz,a,s2*1.3,s2,s2,0x8a8478)}
       AMB.push({k:'mist',x:pc.x,y:py,z:pc.z,r:3},{k:'spray',x:sh.x,y:gl+Hf-1,z:sh.z,r:2.4})}
+    else if(t==='park'){ // city park (Build 11.93): lawn, cross paths, a fountain, benches, shade trees and lamps
+      const g=f.lo,hv=n=>hash2(Math.round(x*10)+n*13,Math.round(z*10)-n*7);nb(PL,x,g-.2,z,ry,w,.32,d,0x6fae4a);nb(PL,x,g-.2,z,ry,w,.36,3,0xd9c9a3);nb(PL,x,g-.2,z,ry,3,.36,d,0xd9c9a3);
+      nb(RK,x,g,z,ry,7,.6,7,0xcfc4b0);nb(PL,x,g+.05,z,ry,6,.6,6,0x35a8d6);nb(RK,x,g,z,ry,1.2,2.2,1.2,0xcfc4b0);addOBB(x,z,3.5,3.5,ry);AMB.push({k:'fount',x,y:g+2.3,z});
+      for(let k=0;k<Math.round(w*d/180);k++){const a=(hv(k)-.5)*(w-6),dd=(hv(k+50)-.5)*(d-6);if(Math.abs(a)<4||Math.abs(dd)<4)continue;const m=P(a,dd),s2=.8+hv(k+90)*.6;
+        BT.push({x:m.x,y:g,z:m.z,sx:.5*s2,sy:4*s2,sz:.5*s2,c:0x8a7a62});LF.push({x:m.x,y:g+4.6*s2,z:m.z,sx:2.6*s2,sy:2*s2,sz:2.6*s2,c:new THREE.Color().setHSL(.25+hv(k+7)*.07,.5,.3+hv(k+3)*.1)});addOBB(m.x,m.z,.3,.3)}
+      for(const[a,dd,r2]of[[-6,3,0],[6,-3,PI],[3,6,PI/2],[-3,-6,-PI/2]]){const m=P(a,dd);nb(PL,m.x,g,m.z,ry+r2,2.4,.5,.6,0x8a6a40)}
+      for(const[a,dd]of[[-w/2+1,-1.8],[w/2-1,1.8],[1.8,-d/2+1],[-1.8,d/2-1]]){const m=P(a,dd);nb(PL,m.x,g,m.z,ry,.14,3.6,.14,0x2e2e2e);nb(GL,m.x,g+3.6,m.z,ry,.4,.4,.4,0xffffff)}}
     else if(t==='bar'){const h=4.2+S,fr=P(0,d/2+1.2),dr=P(0,d/2+.04),sg=P(0,d/2+.09); // billiards & bar (data/interiors.json 'billiards': ENTER at the door)
       nb(PL,x,y,z,ry,w,h,d,0x2b3346);PR.push({x,y:y+h,z,ry,sx:w+.8,sy:1.1,sz:d+.9,c:0x45464d});awn.push({x:fr.x,y:lo+2.75,z:fr.z,ry,sx:w*.92,sy:.12,sz:2.3,c:0xb3261e});
       nb(DK,dr.x,lo,dr.z,ry,1.8,2.35,.12,0x4a2f1f);for(const k of[-1,1]){const g=P(k*w*.3,d/2+.04);nb(GL,g.x,lo+.95,g.z,ry,2.4,1.25,.1,0xffffff)}
@@ -572,7 +587,7 @@ const MPN=Math.ceil((2*EXT+120)/(1300/140)),MAPV={cx:GX,cz:GZ,w:MPN*1300/140,n:M
 MAPV.gas=LMF.gas.map(F=>[F.x,F.z]); // red dots on the minimap (hud.js)
 const MAP=document.createElement('canvas');MAP.width=MAP.height=MPN;const MAPT=document.createElement('canvas');MAPT.width=MAPT.height=MPN; // MAPT = the same image before the roads go on (the full-screen map draws its own, sharp ones)
 const T2=FEAT.find(f=>f.name==='town2'); // the second town's levelled rectangle is grey on the map too
-const mapCol=(x,z)=>{const h=terr(x,z);return lastCarve>.4||h<SEA?[31,120,150]:h<SEA+1.3?[226,210,162]:rd(x,z,TOWN)<1||(T2&&rd(x,z,T2)<1)||(CITY&&rd(x,z,CITY)<1)?[170,160,140]:h>115?[124,116,106]:h>14?[61,107,44]:[118,168,69]};
+const mapCol=(x,z)=>{const h=terr(x,z);return lastCarve>.4||h<SEA?[31,120,150]:h<SEA+1.3?[226,210,162]:rd(x,z,TOWN)<1||(T2&&rd(x,z,T2)<1)||(CITY&&inCity(x,z))?[170,160,140]:h>115?[124,116,106]:h>14?[61,107,44]:[118,168,69]};
 {const g=MAP.getContext('2d'),img=g.createImageData(MPN,MPN),W=MAPV.w;for(let j=0;j<MPN;j++)for(let i=0;i<MPN;i++){const x=GX+(i/MPN-.5)*W,z=GZ+(j/MPN-.5)*W,k=(j*MPN+i)*4;
   const c=mapCol(x,z);img.data.set([...c,235],k)}
   g.putImageData(img,0,0);MAPT.getContext('2d').drawImage(MAP,0,0);g.strokeStyle='#f4f1e8';g.lineCap='round';

@@ -9,6 +9,16 @@
 // F.dip) lives here so it is deterministic and testable; footfig.js only reads it.
 import { S, ctx } from './state.js';
 import { drunkWalk } from './effects.js';
+// Build 11.93: boxes near a point, from a 64 m grid built once per list (rebuilt when the list grows). For world.js OBBS-style
+// lists ({cx, cz, ...}) queried with a reach under 60 m: the walker's collision and the camera boom used to scan every box on the map. (Here, not util.js: foot.js runs headless.)
+// Returns a shared array: use it before the next call.
+const NG = new WeakMap(), NOUT = [], nk = (i, j) => (i + 5000) * 10000 + j + 5000;
+export function nearBoxes(L, x, z) {
+  let g = NG.get(L); if (!g || g.n !== L.length) { g = { n: L.length, m: new Map() }; for (const b of L) { const k = nk(Math.floor(b.cx / 64), Math.floor(b.cz / 64)); let a = g.m.get(k); if (!a) g.m.set(k, a = []); a.push(b); } NG.set(L, g); }
+  const ci = Math.floor(x / 64), cj = Math.floor(z / 64); NOUT.length = 0;
+  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) { const a = g.m.get(nk(ci + i, cj + j)); if (a) for (const b of a) NOUT.push(b); }
+  return NOUT;
+}
 
 export const F = { on: false, fp: false, eye: 1.4, x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, psi: 0, cy: 0, cp: .25, gnd: true, spd: 0,
   rs: 0,             // sprint amount 0..1 (eased)
@@ -68,7 +78,7 @@ function resolve(P, b, r) {
 // is a standing circle at (x, z) clear of every box (walls, bike)?
 function clear(x, z, bikes) {
   const P = { x, z, vx: 0, vz: 0 };
-  for (const b of env.OBBS) if (Math.abs(b.cx - x) < 60 && Math.abs(b.cz - z) < 60 && resolve(P, b, FC.R)) return false;
+  for (const b of nearBoxes(env.OBBS, x, z)) if (Math.abs(b.cx - x) < 60 && Math.abs(b.cz - z) < 60 && resolve(P, b, FC.R)) return false;
   for (const b of bikes) if (resolve(P, b, FC.R)) return false;
   return true;
 }
@@ -137,7 +147,7 @@ function sub(inp, h) {
   if (blocked(nx, F.z, F.y)) F.vx = 0; else F.x = nx;
   if (blocked(F.x, nz, F.y)) F.vz = 0; else F.z = nz;
   const bk = bikeNow();
-  for (let i = 0; i < 2; i++) { for (const b of env.OBBS) if (Math.abs(b.cx - F.x) < 60 && Math.abs(b.cz - F.z) < 60) resolve(F, b, FC.R); for (const b of bk) resolve(F, b, FC.R); }
+  for (let i = 0; i < 2; i++) { for (const b of nearBoxes(env.OBBS, F.x, F.z)) if (Math.abs(b.cx - F.x) < 60 && Math.abs(b.cz - F.z) < 60) resolve(F, b, FC.R); for (const b of bk) resolve(F, b, FC.R); }
   // ground: follow slopes while walking, fall off real drops, land (a hard landing jars the camera and bleeds some speed)
   const gh = env.H(F.x, F.z);
   if (F.gnd && F.vy <= 0) { if (F.y - gh < FC.DROP) F.y = gh; else F.gnd = false; }
