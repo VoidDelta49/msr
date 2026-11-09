@@ -105,6 +105,7 @@ const GEN=[]; // roadside houses the generator placed this load (map maker bakes
 // Front doors (npc.js: people walk in and out of them, a passenger's drop-off): x, z = the front step outside, ix, iz = just inside
 // the doorway, t = building type, n = what the passenger calls it. Front of a building = +z turned by ry (normal (sin ry, cos ry)).
 // n = how the passenger says it (Taglish), l = the map label
+const AMB=[],FALLS={tex:null},CLR=[],clr=(x,z)=>CLR.some(c=>(x-c[0])**2+(z-c[1])**2<c[2]*c[2]); // CLR: clearings round the 11.92 landmarks, no random tree grows there // Build 11.92: ambient particle emitters (particles.js) and the waterfall texture it scrolls
 const DOORS=[],DOORN={shop:['tindahan','Shop'],house:['bahay namin','House'],nipa:['kubo namin','Nipa hut'],house2:['bahay namin','House'],bahay:['bahay na bato','Bahay na bato'],bunga:['bahay namin','Bungalow'],sari:['sari-sari store','Sari-sari store'],
   chapel:['kapilya','Chapel'],bar:['tambayan','Billiards & bar'],warehouse:['bodega','Warehouse'],stall:['puwesto namin','Stall'],cottage:['cottage','Cottage'],resort:['resort','Resort'],tower:['opisina','Office tower'],church:['simbahan','Church']};
 function door(x,z,ry,d,t,out=1.3){const fx=Math.sin(ry),fz=Math.cos(ry),[n,l]=DOORN[t]||['doon','Building'];DOORS.push({x:x+fx*(d/2+out),z:z+fz*(d/2+out),ix:x+fx*(d/2-.6),iz:z+fz*(d/2-.6),t,n,l})}
@@ -284,13 +285,15 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   // ----- building variations (Build 11.45): house2 bahay bunga sari chapel lighthouse warehouse stall cottage resort -----
   // [type, x, z, ry, w, d] like 'house' (front = +z rotated by ry); BD = default w, d. No rand(): colours come from the position hash, so
   // editing one never reshuffles the island. They reuse the shophouse lists (bl = lit windows, roofs, awn) and add a few of their own.
-  const BD={bar:[12,11],house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12],tower:[20,20],cave:[56,44]};
+  const BD={bar:[12,11],house2:[8,9],bahay:[8.5,8.5],bunga:[9,7.5],sari:[4.4,5],chapel:[6.4,12],lighthouse:[7,7],warehouse:[13,26],stall:[4.4,3.4],cottage:[5.6,5.6],resort:[24,12],tower:[20,20],cave:[56,44],lookout:[7,7],ruin:[30,26],balete:[18,18],rest:[11,6],falls:[22,14]};
+  const FREE={lookout:1,ruin:1,balete:1,falls:1}; // Build 11.92 landmarks: each piece finds its own ground, so they may stand on a slope
   const BARS=[],TW=[[],[],[],[]],RK=[],SM=[],SK=[],CRY=[],PL=[],PR=[],GL=[],DK=[],TH=[],LHB=[],LHL=[],LHC=[],TINM=new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),WH=[];
+  const LK=[],BT=[],LF=[],FW=[],LFX=LF;
   const nb=(L,x,y,z,ry,sx,sy,sz,c)=>L.push({x,y,z,ry,sx,sy,sz,c}); // box standing on y
   const at=(x,z,ry,a,d)=>({x:x+Math.cos(ry)*a+Math.sin(ry)*d,z:z-Math.sin(ry)*a+Math.cos(ry)*d}); // a along the width, d towards the front
-  for(const b of BLD){const t=b[0],D=BD[t];if(!D)continue;const[,x,z,ry=0,w=D[0],d=D[1]]=b,[q,q2]=hq(x,z),f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo;if(sl>=2.4)continue;
+  for(const b of BLD){const t=b[0],D=BD[t];if(!D)continue;const[,x,z,ry=0,w=D[0],d=D[1]]=b,[q,q2]=hq(x,z),f=foot(x,z,w/2,d/2,ry),sl=f.hi-f.lo;if(sl>=2.4&&!FREE[t])continue;if(FREE[t]||t==='rest')CLR.push([x,z,Math.max(w,d)*.5+(t==='balete'?12:t==='lookout'?8:6)]);
     const y=f.lo-.25,lo=f.lo,S=sl+.25,col=hcol(q,q2),tin=TIN[(q2*TIN.length)|0],P=(a,dd)=>at(x,z,ry,a,dd),hue=n=>new THREE.Color().setHSL((q*n)%1,.7,.5);
-    if(t!=='lighthouse'&&t!=='cave')door(x,z,ry,d,t,t==='bahay'||t==='bunga'||t==='resort'?2.6:1.3);
+    if(t!=='lighthouse'&&t!=='cave'&&t!=='rest'&&!FREE[t])door(x,z,ry,d,t,t==='bahay'||t==='bunga'||t==='resort'?2.6:1.3);
     if(t==='house2'){const h=6.2+S,fr=P(0,d/2),bk=P(0,d/2+.75),rl=P(0,d/2+1.45);
       bl[1].push({x,y,z,ry,sx:w,sy:h,sz:d,c:col});PR.push({x,y:y+h,z,ry,sx:w+.8,sy:1.2,sz:d+.9,c:tin});
       nb(PL,bk.x,lo+3.1,bk.z,ry,w*.78,.18,1.5,0xd9d5cc);nb(PL,rl.x,lo+3.28,rl.z,ry,w*.78,.85,.09,0xffffff);nb(DK,fr.x,lo,fr.z,ry,1.1,2.1,.14,0x3a2a1c);addOBB(x,z,w/2,d/2,ry)}
@@ -340,6 +343,47 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
         const m=P(a,dd),sc=hv(n+80);if(n%2){SM.push({x:m.x,y:lo,z:m.z,sx:1.1+sc*1.2,sy:2+sc*3.5,sz:1.1+sc*1.2,c:0xd6cdbd});addOBB(m.x,m.z,.7,.7,ry)}else SK.push({x:m.x,y:lo+Hh,z:m.z,sx:.8+sc,sy:2+sc*3,sz:.8+sc,c:0xcfc4b0})}
       for(const[a,dd,c]of[[-Ws*.5,-4,0x7de8ff],[-Ws*.62,2,0x9d8cff],[-Ws*.3,-12,0x7de8ff],[Ws*.4,4,0x9d8cff],[Ws*.7,-2,0x7de8ff],[G+2,Ds-3,0x7de8ff],[-G-2,Ds-3,0x7de8ff],[Ws/2+G+2,-Ds+3,0x9d8cff],[Ws/2-G-2,-Ds+3,0x9d8cff]]){const m=P(a,dd);CRY.push({x:m.x,y:lo,z:m.z,ry:hv(a*3)*6,sx:.6,sy:1.6+hv(dd)*1.6,sz:.6,c});CRY.push({x:m.x+.7,y:lo,z:m.z-.4,ry:hv(a)*6,sx:.4,sy:1+hv(a+dd)*1.2,sz:.4,c})}
       const pm=P(-Ws*.45,-4);nb(PL,pm.x,lo+.02,pm.z,ry,16,.12,11,0x2fb7e8)}
+    else if(t==='lookout'){ // Build 11.92: hilltop lookout tower, the island's 'triangle rule' landmark: bamboo legs, braces, a deck, a thatch hat and a beacon lit at night
+      const Ht=25,hw=w/2-.3,lg=[[-1,-1],[1,-1],[-1,1],[1,1]].map(([a,e])=>{const p=P(a*hw,e*hw);return{x:p.x,z:p.z,g:foot(p.x,p.z,.3,.3,ry).lo}}),g0=Math.min(...lg.map(l=>l.g)),top=Math.max(...lg.map(l=>l.g))+Ht;
+      for(const l of lg){nb(LK,l.x,l.g-.4,l.z,ry,.6,top-l.g+3.6,.6,0x9c7f48);addOBB(l.x,l.z,.35,.35,ry)}
+      for(let yy=g0+3;yy<top-1.5;yy+=4.6)for(const[a,e,sx,sz]of[[0,-hw,w-.5,.2],[0,hw,w-.5,.2],[-hw,0,.2,w-.5],[hw,0,.2,w-.5]]){const p=P(a,e);if(yy>foot(p.x,p.z,.2,.2,ry).hi+.4)nb(LK,p.x,yy,p.z,ry,sx,.2,sz,0xb89a5a)}
+      nb(LK,x,top,z,ry,w+1.4,.35,d+1.4,0x8a6a40);for(const[a,e,sx,sz]of[[0,-hw-.6,w+1.4,.12],[0,hw+.6,w+1.4,.12],[-hw-.6,0,.12,w+1.4],[hw+.6,0,.12,w+1.4]]){const p=P(a,e);nb(LK,p.x,top+1.05,p.z,ry,sx,.12,sz,0xb89a5a)}
+      const la=P(0,hw+.5);nb(LK,la.x,foot(la.x,la.z,.3,.3,ry).lo,la.z,ry,.75,top-foot(la.x,la.z,.3,.3,ry).lo,.1,0x6b5a45);
+      TH.push({x,y:top+3.1,z,ry,sx:(w+3)/1.414,sy:3,sz:(d+3)/1.414,c:0xb8955a});nb(GL,x,top+1.4,z,ry,.9,.9,.9,0xffffff);nb(LK,x,top+5.4,z,ry,.14,4.4,.14,0x6b5a45);{const fl=P(.9,0);nb(LK,fl.x,top+8.6,fl.z,ry,1.8,1,.06,0xc0392b)}
+      AMB.push({k:'flag',x,y:top+6.4,z})}
+    else if(t==='ruin'){ // old stone fort (Build 11.92): broken curtain walls, two standing bastions, a gate arch, fallen blocks, moss
+      const hv=n=>hash2(Math.round(x*10)+n*17,Math.round(z*10)-n*5),wl=(a,dd,sw,sd,hg,c=0xb7a98c)=>{const m=P(a,dd),g=foot(m.x,m.z,sw/2,sd/2,ry).lo-.3;nb(RK,m.x,g,m.z,ry,sw,hg+.3,sd,c);if(hg>1)addOBB(m.x,m.z,sw/2,sd/2,ry);return g},W2=w/2,D2=d/2;
+      let n=0;for(const[ax,az,bx,bz]of[[-W2,-D2,W2,-D2],[W2,-D2,W2,D2],[-W2,D2,-W2,-D2]])for(let k=0;k<5;k++){const t0=(k+.5)/5,a=ax+(bx-ax)*t0,dd=az+(bz-az)*t0,hz=ax===bx,L=(hz?d:w)/5+.2,h=hv(n++)<.22?0:1.2+hv(n+30)*4.2;if(h)wl(a,dd,hz?1.6:L,hz?L:1.6,h,hv(n+60)<.3?0x8f9a72:0xb7a98c)}
+      for(const k of[-1,1]){wl(k*(W2/2+3.5),D2,W2-7,1.6,1+hv(k+9)*2.4)}const g=wl(-3.4,D2,1.8,2.2,6.5);wl(3.4,D2,1.8,2.2,6.5);const ar=P(0,D2);nb(RK,ar.x,g+6.5,ar.z,ry,8.6,1.4,2.2,0xa89a7e);
+      for(const[a,dd]of[[-W2,-D2],[W2,D2]]){wl(a,dd,5.5,5.5,7+hv(a)*3,0xa89a7e);wl(a,dd,6.4,6.4,1.2,0x8f9a72)}
+      for(let k=0;k<7;k++){const a=(hv(k+90)-.5)*w*1.15,dd=(hv(k+120)-.5)*d*1.15,s2=.7+hv(k+150)*1.3;wl(a,dd,s2*1.4,s2,s2*.8,hv(k)<.5?0x8f9a72:0xa89a7e)}
+      const c=P(W2*.3,-D2*.2);nb(RK,c.x,foot(c.x,c.z,1,1,ry).lo-.2,c.z,ry+.6,1.6,4.2,1.6,0xb7a98c);addOBB(c.x,c.z,.8,.8,ry)}
+    else if(t==='balete'){ // giant strangler fig (Build 11.92): a trunk wrapped in aerial roots, buttresses, a wide canopy and roots hanging from it. Folk say a kapre sits up there.
+      const hv=n=>hash2(Math.round(x*10)+n*13,Math.round(z*10)+n*7),g=f.lo-.3,Ht=15;
+      BT.push({x,y:g,z,sx:2.4,sy:Ht+2,sz:2.4,c:0x8a7a62});addOBB(x,z,2.6,2.6,ry);
+      for(let k=0;k<9;k++){const a=k/9*6.283+hv(k)*.4,r=2.3+hv(k+20)*.5;BT.push({x:x+Math.cos(a)*r,y:g,z:z+Math.sin(a)*r,sx:.45+hv(k+40)*.3,sy:Ht-1+hv(k+60)*3,sz:.45+hv(k+40)*.3,c:0x9a8a70})}
+      for(let k=0;k<5;k++){const a=k/5*6.283+.3,p={x:x+Math.cos(a)*3.4,z:z+Math.sin(a)*3.4};BT.push({x:p.x,y:g,z:p.z,ry:-a,sx:2.8,sy:2.2+hv(k+80)*1.4,sz:.5,c:0x8a7a62})}
+      for(let k=0;k<7;k++){const a=k/7*6.283+hv(k+100),r=k?4.5+hv(k+110)*3.5:0,s2=k?5+hv(k+120)*2.5:7.5;LF.push({x:x+Math.cos(a)*r,y:g+Ht+1+hv(k+130)*4,z:z+Math.sin(a)*r,sx:s2,sy:s2*.7,sz:s2,c:0x3a6a2c})}
+      for(let k=0;k<14;k++){const a=hv(k+140)*6.283,r=4+hv(k+150)*5,l=5+hv(k+160)*6;BT.push({x:x+Math.cos(a)*r,y:g+Ht+1-l,z:z+Math.sin(a)*r,sx:.1,sy:l,sz:.1,c:0x6b5a45})}
+      AMB.push({k:'leaf',x,y:g+Ht,z,r:8})}
+    else if(t==='rest'){ // roadside rest stop (Build 11.92): open shed with a tin roof, benches, a water drum, a lamp, a sign and a campfire. Front faces the road.
+      const pst=[[-1,-1],[1,-1],[-1,1],[1,1]],h=3+S,fp=P(0,d/2+4.2),sg=P(w/2+1.2,d/2+1);nb(PL,x,y,z,ry,w,.3+S,d,0xa59e8e);
+      for(const[a,e]of pst){const p=P(a*(w/2-.3),e*(d/2-.3));nb(PL,p.x,y,p.z,ry,.22,h+.3,.22,0x6b5a45)}PR.push({x,y:y+h+.3,z,ry,sx:w+1,sy:1.4,sz:d+1.2,c:0x3d7a4a});
+      for(const e of[-1,1]){const b=P(-w*.18,e*(d/2-1));nb(PL,b.x,lo+.3,b.z,ry,w*.5,.45,.5,0x8a6a40)}const dr=P(w/2-.9,-d/2+.9);nb(PL,dr.x,lo+.3,dr.z,ry,.75,1,.75,0x2f5f9a);
+      nb(PL,sg.x,lo,sg.z,ry,.14,2.2,.14,0x6b5a45);nb(PL,sg.x,lo+2.2,sg.z,ry,1.8,.8,.1,0xe9dcc0);nb(GL,sg.x,lo+3.05,sg.z,ry,.35,.35,.35,0xffffff);
+      for(let k=0;k<6;k++){const a=k/6*6.283;nb(RK,fp.x+Math.cos(a)*.75,lo-.1,fp.z+Math.sin(a)*.75,a,.42,.38,.42,0x8a8478)}nb(DK,fp.x,lo,fp.z,ry+.8,.9,.12,.18,0x3a2a1c);
+      AMB.push({k:'fire',x:fp.x,y:lo+.15,z:fp.z});addOBB(x,z,w/2,d/2,ry)}
+    else if(t==='falls'){ // waterfall + gorge (Build 11.92): a craggy rock wall with a notch, a sheet of falling water, a plunge pool ringed with boulders, mist
+      const hv=n=>hash2(Math.round(x*10)+n*11,Math.round(z*10)-n*3),Hf=20,D2=d/2,lip=P(0,-D2+3),gl=foot(lip.x,lip.z,3,1,ry).lo,
+        rk=(a,dd,sw,sd,hg,y0,c=0x8a8478,r2=0)=>{const m=P(a,dd);nb(RK,m.x,y0,m.z,ry+r2,sw,hg,sd,c);if(y0<lo+2)addOBB(m.x,m.z,sw/2,sd/2,ry+r2)};
+      rk(0,-D2+1,7,4,Hf-1,gl-1,0x7a746a);
+      for(let j=1;j<4;j++)for(let k=-2;k<=2;k++){const a=k*5+(hv(j*9+k)-.5)*2,dd=-D2-j*4.2,m=P(a,dd),g=foot(m.x,m.z,2.5,2.5,ry).lo,top=gl+Hf-j*3.2+hv(j+k*3)*2.4;if(top>g+1)rk(a,dd,5.6,4.8,top-g+1,g-1,(j+k)%2?0x7a746a:0x8a8478,(hv(j*5+k)-.5)*.4)} // the mass behind the lip
+      for(const k of[-1,1])for(let j=0;j<4;j++){const dd=-D2+5+j*4.5,a=k*(9.2+hv(j+k*4)*1.5),m=P(a,dd),g=foot(m.x,m.z,2,2,ry).lo,hh=Hf-4-j*4+hv(j*7+k)*2;if(hh>1.5)rk(a,dd,3.4+hv(j*2+k)*1.6,4.8,hh+(lo-g)+1,g-1,j%2?0x8a8478:0x7a746a,(hv(j+k)-.5)*.5)} // gorge walls down the stream
+      for(let j=0;j<5;j++){const a=(hv(j+200)-.5)*16,dd=-D2-1-hv(j+210)*8,m=P(a,dd);LFX.push({x:m.x,y:gl+Hf-1+hv(j)*2,z:m.z,sx:2.2,sy:1.3,sz:2.2,c:0x4a7a34})} // moss and shrubs on toprk(0,-D2+1.6,7.6,3,1,gl+Hf-2,0x6f7a5a); // the lip the water pours over
+      for(const k of[-1,1])for(let j=0;j<3;j++){const a=k*(5.5+j*3.4),hh=Hf+3-j*4+hv(j+k*5)*3;rk(a,-D2+1.5+j*.9+hv(j+k)*1.2,3.6+hv(j*3+k)*1.4,4.5,hh,foot(P(a,-D2).x,P(a,-D2).z,2,2,ry).lo-1,j%2?0x8a8478:0x7a746a,(hv(j+7*k)-.5)*.5)}
+      const sh=P(0,-D2+3.05),pc=P(0,-D2+7.5),py=foot(pc.x,pc.z,4,4,ry).lo+.3;FW.push({x:sh.x,y:py-.4,z:sh.z,ry,h:Hf-1.4+(gl-py),w:5.6,px:pc.x,pz:pc.z,py});
+      for(let k=0;k<11;k++){const a=k/11*6.283+.5;if(Math.abs(Math.sin(a))>.92&&Math.cos(a)>-.4&&Math.sin(a)<0)continue;const bx=pc.x+Math.cos(a)*6.6,bz=pc.z+Math.sin(a)*6.6,s2=1+hv(k+50)*1.3;nb(RK,bx,foot(bx,bz,.6,.6,ry).lo-.3,bz,a,s2*1.3,s2,s2,0x8a8478)}
+      AMB.push({k:'mist',x:pc.x,y:py,z:pc.z,r:3},{k:'spray',x:sh.x,y:gl+Hf-1,z:sh.z,r:2.4})}
     else if(t==='bar'){const h=4.2+S,fr=P(0,d/2+1.2),dr=P(0,d/2+.04),sg=P(0,d/2+.09); // billiards & bar (data/interiors.json 'billiards': ENTER at the door)
       nb(PL,x,y,z,ry,w,h,d,0x2b3346);PR.push({x,y:y+h,z,ry,sx:w+.8,sy:1.1,sz:d+.9,c:0x45464d});awn.push({x:fr.x,y:lo+2.75,z:fr.z,ry,sx:w*.92,sy:.12,sz:2.3,c:0xb3261e});
       nb(DK,dr.x,lo,dr.z,ry,1.8,2.35,.12,0x4a2f1f);for(const k of[-1,1]){const g=P(k*w*.3,d/2+.04);nb(GL,g.x,lo+.95,g.z,ry,2.4,1.25,.1,0xffffff)}
@@ -350,7 +394,13 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
       for(const k of[-1,1]){const p=P(k*3.2,d/2+3);nb(PL,p.x,lo,p.z,ry,.22,3.1,.22,0xffffff)}
       nb(PL,pd.x,lo,pd.z,ry,w*.78,.06,12.5,0xe9dcc0);nb(PL,pl.x,lo,pl.z,ry,w*.5,.1,7.5,0x35b8e6);addOBB(x,z,w/2,d/2,ry)}}
   const nbi=(L,g,m,sh,far)=>{if(L.length)inst(g(),m(),L,sh,far)},ub=()=>new THREE.BoxGeometry(1,1,1).translate(0,.5,0); // only lists that have entries: maps without these buildings draw exactly what they did
-  nbi(PL,()=>aoGeo(ub(),.62,0,.6),()=>vstd(0xffffff,.85),true,FAR.tree);nbi(DK,ub,()=>std(0x1d1f22,.9),false,FAR.mid);nbi(GL,ub,()=>lampMat([1.6,1.35,.85],[.35,.4,.5]),false,FAR.mid);
+  nbi(PL,()=>aoGeo(ub(),.62,0,.6),()=>vstd(0xffffff,.85),true,FAR.tree);
+  nbi(LK,()=>aoGeo(ub(),.62,0,.6),()=>vstd(0xffffff,.85),true,FAR.big); // lookout towers are seen from across the island
+  nbi(BT,()=>new THREE.CylinderGeometry(.5,.58,1,7).translate(0,.5,0),()=>vstd(0xffffff,.95,0,tBark),true,FAR.big);nbi(LF,()=>new THREE.IcosahedronGeometry(1,1),()=>vstd(0xffffff,.9,0,tLeaf),true,FAR.big);
+  if(FW.length){const c=document.createElement('canvas');c.width=32;c.height=128;const g=c.getContext('2d');for(let i=0;i<220;i++){const v=150+Math.random()*105;g.fillStyle=`rgba(${v*.85|0},${v*.95|0},${v},${.35+Math.random()*.55})`;g.fillRect(Math.random()*32,Math.random()*128,1+Math.random()*2,8+Math.random()*30)}
+    const tx=new THREE.CanvasTexture(c);tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.repeat.set(2,1.6);FALLS.tex=tx;const wm=new THREE.MeshBasicMaterial({map:tx,transparent:true,depthWrite:false,color:0xdcefff,side:THREE.DoubleSide}),pm=new THREE.MeshStandardMaterial({color:0x2c8fbf,roughness:.15,transparent:true,opacity:.85});
+    for(const f of FW){const m=new THREE.Mesh(new THREE.PlaneGeometry(f.w,f.h).translate(0,f.h/2,0),wm);m.position.set(f.x,f.y+.4,f.z);m.rotation.y=f.ry;m.name='falls';m.renderOrder=4;m.updateMatrix();freeze(m);scene.add(m);cullFar(m,FAR.big);
+      const p=new THREE.Mesh(new THREE.CircleGeometry(6.4,20).rotateX(-PI/2),pm);p.position.set(f.px,f.py,f.pz);p.name='plungePool';p.updateMatrix();freeze(p);scene.add(p);cullFar(p,FAR.mid)}}nbi(DK,ub,()=>std(0x1d1f22,.9),false,FAR.mid);nbi(GL,ub,()=>lampMat([1.6,1.35,.85],[.35,.4,.5]),false,FAR.mid);
   nbi(PR,()=>prism(1,1.6,1),()=>TINM,true,FAR.tree);nbi(WH,ub,()=>TINM,true,FAR.big);nbi(TH,()=>new THREE.ConeGeometry(1,1,4).rotateY(PI/4).translate(0,.5,0),()=>std(0xffffff,1),true,FAR.tree);
   nbi(LHB,()=>new THREE.CylinderGeometry(1,.93,1,16).translate(0,.5,0),()=>std(0xffffff,.6),true,FAR.big);nbi(LHL,()=>new THREE.CylinderGeometry(1,1,1,12).translate(0,.5,0),()=>lampMat([2.4,2,1.1],[.5,.5,.5]),false,FAR.big);
   if(BARS.length){const c=document.createElement('canvas');c.width=512;c.height=128;const g=c.getContext('2d');g.textAlign='center';g.textBaseline='middle';g.font='900 64px system-ui, sans-serif'; // the neon sign over a bar's door
@@ -442,13 +492,13 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
       const pm={x,y:foot(x,z,.3,.3).lo-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4};if(inBld(x,z))continue;palms.push(pm);addOBB(x,z,.25,.25)}
   }
   {const[g,m,lo]=pair({g:aoGeo(trunk,.55,0,5),m:vstd(0xd8c8b0,.9,0,tBark)},{g:aoGeo(fronds,.7,6.4,8.4),m:vstd(0xffffff,.8,0,tFrond)},[aoGeo(trunkLo,.55,0,5),aoGeo(frondsLo,.7,6.4,8.4)]);inst(g,m,palms,false,FAR.tree,lo)}
-  for(let i=0;i<TP.tries&&trees.length<TP.max;i++){const x=ICX+(rand()-.5)*2*CMAX,z=ICZ+(rand()-.5)*2*CMAX,h=terr(x,z);if(h<10||h>150||lastCarve>.05)continue;
+  let cut=0;for(let i=0;i<TP.tries&&trees.length+cut<TP.max;i++){const x=ICX+(rand()-.5)*2*CMAX,z=ICZ+(rand()-.5)*2*CMAX,h=terr(x,z);if(h<10||h>150||lastCarve>.05)continue;
     if(Math.hypot(x-TERR.x,z-TERR.z)<TERR.r-20)continue;if(hg.some(o=>Math.hypot(x-o.x,z-o.z)<22))continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+3)continue;const s=.7+rand()*.8;
-    trees.push({x,y:foot(x,z,.3*s,.3*s).lo-.2,z,sx:s,sy:s*(.8+rand()*.5),sz:s,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)});if(q&&q.d<20)addOBB(x,z,.3,.3)}
+    const tr={x,y:foot(x,z,.3*s,.3*s).lo-.2,z,sx:s,sy:s*(.8+rand()*.5),sz:s,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)};if(clr(x,z)){cut++;continue}trees.push(tr);if(q&&q.d<20)addOBB(x,z,.3,.3)}
   // extra islands: trees inland
   for(const I of ISL){
     const fr=(I.x1-I.x0)*(I.z1-I.z0)/(4*CMAX*CMAX),nt=Math.round(TP.max*fr);for(let k=0,c=0;k<TP.tries*fr&&c<nt;k++){const x=I.x0+rand()*(I.x1-I.x0),z=I.z0+rand()*(I.z1-I.z0),h=terr(x,z);if(h<10||h>150||lastCarve>.05||islD(x,z,I)<0)continue;
-      const q=nearRoad(x,z);if(q&&q.d<q.w/2+3)continue;const sc=.7+rand()*.8;c++;trees.push({x,y:foot(x,z,.3*sc,.3*sc).lo-.2,z,sx:sc,sy:sc*(.8+rand()*.5),sz:sc,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)});if(q&&q.d<20)addOBB(x,z,.3,.3)}}
+      const q=nearRoad(x,z);if(q&&q.d<q.w/2+3)continue;const sc=.7+rand()*.8;c++;const tr={x,y:foot(x,z,.3*sc,.3*sc).lo-.2,z,sx:sc,sy:sc*(.8+rand()*.5),sz:sc,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)};if(clr(x,z))continue;trees.push(tr);if(q&&q.d<20)addOBB(x,z,.3,.3)}}
   {const[g,m,lo]=pair({g:aoGeo(new THREE.CylinderGeometry(.2,.28,3,5).translate(0,1.5,0),.45),m:vstd(0x9a7a5a,.9,0,tBark)},{g:aoGeo(new THREE.IcosahedronGeometry(2.4,0).translate(0,4.4,0),.45,2.2,6.8,.8),m:vstd(0xffffff,.9,0,tLeaf)},
     [aoGeo(new THREE.CylinderGeometry(.2,.28,3,3,1,true).translate(0,1.5,0),.45),aoGeo(new THREE.OctahedronGeometry(2.5,0).translate(0,4.4,0),.45,2.2,6.8,.8)]);inst(g,m,trees,false,FAR.tree,lo)} // LOD twin: 42 vertices instead of 120
   // boulders on the rough fields (feature.rocks = how many): flat-shaded rocks, the big ones solid
@@ -538,6 +588,7 @@ const LNM={airstrip:'Airstrip',paddy:'Rice paddies',town:'Poblacion',town2:'Pobl
 MAPV.lab=[...FEAT.filter(f=>f.type==='volcano').map(f=>({n:'Volcano',x:f.x,z:f.z,p:2})),...FEAT.filter(f=>f.type==='terraces').map(f=>({n:'Rice terraces',x:f.x,z:f.z,p:1})),
   ...FEAT.filter(f=>f.label).map(f=>({n:f.label,x:f.x??(f.x0+f.x1)/2,z:f.z??(f.z0+f.z1)/2,p:f.lp??1})), // any feature can carry a map name: "label", "lp" (priority)
   ...FEAT.filter(f=>f.type==='flat'&&LNM[f.name]&&!f.label).map(f=>({n:LNM[f.name],x:(f.x0+f.x1)/2,z:(f.z0+f.z1)/2,p:f.name==='town'||f.name==='town2'||f.name==='airstrip'||f.name==='city'?2:1}))];
+{const LBN={lookout:['Lookout',1],ruin:['Fuerte Viejo',1],balete:['Balete Tree',1],rest:['Rest stop',0]};for(const b of BLD)if(LBN[b[0]])MAPV.lab.push({n:LBN[b[0]][0],x:b[1],z:b[2],p:LBN[b[0]][1]})} // Build 11.92 landmarks
 if(LMF.lot[0]){const w=LMF.lot[0].W(28,29);MAPV.lab.push({n:'Parking lot',x:w.x,z:w.z,p:0})}
 
 /* parking lot (block 0,0) + gas station (block -1,0) */
@@ -577,4 +628,7 @@ function zones(x,z,o){const inl=inland(x,z),gx=inland(x+20,z)-inland(x-20,z),gz=
   o.river=1-sstep(8,90,Math.sqrt(bd));o.rx=bx;o.rz=bz;o.town=1-sstep(0,130,rd(x,z,TOWN));
   o.paddy=1-sstep(0,90,rd(x,z,PADDY));
   const dv=Math.hypot(x-VOL.x,z-VOL.z);o.volc=1-sstep(60,420,dv);o.wild=(1-o.town)*sstep(0,50,inl)*(1-sstep(90,160,VOL.h*Math.exp(-Math.pow(dv/VOL.r,1.8))));return o}
-export { zones, atGas, LMF, GEN, DOORS, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPT, mapHi, MAPV };
+if(VOL.h)AMB.push({k:'steam',x:VOL.x,y:terr(VOL.x,VOL.z)+1,z:VOL.z,r:VOL.craterR*.5}); // fumaroles in the crater
+if(PADDY)AMB.push({k:'fly',x:(PADDY.x0+PADDY.x1)/2,y:terr((PADDY.x0+PADDY.x1)/2,(PADDY.z0+PADDY.z1)/2)+.6,z:(PADDY.z0+PADDY.z1)/2,r:Math.min(PADDY.x1-PADDY.x0,PADDY.z1-PADDY.z0)*.45});
+if(TERR.r)AMB.push({k:'fly',x:TERR.x,y:terr(TERR.x,TERR.z)+.6,z:TERR.z,r:TERR.r*.5});
+export { AMB, FALLS, zones, atGas, LMF, GEN, DOORS, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPT, mapHi, MAPV };
