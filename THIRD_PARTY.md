@@ -4,7 +4,7 @@ CPM: Motor Edition's own code is under the MIT License (see `LICENSE`). It also 
 
 | Library | Version | License | Source |
 |---|---|---|---|
-| [three.js](https://threejs.org) (`three/webgpu`, `three/tsl`, `three/addons/`) | 0.186.1 | MIT | https://github.com/mrdoob/three.js |
+| [three.js](https://threejs.org) (`three/webgpu`, `three/tsl`, `three/addons/`) | 0.187.0 | MIT | https://github.com/mrdoob/three.js |
 | [Rapier3D](https://rapier.rs) (`@dimforge/rapier3d-compat`) | 0.21.0 | Apache-2.0 | https://github.com/dimforge/rapier |
 
 ## three.js
