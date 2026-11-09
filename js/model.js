@@ -6,7 +6,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clone as skelClone } from 'three/addons/utils/SkeletonUtils.js';
 import { attribute, uniformArray, texture, uv, vec2, vec3, float, step, select, instancedBufferAttribute, smoothstep } from 'three/tsl';
 import { PI } from './util.js';
-import { scene, std, sun } from './renderer.js';
+import { scene, std, sun, head } from './renderer.js';
 import { Q } from './config.js';
 import * as T from './tex.js';
 import { mkTex } from './tex.js';
@@ -17,6 +17,7 @@ import { prof, JACKET, JEAN, HELM, VISOR, SHOE, GLOVE, TORSO_PTS, humanGeo, bake
 const MP = std(0xffffff, .36, .2), MK = std(0x15161a, .34, .3), MB = std(0x141518, .6, .2), MR = std(0x0d0d0d, .95), MC = std(0xd5dae0, .22, 1), ME = std(0x2a2c30, .45, .6),
   MS = std(0x1b1b1b, .85), MG = std(0x2b2e33, .8), MRd = std(0x223344, .7), MTail = std(0x330000, .4, 0, 0xff1a1a), MHead = std(0xfff8e0, .2, 0, 0xfff4d0),
   MAmb = std(0x3a2400, .4, 0, 0xff9a1a);
+MAmb.emissiveIntensity = .4; // 11.99: turn signals are amber lenses, not lamps that burn all the time
 // Carbon fiber: one 2x2 twill canvas texture shared by every carbon part. Fenders (MF) and wheel spokes (MW) have their own
 // materials so each garage option can switch just its parts; MCF is plain carbon (fenders, wheels, muffler cover).
 const MF = std(0x15161a, .34, .3), MW = std(0x50545b, .4, .6);
@@ -379,7 +380,7 @@ function sport(ct) {
   mk(prof([[.04, .66], [.34, .7], [.4, .58], [.3, .48], [.08, .48]], .2, .01), MK, ct, 0, 0, 0);            // frame cover
   mk(prof([[.03, .82], [.07, .85], [.34, .845], [.44, .875], [.6, .9], [.64, .885], [.44, .8], [.06, .79]], .25, .025, 2), MS, ct, 0, 0, 0); // seat
   for (const s of [-1, 1]) { tube([s * .1, .88, .5], [s * .1, .915, .76], .014, MK, ct); tube([s * .1, .915, .76], [s * .05, .925, .8], .014, MK, ct); } // grab rails
-  mk(box(.12, .03, .035), MTail, ct, 0, .905, .905, .7);                                                       // LED tail lamp
+  mk(box(.13, .04, .03), MTail, ct, 0, .9, .945, .5);                                                       // LED tail lamp
   mk(prof([[.84, .84], [.9, .85], [.97, .66], [.94, .62], [.88, .68]], .08, .01), MK, ct, 0, 0, 0);           // plate hanger
   mk(box(.2, .12, .008), MPl, ct, 0, .59, .975, .35); for (const s of [-1, 1]) mk(box(.05, .028, .045), MAmb, ct, s * .1, .79, .93);
   for (const s of [-1, 1]) { mk(box(.09, .02, .035), MB, ct, s * .17, .33, .18); mk(box(.025, .08, .06), MAlu, ct, s * .13, .37, .2); mk(box(.07, .02, .03), MB, ct, s * .15, .42, .5); } // pegs + hangers
@@ -459,7 +460,7 @@ function scooter(ct) {
   mk(prof([[-.09, .69], [-.06, .735], [.03, .755], [.19, .76], [.37, .81], [.54, .86], [.72, .885], [.83, .895], [.84, .87], [.72, .855], [.54, .83], [.37, .78], [.19, .715], [.03, .7], [-.04, .625], [-.085, .635]], .3, .03, 2), MS, ct, 0, 0, 0); // seat: thick, its nose hangs over the tunnel, rising to the tail
   for (const s of [-1, 1]) mk(prof([[.56, .83], [.62, .865], [.84, .885], [.86, .86], [.8, .845], [.62, .825]], .04, .01), MK, ct, s * .125, 0, 0); // 2026 one-piece grab bar: sculpted side
   mk(prof([[.78, .86], [.84, .885], [.88, .87], [.86, .845]], .29, .012), MK, ct, 0, 0, 0);                    // ... joined behind the seat
-  mk(box(.13, .04, .03), MTail, ct, 0, .845, .915, .6); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .8, .875);
+  mk(box(.13, .04, .03), MTail, ct, 0, .85, .955, .45); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .8, .875);
   mk(prof([[.74, .69], [.92, .705], [.93, .68], [1.03, .385], [1.005, .37], [.87, .63], [.76, .645]], .07, .01), MK, ct, 0, 0, 0); // plate hanger: thin stalk down and back
   mk(box(.2, .12, .008), MPl, ct, 0, .47, .99, .4);
   // steering
@@ -645,10 +646,10 @@ function h2(ct, v) {
   const sT = R ? 1.17 : 1.12;
   mk(taper(prof([[-.42, .96], [-.46, sT - .06], [-.5, sT], [-.56, sT - .03], [-.66, .99], [-.55, .955]], .3, .006), [[-.66, .55], [-.5, 1]], [[1, 1], [sT, .6]]), MVis, ct, 0, 0, 0);
   // nose: centre headlamp (H2R: blanked), ram-air mouth on the left, position lights
-  mk(box(.13, .045, .05), R ? MB : MHead, ct, 0, .775, -.885, .3);
+  mk(box(.11, .045, .05), R ? MB : MHead, ct, 0, .772, -.925, .2);
   mk(box(.1, .07, .06), MB, ct, -.1, .735, -.855, .2);
   if (!R) for (const s of [-1, 1]) {
-    mk(box(.08, .01, .02), MHead, ct, s * .12, .8, -.83, .3, s * .5);                                                   // position light strips
+    mk(box(.07, .012, .02), MHead, ct, s * .1, .815, -.875, .5, s * .6);                                                 // position light strips
     mk(box(.03, .02, .05), MAmb, ct, s * .26, .76, -.62);                                                               // front signals
     tube([s * .23, .95, -.58], [s * .31, .99, -.6], .008, MB, ct, 5);                                                   // mirror stalks + heads (cowl-mounted)
     mk(prof([[-.05, -.02], [.05, -.026], [.055, .024], [-.045, .03]], .02, .005), MB, ct, s * .33, 1.01, -.6, -.25, PI / 2 + s * .25, 0);
@@ -765,7 +766,7 @@ function wheelWire(R, t, rim, drum, disc) {
 function underbone(ct, v) {
   const rw = .285, rake = .454, headY = .9, fork = (headY - rw) / Math.cos(rake), headZ = -.62 + fork * Math.sin(rake);
   B.G = { rw, rearZ: .62, fork, rake, pivotY: .37, pivotZ: .06, swingX: 0 }; B.wheelCol = v === 2 ? 0x1c1d21 : 0xc3c8cd; B.cargo = { y: .86, z: .62 };
-  B.fenderPaint = true; B.decal = MDec;
+  B.fenderPaint = true; B.decal = MDec; B.halo = true; // halogen bulb
   const wheel = front => v === 2 ? wheelG(.25, .035, .215, 5, .034, false, front ? .11 : 0) : wheelWire(.25, .035, .215, front ? .06 : .075, front && v ? .11 : 0);
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .62); ct.add(B.rearH); B.rearW = wheel(false); B.rearH.add(B.rearW);
   if (v === 2) mk(cyl(.075, .075, .08, 10), MAlu, B.rearH, 0, 0, 0, 0, 0, PI / 2);                         // rear drum on the mag
@@ -808,10 +809,10 @@ function underbone(ct, v) {
   B.frontW = wheel(true); B.slider.add(B.frontW);
   mk(arc(.3, .325, 1.05 + rake, 2.45 + rake, .1), MF, B.slider, 0, 0, 0);                                     // front fender (body colour)
   if (v) mk(box(.045, .07, .09), MK, B.slider, .08, .03, .06);                                                // disc caliper
-  mk(profSt([[-.24, 1.05], [-.36, 1.085], [-.5, 1.05], [-.585, .985], [-.57, .945], [-.45, .955], [-.3, .985], [-.23, 1.0]], .3, .022), MP, st, 0, 0, 0); // handlebar cover
-  mk(profSt([[-.57, .945], [-.53, .89], [-.42, .885], [-.29, .94], [-.45, .955]], .2, .012), MK, st, 0, 0, 0); // black lower cover
+  mk(profSt([[-.24, 1.05], [-.36, 1.085], [-.5, 1.065], [-.58, 1.01], [-.585, .93], [-.45, .945], [-.3, .985], [-.23, 1.0]], .3, .022), MP, st, 0, 0, 0); // handlebar cover (tall front face for the lamp)
+  mk(profSt([[-.585, .93], [-.53, .885], [-.42, .885], [-.29, .94], [-.45, .945]], .2, .012), MK, st, 0, 0, 0); // black lower cover
   mk(profSt([[-.42, 1.06], [-.52, 1.035], [-.56, 1.0], [-.5, 1.1], [-.44, 1.12]], .16, .008), MVisG, st, 0, 0, 0); // small visor
-  mkSt(box(.16, .07, .02), MC, 0, -.585, .97, .9); mkSt(box(.11, .045, .02), MHead, 0, -.592, .97, .9);          // headlamp
+  mkSt(box(.18, .085, .02), MC, 0, -.612, .97, .1); mkSt(box(.15, .06, .02), MHead, 0, -.62, .97, .1);          // headlamp
   clusterPlane(st, 0, .19, .0, -1.0, .22);
   controls(st, .16, .06, .3, .2, [.28, .2, -.04], true);
   rider(ct, [1.1, .28, -.12], [1.46, .24], [.24, 1.17, 0, -.59, .5], [[.14, .79, .125, -.38, .38, .14], [.16, .51, .025, -.4, .39, .11]]);
@@ -883,7 +884,7 @@ function sidecar(ct, mt, wb) {
 // painted side covers with a stripe, chrome carrier, chrome fenders, rubber fork gaiters, bigger square lamp in a black visor
 function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see buildModel)
   const rw = m ? .29 : .31, rake = .47, headY = 1.0, fZ = m ? -.64 : -.686, fork = (headY - rw) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
-  B.G = { rw, rearZ: .62, fork, rake, pivotY: .37, pivotZ: .1, swingX: 0 }; B.wheelCol = 0xc3c8cd; B.cargo = { y: .97, z: .52 }; B.decal = MDec;
+  B.G = { rw, rearZ: .62, fork, rake, pivotY: .37, pivotZ: .1, swingX: 0 }; B.wheelCol = 0xc3c8cd; B.cargo = { y: .97, z: .52 }; B.decal = MDec; B.halo = true;
   const wheel = front => m ? wheelWire(.255, .035, .215, front ? .07 : .075, 0) : wheelWire(.27, .04, .23, front ? .078 : .082, 0);
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .62); ct.add(B.rearH); B.rearW = wheel(false); B.rearH.add(B.rearW);
   mk(cyl(.085, .085, .012, 10), MB, B.rearH, -.07, 0, 0, 0, 0, PI / 2);                                       // sprocket
@@ -990,7 +991,7 @@ function aerox(ct) {
   mk(prof([[.12, .5], [.32, .48], [.54, .54], [.64, .42], [.5, .31], [.18, .31]], .27, .01), MK, ct, 0, 0, 0); // lower rear cover
   mk(prof([[0, .76], [.05, .8], [.32, .81], [.4, .85], [.74, .9], [.81, .88], [.77, .85], [.38, .8], [.02, .74]], .31, .03, 2), MS, ct, 0, 0, 0); // stepped seat
   for (const s of [-1, 1]) { tube([s * .14, .86, .62], [s * .12, .9, .86], .016, MK, ct); tube([s * .156, .805, .04], [s * .156, .83, .36], .004, MStch, ct, 4); } // split grab handles, seat stitching (SP red)
-  mk(taper(prof([[.88, .87], [.97, .86], [.99, .84], [.9, .83]], .14, .008), [[.88, 1], [.99, .35]]), MTail, ct, 0, 0, 0); // pointed LED tail lamp
+  mk(taper(prof([[.88, .87], [.97, .86], [.99, .84], [.9, .83]], .14, .008), [[.88, 1], [.99, .35]]), MTail, ct, 0, 0, 0); for (const s of [-1, 1]) mk(box(.09, .03, .03), MTail, ct, s * .05, .86, 1.0, .5, 0, -s * .3); // pointed LED tail lamp, a V from behind
   for (const s of [-1, 1]) { tube([s * .1, .8, .9], [s * .19, .8, .92], .008, MB, ct, 4); mk(box(.045, .025, .035), MAmb, ct, s * .2, .8, .925); } // signals sticking out at the sides
   mk(prof([[.84, .72], [.9, .74], [1.0, .46], [.97, .41], [.9, .56]], .1, .012), MK, ct, 0, 0, 0);          // plate hanger
   mk(box(.2, .12, .008), MPl, ct, 0, .42, 1.0, .35);
@@ -1027,7 +1028,7 @@ function aerox(ct) {
 // with rim tape, 240 mm front disc, rear drum, black muffler with a silver end cap on the right. Shroud badge is pseudo-letters.
 function rouser(ct) {
   const rw = .3, rake = .46, headY = 1.03, fZ = -.7, fork = (headY - rw) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
-  B.G = { rw, rearZ: .62, fork, rake, pivotY: .4, pivotZ: .08, swingX: 0 }; B.wheelCol = 0x15161a; B.cargo = { y: 1.02, z: .6 }; B.decal = MDec;
+  B.G = { rw, rearZ: .62, fork, rake, pivotY: .4, pivotZ: .08, swingX: 0 }; B.wheelCol = 0x15161a; B.cargo = { y: 1.02, z: .6 }; B.decal = MDec; B.halo = true;
   const wheel = front => wheelG(.262, .04, .218, 5, .024, true, front ? .12 : 0, { sx: [-.04, .04], sr: .216, sw: .005, plates: front ? [] : [[-.05, .075, 'drum']] });
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .62); ct.add(B.rearH); B.rearW = wheel(false); B.rearH.add(B.rearW);
   mk(cyl(.085, .085, .012, 10), MB, B.rearH, -.08, 0, 0, 0, 0, PI / 2);                                      // sprocket
@@ -1072,7 +1073,7 @@ function rouser(ct) {
   mk(arc(rw + .025, rw + .045, 1.0 + rake, 2.4 + rake, .1), MF, B.slider, 0, 0, 0);                           // front fender
   mk(profSt([[headZ - .02, 1.16], [headZ - .18, 1.14], [headZ - .3, 1.03], [headZ - .3, .93], [headZ - .2, .88], [headZ - .04, .95]], .3, .02), MK, st, 0, 0, 0); // angular cowl (dark, not painted)
   mkSt(box(.2, .1, .01), MVis, 0, headZ - .16, 1.19, -.6);                                                    // smoked visor
-  mkSt(box(.15, .1, .02), MHead, 0, headZ - .31, .985, .15); for (const s of [-1, 1]) mkSt(box(.06, .02, .02), MHead, s * .1, headZ - .28, 1.06, .3, 0, s * .4); // lamp + pilot lamps
+  mkSt(box(.16, .1, .02), MHead, 0, headZ - .338, .985, .15); for (const s of [-1, 1]) mkSt(box(.06, .02, .02), MHead, s * .1, headZ - .305, 1.065, .8, 0, s * .4); // lamp + pilot lamps
   for (const s of [-1, 1]) { tube([s * .1, 0, 0], [s * .18, -.03, -.08], .007, MB, st, 4); mkSt(box(.06, .04, .05), MAmb, s * .21, headZ - .2, .97, 0, s * .3); }
   clusterPlane(st, 0, .2, .02, -1.0, .22);
   controls(st, .16, .06, .37, .23, [.33, .2, -.02]);
@@ -1145,7 +1146,7 @@ function nmax(ct, v) {
   mk(prof([[-.02, .74], [.03, .775], [.36, .77], [.45, .8], [.78, .845], [.84, .825], [.8, .79], [.42, .76], [0, .72]], .34, .035, 2), MS, ct, 0, 0, 0); // stepped seat
   if (v) for (const s of [-1, 1]) tube([s * .168, .765, .02], [s * .168, .775, .4], .004, MGold, ct, 4);       // gold stitching (Tech MAX)
   for (const s of [-1, 1]) tube([s * .15, .82, .56], [s * .13, .86, .88], .015, MK, ct); tube([-.13, .86, .88], [.13, .86, .88], .015, MK, ct); // loop grab rail
-  for (const s of [-1, 1]) { mk(box(.1, .016, .022), MTail, ct, s * .05, .805, .972, .7, 0, -s * .22); mk(box(.04, .03, .04), MAmb, ct, s * .1, .58, .9); } // 2025 slim LED tail (the butterfly lamp is gone)
+  for (const s of [-1, 1]) { mk(box(.1, .024, .022), MTail, ct, s * .05, .805, 1.005, .5, 0, -s * .22); mk(box(.04, .03, .04), MAmb, ct, s * .1, .58, .9); } // 2025 slim LED tail (the butterfly lamp is gone)
   mk(prof([[.8, .66], [.9, .68], [1.0, .42], [.96, .36], [.86, .44]], .11, .012), MK, ct, 0, 0, 0);            // plate hanger
   mk(box(.2, .12, .008), MPl, ct, 0, .4, 1.0, .35);
   // steering
@@ -1218,8 +1219,8 @@ function xmax(ct) {
     mk(prof([[-.58, .3], [-.44, .36], [-.12, .3], [.02, .21], [-.3, .2], [-.5, .24]], .03, .008), MP, ct, s * .205, 0, 0); // sharp fin along the skirt
     mk(cyl(.028, .028, .006, 12), MC, ct, s * .232, .9, -.58, 0, 0, PI / 2);                                   // tuning-fork badge (plain disc)
     mk(box(.06, .03, .05), MC, ct, s * .2, 1.03, -.7, .2);                                                     // clear light units at the shield tops
-    mk(box(.15, .042, .03), MHead, ct, s * .075, .84, -.93, .25, s * .25, 0);                                 // slim horizontal headlamp
-    mk(box(.11, .012, .014), MHead, ct, s * .045, .92, -.86, .45, 0, s * .6);                               // X of DRL strips above
+    mk(box(.1, .04, .03), MHead, ct, s * .06, .835, -.985, .25, s * .3, 0);                                 // slim horizontal headlamp
+    mk(box(.11, .014, .014), MHead, ct, s * .05, .915, -.93, .6, 0, s * .6);                               // X of DRL strips above
     mk(box(.035, .02, .02), MAmb, ct, s * .17, .7, -.86, .3, s * .45, 0);                                   // lower position / signal
   }
   mk(box(.03, .025, .02), MC, ct, 0, .92, -.87, .45);                                                          // where the DRL strips cross
@@ -1233,7 +1234,7 @@ function xmax(ct) {
   for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.15, .036), MDec, ct, s * .182, .71, .82, 0, s * PI / 2, -.12 * s); // model badge (pseudo-letters)
   mk(prof([[-.1, .76], [-.06, .815], [.3, .815], [.42, .845], [.5, .89], [.9, .92], [.95, .895], [.9, .86], [.45, .82], [-.02, .75]], .37, .035, 2), MS, ct, 0, 0, 0); // two-step seat
   for (const s of [-1, 1]) { tube([s * .15, .84, .5], [s * .15, .9, .62], .018, MP, ct); tube([s * .15, .9, .62], [s * .12, .93, .96], .018, MP, ct); } // split grab rails
-  mk(box(.2, .04, .04), MTail, ct, 0, .86, 1.06, .5);                                                          // sharp tail lamp
+  for (const s of [-1, 1]) { mk(box(.1, .028, .03), MTail, ct, s * .05, .875, 1.1, .4, 0, 0, s * .4); mk(box(.1, .028, .03), MTail, ct, s * .05, .84, 1.1, .4, 0, 0, -s * .4); } // X-shaped LED tail lamps                                                          // sharp tail lamp
   mk(prof([[.83, .66], [.93, .68], [1.07, .42], [1.02, .36], [.89, .46]], .1, .012), MK, ct, 0, 0, 0);          // plate hanger
   for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .55, 1.03);                               // rear signals
   mk(box(.2, .12, .008), MPl, ct, 0, .44, 1.05, .35);
@@ -1263,10 +1264,21 @@ function xmax(ct) {
 }
 
 const MODELS = { sport, scooter, supersport, underbone, tmx, aerox, rouser, h2, nmax, xmax, macho: (ct, v) => tmx(ct, v, 1) };
+// Lamps (11.99). Colour: LED units are cool white, the halogen bikes (B.halo: Smash, TMX, Macho, Rouser) warm; the beam on the
+// road (renderer's `head`) follows. lamps(on, brake): headlamp and tail lamp burn with the ignition on, the tail lamp
+// brightens under braking. A fresh build is lit, so the frozen copies of other players' bikes (snapshot) keep their lights.
+const LAMP = { on: -1, br: -1 };
+function lampKind() { const c = B.halo ? 0xffe2a8 : 0xeef4ff; MHead.emissive.set(c); MHead.color.set(c); head.color.set(B.halo ? 0xffe6b8 : 0xf2f6ff); MHead.emissiveIntensity = 1.5; MTail.emissiveIntensity = 1.2; LAMP.on = LAMP.br = -1; }
+export function lamps(on, br) {
+  if (on === LAMP.on && br === LAMP.br) return; LAMP.on = on; LAMP.br = br;
+  MHead.emissiveIntensity = on ? 1.5 : .05; MTail.emissiveIntensity = br ? 2.6 : on ? .8 : .06;
+  for (const m of [MHead, MTail]) { const i = PAL.get(m); if (i !== undefined) writePal(m, i); }
+}
 export function buildModel(bike, spec) {
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;
-  B.ct.clear(); B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.sc = 0; B.scDz = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model;
+  B.ct.clear(); B.halo = false; B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.sc = 0; B.scDz = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model;
+  lampKind();
   if (spec?.sc && bike.sidecar) { B.sc = 1; sidecar(B.ct, bike.sidecar, bike.chassis.wb); } SC_BLOB.p.z = B.scDz; // any bike with sidecar mount data
   setLiveryUV();
   const pc = bike.chassis.pil; // pillion seat (data/bikes/*.json chassis.pil): where the recoloured rider copy goes + the passenger's eye (ride.js)
