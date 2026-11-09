@@ -126,7 +126,7 @@ const {ROADS,nearRoad,bumpAt,BUMPS}=buildRoads(MD,terrBase);
 // rounded up to whole tiles. Terrain tiles, LOD, road chunks, prop culling and physics heights all derive from it.
 const CMAX=Math.max(...CR);
 const GRD=groundModel({terr,carve:()=>lastCarve,nearRoad,bumpAt,GX,GZ,TSZ,TS}),HA=GRD.HA,meshH=GRD.meshH,H0=GRD.H; // roads.js: drawn mesh + physics ground next to roads
-// Ilalim (under.js, Build 11.99): the underground caves are built far off the island; there the ground is the cave floor
+// Ilalim (under.js, Build 11.98): the underground caves are built far off the island; there the ground is the cave floor
 const UG=makeUnder(await (await fetch('data/cave.json?v='+BUILD)).json()),H=(x,z,m)=>UG.has(x,z)?UG.floor(x,z):H0(x,z,m);
 const roadH=(x,z)=>H(x,z);
 // Lowest / highest DRAWN ground under a footprint (centre, corners, edge midpoints). Props are placed on this, not on
@@ -483,7 +483,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     const off=r.w/2+8+rand()*5,x=s.x-s.tz*off*sd,z=s.z+s.tx*off*sd;if(rd(x,z,TOWN,10)<1)continue;const q=nearRoad(x,z);if(q&&q.d<r.w/2+5)continue;
     const h=terr(x,z);if(h<SEA+1.2||lastCarve>.05||h>45||rd(x,z,PADDY)<2)continue;
     const ry=Math.atan2(-s.tz,s.tx)+(sd>0?PI:0),cr=Math.cos(ry),sr=Math.sin(ry);
-    // 11.99: the whole footprint must clear every road (a curve or a side road could run through a corner). Tested after the
+    // 11.98: the whole footprint must clear every road (a curve or a side road could run through a corner). Tested after the
     // random draws below are made, so a skipped house never shifts rand() for the rest of the island.
     const clear=(hw,hd)=>{for(const[a,e]of[[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1],[-1,0],[1,0]]){const px=x+cr*a*hw+sr*e*hd,pz=z-sr*a*hw+cr*e*hd,p=nearRoad(px,pz);if(p&&p.d<p.w/2+1)return false}return true};
     if(rand()<.35){if(clear(2.3,2.2)&&hut(x,z,ry))GEN.push(['nipa',R1(x),R1(z),R4(ry)])}

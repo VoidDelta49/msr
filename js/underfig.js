@@ -1,4 +1,4 @@
-// Ilalim, drawn (Build 11.99): the rock shell (floor + ceiling height fields from js/under.js, vertex-coloured, normals from the
+// Ilalim, drawn (Build 11.98): the rock shell (floor + ceiling height fields from js/under.js, vertex-coloured, normals from the
 // height grids so tiles join with no seams), the props (stalagmites, stalactites, columns, crystal clusters, glowworms, the lake,
 // the waterfall, the daylight shaft and the way out, show-cave lamps along the main route) and the dark passage in the cave hall.
 // Nothing here is a real light: crystals, glowworms and lamps are emissive (bloom makes them glow), the light they throw is

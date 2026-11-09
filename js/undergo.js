@@ -1,4 +1,4 @@
-// Ilalim, the glue (Build 11.99): going down through the dark passage in the cave hall and back up at the mouth, for the bike and
+// Ilalim, the glue (Build 11.98): going down through the dark passage in the cave hall and back up at the mouth, for the bike and
 // on foot; the caves shown only while you are down there; the camera kept inside the rock; reset. Layout and portals: under.js,
 // drawing: underfig.js, light: daynight.js (reads ctx.ug).
 import { S, ctx } from './state.js';

@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { clamp, sstep } from './util.js';
 import { gameMs, Q } from './config.js';
 import { S, ctx } from './state.js';
-import { renderer, scene, camera, sun, hemi, head, SKYU, GRADE, IBL, ENVG, BLOOM, bakeEnv } from './renderer.js';
+import { renderer, scene, camera, sun, hemi, head, SKYU, GRADE, IBL, ENVG, BLOOM, GLARE, FOGU, bakeEnv } from './renderer.js';
 import { setLamps, beamMeshes, HEAD, BEAM } from './lights.js';
 import { H } from './world.js';
 import { UGDAY } from './underfig.js';
@@ -98,7 +98,7 @@ export function dayNight() {
     ENVG.c.value.copy(hemi.groundColor).multiplyScalar(.55 + .45 * key(el, 9));
     if (Math.abs(el - bakeEl) > .5 || ms - bakeT > 6e4 || ms < bakeT) { bakeEl = el; bakeT = ms; bakeEnv(); } // the sky moved enough (or a minute passed: moon, Options hour change)
   }
-  // dark places (11.99): deep in the cave hall the sky light is mostly blocked (under.js shelter: 0 outside .. 1 deep under the roof),
+  // dark places (11.98): deep in the cave hall the sky light is mostly blocked (under.js shelter: 0 outside .. 1 deep under the roof),
   // and below in Ilalim there is none at all (see the end). The sun is already kept out by the roof's shadow.
   const UGs = ctx.ug, under = !!(UGs && UGs.on), P0 = at(), sh = !under && UGs && UGs.shelter ? UGs.shelter(P0.x, P0.z) : 0; ctx.shelter = sh;
   if (sh > 0) { hemi.intensity *= 1 - .72 * sh; if (IBL) scene.environmentIntensity *= 1 - .8 * sh; }
@@ -144,16 +144,25 @@ export function dayNight() {
     const fx = -Math.sin(F.psi), fz = -Math.cos(F.psi); head.position.set(F.x + fx * .35, F.y + 1.35, F.z + fz * .35);
     head.target.position.set(F.x + fx * 12, F.y - .2, F.z + fz * 12); head.intensity = 420;
   }
+  // fog glow toward the sun and ground mist (renderer.js FOGU): mist lies in the low ground from late night to just after sunrise
+  FOGU.glow.value = 1; FOGU.mist.value = .32 * (ctx.dawn || 0) + .1 * night;
+  // sun glare (renderer.js GLARE): where the sun is on screen, stronger as it gets low, off once it has set
+  if (GLARE.k) {
+    tv.copy(SUN).multiplyScalar(500).add(camera.position).project(camera); const on = tv.z < 1 && Math.abs(tv.x) < 1.15 && Math.abs(tv.y) < 1.15 && SUN.y > -.02;
+    GLARE.k.value = on && !under && !ctx.inside && sh < .5 ? sstep(-1.5, 1, el) * (.55 + .45 * (1 - sstep(8, 40, el))) * (1 - sh) : 0;
+    GLARE.p.value.set(tv.x * .5 + .5, .5 - tv.y * .5); key(el, 5, GLARE.c.value);
+  }
   UGDAY.value = sstep(-6, 8, el); // daylight at Ilalim's way out and down its shaft
   if (under) { // Ilalim: no sky. A faint cold fill so the rock reads, then whatever glows: crystals, glowworms, lamps, your headlight
     hemi.color.setHex(0x3a4656); hemi.groundColor.setHex(0x16120e); hemi.intensity = IBL ? .17 : .24; sun.intensity = 0;
     if (IBL) scene.environmentIntensity = .04; renderer.toneMappingExposure = 1.15; if (GRADE.night) GRADE.night.value = .5;
     scene.fog.color.setHex(0x030405); scene.background.copy(scene.fog.color); scene.fog.near = 6; scene.fog.far = 150;
-    if (BLOOM.k) { BLOOM.k.value = .55; BLOOM.th.value = 1.15; }
+    if (BLOOM.k) { BLOOM.k.value = .55; BLOOM.th.value = 1.15; } FOGU.glow.value = 0; FOGU.mist.value = 0;
   } else if (scene.fog.far !== FOGF) { scene.fog.near = FOGN; scene.fog.far = FOGF; }
   // inside a building (interior.js): its own warm lamplight whatever the hour (same lights, new colours: nothing recompiles)
   if (ctx.inside) {
     hemi.color.setHex(0xffe6c4); hemi.groundColor.setHex(0x8a6a50); hemi.intensity = IBL ? 1.6 : 2.2; sun.color.setHex(0xffd9a8); sun.intensity = 1.6;
     if (IBL) scene.environmentIntensity = .25; renderer.toneMappingExposure = 1.12; if (GRADE.night) GRADE.night.value = 0;
+    FOGU.glow.value = 0; FOGU.mist.value = 0;
   }
 }

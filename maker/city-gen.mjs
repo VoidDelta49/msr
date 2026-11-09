@@ -109,7 +109,7 @@ for (const [x, z, r, n] of [[-950, 2100, 30, 'buhangin1'], [-1060, 2118, 22, 'bu
 feat({ type: 'hill', x: -960, z: 2100, h: 0, r: 1, label: 'Tatlong Buhangin', lp: 0 });
 
 // nothing generated may stand on a road (the hand-placed villas, cottages and the odd row end near a curved road)
-// 11.99: tested against the game's real road splines (Catmull-Rom, not the straight lines between the points: a curve bulges out
+// 11.98: tested against the game's real road splines (Catmull-Rom, not the straight lines between the points: a curve bulges out
 // by metres) over the whole footprint, with a 1 m kerb. tools/roads.mjs fails on any building left on a road (ONROAD).
 const { groundOf, intoRoad } = await import('../tools/lib/ground.mjs'), GR = groundOf(M);
 const onRoad = b => intoRoad(GR.nearRoad, GR.TB.terr, b).by > -1;

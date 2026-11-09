@@ -1,4 +1,4 @@
-// Ilalim (Build 11.99): the underground cave system below the Underground River Cave. Pure logic, no three.js / DOM, so
+// Ilalim (Build 11.98): the underground cave system below the Underground River Cave. Pure logic, no three.js / DOM, so
 // tools/under.mjs runs it headless. Drawing and the glue (portals, light, camera) are js/underfig.js.
 //
 // The game's ground is one height per (x, z) (world.js H), so the caves can't sit under the island: they are built far off it, at
