@@ -3,7 +3,7 @@
 // windows use an emissive map on the building materials. Everything is driven by one level (0 day .. 1 night) that
 // daynight.js sets every frame, so nothing recompiles when the lights come on.
 import * as THREE from 'three';
-import { uniform, vec3, uv, float, clamp, smoothstep, mix, positionWorld, cameraPosition } from 'three/tsl';
+import { uniform, vec3, uv, materialReference, float, clamp, smoothstep, mix, positionWorld, cameraPosition } from 'three/tsl';
 import { liteOf } from './perf.js';
 
 export const LAMP = uniform(0);
@@ -27,8 +27,12 @@ export const glowing = m => GLOWM.includes(m) || GLOWM.some(g => liteOf(g) === m
 export const isGlow = m => GLOWM.includes(m), glowTrack = m => { m.emissiveIntensity = Math.max(lvl, 0) * 1.15; GLOWM.push(m); return m; };
 
 // bulb / lamp lens: dull grey by day, hot warm white at night (values > 1 so the tone mapper burns it out)
+// One shader for every lens (three r187 NodeMaterialInstance): the colours are per-material uniforms, not baked constants,
+// so the 4 lamp variants share a single build/pipeline instead of compiling one each at warm-up.
+let LENS = null;
 export function lampMat(on = [2.3, 1.8, 1], off = [.55, .55, .5]) {
-  const m = new THREE.MeshBasicNodeMaterial(); m.colorNode = mix(vec3(...off), vec3(...on), LAMP); return m;
+  if (!LENS) { LENS = new THREE.MeshBasicNodeMaterial(); LENS.colorNode = mix(materialReference('lensOff', 'vec3'), materialReference('lensOn', 'vec3'), LAMP); }
+  const m = new THREE.NodeMaterialInstance(LENS); m.lensOn = new THREE.Vector3(...on); m.lensOff = new THREE.Vector3(...off); return m;
 }
 // Pools and halos are additive (the sum doesn't depend on order) and write no depth, so the back faces need no separate pass:
 // forceSinglePass stops three from drawing every transparent DoubleSide object twice (back faces, then front faces).
