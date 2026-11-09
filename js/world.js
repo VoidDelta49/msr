@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { PI, clamp, sstep, fbm, rand, hash2 } from './util.js';
-import { scene, ctex, std, aoGeo, ANISO, GPU } from './renderer.js';
+import { scene, ctex, std, vcol, ANISO, GPU } from './renderer.js';
 import { cfg, Q, BUILD } from './config.js';
 import { attribute, texture, uv, vec2, vec3, float, select } from 'three/tsl';
 import { gpuInst, finishGpuInst } from './gpucull.js';
@@ -184,7 +184,7 @@ const tDet=mkTex(T.detail(),260,{aniso:ANISO});
 const tRoad=mkTex(T.roadSt(),0,{aniso:ANISO}),tHwy=mkTex(T.roadHwy(),0,{aniso:ANISO});
 const WC=[1,2,3].map(n=>T.walls(n)),tW=WC.map(c=>mkTex(c)),tWG=WC.map(c=>mkTex(c.glow)),tTin=mkTex(T.tin()),tBark=mkTex(T.bark()),tFrond=mkTex(T.frond()),tLeaf=mkTex(T.leaves()),tJeep=mkTex(T.jeep());
 const TWC=T.tower(),tTower=mkTex(TWC),tTowerG=mkTex(TWC.glow);
-// materials for AO'd instanced geometry (vertexColors = the baked gradient; instance colour still tints)
+// materials for instanced geometry (vertexColors: white from vcol(), the instance colour tints)
 const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:r,metalness:mt,map:map||null,vertexColors:true});
 {
   // terrain mesh with vertex colours
@@ -260,9 +260,9 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     const RG=[...ch.values()].map(C=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(C.p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(C.u,2));g.setIndex(C.i);g.computeVertexNormals();return g});
     if(RG.length){const S=RG.map(g=>(g.computeBoundingSphere(),g.boundingSphere.clone())),{b,ids}=staticBatch(RG,mat);b.receiveShadow=true;b.name='roads-'+k;scene.add(b);
       ids.forEach((id,i)=>cullFarSphere({set visible(v){b.setVisibleAt(id,v)}},S[i],FAR.big))}}
-  inst(new THREE.BoxGeometry(1,1,1),std(0xb5b1a8,.8),deck);inst(new THREE.BoxGeometry(1,1,1),std(0xe8e4da,.6),rail,true,FAR.mid);inst(aoGeo(new THREE.CylinderGeometry(.6,.7,1,8).translate(0,.5,0),.55),vstd(0x9a968c,.8),pil);
+  inst(new THREE.BoxGeometry(1,1,1),std(0xb5b1a8,.8),deck);inst(new THREE.BoxGeometry(1,1,1),std(0xe8e4da,.6),rail,true,FAR.mid);inst(vcol(new THREE.CylinderGeometry(.6,.7,1,8).translate(0,.5,0),.55),vstd(0x9a968c,.8),pil);
   // power poles + sagging wires
-  inst(aoGeo(mergeGeometries([new THREE.CylinderGeometry(.11,.15,8,6).translate(0,4,0),new THREE.BoxGeometry(.12,.12,1.7).translate(0,7.6,0)]),.55,0,4),vstd(0x8d887e,.8),poles,false,FAR.mid);
+  inst(vcol(mergeGeometries([new THREE.CylinderGeometry(.11,.15,8,6).translate(0,4,0),new THREE.BoxGeometry(.12,.12,1.7).translate(0,7.6,0)]),.55,0,4),vstd(0x8d887e,.8),poles,false,FAR.mid);
   for(let i=1;i<poles.length;i++){const a=poles[i-1],b=poles[i];if(a.r!==b.r||Math.hypot(a.x-b.x,a.z-b.z)>45)continue;
     for(const off of[-.75,0,.75]){const ox=Math.sin(a.ry)*off,oz=Math.cos(a.ry)*off,ox2=Math.sin(b.ry)*off,oz2=Math.cos(b.ry)*off;let px=a.x+ox,py=a.y+7.7,pz=a.z+oz;
       for(let k=1;k<=6;k++){const t=k/6,x=a.x+ox+(b.x+ox2-a.x-ox)*t,z=a.z+oz+(b.z+oz2-a.z-oz)*t,y=a.y+7.7+(b.y-a.y)*t-Math.sin(PI*t)*.7;wires.push(px,py,pz,x,y,z);px=x;py=y;pz=z}}}
@@ -414,8 +414,8 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
       for(const k of[-1,1]){const p=P(k*3.2,d/2+3);nb(PL,p.x,lo,p.z,ry,.22,3.1,.22,0xffffff)}
       nb(PL,pd.x,lo,pd.z,ry,w*.78,.06,12.5,0xe9dcc0);nb(PL,pl.x,lo,pl.z,ry,w*.5,.1,7.5,0x35b8e6);addOBB(x,z,w/2,d/2,ry)}}
   const nbi=(L,g,m,sh,far)=>{if(L.length)inst(g(),m(),L,sh,far)},ub=()=>new THREE.BoxGeometry(1,1,1).translate(0,.5,0); // only lists that have entries: maps without these buildings draw exactly what they did
-  nbi(PL,()=>aoGeo(ub(),.62,0,.6),()=>vstd(0xffffff,.85),true,FAR.tree);
-  nbi(LK,()=>aoGeo(ub(),.62,0,.6),()=>vstd(0xffffff,.85),true,FAR.big); // lookout towers are seen from across the island
+  nbi(PL,()=>vcol(ub(),.62,0,.6),()=>vstd(0xffffff,.85),true,FAR.tree);
+  nbi(LK,()=>vcol(ub(),.62,0,.6),()=>vstd(0xffffff,.85),true,FAR.big); // lookout towers are seen from across the island
   nbi(BT,()=>new THREE.CylinderGeometry(.5,.58,1,7).translate(0,.5,0),()=>vstd(0xffffff,.95,0,tBark),true,FAR.big);nbi(LF,()=>new THREE.IcosahedronGeometry(1,1),()=>vstd(0xffffff,.9,0,tLeaf),true,FAR.big);
   if(FW.length){const c=document.createElement('canvas');c.width=32;c.height=128;const g=c.getContext('2d');for(let i=0;i<220;i++){const v=150+Math.random()*105;g.fillStyle=`rgba(${v*.85|0},${v*.95|0},${v},${.35+Math.random()*.55})`;g.fillRect(Math.random()*32,Math.random()*128,1+Math.random()*2,8+Math.random()*30)}
     const tx=new THREE.CanvasTexture(c);tx.wrapS=tx.wrapT=THREE.RepeatWrapping;tx.repeat.set(2,1.6);FALLS.tex=tx;const wm=new THREE.MeshBasicMaterial({map:tx,transparent:true,depthWrite:false,color:0xdcefff,side:THREE.DoubleSide}),pm=new THREE.MeshStandardMaterial({color:0x2c8fbf,roughness:.15,transparent:true,opacity:.85});
@@ -428,11 +428,11 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     const tx=new THREE.CanvasTexture(c);tx.colorSpace=THREE.SRGBColorSpace;const sm=new THREE.MeshBasicMaterial({map:tx,transparent:true,toneMapped:false,depthWrite:false});
     for(const b of BARS){const m=new THREE.Mesh(new THREE.PlaneGeometry(Math.min(7,b.w*.62),1.7),sm);m.position.set(b.x,b.y,b.z);m.rotation.y=b.ry;m.name='barSign';m.updateMatrix();freeze(m);scene.add(m);cullFar(m,FAR.mid)}}
   const TWM=glowMat(vstd(0xffffff,.45,.15,tTower),tTowerG);
-  TW.forEach((L,k)=>nbi(L,()=>{const F=[8,13,20,30][k],g=new THREE.BoxGeometry(20,F*3.3,20).translate(0,F*1.65,0),uv=g.attributes.uv;for(let i=0;i<uv.count;i++){if((i>>2)===2||(i>>2)===3)uv.setXY(i,.01,.99);else uv.setY(i,uv.getY(i)*F/4)}return aoGeo(g,.6,0,F*3.3,.5)},()=>TWM,true,FAR.big)); // glass towers: 4 height classes, the window texture tiles per floor
-  nbi(RK,()=>aoGeo(ub(),.7,0,1,.5),()=>vstd(0xffffff,.95),true,FAR.big);nbi(SM,()=>new THREE.ConeGeometry(1,1,6).translate(0,.5,0),()=>std(0xffffff,.95),true,FAR.mid);nbi(SK,()=>new THREE.ConeGeometry(1,1,6).rotateX(PI).translate(0,-.5,0),()=>std(0xffffff,.95),false,FAR.mid);
+  TW.forEach((L,k)=>nbi(L,()=>{const F=[8,13,20,30][k],g=new THREE.BoxGeometry(20,F*3.3,20).translate(0,F*1.65,0),uv=g.attributes.uv;for(let i=0;i<uv.count;i++){if((i>>2)===2||(i>>2)===3)uv.setXY(i,.01,.99);else uv.setY(i,uv.getY(i)*F/4)}return vcol(g,.6,0,F*3.3,.5)},()=>TWM,true,FAR.big)); // glass towers: 4 height classes, the window texture tiles per floor
+  nbi(RK,()=>vcol(ub(),.7,0,1,.5),()=>vstd(0xffffff,.95),true,FAR.big);nbi(SM,()=>new THREE.ConeGeometry(1,1,6).translate(0,.5,0),()=>std(0xffffff,.95),true,FAR.mid);nbi(SK,()=>new THREE.ConeGeometry(1,1,6).rotateX(PI).translate(0,-.5,0),()=>std(0xffffff,.95),false,FAR.mid);
   nbi(CRY,()=>new THREE.OctahedronGeometry(1,0).scale(1,1.5,1).translate(0,1.5,0),()=>new THREE.MeshBasicMaterial({color:0xffffff}),false,FAR.mid); // crystals glow day and night
   nbi(LHC,()=>new THREE.ConeGeometry(1,1,12).translate(0,.5,0),()=>std(0xffffff,.7),true,FAR.big);
-  [1,2,3].forEach((n,i)=>inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6/(n)),glowMat(vstd(0xffffff,.85,0,tW[i]),tWG[i]),bl[i]));
+  [1,2,3].forEach((n,i)=>inst(vcol(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6/(n)),glowMat(vstd(0xffffff,.85,0,tW[i]),tWG[i]),bl[i]));
   inst(new THREE.BoxGeometry(1,1,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),roofs);inst(new THREE.BoxGeometry(1,1,1),std(0xffffff,.7),awn,false,FAR.small);
   // landmarks: original coordinates, mapped through each one's frame F (W = world position, F.y = levelled ground)
   const mesh=(g,m,X,Y,Z,F,r0=0)=>{const o=new THREE.Mesh(g,m),w=F.W(X,Z);o.position.set(w.x,F.y+Y,w.z);o.rotation.y=F.ry+r0;return o};
@@ -456,24 +456,24 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   const tMr=mkTex(T.tin(),[8,1]);
   for(const F of LMF.market){const{W,obb,ry,y}=F,mk2=[],stall=[];
     for(let i=0;i<4;i++)for(let j=0;j<3;j++){mk2.push({...W(96+i*16,-60+j*20),y,ry});obb(96+i*16,-60+j*20,.25,.25)}
-    inst(aoGeo(new THREE.CylinderGeometry(.2,.2,6,6).translate(0,3,0),.5,0,3),vstd(0x777777,.6),mk2,true,FAR.mid);
+    inst(vcol(new THREE.CylinderGeometry(.2,.2,6,6).translate(0,3,0),.5,0,3),vstd(0x777777,.6),mk2,true,FAR.mid);
     const mr=mesh(prism(56,4,46),new THREE.MeshStandardMaterial({color:0x9aa0a6,map:tMr,roughness:.5,metalness:.5}),120,6,-40,F,PI/2);mr.castShadow=true;scene.add(freeze(mr));cullFar(mr,FAR.big);
     for(let i=0;i<8;i++)for(let j=0;j<2;j++){const x=100+i*5.5,z=-52+j*22;stall.push({...W(x,z),y,ry,sx:3.6,sy:1,sz:2.2,c:new THREE.Color().setHSL(rand(),.6,.55)});obb(x,z,1.8,1.1)}
-    inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.55),vstd(0xffffff,.8),stall,true,FAR.small)}
+    inst(vcol(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.55),vstd(0xffffff,.8),stall,true,FAR.small)}
   // airstrip hangars (island.json 'hangars': [x, z, ry]; front faces +z rotated by ry): tin shed + dark doorway
   const hg=(MD.hangars||[]).map(([x,z,ry])=>{const f=foot(x,z,13,11,ry);addOBB(x,z,13,11,ry);return{x,y:f.lo-.2,z,ry,sy:1+(f.hi-f.lo)/7.5}});
-  if(hg.length){const tH=mkTex(T.tin(),[4,1]);inst(aoGeo(mergeGeometries([new THREE.BoxGeometry(26,7.5,22).translate(0,3.75,0).toNonIndexed(),prism(26.6,3.5,22.6).translate(0,7.5,0)]),.6,0,6),vstd(0xc4c8cc,.5,.4,tH),hg,true,FAR.big);
+  if(hg.length){const tH=mkTex(T.tin(),[4,1]);inst(vcol(mergeGeometries([new THREE.BoxGeometry(26,7.5,22).translate(0,3.75,0).toNonIndexed(),prism(26.6,3.5,22.6).translate(0,7.5,0)]),.6,0,6),vstd(0xc4c8cc,.5,.4,tH),hg,true,FAR.big);
     inst(new THREE.BoxGeometry(18,6,.2).translate(0,3,11.05),std(0x1d1f22,.9),hg.map(o=>({...o,y:H(o.x+Math.sin(o.ry)*11,o.z+Math.cos(o.ry)*11)-.1,sy:1})),false,FAR.mid)}
   // jeepneys + tricycles parked along streets
   const jeep=[],tri=[];
   const jbody=mergeGeometries([new THREE.BoxGeometry(2,1.25,4.6).translate(0,1.1,.4),new THREE.BoxGeometry(1.8,.75,1.4).translate(0,.85,-2.5),new THREE.BoxGeometry(2.15,.12,5.2).translate(0,2.05,.3),new THREE.BoxGeometry(1.6,.3,.25).translate(0,.5,-3.3)]);
   const jd=mergeGeometries([...[[-.95,-2.2],[.95,-2.2],[-.95,1.9],[.95,1.9]].map(([x,z])=>new THREE.CylinderGeometry(.38,.38,.28,12).rotateZ(PI/2).translate(x,.38,z)),new THREE.BoxGeometry(1.7,.6,.05).translate(0,1.55,-1.85)]);
   for(const[x,z,ry]of TOWN.jeeps){const c=new THREE.Color().setHSL(rand(),.85,.5);jeep.push({x,z,ry,c});addOBB(x,z,1.05,3.4,ry)}
-  inst(...pair({g:aoGeo(jbody,.6,.3,2.1),m:vstd(0xffffff,.35,.4,tJeep)},{g:jd,m:std(0x111111,.8)}),jeep,true,FAR.mid); // dark parts now get the instance tint too (×0.07: still black)
+  inst(...pair({g:vcol(jbody,.6,.3,2.1),m:vstd(0xffffff,.35,.4,tJeep)},{g:jd,m:std(0x111111,.8)}),jeep,true,FAR.mid); // dark parts now get the instance tint too (×0.07: still black)
   const trig=mergeGeometries([new THREE.BoxGeometry(1.2,1.2,1.6).translate(.75,.95,0),new THREE.BoxGeometry(1.4,.08,2).translate(.6,1.6,0),new THREE.BoxGeometry(.25,.6,1.4).translate(-.2,.7,0)]);
   for(const[x,z,ry]of TOWN.trikes){tri.push({x,z,ry,c:new THREE.Color().setHSL(rand(),.7,.45)});addOBB(x+Math.cos(ry)*.4,z,1.2,1.1,ry)}
   const tw=(x,z,r)=>new THREE.CylinderGeometry(r,r,.12,10).rotateZ(PI/2).translate(x,r,z);
-  inst(...pair({g:aoGeo(trig,.6),m:vstd(0xffffff,.45,.3)},{g:mergeGeometries([tw(-.2,.72,.3),tw(-.2,-.72,.3),tw(1.42,0,.3)]),m:std(0x111111,.8)}),tri,true,FAR.small); // wheels: bike front/rear + sidecar
+  inst(...pair({g:vcol(trig,.6),m:vstd(0xffffff,.45,.3)},{g:mergeGeometries([tw(-.2,.72,.3),tw(-.2,-.72,.3),tw(1.42,0,.3)]),m:std(0x111111,.8)}),tri,true,FAR.small); // wheels: bike front/rear + sidecar
   // houses along the roads outside town: concrete bungalows and nipa huts
   const hb=[],hr=[],nipa=[],GH=PROPS.houses||{every:0};
   const hut=(x,z,ry)=>{const f=foot(x,z,2.25,2.1,ry);if(f.hi-f.lo<.9){nipa.push({x,y:f.lo,z,ry,sx:4.5,sy:2.6,sz:4.2,c:0xb59a5e});addOBB(x,z,2.3,2.2,ry);door(x,z,ry,4.4,'nipa');return true}}; // stilts (1 m) absorb up to .9 m of slope
@@ -489,14 +489,14 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
     if(rand()<.35){if(clear(2.3,2.2)&&hut(x,z,ry))GEN.push(['nipa',R1(x),R1(z),R4(ry)])}
     else{const w=6+rand()*3,d=6+rand()*2.5,c=pastel(),rc=TIN[(rand()*TIN.length)|0];if(clear(w/2,d/2)&&house(x,z,ry,w,d,c,rc))GEN.push(['house',R1(x),R1(z),R4(ry),R1(w),R1(d)])}}}}
   for(const b of BLD){const[t,x,z,ry=0,w=7,d=7]=b;if(t==='nipa')hut(x,z,ry);else if(t==='house'){const[q,q2]=hq(x,z);house(x,z,ry,w,d,hcol(q,q2),TIN[(q2*TIN.length)|0])}}
-  inst(aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6),glowMat(vstd(0xffffff,.85,0,tW[0]),tWG[0]),hb,true,FAR.tree);
+  inst(vcol(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.62,0,.6),glowMat(vstd(0xffffff,.85,0,tW[0]),tWG[0]),hb,true,FAR.tree);
   inst(prism(1,1.6,1),new THREE.MeshStandardMaterial({map:tTin,roughness:.5,metalness:.4}),hr,true,FAR.tree);
   // roof in the hut's instance space (hut scale 4.5/2.6/4.2, roof 4.4/2.4/4.4 sitting 2.6 m up); its colour divided by the
   // hut's instance tint, which now multiplies it too
   const NT=new THREE.Color(0xb59a5e),nrm=std(new THREE.Color(0x9c8350).multiply(new THREE.Color(1/NT.r,1/NT.g,1/NT.b)),1);
   {const roof=()=>new THREE.ConeGeometry(.78,1,4).rotateY(PI/4).translate(0,.5,0).scale(4.4/4.5,2.4/2.6,4.4/4.2).translate(0,1,0); // LOD twin: no stilts, the walls reach the ground (60 vertices instead of 204)
-    const[g,m,lo]=pair({g:aoGeo(mergeGeometries([new THREE.BoxGeometry(1,.62,1).translate(0,.69,0),...[[-.42,-.42],[.42,-.42],[-.42,.42],[.42,.42]].map(([a,b])=>new THREE.BoxGeometry(.05,.4,.05).translate(a,.2,b))]),.55),m:vstd(0xffffff,.9)},{g:roof(),m:nrm},
-      [aoGeo(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.55),roof()]);inst(g,m,nipa,true,FAR.tree,lo)}
+    const[g,m,lo]=pair({g:vcol(mergeGeometries([new THREE.BoxGeometry(1,.62,1).translate(0,.69,0),...[[-.42,-.42],[.42,-.42],[-.42,.42],[.42,.42]].map(([a,b])=>new THREE.BoxGeometry(.05,.4,.05).translate(a,.2,b))]),.55),m:vstd(0xffffff,.9)},{g:roof(),m:nrm},
+      [vcol(new THREE.BoxGeometry(1,1,1).translate(0,.5,0),.55),roof()]);inst(g,m,nipa,true,FAR.tree,lo)}
   // palms on the beaches and lowlands, rainforest on the hills
   // LOD twins (batch.js, past ~110 m): 3-sided open trunk, fronds as two-sided flat blades: 132 vertices instead of 468
   const bend=g=>{const p=g.attributes.position;for(let i=0;i<p.count;i++){const y=p.getY(i);p.setX(i,p.getX(i)+(y/8)**2*1.3)}return g};
@@ -514,7 +514,7 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
       if(islD(x,z,I)<4||h<SEA+.4||h>12||lastCarve>.05)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+2.5)continue;c++;
       const pm={x,y:foot(x,z,.3,.3).lo-.1,z,ry:rand()*2*PI,sx:.8+rand()*.4,sy:.8+rand()*.5,sz:.8+rand()*.4};if(inBld(x,z))continue;palms.push(pm);addOBB(x,z,.25,.25)}
   }
-  {const[g,m,lo]=pair({g:aoGeo(trunk,.55,0,5),m:vstd(0xd8c8b0,.9,0,tBark)},{g:aoGeo(fronds,.7,6.4,8.4),m:vstd(0xffffff,.8,0,tFrond)},[aoGeo(trunkLo,.55,0,5),aoGeo(frondsLo,.7,6.4,8.4)]);inst(g,m,palms,false,FAR.tree,lo)}
+  {const[g,m,lo]=pair({g:vcol(trunk,.55,0,5),m:vstd(0xd8c8b0,.9,0,tBark)},{g:vcol(fronds,.7,6.4,8.4),m:vstd(0xffffff,.8,0,tFrond)},[vcol(trunkLo,.55,0,5),vcol(frondsLo,.7,6.4,8.4)]);inst(g,m,palms,false,FAR.tree,lo)}
   let cut=0;for(let i=0;i<TP.tries&&trees.length+cut<TP.max;i++){const x=ICX+(rand()-.5)*2*CMAX,z=ICZ+(rand()-.5)*2*CMAX,h=terr(x,z);if(h<10||h>150||lastCarve>.05)continue;
     if(Math.hypot(x-TERR.x,z-TERR.z)<TERR.r-20)continue;if(hg.some(o=>Math.hypot(x-o.x,z-o.z)<22))continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+3)continue;const s=.7+rand()*.8;
     const tr={x,y:foot(x,z,.3*s,.3*s).lo-.2,z,sx:s,sy:s*(.8+rand()*.5),sz:s,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)};if(clr(x,z)){cut++;continue}trees.push(tr);if(q&&q.d<20)addOBB(x,z,.3,.3)}
@@ -522,13 +522,13 @@ const vstd=(c,r=.6,mt=0,map)=>new THREE.MeshStandardMaterial({color:c,roughness:
   for(const I of ISL){
     const fr=(I.x1-I.x0)*(I.z1-I.z0)/(4*CMAX*CMAX),nt=Math.round(TP.max*fr);for(let k=0,c=0;k<TP.tries*fr&&c<nt;k++){const x=I.x0+rand()*(I.x1-I.x0),z=I.z0+rand()*(I.z1-I.z0),h=terr(x,z);if(h<10||h>150||lastCarve>.05||islD(x,z,I)<0)continue;
       const q=nearRoad(x,z);if(q&&q.d<q.w/2+3)continue;const sc=.7+rand()*.8;c++;const tr={x,y:foot(x,z,.3*sc,.3*sc).lo-.2,z,sx:sc,sy:sc*(.8+rand()*.5),sz:sc,c:new THREE.Color().setHSL(.24+rand()*.08,.5,.3+rand()*.14)};if(clr(x,z))continue;trees.push(tr);if(q&&q.d<20)addOBB(x,z,.3,.3)}}
-  {const[g,m,lo]=pair({g:aoGeo(new THREE.CylinderGeometry(.2,.28,3,5).translate(0,1.5,0),.45),m:vstd(0x9a7a5a,.9,0,tBark)},{g:aoGeo(new THREE.IcosahedronGeometry(2.4,0).translate(0,4.4,0),.45,2.2,6.8,.8),m:vstd(0xffffff,.9,0,tLeaf)},
-    [aoGeo(new THREE.CylinderGeometry(.2,.28,3,3,1,true).translate(0,1.5,0),.45),aoGeo(new THREE.OctahedronGeometry(2.5,0).translate(0,4.4,0),.45,2.2,6.8,.8)]);inst(g,m,trees,false,FAR.tree,lo)} // LOD twin: 42 vertices instead of 120
+  {const[g,m,lo]=pair({g:vcol(new THREE.CylinderGeometry(.2,.28,3,5).translate(0,1.5,0),.45),m:vstd(0x9a7a5a,.9,0,tBark)},{g:vcol(new THREE.IcosahedronGeometry(2.4,0).translate(0,4.4,0),.45,2.2,6.8,.8),m:vstd(0xffffff,.9,0,tLeaf)},
+    [vcol(new THREE.CylinderGeometry(.2,.28,3,3,1,true).translate(0,1.5,0),.45),vcol(new THREE.OctahedronGeometry(2.5,0).translate(0,4.4,0),.45,2.2,6.8,.8)]);inst(g,m,trees,false,FAR.tree,lo)} // LOD twin: 42 vertices instead of 120
   // boulders on the rough fields (feature.rocks = how many): flat-shaded rocks, the big ones solid
   {const rocks=[];for(const f of RF){const n=f.rocks||0;for(let k=0,c=0;k<n*5&&c<n;k++){const a=rand()*2*PI,rr=Math.sqrt(rand())*f.r,x=f.x+Math.cos(a)*rr,z=f.z+Math.sin(a)*rr,sc=.8+rand()*rand()*3.2;
       if(terr(x,z)<SEA+1.5||lastCarve>.05||inland(x,z)<8)continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+sc+2)continue;if(inBld(x,z))continue;c++;
       const g=.45+rand()*.25;rocks.push({x,y:foot(x,z,sc*.6,sc*.6).lo-sc*.25,z,ry:rand()*PI,sx:sc*(1+rand()*.5),sy:sc*(.6+rand()*.4),sz:sc,c:new THREE.Color(g,g*.96,g*.9)});if(sc>1.5)addOBB(x,z,sc*.65,sc*.65,0)}}
-    if(rocks.length)inst(aoGeo(new THREE.IcosahedronGeometry(1,0).translate(0,.45,0),.5),vstd(0xffffff,.95,0,tDet),rocks,true,FAR.tree)}
+    if(rocks.length)inst(vcol(new THREE.IcosahedronGeometry(1,0).translate(0,.45,0),.5),vstd(0xffffff,.95,0,tDet),rocks,true,FAR.tree)}
   // lot + gas station paving
   const tLot=tAsph.clone();tLot.repeat.set(17,17);tLot.needsUpdate=true;
   for(const F of LMF.lot){const lot=mesh(new THREE.PlaneGeometry(70,70).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tLot,roughness:.9}),40,.015,40,F);lot.receiveShadow=true;scene.add(freeze(lot));cullFar(lot,FAR.mid)}

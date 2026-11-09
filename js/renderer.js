@@ -269,13 +269,9 @@ export async function warm() {
 }
 addEventListener('resize', () => { setDPR(); renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
-// N64 "baked AO": a vertex colour from dark at the bottom (y0) to full at the top (y1, default the bbox). Gouraud-
-// interpolated across big faces it reads like contact shadow / sky occlusion for free. Materials need vertexColors.
-export function aoGeo(g, lo = .6, y0, y1, pw = .7) {
-  g.computeBoundingBox(); const a = y0 ?? g.boundingBox.min.y, b = y1 ?? g.boundingBox.max.y, p = g.attributes.position, c = new Float32Array(p.count * 3);
-  for (let i = 0; i < p.count; i++) { const t = Math.min(1, Math.max(0, (p.getY(i) - a) / (b - a || 1))), v = lo + (1 - lo) * Math.pow(t, pw); c[i * 3] = c[i * 3 + 1] = c[i * 3 + 2] = v; }
-  g.setAttribute('color', new THREE.Float32BufferAttribute(c, 3)); return g;
-}
+// White vertex colours: the instanced props' materials have vertexColors on (world.js vstd), so their geometry needs a colour
+// attribute. Until 11.98 this was a baked bottom-to-top "AO" gradient (aoGeo); now it is neutral, and the instance colour tints.
+export function vcol(g) { g.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count * 3).fill(1), 3)); return g; }
 // canvas texture helper
 export function ctex(w, h, draw, rep) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; draw(c.getContext('2d'), w, h);
