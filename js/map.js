@@ -202,9 +202,22 @@ function draw(now) {
   world(now);
   const on = (x, y, m) => x > -m && y > -m && x < W + m && y < HH + m;
   g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
-  for (const l of MAPV.lab) { // place names
+  // place names, decluttered: markers reserve their space first, then names in priority order (big places win); a name
+  // that would overlap something tries a few nudged spots and is left out if none is free (zoom in to see it)
+  const boxes = [], hit = (x0, y0, x1, y1) => { for (const b of boxes) if (x0 < b[2] && x1 > b[0] && y0 < b[3] && y1 > b[1]) return true; return false; };
+  for (const [gx, gz] of MAPV.gas || []) { proj(gx, gz); boxes.push([PX - 8, PY - 8, PX + 8, PY + 8]); }
+  for (const p of (ctx.MI && ctx.MI.pins) || []) { proj(p.x, p.z); boxes.push([PX - 12, PY - 12, PX + 12, PY + 12]); }
+  proj(P.x, P.z); boxes.push([PX - 14, PY - 14, PX + 14, PY + 14]);
+  if (!draw.ord || draw.ord.length !== MAPV.lab.length) draw.ord = [...MAPV.lab].sort((a, b) => b.p - a.p);
+  g.lineWidth = 3.5; g.strokeStyle = 'rgba(8,26,36,.72)'; g.fillStyle = '#fff';
+  for (const l of draw.ord) {
     if (!labOn(l)) continue; proj(l.x, l.z); if (!on(PX, PY, 40)) continue;
-    g.font = `700 ${l.p === 2 ? 13 : 11}px system-ui`; g.lineWidth = 3.5; g.strokeStyle = 'rgba(8,26,36,.72)'; g.strokeText(l.n, PX, PY); g.fillStyle = '#fff'; g.fillText(l.n, PX, PY);
+    const fs = l.p === 2 ? 13 : 11; g.font = `700 ${fs}px system-ui`;
+    const w = (l['w' + fs] ??= g.measureText(l.n).width) / 2 + 3, h = fs / 2 + 2;
+    for (const [ox, oy] of [[0, 0], [0, 2 * h + 4], [0, -2 * h - 4], [w + 12, 0], [-w - 12, 0]]) {
+      const x = PX + ox, y = PY + oy; if (hit(x - w, y - h, x + w, y + h)) continue;
+      boxes.push([x - w, y - h, x + w, y + h]); g.strokeText(l.n, x, y); g.fillText(l.n, x, y); break;
+    }
   }
   for (const [gx, gz] of MAPV.gas || []) { proj(gx, gz); if (!on(PX, PY, 12)) continue; g.fillStyle = '#ff4a3d'; g.strokeStyle = '#fff'; g.lineWidth = 1.8; g.beginPath(); g.arc(PX, PY, 6, 0, 7); g.fill(); g.stroke(); }
   g.font = '700 10px system-ui';

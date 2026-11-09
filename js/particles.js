@@ -55,7 +55,8 @@ const mat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: fal
   // fade in, fade out, and fade near the camera (fill rate): per vertex, interpolated
   const env = varying(smoothstep(0, .06, t).mul(t.mul(t).oneMinus()).mul(smoothstep(.6, 2.6, w.sub(cameraPosition).length())));
   const px = texture(puffTex(), uv());
-  mat.colorNode = C.xyz.mul(px.r.mul(.4).add(.6)).mul(LIT.max(step(1.01, C.x))); // red > 1 = glowing (sparks, fire, fireflies): not dimmed at night mat.opacityNode = px.a.mul(C.w).mul(env);
+  mat.colorNode = C.xyz.mul(px.r.mul(.4).add(.6)).mul(LIT.max(step(1.01, C.x))); // red > 1 = glowing (sparks, fire, fireflies): not dimmed at night
+  mat.opacityNode = px.a.mul(C.w).mul(env);
 }
 const mesh = new THREE.InstancedMesh(new THREE.PlaneGeometry(1, 1), mat, N); // instance matrices stay identity
 mesh.name = 'particles'; mesh.frustumCulled = false; mesh.castShadow = mesh.receiveShadow = false; mesh.visible = false; mesh.renderOrder = 5; scene.add(mesh);
