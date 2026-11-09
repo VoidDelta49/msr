@@ -366,7 +366,7 @@ function sport(ct) {
   mk(prof([[-.06, .5], [.16, .5], [.22, .4], [.18, .24], [-.02, .2], [-.12, .3]], .26, .02), ME, ct, 0, 0, 0);
   mk(prof([[-.28, .47], [-.06, .51], [-.06, .32], [-.26, .34]], .18, .015), MG, ct, 0, 0, 0);
   for (const z of [-.1, -.15, -.2]) mk(box(.21, .17, .012), MG, ct, 0, .42, z);
-  mk(cyl(.085, .085, .03, 10), MC, ct, .145, .36, .05, 0, 0, PI / 2); mk(prof([[-.04, .42], [.14, .44], [.18, .32], [.02, .28]], .02, .005), MAlu, ct, -.145, 0, 0);
+  mk(cyl(.085, .085, .03, 10), ME, ct, .145, .36, .05, 0, 0, PI / 2); mk(cyl(.045, .045, .036, 8), MB, ct, .145, .36, .05, 0, 0, PI / 2); mk(prof([[-.04, .42], [.14, .44], [.18, .32], [.02, .28]], .02, .005), MAlu, ct, -.145, 0, 0);
   mk(box(.23, .2, .035), MGrl, ct, 0, .55, -.34, .1);                                                         // radiator front
   mk(prof([[-.37, .58], [-.2, .44], [-.16, .35], [-.38, .36]], .27, .008), MGrl, ct, 0, 0, 0);               // radiator side cover (silver mesh, under the shroud wedge)
   // bodywork
@@ -390,29 +390,29 @@ function sport(ct) {
   for (const s of [-1, 1]) mk(cyl(.021, .021, .46), MC, st, s * .08, -.18, 0);
   mk(box(.22, .03, .08), MB, st, 0, .04, 0); mk(box(.2, .025, .07), MB, st, 0, -.13, 0);                    // yokes
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -.728;
-  for (const s of [-1, 1]) mk(cyl(.031, .028, .34, 8), MAlu, B.slider, s * .08, .17, 0);
+  for (const s of [-1, 1]) mk(cyl(.031, .028, .34, 8), MK, B.slider, s * .08, .17, 0);                        // black fork lowers
   B.frontW = wheelG(.25, .04, .212, 5, .02, true, .13); B.slider.add(B.frontW);
   mk(arc(.3, .325, 1.05 + .436, 2.5 + .436, .1), MF, B.slider, 0, 0, 0);                                      // front fender
   mk(box(.05, .075, .1), MK, B.slider, .088, .03, .07);                                                      // caliper
-  mk(profSt([[-.3, 1.1], [-.42, 1.08], [-.56, .98], [-.63, .9], [-.58, .86], [-.46, .88], [-.36, .92], [-.3, .98]], .27, .02), MP, st, 0, 0, 0); // cowl
-  mk(profSt([[-.46, 1.03], [-.6, .92], [-.645, .88], [-.6, .855], [-.5, .9]], .14, .012), MK, st, 0, 0, 0);    // black face
-  mk(profSt([[-.31, 1.1], [-.43, 1.085], [-.5, 1.04], [-.45, 1.13], [-.33, 1.17]], .2, .008), MVisG, st, 0, 0, 0); // smoked grey visor
-  mkSt(box(.15, .1, .02), MK, 0, -.633, .909, .85); mkSt(box(.12, .02, .02), MHead, 0, -.641, .93, .85); mkSt(box(.09, .02, .02), MHead, 0, -.641, .888, .85); // full-LED headlamp (two light bars in a dark housing)
-  for (const s of [-1, 1]) { mkSt(box(.05, .014, .02), MHead, s * .1, -.53, .99, .85, 0, s * .5); mkSt(box(.03, .03, .07), MAmb, s * .14, -.5, .93); } // position LEDs, signals
+  mk(profSt([[-.3, 1.07], [-.4, 1.06], [-.5, .98], [-.545, .9], [-.51, .84], [-.42, .84], [-.36, .88], [-.3, .96]], .25, .02), MP, st, 0, 0, 0); // cowl: short and tall, tight to the fork (11.99 accuracy round: it was a long beak)
+  mk(profSt([[-.41, 1.02], [-.51, .95], [-.555, .9], [-.52, .835], [-.44, .87]], .14, .012), MK, st, 0, 0, 0);   // black face
+  mk(profSt([[-.31, 1.07], [-.41, 1.06], [-.47, 1.02], [-.43, 1.1], [-.33, 1.13]], .2, .008), MVisG, st, 0, 0, 0); // smoked grey visor
+  mkSt(box(.13, .12, .02), MK, 0, -.543, .905, 1.05); mkSt(box(.1, .03, .02), MHead, 0, -.541, .935, 1.05); mkSt(box(.07, .03, .02), MHead, 0, -.553, .885, 1.05); // full-LED headlamp (two light bars in a dark housing)
+  for (const s of [-1, 1]) { mkSt(box(.05, .014, .02), MHead, s * .095, -.47, .985, .85, 0, s * .5); mkSt(box(.03, .03, .07), MAmb, s * .135, -.43, .9); } // position LEDs, signals
   clusterPlane(st, 0, .2, -.08, -.9);
   controls(st, .16, .07, .29, .2, [.3, .17, -.06]);
   rider(ct, [1.12, .3, -.35], [1.48, .14], [.22, 1.18, 0, .6, .45], [[.15, .9, .2, .2, .45, .14], [.18, .58, .02, -.2, .42, .11]]);
   B.cam = new THREE.Group(); B.cam.position.set(0, 1.36, .1); ct.add(B.cam);
   B.exh = new THREE.Group(); ct.add(B.exh);
-  // stock: black header under the engine into a big silver heat-shielded can angled up; aftermarket: shorter, louder cans
+  // stock: black header under the engine into a long brushed-silver can with a black heat shield, angled up; aftermarket: shorter, louder cans
   B.buildExh = (s, cf) => {
-    B.exh.clear(); const L = [.52, .4, .34][s], Rr = [.066, .058, .053][s], col = [0x17181b, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, s ? .35 : .55, s ? .8 : .3);
+    B.exh.clear(); const L = [.52, .4, .34][s], Rr = [.066, .058, .053][s], col = [0xaeb3b9, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, s ? .35 : .4, s ? .8 : .7);
     tube([.04, .33, -.26], [.07, .16, -.1], .022, MB, B.exh); tube([.07, .16, -.1], [.13, .2, .3], .024, MB, B.exh);
     const an = .55, a = [.15, .23, .32], d = [0, Math.sin(an), Math.cos(an)], at = t => a.map((v, i) => v + d[i] * t), b = at(L);
-    tube(a, b, Rr, m, B.exh, 8); tube(b, at(L + .06), Rr * .85, s ? MB : MAlu, B.exh, 8);                     // can + end cap
+    tube(a, b, Rr, m, B.exh, 8); tube(b, at(L + .06), Rr * .85, MB, B.exh, 8);                     // can + end cap
     if (s === 0) { // heat shield: a silver wedge over the lower outside of the can, running down to the header
       const Q = (t, n) => [a[2] + d[2] * t + Math.sin(an) * n, a[1] + d[1] * t - Math.cos(an) * n];
-      mk(prof([Q(-.1, .02), Q(.06, .085), Q(.44, .055), Q(.5, 0), Q(.1, -.02)], .016, .004), MAlu, B.exh, .155 + Rr, 0, 0); mk(box(.03, .05, .08), MB, B.exh, .14, .4, .42);
+      mk(prof([Q(-.1, .02), Q(.02, .07), Q(.3, .06), Q(.36, .01), Q(.1, -.02)], .016, .004), MB, B.exh, .155 + Rr, 0, 0); mk(box(.03, .05, .08), MB, B.exh, .14, .4, .42);
     }
     batchExh();
   };
@@ -454,12 +454,12 @@ function scooter(ct) {
     tube([s * .095, .795, -.645], [s * .175, .925, -.46], .008, MHead, ct, 4); mk(box(.02, .026, .07), MAmb, ct, s * .123, .745, -.58, .5, 0, 0);
   }
   mk(prof([[-.02, .33], [.14, .33], [.18, .6], [.1, .72], [0, .72], [-.06, .56]], .26, .015), MK, ct, 0, 0, 0); // under-seat tunnel
-  mk(prof([[.04, .7], [.3, .755], [.55, .81], [.75, .85], [.85, .865], [.88, .845], [.87, .79], [.8, .68], [.56, .55], [.34, .51], [.16, .5], [.06, .58]], .3, .03), MP, ct, 0, 0, 0); // rear body (sweeps up to the tail like the real one)
-  mk(prof([[.12, .47], [.3, .45], [.52, .51], [.62, .4], [.5, .3], [.18, .3]], .26, .01), MK, ct, 0, 0, 0);  // lower rear cover
+  mk(taper(prof([[.04, .7], [.3, .755], [.55, .81], [.75, .85], [.87, .872], [.93, .878], [.9, .835], [.78, .745], [.56, .615], [.36, .5], [.2, .455], [.1, .47], [.05, .58]], .3, .03), [[.7, 1], [.93, .5]]), MP, ct, 0, 0, 0); // rear body: a wedge, deep under the seat nose and thin at the pointed tail (11.99 accuracy round)
+  mk(prof([[.12, .47], [.3, .47], [.56, .6], [.7, .68], [.74, .56], [.62, .4], [.5, .3], [.18, .3]], .26, .01), MK, ct, 0, 0, 0);  // lower rear cover (black, up to the body's rising lower edge)
   mk(prof([[-.09, .69], [-.06, .735], [.03, .755], [.19, .76], [.37, .81], [.54, .86], [.72, .885], [.83, .895], [.84, .87], [.72, .855], [.54, .83], [.37, .78], [.19, .715], [.03, .7], [-.04, .625], [-.085, .635]], .3, .03, 2), MS, ct, 0, 0, 0); // seat: thick, its nose hangs over the tunnel, rising to the tail
   for (const s of [-1, 1]) mk(prof([[.56, .83], [.62, .865], [.84, .885], [.86, .86], [.8, .845], [.62, .825]], .04, .01), MK, ct, s * .125, 0, 0); // 2026 one-piece grab bar: sculpted side
   mk(prof([[.78, .86], [.84, .885], [.88, .87], [.86, .845]], .29, .012), MK, ct, 0, 0, 0);                    // ... joined behind the seat
-  mk(box(.16, .045, .03), MTail, ct, 0, .815, .875, .5); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .775, .86);
+  mk(box(.13, .04, .03), MTail, ct, 0, .845, .915, .6); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .8, .875);
   mk(prof([[.74, .69], [.92, .705], [.93, .68], [1.03, .385], [1.005, .37], [.87, .63], [.76, .645]], .07, .01), MK, ct, 0, 0, 0); // plate hanger: thin stalk down and back
   mk(box(.2, .12, .008), MPl, ct, 0, .47, .99, .4);
   // steering
@@ -628,9 +628,9 @@ function h2(ct, v) {
   // tank, seat + back rest, tail, tail lamp
   mk(taper(prof([[.2, .82], [.12, .9], [0, .97], [-.12, .99], [-.24, .96], [-.33, .9], [-.31, .82], [-.1, .78], [.1, .78]], .42, .03, 2), [[-.33, .78], [0, 1], [.2, .72]]), MP, ct, 0, 0, 0);
   mk(prof([[.18, .86], [.2, .83], [.3, .805], [.42, .815], [.52, .85], [.5, .87], [.38, .845], [.26, .845]], .3, .02, 2), MS, ct, 0, 0, 0);
-  mk(taper(prof([[.18, .8], [.36, .8], [.5, .84], [.57, .9], [.62, .975], [.93, 1.0], [.88, .94], [.72, .84], [.56, .73], [.32, .67], [.18, .68]], .26, .02), [[.5, 1], [.93, .32]]), MP, ct, 0, 0, 0);
+  mk(taper(prof([[.18, .8], [.36, .8], [.5, .84], [.57, .9], [.62, .975], [.85, .998], [.81, .94], [.7, .84], [.56, .73], [.32, .67], [.18, .68]], .26, .02), [[.5, 1], [.85, .36]]), MP, ct, 0, 0, 0);
   mk(prof([[.5, .86], [.55, .92], [.6, .965], [.56, .97], [.48, .9]], .2, .015), MS, ct, 0, 0, 0);
-  mk(box(.1, .03, .05), MTail, ct, 0, .955, .9, .5);
+  mk(box(.1, .03, .05), MTail, ct, 0, .955, .825, .5); // 11.99 accuracy round: the tail stops just behind the rear axle (it ran 20 cm past it)
   if (!R) { // licence plate on a hanger off the tail, rear signals
     mk(prof([[.72, .8], [.95, .7], [.98, .6], [.93, .6], [.7, .76]], .06, .008), MK, ct, 0, 0, 0);
     mk(box(.18, .12, .008), MPl, ct, 0, .64, 1.0, .25); for (const s of [-1, 1]) mk(box(.045, .025, .045), MAmb, ct, s * .1, .74, .94);
@@ -675,7 +675,7 @@ function h2(ct, v) {
     B.exh.clear(); const full = s === 2 || R, hm = full ? xstd(0x8a7f9a, .3, .85) : MAlu;
     for (const x of [-.12, -.04, .04, .12]) { tube([x, .58, -.33], [x * .9, .24, -.39], .02, hm, B.exh); tube([x * .9, .24, -.39], [x * .4, .13, -.22], .02, hm, B.exh); tube([x * .4, .13, -.22], [.05, .13, -.02], .021, hm, B.exh); }
     tube([.05, .13, -.02], [.11, .14, .14], .04, hm, B.exh); tube([.11, .14, .14], [.17, .23, .3], .042, hm, B.exh);
-    if (s === 0 && !R) { cone([.17, .23, .3], [.21, .4, .62], .075, .068, cf ? MCF : MAlu, B.exh, 10); cone([.21, .4, .62], [.215, .415, .65], .068, .045, MB, B.exh, 10); }
+    if (s === 0 && !R) { cone([.17, .23, .3], [.21, .39, .6], .09, .085, cf ? MCF : MAlu, B.exh, 6); cone([.21, .39, .6], [.215, .41, .64], .085, .055, MB, B.exh, 6); } // the stock can is huge and faceted
     else cone([.17, .23, .3], [.205, .41, .62], .045, .085, cf ? MCF : xstd(full ? 0xa9a39a : 0x9a9ea4, .3, .85), B.exh, 10);
     batchExh();
   };
@@ -783,17 +783,18 @@ function underbone(ct, v) {
   mk(box(.03, .02, .22), MC, ct, -.17, .32, .08, .1);                                                       // heel-toe gear pedal
   mk(prof([[-.3, .37], [-.12, .43], [-.06, .36], [-.1, .27], [-.28, .27]], .012, .004), MB, ct, .135, 0, 0);  // Smash Fi heat guard over the leg side of the cylinder
   // bodywork
-  const front = prof([[-.27, .98], [-.4, .95], [-.5, .84], [-.535, .68], [-.5, .52], [-.41, .41], [-.31, .42], [-.25, .56], [-.23, .76], [-.24, .9]], .32, .025);
+  // 11.99 accuracy round: the legshield is slim and swept back (down the fork line, then a fin running back past the cylinder), not an upright slab
+  const front = prof([[-.27, .98], [-.4, .95], [-.5, .84], [-.525, .7], [-.47, .56], [-.36, .46], [-.22, .385], [-.1, .36], [-.08, .43], [-.2, .5], [-.255, .62], [-.23, .76], [-.24, .9]], .32, .025);
   mk(taper(front, [[-.54, .62], [-.35, 1]]), MP, ct, 0, 0, 0);                                                  // front legshield cowl
-  mk(prof([[-.25, .92], [-.23, .76], [-.25, .56], [-.31, .43], [-.24, .41], [-.18, .56], [-.17, .78], [-.2, .92]], .29, .015), MK, ct, 0, 0, 0); // inner legshield
+  mk(prof([[-.25, .92], [-.23, .76], [-.255, .62], [-.2, .5], [-.14, .5], [-.18, .62], [-.17, .78], [-.2, .92]], .29, .015), MK, ct, 0, 0, 0); // inner legshield
   mk(prof([[-.24, .82], [-.08, .58], [.1, .53], [.14, .62], [-.03, .67], [-.18, .86]], .15, .015), MK, ct, 0, 0, 0); // low spine cover (the step-through)
-  mk(taper(prof([[.0, .6], [.04, .73], [.3, .77], [.6, .8], [.9, .84], [.95, .8], [.84, .69], [.55, .6], [.3, .53], [.08, .5]], .27, .025), [[.5, 1], [.96, .62]]), MP, ct, 0, 0, 0); // side covers
+  mk(taper(prof([[.0, .6], [.04, .73], [.3, .77], [.6, .81], [.9, .88], [.98, .875], [.87, .75], [.55, .62], [.3, .53], [.08, .5]], .27, .025), [[.5, 1], [.98, .55]]), MP, ct, 0, 0, 0); // side covers
   mk(prof([[.06, .51], [.3, .54], [.44, .47], [.32, .38], [.08, .41]], .22, .01), MK, ct, 0, 0, 0);            // lower frame cover
-  mk(prof([[.0, .74], [.04, .78], [.3, .8], [.58, .82], [.8, .85], [.84, .82], [.58, .78], [.02, .72]], .26, .025, 2), MS, ct, 0, 0, 0); // seat
-  for (const s of [-1, 1]) tube([s * .12, .79, .62], [s * .1, .84, .86], .014, MC, ct); mk(box(.22, .025, .04), MC, ct, 0, .845, .87); // grab rail
-  mk(box(.14, .04, .03), MTail, ct, 0, .8, .945, .6); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .78, .92);
-  mk(prof([[.86, .74], [.95, .76], [1, .58], [.96, .53], [.9, .62]], .1, .01), MK, ct, 0, 0, 0);               // plate hanger
-  mk(box(.18, .1, .008), MPl, ct, 0, .55, .99, .3);
+  mk(prof([[.0, .74], [.04, .8], [.3, .815], [.43, .805], [.58, .84], [.8, .88], [.84, .86], [.58, .79], [.02, .72]], .26, .025, 2), MS, ct, 0, 0, 0); // seat: thick, a step up to the pillion, rising to the tail
+  for (const s of [-1, 1]) tube([s * .12, .81, .62], [s * .1, .885, .9], .014, MC, ct); mk(box(.22, .025, .04), MC, ct, 0, .89, .91); // grab rail
+  mk(box(.14, .04, .03), MTail, ct, 0, .85, .98, .6); for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .815, .945);
+  mk(prof([[.86, .76], [.96, .8], [1.02, .6], [.98, .55], [.91, .64]], .1, .01), MK, ct, 0, 0, 0);               // plate hanger
+  mk(box(.18, .1, .008), MPl, ct, 0, .57, 1.01, .3);
   for (const s of [-1, 1]) { mk(new THREE.PlaneGeometry(.26, .05), MDec, ct, s * .138, .69, .4, 0, s * PI / 2, 0); mk(box(.04, .03, .04), MAmb, ct, s * .14, .87, -.44); } // side script, front signals
   mk(new THREE.PlaneGeometry(.12, .025), MDec, ct, 0, .78, -.522, .21, PI, 0);                                  // front badge
   // steering: fork, painted handlebar cover with the headlamp and meter
@@ -812,7 +813,7 @@ function underbone(ct, v) {
   mk(profSt([[-.42, 1.06], [-.52, 1.035], [-.56, 1.0], [-.5, 1.1], [-.44, 1.12]], .16, .008), MVisG, st, 0, 0, 0); // small visor
   mkSt(box(.16, .07, .02), MC, 0, -.585, .97, .9); mkSt(box(.11, .045, .02), MHead, 0, -.592, .97, .9);          // headlamp
   clusterPlane(st, 0, .19, .0, -1.0, .22);
-  controls(st, .16, .06, .3, .2, [.28, .24, -.04], true);
+  controls(st, .16, .06, .3, .2, [.28, .2, -.04], true);
   rider(ct, [1.1, .28, -.12], [1.46, .24], [.24, 1.17, 0, -.59, .5], [[.14, .79, .125, -.38, .38, .14], [.16, .51, .025, -.4, .39, .11]]);
   B.cam = new THREE.Group(); B.cam.position.set(0, 1.34, .15); ct.add(B.cam);
   B.exh = new THREE.Group(); ct.add(B.exh);
@@ -894,8 +895,9 @@ function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see build
   for (const s of [-1, 1]) { tube([s * .08, .8, .1], [s * .08, .8, .7], .015, MK, ct); tube([s * .08, .4, .14], [s * .08, .79, .45], .015, MK, ct); }
   // engine: silver cases, cylinder leaning forward with deep fins, round clutch cover on the right, kick lever
   mk(prof([[-.2, .44], [.12, .46], [.18, .34], [.14, .2], [-.06, .17], [-.2, .24]], .26, .02), MSil, ct, 0, 0, 0);
-  mk(prof([[-.2, .44], [-.05, .46], [-.12, .78], [-.28, .76]], .17, .015), MG, ct, 0, 0, 0);
-  for (let i = 0; i < 5; i++) mk(box(.23, .016, .2), MG, ct, 0, .52 + i * .055, -.15 - i * .016, .25);
+  const MCy = MAlu; // bare alloy cylinder and fins on both (11.99 accuracy round: they were dark)
+  mk(prof([[-.2, .44], [-.05, .46], [-.12, .78], [-.28, .76]], .17, .015), MCy, ct, 0, 0, 0);
+  for (let i = 0; i < 5; i++) mk(box(.23, .016, .2), MCy, ct, 0, .52 + i * .055, -.15 - i * .016, .25);
   mk(prof([[-.27, .78], [-.11, .8], [-.1, .86], [-.27, .84]], .19, .012), MSil, ct, 0, 0, 0);                    // head cover
   mk(cyl(.1, .1, .03, 12), MCov, ct, .14, .33, .0, 0, 0, PI / 2); mk(cyl(.065, .065, .02, 8), MSil, ct, -.14, .34, -.02, 0, 0, PI / 2);
   tube([.16, .33, .14], [.18, .45, .3], .012, MC, ct, 5); mk(box(.03, .02, .08), MB, ct, .18, .45, .34);       // kick starter
@@ -904,23 +906,24 @@ function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see build
   tube([-.17, .36, .15], [-.1, .7, .22], .008, MB, ct, 4);                                                      // carb / air box hint
   mk(box(.16, .14, .16), MK, ct, 0, .62, .08);
   // bodywork
-  mk(taper(prof([[-.34, .93], [-.24, 1.0], [-.02, .99], [.08, .93], [.07, .82], [-.1, .79], [-.34, .8]], .3, .03), [[-.36, .78], [-.15, 1], [.1, .86]]), MP, ct, 0, 0, 0); // teardrop tank
+  mk(taper(prof(m ? [[-.34, .93], [-.27, .995], [.07, .985], [.15, .93], [.14, .83], [-.1, .79], [-.34, .8]] : [[-.34, .93], [-.24, 1.0], [-.02, .99], [.08, .93], [.07, .82], [-.1, .79], [-.34, .8]], .3, .03), m ? [[-.36, .8], [-.2, 1], [.16, .92]] : [[-.36, .78], [-.15, 1], [.1, .86]]), MP, ct, 0, 0, 0); // teardrop tank (Macho: the long flat-topped CG tank)
   for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.17, .045), MDec, ct, s * .152, .89, -.13, 0, s * PI / 2, -.12 * s);      // tank badge
-  mk(prof([[.04, .82], [.36, .82], [.42, .74], [.36, .55], [.08, .52], [.02, .66]], .25, .015), m ? MP : MK, ct, 0, 0, 0); // side covers
-  mk(prof([[.04, .82], [.1, .875], [.55, .875], [.7, .86], [.69, .815], [.06, .8]], .27, .025, 2), MS, ct, 0, 0, 0); // long flat seat
+  mk(prof([[.04, .82], [.36, .82], [.42, .74], [.36, .55], [.08, .52], [.02, .66]], .25, .015), MP, ct, 0, 0, 0); // side covers (painted on both: the Supremo's carry the tank's colour and stripe)
+  mk(prof([[.04, .82], [.09, .89], [.5, .89], [.7, .87], [.69, .815], [.06, .8]], .27, .025, 2), MS, ct, 0, 0, 0); // long flat seat (thick)
   mk(arc(rw + .02, rw + .045, .9, 2.5, .13), m ? MC : MK, B.rearH, 0, 0, 0);                                                     // rear fender
   mk(prof([[.62, .8], [.86, .78], [.92, .7], [.86, .66], [.66, .74]], .15, .01), MK, ct, 0, 0, 0);             // tail
   mk(box(.15, .06, .05), MTail, ct, 0, .76, .9, .3); for (const s of [-1, 1]) { tube([s * .1, .74, .86], [s * .2, .74, .88], .007, MB, ct, 4); mk(box(.045, .035, .05), MAmb, ct, s * .22, .74, .88); }
   mk(box(.18, .1, .008), MPl, ct, 0, .6, .96, .25);
   // black carrier rack over the back of the seat
   const MRk = m ? MC : MK;
-  for (const s of [-1, 1]) { tube([s * .13, .9, .38], [s * .13, .9, .8], .012, MRk, ct); tube([s * .13, .9, .4], [s * .1, .8, .35], .012, MRk, ct); tube([s * .13, .9, .8], [s * .11, .78, .78], .012, MRk, ct); }
-  for (const z of [.55, .68, .8]) tube([-.13, .9, z], [.13, .9, z], .01, MRk, ct);
-  // steering: chrome fork, silver fender, small black cowl with the chrome-rimmed lamp, signals on stalks, round dials
+  const cz = m ? .98 : .8; // the Macho's chrome carrier reaches well behind the seat
+  for (const s of [-1, 1]) { tube([s * .13, .9, .38], [s * .13, .9, cz], .012, MRk, ct); tube([s * .13, .9, .4], [s * .1, .8, .35], .012, MRk, ct); tube([s * .13, .9, cz], [s * .11, .78, cz - .1], .012, MRk, ct); }
+  for (const z of m ? [.55, .68, .8, .9, .98] : [.55, .68, .8]) tube([-.13, .9, z], [.13, .9, z], .01, MRk, ct);
+  // steering: chrome fork with painted upper covers (Supremo) or black ones + gaiters (Macho), silver fender, small black cowl with the chrome-rimmed lamp, signals on stalks, round dials
   T0 = [headZ, headY]; RK = rake;
   const tilt = new THREE.Group(); tilt.position.set(0, headY, headZ); tilt.rotation.x = rake; ct.add(tilt);
   const st = B.steer = new THREE.Group(); tilt.add(st);
-  for (const s of [-1, 1]) { mk(cyl(.019, .019, .44), MC, st, s * .075, -.22, 0); mk(cyl(.03, .03, .16), MK, st, s * .075, -.06, 0); if (m) for (let i = 0; i < 4; i++) mk(cyl(.031, .031, .03, 8), MR, st, s * .075, -.3 - i * .045, 0); } // stanchions + upper covers (+ Macho gaiters)
+  for (const s of [-1, 1]) { mk(cyl(.019, .019, .44), MC, st, s * .075, -.22, 0); mk(cyl(.03, .03, m ? .16 : .22), m ? MK : MP, st, s * .075, m ? -.06 : -.08, 0); if (m) for (let i = 0; i < 4; i++) mk(cyl(.031, .031, .03, 8), MR, st, s * .075, -.3 - i * .045, 0); } // stanchions + upper covers (+ Macho gaiters)
   mk(box(.2, .03, .07), MB, st, 0, .03, 0); mk(box(.19, .025, .06), MB, st, 0, -.14, 0);                     // yokes
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
   for (const s of [-1, 1]) mk(cyl(.028, .026, .3, 8), MAlu, B.slider, s * .075, .15, 0);
@@ -932,7 +935,7 @@ function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see build
   else { mkSt(box(.17, .14, .02), MC, 0, headZ - .275, .985, .2); mkSt(box(.14, .11, .02), MHead, 0, headZ - .282, .985, .2); } // lamp + chrome rim
   for (const s of [-1, 1]) { tube([s * .08, 0, 0], [s * .17, -.03, -.08], .007, MB, st, 4); mkSt(box(.06, .045, .05), MAmb, s * .2, headZ - .21, .97, 0, s * .3); }
   clusterPlane(st, 0, .19, .02, -1.0, .22);
-  controls(st, .17, .06, .36, .22, [.33, .3, -.02]);
+  controls(st, .17, .06, .36, .22, [.33, .22, -.02]);
   rider(ct, [1.17, .27, -.1], [1.54, .22], [.25, 1.25, -.01, -.45, .47], [[.15, .88, .11, -.35, .36, .14], [.17, .575, .035, -.42, .51, .11]]);
   B.cam = new THREE.Group(); B.cam.position.set(0, 1.44, .18); ct.add(B.cam);
   B.exh = new THREE.Group(); ct.add(B.exh);
@@ -976,8 +979,11 @@ function aerox(ct) {
   mk(prof([[-.6, .6], [-.55, .74], [-.47, .9], [-.4, .99], [-.28, 1.0], [-.23, .76], [-.18, .4], [-.33, .34], [-.42, .44], [-.5, .5], [-.58, .54]], .46, .035), MP, ct, 0, 0, 0); // front apron
   mk(prof([[-.63, .55], [-.6, .64], [-.56, .7], [-.5, .62], [-.52, .52], [-.58, .5]], .2, .02), MK, ct, 0, 0, 0); // V nose
   // 2025 extended angular headlamp housing (XMAX-like): a dark pointed pod pushed out ahead of the apron, twin slim LED lamps across it
-  mk(taper(prof([[-.66, .74], [-.64, .82], [-.56, .9], [-.46, .92], [-.48, .8], [-.56, .72]], .3, .02), [[-.67, .55], [-.5, 1]]), MK, ct, 0, 0, 0);
-  for (const s of [-1, 1]) { mk(box(.12, .032, .03), MHead, ct, s * .07, .79, -.655, .75, s * .35, s * .18); mk(box(.1, .012, .02), MHead, ct, s * .11, .86, -.6, .85, 0, s * .5); mk(box(.04, .02, .02), MAmb, ct, s * .2, .7, -.535, .5, 0, s * .4); } // twin LED lamps, position strips, signals
+  // 11.99 accuracy round: the pod reaches out over the front tyre as a pointed nose under a body-colour brow (it was a stub on an upright slab)
+  mk(taper(prof([[-.73, .735], [-.71, .78], [-.6, .88], [-.46, .94], [-.46, .8], [-.56, .69], [-.67, .675]], .3, .02), [[-.74, .4], [-.5, 1]]), MK, ct, 0, 0, 0);
+  mk(taper(prof([[-.715, .785], [-.6, .895], [-.44, .985], [-.3, 1.0], [-.3, .94], [-.44, .915], [-.58, .835], [-.69, .755]], .35, .015), [[-.73, .36], [-.5, 1]]), MP, ct, 0, 0, 0); // painted brow / upper cowl
+  mk(taper(prof([[-.66, .845], [-.58, .92], [-.44, 1.0], [-.34, 1.012], [-.34, .995], [-.44, .98], [-.58, .9], [-.66, .825]], .15, .006), [[-.68, .3], [-.45, 1]]), MK, ct, 0, 0, 0); // black centre panel up to the screen
+  for (const s of [-1, 1]) { mk(box(.11, .032, .03), MHead, ct, s * .075, .735, -.69, .75, s * .35, s * .18); mk(box(.09, .012, .02), MHead, ct, s * .125, .785, -.625, .85, 0, s * .5); mk(box(.04, .02, .02), MAmb, ct, s * .2, .7, -.535, .5, 0, s * .4); } // twin LED lamps, position strips, signals
   mk(taper(prof([[-.6, .56], [-.56, .7], [-.52, .73], [-.54, .62], [-.57, .54]], .24, .006), [[-.6, .6], [-.52, 1]]), MTrim, ct, 0, 0, 0); // carbon-look (SP: red) chin under the lamps
   for (const s of [-1, 1]) mk(prof([[-.3, .62], [-.22, .68], [-.2, .5], [-.26, .44]], .006, .002), MTrim, ct, s * .2, 0, 0); // inner-fairing trim
   mk(prof([[.04, .74], [.4, .79], [.74, .86], [.94, .9], [.97, .85], [.86, .72], [.6, .58], [.36, .53], [.16, .52], [.06, .6]], .32, .03), MP, ct, 0, 0, 0); // rear body
@@ -986,7 +992,7 @@ function aerox(ct) {
   for (const s of [-1, 1]) { tube([s * .14, .86, .62], [s * .12, .9, .86], .016, MK, ct); tube([s * .156, .805, .04], [s * .156, .83, .36], .004, MStch, ct, 4); } // split grab handles, seat stitching (SP red)
   mk(taper(prof([[.88, .87], [.97, .86], [.99, .84], [.9, .83]], .14, .008), [[.88, 1], [.99, .35]]), MTail, ct, 0, 0, 0); // pointed LED tail lamp
   for (const s of [-1, 1]) { tube([s * .1, .8, .9], [s * .19, .8, .92], .008, MB, ct, 4); mk(box(.045, .025, .035), MAmb, ct, s * .2, .8, .925); } // signals sticking out at the sides
-  mk(prof([[.8, .68], [.9, .7], [1.0, .44], [.96, .38], [.86, .46]], .11, .012), MK, ct, 0, 0, 0);          // plate hanger
+  mk(prof([[.84, .72], [.9, .74], [1.0, .46], [.97, .41], [.9, .56]], .1, .012), MK, ct, 0, 0, 0);          // plate hanger
   mk(box(.2, .12, .008), MPl, ct, 0, .42, 1.0, .35);
   // steering
   T0 = [headZ, headY]; RK = rake;
@@ -1040,19 +1046,19 @@ function rouser(ct) {
   for (const s of [-1, 1]) { mk(box(.1, .022, .035), MR, ct, s * .19, .34, .14); mk(box(.025, .07, .05), MB, ct, s * .14, .37, .14); } // pegs
   mk(box(.03, .02, .2), MB, ct, -.19, .34, .02, .1);                                                          // gear pedal
   mk(box(.16, .14, .16), MK, ct, 0, .66, .1);                                                                 // throttle body / air box
-  mk(prof([[-.34, .3], [.1, .22], [.16, .3], [-.06, .4], [-.3, .42]], .28, .02), MK, ct, 0, 0, 0);           // belly cowl
+  mk(prof([[-.34, .3], [.1, .22], [.16, .3], [-.06, .4], [-.3, .42]], .28, .02), MP, ct, 0, 0, 0);           // belly cowl (painted, like the tank shrouds)
   // bodywork
   mk(taper(prof([[-.36, .97], [-.24, 1.06], [0, 1.06], [.1, .99], [.08, .87], [-.12, .84], [-.36, .86]], .32, .03), [[-.38, .8], [-.15, 1], [.12, .85]]), MP, ct, 0, 0, 0); // tank
   mk(prof([[-.46, 1.0], [-.3, .99], [-.12, .9], [-.08, .72], [-.26, .66], [-.44, .76]], .42, .02), MP, ct, 0, 0, 0); // tank shrouds
   for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.15, .04), MDec, ct, s * .222, .86, -.26, 0, s * PI / 2, -.35 * s); // shroud badge
-  mk(prof([[.06, .88], [.44, .9], [.48, .8], [.32, .68], [.1, .66], [.04, .76]], .27, .015), MP, ct, 0, 0, 0); // side panel
+  mk(prof([[.06, .88], [.44, .9], [.48, .8], [.32, .68], [.1, .66], [.04, .76]], .27, .015), MK, ct, 0, 0, 0); // side panel (dark on the real bike: the colour is on the tank, shrouds and belly)
   mk(prof([[.04, .89], [.1, .94], [.4, .94], [.46, .91], [.07, .87]], .26, .025, 2), MS, ct, 0, 0, 0);      // rider seat
   mk(prof([[.44, .93], [.5, .99], [.76, 1.01], [.8, .98], [.48, .92]], .21, .02, 2), MS, ct, 0, 0, 0);      // pillion
-  mk(prof([[.4, .92], [.8, .97], [.98, 1.0], [1.0, .95], [.86, .88], [.5, .84], [.42, .87]], .22, .02), MP, ct, 0, 0, 0); // tail
-  for (const s of [-1, 1]) tube([s * .12, .99, .6], [s * .1, 1.02, .86], .014, MK, ct);                     // split grab rails
-  for (const s of [-1, 1]) mk(box(.05, .014, .03), MTail, ct, s * .035, .975, 1.0, .5, 0, s * .35);          // twin LED strip tail lamps
-  tube([0, .88, .9], [0, .66, 1.05], .015, MK, ct); mk(box(.18, .1, .008), MPl, ct, 0, .62, 1.07, .25);      // plate hanger
-  for (const s of [-1, 1]) { tube([s * .03, .8, .96], [s * .15, .8, .97], .007, MB, ct, 4); mk(box(.045, .035, .05), MAmb, ct, s * .17, .8, .97); }
+  mk(prof([[.4, .92], [.76, .965], [.91, .995], [.93, .95], [.8, .88], [.5, .84], [.42, .87]], .22, .02), MK, ct, 0, 0, 0); // tail (dark)
+  for (const s of [-1, 1]) tube([s * .12, .99, .6], [s * .1, 1.015, .82], .014, MK, ct);                    // split grab rails
+  for (const s of [-1, 1]) mk(box(.05, .014, .03), MTail, ct, s * .035, .972, .93, .5, 0, s * .35);          // twin LED strip tail lamps
+  tube([0, .88, .84], [0, .66, .98], .015, MK, ct); mk(box(.18, .1, .008), MPl, ct, 0, .62, 1.0, .25);      // plate hanger
+  for (const s of [-1, 1]) { tube([s * .03, .8, .9], [s * .15, .8, .91], .007, MB, ct, 4); mk(box(.045, .035, .05), MAmb, ct, s * .17, .8, .91); }
   // steering
   T0 = [headZ, headY]; RK = rake;
   const tilt = new THREE.Group(); tilt.position.set(0, headY, headZ); tilt.rotation.x = rake; ct.add(tilt);
@@ -1064,12 +1070,12 @@ function rouser(ct) {
   B.frontW = wheel(true); B.slider.add(B.frontW);
   mk(box(.04, .07, .09), MB, B.slider, .085, .03, .07);                                                       // caliper
   mk(arc(rw + .025, rw + .045, 1.0 + rake, 2.4 + rake, .1), MF, B.slider, 0, 0, 0);                           // front fender
-  mk(profSt([[headZ - .02, 1.16], [headZ - .18, 1.14], [headZ - .3, 1.03], [headZ - .3, .93], [headZ - .2, .88], [headZ - .04, .95]], .3, .02), MP, st, 0, 0, 0); // angular cowl
+  mk(profSt([[headZ - .02, 1.16], [headZ - .18, 1.14], [headZ - .3, 1.03], [headZ - .3, .93], [headZ - .2, .88], [headZ - .04, .95]], .3, .02), MK, st, 0, 0, 0); // angular cowl (dark, not painted)
   mkSt(box(.2, .1, .01), MVis, 0, headZ - .16, 1.19, -.6);                                                    // smoked visor
   mkSt(box(.15, .1, .02), MHead, 0, headZ - .31, .985, .15); for (const s of [-1, 1]) mkSt(box(.06, .02, .02), MHead, s * .1, headZ - .28, 1.06, .3, 0, s * .4); // lamp + pilot lamps
   for (const s of [-1, 1]) { tube([s * .1, 0, 0], [s * .18, -.03, -.08], .007, MB, st, 4); mkSt(box(.06, .04, .05), MAmb, s * .21, headZ - .2, .97, 0, s * .3); }
   clusterPlane(st, 0, .2, .02, -1.0, .22);
-  controls(st, .16, .06, .37, .23, [.33, .32, -.02]);
+  controls(st, .16, .06, .37, .23, [.33, .2, -.02]);
   rider(ct, [1.23, .27, -.15], [1.6, .2], [.25, 1.3, -.02, -.5, .48], [[.15, .94, .11, -.35, .36, .14], [.17, .615, .04, -.42, .51, .11]]);
   B.cam = new THREE.Group(); B.cam.position.set(0, 1.5, .18); ct.add(B.cam);
   B.exh = new THREE.Group(); ct.add(B.exh);
@@ -1108,7 +1114,10 @@ function nmax(ct, v) {
     mk(cyl(.021, .021, .1, 8), MCop, ct, s * .152, .57, .465, -1.03);
   }
   // bodywork
-  mk(prof([[-.36, .3], [.14, .3], [.16, .35], [-.36, .35]], .38, .012), MK, ct, 0, 0, 0); for (const s of [-1, 1]) mk(box(.13, .008, .42), MRib, ct, s * .1, .355, -.12); // flat floorboard + mats
+  mk(prof([[-.36, .3], [.14, .3], [.16, .35], [-.36, .35]], .38, .012), MK, ct, 0, 0, 0); for (const s of [-1, 1]) mk(box(.13, .008, .42), MRib, ct, s * .12, .355, -.12); // floorboards + mats
+  // 11.99 accuracy round: the NMAX has a raised centre tunnel between the boards (fuel filler on top), painted along its sides
+  mk(prof([[-.27, .35], [-.25, .6], [-.1, .65], [.06, .65], [.1, .56], [.1, .35]], .15, .03), MK, ct, 0, 0, 0); mk(cyl(.032, .032, .012, 10), MRd, ct, 0, .652, -.04);
+  for (const s of [-1, 1]) mk(prof([[-.26, .44], [-.24, .57], [-.08, .6], [.09, .58], [.09, .5], [-.08, .48]], .012, .005), MP, ct, s * .079, 0, 0);
   mk(prof([[-.56, .32], [-.44, .22], [.3, .22], [.42, .3], [.38, .37], [-.48, .38]], .4, .014), MP, ct, 0, 0, 0); // deep side skirt
   mk(prof([[-.32, .35], [-.12, .35], [-.08, .4], [-.3, .4]], .2, .02), MK, ct, 0, 0, 0);                      // low centre rise at the toe (fuel lid)
   mk(prof([[-.31, .98], [-.24, .96], [-.19, .66], [-.16, .35], [-.25, .35], [-.28, .66]], .42, .015), MK, ct, 0, 0, 0); // inner leg shield
@@ -1177,7 +1186,7 @@ function nmax(ct, v) {
 // muffler with a silver end cap on the right, 5 split-spoke wheels, single 267 mm front disc.
 function xmax(ct) {
   const rw = .276, fr = .274, rake = .4625, headY = .92, fZ = -.8, fork = (headY - fr) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
-  B.G = { rw, rearZ: .74, fork, rake, pivotY: .3, pivotZ: 0, swingX: -.1 }; B.wheelCol = 0x141518; B.cargo = { y: .92, z: .62 }; B.decal = MDec;
+  B.G = { rw, rearZ: .74, fork, rake, pivotY: .3, pivotZ: 0, swingX: -.1 }; B.wheelCol = 0x141518; B.cargo = { y: .92, z: .62 }; B.decal = MDec; B.fenderPaint = true; // big body-colour front fender
   const wheel = (R, t, rim, disc) => wheelG(R, t, rim, 5, .016, true, disc, { sx: [.05], sr: rim - .002, sw: .004 });
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .74); ct.add(B.rearH); B.rearW = wheel(.21, .066, .17, .122); B.rearH.add(B.rearW);
   mk(arc(.29, .315, 1.3, 2.6, .15), MF, B.rearH, 0, 0, 0);                                                     // rear hugger
@@ -1192,7 +1201,11 @@ function xmax(ct) {
   mk(prof([[-.52, .36], [.06, .36], [.09, .42], [-.5, .42]], .42, .012), ME, ct, 0, 0, 0);                    // floorboard
   for (const s of [-1, 1]) mk(box(.13, .008, .46), MRib, ct, s * .11, .425, -.2);                             // floor mats
   mk(prof([[-.46, .42], [-.22, .42], [-.2, .48], [-.44, .5]], .16, .02), ME, ct, 0, 0, 0);                    // low centre rise at the toe
-  mk(cyl(.035, .035, .012, 10), MRd, ct, 0, .49, -.33, -.1);                                                   // fuel lid
+  // 11.99 accuracy round: the XMAX is not a flat-floor step-through. A tall centre tunnel (fuel tank, filler on top) joins the
+  // leg shield to the seat, with the painted "boomerang" trim along each side of it
+  mk(prof([[-.42, .42], [-.4, .68], [-.2, .72], [.02, .72], [.06, .62], [.06, .42]], .2, .03), ME, ct, 0, 0, 0);
+  for (const s of [-1, 1]) mk(prof([[-.4, .52], [-.38, .64], [-.16, .66], [.06, .64], [.06, .56], [-.14, .54]], .014, .005), MP, ct, s * .104, 0, 0);
+  mk(cyl(.035, .035, .012, 10), MRd, ct, 0, .722, -.12);                                                       // fuel lid
   mk(prof([[-.6, .4], [-.52, .24], [.0, .19], [.12, .3], [.06, .42], [-.52, .42]], .4, .014), ME, ct, 0, 0, 0); // lower skirt under the floor
   mk(prof([[.0, .42], [.06, .62], [.36, .62], [.6, .66], [.64, .5], [.46, .34], [.12, .3]], .38, .014), ME, ct, 0, 0, 0); // lower rear panel
   for (let i = 0; i < 4; i++) for (const s of [-1, 1]) mk(box(.006, .018, .14), MGrl, ct, s * .19, .44 + i * .035, .22 + i * .018, 0, 0, 0); // its grille slats
@@ -1216,14 +1229,14 @@ function xmax(ct) {
   mk(taper(prof([[-.7, 1.06], [-.58, 1.41], [-.55, 1.41], [-.67, 1.05]], .46, .004), null, [[1.05, .7], [1.41, 1]]), MGls, ct, 0, 0, 0);
   for (const s of [-1, 1]) tube([s * .13, 1.0, -.62], [s * .15, 1.2, -.64], .008, MK, ct, 5);               // screen stays
   // rear
-  mk(taper(prof([[.0, .6], [.0, .76], [.4, .78], [.62, .8], [.85, .86], [1.08, .9], [1.12, .86], [1.02, .76], [.7, .68], [.35, .62]], .36, .03), [[.8, 1], [1.12, .55]]), MP, ct, 0, 0, 0); // rear side covers + tail
+  mk(taper(prof([[.0, .6], [.0, .76], [.4, .78], [.62, .8], [.85, .86], [1.03, .895], [1.07, .86], [.98, .76], [.7, .68], [.35, .62]], .36, .03), [[.8, 1], [1.07, .55]]), MP, ct, 0, 0, 0); // rear side covers + tail
   for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.15, .036), MDec, ct, s * .182, .71, .82, 0, s * PI / 2, -.12 * s); // model badge (pseudo-letters)
-  mk(prof([[-.1, .76], [-.06, .815], [.3, .815], [.42, .845], [.5, .89], [.95, .92], [1.0, .895], [.95, .86], [.45, .82], [-.02, .75]], .37, .035, 2), MS, ct, 0, 0, 0); // two-step seat
-  for (const s of [-1, 1]) { tube([s * .15, .84, .5], [s * .15, .9, .62], .018, MP, ct); tube([s * .15, .9, .62], [s * .12, .93, 1.0], .018, MP, ct); } // split grab rails
-  mk(box(.2, .04, .04), MTail, ct, 0, .86, 1.11, .5);                                                          // sharp tail lamp
-  mk(prof([[.86, .66], [.96, .68], [1.1, .42], [1.05, .36], [.92, .46]], .1, .012), MK, ct, 0, 0, 0);          // plate hanger
+  mk(prof([[-.1, .76], [-.06, .815], [.3, .815], [.42, .845], [.5, .89], [.9, .92], [.95, .895], [.9, .86], [.45, .82], [-.02, .75]], .37, .035, 2), MS, ct, 0, 0, 0); // two-step seat
+  for (const s of [-1, 1]) { tube([s * .15, .84, .5], [s * .15, .9, .62], .018, MP, ct); tube([s * .15, .9, .62], [s * .12, .93, .96], .018, MP, ct); } // split grab rails
+  mk(box(.2, .04, .04), MTail, ct, 0, .86, 1.06, .5);                                                          // sharp tail lamp
+  mk(prof([[.83, .66], [.93, .68], [1.07, .42], [1.02, .36], [.89, .46]], .1, .012), MK, ct, 0, 0, 0);          // plate hanger
   for (const s of [-1, 1]) mk(box(.04, .03, .04), MAmb, ct, s * .1, .55, 1.03);                               // rear signals
-  mk(box(.2, .12, .008), MPl, ct, 0, .44, 1.08, .35);
+  mk(box(.2, .12, .008), MPl, ct, 0, .44, 1.05, .35);
   // steering: bar on the fork top
   T0 = [headZ, headY]; RK = rake;
   const tilt = new THREE.Group(); tilt.position.set(0, headY, headZ); tilt.rotation.x = rake; ct.add(tilt);
