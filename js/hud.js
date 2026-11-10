@@ -15,32 +15,7 @@ const gaugeCv = $('gauge'), gc = gaugeCv.getContext('2d');
 export const cluTex = new THREE.CanvasTexture(gaugeCv); cluTex.colorSpace = THREE.SRGBColorSpace; cluTex.generateMipmaps = false; cluTex.minFilter = THREE.LinearFilter;
 function rr(g, x, y, w, h, r) { g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h); }
 
-/* sport: Raider-style sweeping LED tach, big digital speed, gear indicator */
-const PP = { x: 0, y: 0, a: 0 }; // reused: 48+ calls per redraw
-function pathPt(t) { if (t < .72) { PP.x = 28 + t / .72 * 332; PP.y = 58; PP.a = 0; return PP; } const u = (t - .72) / .28 * PI / 2; PP.x = 360 + 82 * Math.sin(u); PP.y = 140 - 82 * Math.cos(u); PP.a = u; return PP; }
-function sport(g, sp) {
-  const MAX = sp.tachMax, rpm = dispRpm(sp);
-  g.fillStyle = '#0a0f12'; rr(g, 4, 4, 504, 216, 26); g.fill(); g.strokeStyle = '#2b3740'; g.lineWidth = 4; g.stroke();
-  for (let i = 0; i < 48; i++) {
-    const t = i / 47, p = pathPt(t), r0 = t * MAX;
-    g.fillStyle = rpm >= r0 && rpm > 0 ? (r0 >= sp.red ? '#ff3b2f' : r0 >= sp.red - 2000 ? '#ffb020' : '#7cf2ff') : (r0 >= sp.red ? '#3a1512' : '#18232a');
-    g.save(); g.translate(p.x, p.y); g.rotate(p.a); g.fillRect(-3, 0, 6, 26); g.restore();
-  }
-  g.fillStyle = '#7d8b95'; g.font = 'bold 17px system-ui'; g.textAlign = 'center';
-  for (let k = 0; k <= MAX / 1000; k += 2) { const p = pathPt(k * 1000 / MAX); g.fillText(k, p.x + Math.sin(p.a) * 14, p.y - Math.cos(p.a) * 14 - 3); }
-  g.fillText('x1000 r/min', 90, 112);
-  g.fillStyle = '#e9fbff'; g.font = 'bold 96px ui-monospace,Menlo,monospace'; g.textAlign = 'right'; g.fillText(Math.round(Math.abs(S.v) * 3.6), 250, 200);
-  g.font = 'bold 22px system-ui'; g.textAlign = 'left'; g.fillStyle = '#9fb3bf'; g.fillText('km/h', 256, 200);
-  g.textAlign = 'center'; g.font = 'bold 74px system-ui'; g.fillStyle = S.gear ? '#ffb020' : '#43e07a'; g.fillText(S.gear || 'N', 466, 206);
-  const fr = S.fuel / sp.fuel.cap;
-  for (let i = 0; i < 6; i++) { g.fillStyle = fr > (i + .5) / 6 ? (fr < .18 ? '#ff4a3d' : '#e9fbff') : '#18232a'; g.fillRect(324 + i * 17, 168, 13, 24); }
-  g.fillStyle = '#9fb3bf'; g.font = 'bold 16px system-ui'; g.fillText('GAS', 375, 210); g.fillText('E', 314, 186); g.fillText('F', 434, 186);
-  g.textAlign = 'left'; g.font = 'bold 18px system-ui';
-  if (!S.running) { g.fillStyle = '#ff4a3d'; g.fillText('ENGINE OFF', 28, 140); }
-  else if (S.lim && (performance.now() / 90 | 0) % 2) { g.fillStyle = '#ff3b2f'; g.fillText('SHIFT', 28, 140); }
-  if (S.cl > .05) { g.fillStyle = '#ffb020'; g.fillText('CLUTCH ' + (S.cl * 100 | 0) + '%', 140, 140); }
-}
-
+const PP = { x: 0, y: 0, a: 0 }; // reused per redraw
 const clk = n => String(n.h).padStart(2, '0') + ((n.s & 1) ? ':' : ' ') + String(n.m).padStart(2, '0');
 const kmh = () => Math.round(Math.abs(S.v) * 3.6);
 const MONO = 'ui-monospace,Menlo,monospace', GH = 'rgba(255,255,255,.05)'; // GH: unlit LCD segments behind the digits
@@ -58,6 +33,38 @@ function drum(g, x, y, n, col = '#e9e9e4') { const od = String((S.odo / 1000 | 0
 // fuel-economy bar of the Honda LCD: full when coasting, empties with the throttle
 const ecoV = () => S.running && Math.abs(S.v) > 2 ? 1 - Math.min(1, S.thrEff || 0) : 0;
 
+/* sport: Suzuki Raider R150 Fi (owner's photos). Red-backlit LCD with dark segments: tach bar over a rising 0-13 scale across
+   the top, big speed on the left, clock / GEAR digit in the middle, LOW tach-range flag, odometer, fuel blocks F-E down the
+   right edge. Beside the glass: the RPM shift lamp and the green N lamp */
+function sport(g, sp) {
+  const MAX = sp.tachMax, rpm = dispRpm(sp), now = phNow(), K = MAX / 1000, ink = '#1c0406', gh = 'rgba(40,0,0,.09)', X = t => 46 + t * 322, Y = t => 70 - 16 * t;
+  g.fillStyle = '#08090b'; rr(g, 4, 4, 504, 216, 34); g.fill(); g.strokeStyle = '#2b3138'; g.lineWidth = 4; g.stroke();
+  const gr = g.createLinearGradient(0, 20, 0, 200); gr.addColorStop(0, '#ff4a44'); gr.addColorStop(1, '#f01f24');
+  g.fillStyle = gr; g.beginPath(); g.moveTo(34, 30); g.lineTo(408, 16); g.lineTo(414, 190); g.lineTo(44, 200); g.closePath(); g.fill();
+  for (let i = 0; i < 52; i++) { const t = i / 51, h = 9 + t * 17; g.fillStyle = rpm > t * MAX && rpm > 0 ? ink : gh; g.fillRect(X(t), Y(t) - h - 2, 4.6, h); }
+  g.strokeStyle = ink; g.lineWidth = 1.5; g.beginPath(); g.moveTo(X(0) - 6, Y(0)); g.lineTo(X(1) + 8, Y(1)); g.stroke();
+  g.fillStyle = ink; g.font = 'bold 13px system-ui'; g.textAlign = 'center';
+  for (let k = 0; k <= K; k++) { const t = k / K; g.fillText(k, X(t) + 2, Y(t) + 14); g.fillRect(X(t) - 2, Y(t) - 30 - t * 4, 1, 30 + t * 4); }
+  g.font = 'italic bold 9px system-ui'; g.textAlign = 'left'; g.fillText('x1000r/min', 50, 100);
+  g.textAlign = 'right'; g.font = 'bold 100px ' + MONO; g.fillStyle = gh; g.fillText('188', 222, 190); g.fillStyle = ink; g.fillText(S.keyT < 1.2 ? 188 : kmh(), 222, 190);
+  g.textAlign = 'left'; g.font = 'bold 13px system-ui'; g.fillText('km/h', 226, 178);
+  g.textAlign = 'right'; g.font = 'bold 30px ' + MONO; g.fillText(now.h + ((now.s & 1) ? ':' : ' ') + String(now.m).padStart(2, '0'), 306, 122);
+  g.lineWidth = 2.5; g.beginPath(); g.moveTo(326, 92); g.lineTo(310, 126); g.stroke();
+  g.textAlign = 'center'; g.font = 'bold 46px ' + MONO; g.fillText(S.gear || 0, 350, 128);
+  g.fillRect(326, 133, 48, 13); g.fillRect(236, 133, 42, 13); g.fillStyle = '#ff3a36'; g.font = 'bold 10px system-ui'; g.fillText('GEAR', 350, 143.5); g.fillText('LOW', 257, 143.5);
+  g.fillStyle = ink; g.textAlign = 'left'; g.font = 'bold 10px system-ui'; g.fillText('ODO', 290, 160);
+  g.textAlign = 'right'; g.font = 'bold 26px ' + MONO; g.fillText(String(S.odo / 1000 | 0).padStart(6, '0'), 374, 188);
+  const fr = S.fuel / sp.fuel.cap; for (let i = 0; i < 6; i++) { g.fillStyle = fr > (i + .5) / 6 ? ink : gh; g.fillRect(384 + i * .6, 172 - i * 15, 15, 12); }
+  g.fillStyle = ink; g.font = 'bold 11px system-ui'; g.textAlign = 'center'; g.fillText('F', 396, 88); g.fillText('E', 406, 184);
+  // beside the glass
+  const shift = S.running && (rpm >= sp.red - 500 || S.lim) && !(S.lim && (performance.now() / 90 | 0) % 2);
+  g.fillStyle = '#c9ced6'; g.font = 'bold 12px system-ui'; g.fillText('RPM', 440, 84); g.fillText('SEL', 60, 214); g.fillText('ADJ', 446, 196);
+  g.fillStyle = shift ? '#ffffff' : '#0c0d10'; g.strokeStyle = '#5a6068'; g.lineWidth = 2; g.beginPath(); g.arc(478, 78, 13, 0, 2 * PI); g.fill(); g.stroke();
+  g.fillStyle = S.gear ? '#10301a' : '#39e06a'; rr(g, 462, 106, 32, 30, 5); g.fill(); g.fillStyle = S.gear ? '#1d4a2a' : '#06200f'; g.font = 'bold 22px system-ui'; g.fillText('N', 478, 129);
+  g.textAlign = 'left'; g.font = 'bold 12px system-ui';
+  if (!S.running) { g.fillStyle = '#ff4a3d'; g.fillText('ENGINE OFF', 190, 214); }
+  else if (S.cl > .05) { g.fillStyle = '#ffb020'; g.fillText('CLUTCH ' + (S.cl * 100 | 0) + '%', 190, 214); }
+}
 /* scooter: Honda Click 125. Small wide blue negative LCD: wedge fuel bars far left, big italic speed, clock and distance on
    the right over the fuel-economy bar. Idling Stop lamp on the bezel above it */
 function scooter(g, sp) {
@@ -366,7 +373,7 @@ export function drawCluster(inWorld = true, hold = false) { // hold: redraw the 
     ctx.bike.cluster === 'scooter' || ctx.bike.cluster === 'aerox' ? [now.m, now.s & 1, (S.odo / 100) | 0, Math.round(ecoV() * 12), sp.tc, ctx.bcfg.tc, (S.tcF ?? 1) < .95, S.issOff && (performance.now() / 400 | 0) % 2, ctx.bcfg.iss, S.issOff].join() :
     ctx.bike.cluster === 'h2' ? [now.m, now.s & 1, Math.round(boostOf(sp) * 10), ctx.bcfg.qs].join() :
     ctx.bike.cluster === 'nmax' || ctx.bike.cluster === 'xmax' ? [now.m, now.s & 1, (S.odo / 100) | 0, S.ysh, ctx.bcfg.ysp, sp.yec, ctx.bcfg.tc, (S.tcF ?? 1) < .95 && (performance.now() / 400 | 0) % 2, S.issOff && (performance.now() / 400 | 0) % 2, ctx.bcfg.iss, S.issOff].join() :
-    ctx.bike.cluster === 'smash' ? [(S.odo / 1000) | 0, sp.carb].join() : [now.m, now.s & 1, (S.odo / 100) | 0].join()].join('|');
+    ctx.bike.cluster === 'smash' ? [(S.odo / 1000) | 0, sp.carb].join() : [now.m, now.s & 1, (S.odo / 100) | 0, S.running && S.rpm >= sp.red - 500].join()].join('|');
   if (key !== cluKey) { cluKey = key; gc.clearRect(0, 0, 512, 224); (S.key ? CLUSTERS[ctx.bike.cluster] : dead)(gc, sp); texDirty = true; }
   if (inWorld && texDirty && !hold) { cluTex.needsUpdate = true; texDirty = false; return true; }
   return false;

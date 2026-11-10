@@ -28,7 +28,7 @@
     "idle": 1400,
     "red": 11000,
     "peakPS": 18.5,
-    "tachMax": 14000,
+    "tachMax": 13000,
     "geo": { "bore": 62.0, "stroke": 48.8, "cr": 11.5, "peak": 10000 },
     "torque": [
       [0, 3],
