@@ -1,6 +1,6 @@
 # Plan: 11.99c (ISLA)
 
-Status: **in progress.** Done: item 1 (ISLA rename), item 2 (weather: relay, client, wet physics; see "Item 2: what was built" at the end). Not started: items 3-6. Item 7 still blocked. BUILD is still 11.99b (bump at release). Source: the owner's handwritten "Plan 4" note plus the discussion after it.
+Status: **in progress.** Done: item 1 (ISLA rename), item 2 (weather: relay, client, wet physics; see "Item 2: what was built" at the end). Done: item 3 (wheels: Donut tyres on the four scooters, Drag skinny on the four 17-inch small bikes, three new mag designs given per bike; the XMAX still has no thin tyre: no real narrow 15 / 14 inch pair was found). Not started: items 4-6. Item 7 still blocked. BUILD is still 11.99b (bump at release). Source: the owner's handwritten "Plan 4" note plus the discussion after it.
 
 Already shipped in 11.99 / 11.99b (not part of this plan): Dyno fine-tuning (`js/tune.js`), "Thai concept skinny" tires, rim designs (`maker/parts-gen.mjs`), real-clock day/night (`js/daynight.js`).
 

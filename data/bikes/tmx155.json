@@ -458,7 +458,7 @@
         }
       ]
     },
-    "rims": {"l": "Rim design", "o": [{"n": "Stock wire spokes", "rimD": 0}, {"n": "6-spoke cast", "rimD": 1, "dm": -0.6}, {"n": "Twin 5-spoke", "rimD": 2, "dm": -1}, {"n": "10-spoke forged", "note": "Lightest", "rimD": 3, "dm": -1.8}, {"n": "3-spoke", "rimD": 4, "dm": 0.3}, {"n": "7 Y-spoke", "rimD": 5, "dm": -1.2}]},
+    "rims": {"l": "Mags / rims", "o": [{"n": "Stock wire spokes", "rimD": 0}, {"n": "6-spoke cast", "rimD": 1, "dm": -0.6}, {"n": "Twin 5-spoke", "rimD": 2, "dm": -1}, {"n": "10-spoke forged", "note": "Lightest", "rimD": 3, "dm": -1.8}, {"n": "3-spoke", "rimD": 4, "dm": 0.3}, {"n": "7 Y-spoke", "rimD": 5, "dm": -1.2}, {"n": "Racing 8-spoke", "note": "Thin forged spokes", "rimD": 7, "dm": -1.5}]},
     "mirrors": {"l": "Mirrors", "o": [{"n": "Stock"}, {"n": "Bar-end round", "mirK": 1}, {"n": "Short sport", "mirK": 2, "dm": -0.2}, {"n": "Removed", "note": "Track look", "mirK": 3, "dm": -0.6}]},
     "levers": {"l": "Levers", "o": [{"n": "Stock"}, {"n": "Black", "levC": "#17181b"}, {"n": "Gold", "levC": "#c9a24a"}, {"n": "Red", "levC": "#c21d1d"}, {"n": "Blue", "levC": "#1f4fbf"}, {"n": "Purple", "levC": "#7a3fd0"}, {"n": "Titanium", "levC": "#8d8f94"}]},
     "grips": {"l": "Grips", "o": [{"n": "Stock black"}, {"n": "Red", "grpC": "#c21d1d"}, {"n": "Blue", "grpC": "#1f4fbf"}, {"n": "Orange", "grpC": "#e2661a"}, {"n": "Purple", "grpC": "#7a3fd0"}, {"n": "Lime", "grpC": "#7bd11f"}, {"n": "White", "grpC": "#e9e9e4"}]},

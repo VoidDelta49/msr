@@ -116,20 +116,24 @@ const wdisc = (g, r, c) => { g.fillStyle = WCOL[c]; g.beginPath(); g.arc(0, 0, r
 // Garage: f = how much the tyre option grew / shrank the rim opening (the face plane is scaled, the tile is not redrawn), TY.rd swaps
 // the spokes for an aftermarket design (RIMS, drawn once on a reference wheel and scaled to fit), TY.dk a wave / oversize disc,
 // TY.led two LED rings at the rim.
-const RIMS = [null, { n: 6, w: .026, to: 0 }, { n: 5, w: .015, to: .17 }, { n: 10, w: .011, to: 0 }, { n: 3, w: .06, to: 0 }, { n: 7, w: .013, y: .11, to: .21 }, { n: 18, w: .0055, to: 0, sc: 'B', hc: 'B', hub: .04 }];
+const RIMS = [null, { n: 6, w: .026, to: 0 }, { n: 5, w: .015, to: .17 }, { n: 10, w: .011, to: 0 }, { n: 3, w: .06, to: 0 }, { n: 7, w: .013, y: .11, to: .21 }, { n: 18, w: .0055, to: 0, sc: 'B', hc: 'B', hub: .04 },
+  { n: 8, w: .009, to: 0, hub: .04 }, { n: 9, w: .02, to: 0, tb: .5, hub: .055 }, { n: 4, w: .075, to: 0, hub: .07, r1: .19 }]; // 7 racing 8-spoke, 8 turbine (tb = blade sweep, rad), 9 dish 4-spoke
 function wheelFaces(g, sp, f = 1) {
   const D = RIMS[TY.rd], rim0 = sp.rim; let pk = f;
   if (D) { pk = f * rim0 / .2; sp = { ...sp, rim: .2, lip: .013, y: 0, r0: .04, r1: .2, sc: 'R', hub: .048, hc: 'R', sr: sp.sr && .198, ...D }; }
   const S = sp.rim + .02;
   if (TY.led) for (const s of [-1, 1]) mk(new THREE.TorusGeometry(rim0 * f - .004, .006, 4, 28), MWLed, g, s * .03, 0, 0, 0, PI / 2);
   for (const s of [-1, 1]) {
-    const st = (sp.sx || []).some(x => Math.sign(x) === s), key = JSON.stringify(['f', S, sp.lip, sp.n, sp.w, sp.to, sp.y || 0, sp.r0, sp.r1, sp.sc, sp.hub, sp.hc, st ? [sp.sr, sp.sw] : 0]);
+    const st = (sp.sx || []).some(x => Math.sign(x) === s), key = JSON.stringify(['f', S, sp.lip, sp.n, sp.w, sp.to, sp.y || 0, sp.tb || 0, sp.r0, sp.r1, sp.sc, sp.hub, sp.hc, st ? [sp.sr, sp.sw] : 0]);
     wheelPlane(g, S, s, s * .016, wheelTile(key, S, (c, k) => {
       c.fillStyle = WCOL[sp.sc]; const w = Math.max(sp.w, 2.2 / k);
       if (sp.y) { // Y spokes: a stem from the hub to radius y, splitting into two arms that reach the rim 2 * to apart
         c.strokeStyle = WCOL[sp.sc]; c.lineWidth = w; c.lineCap = 'round';
         for (let i = 0; i < sp.n; i++) { const a = i * 2 * PI / sp.n, P = (r, d) => [Math.sin(a + d) * r, -Math.cos(a + d) * r];
           c.beginPath(); c.moveTo(...P(sp.r0, 0)); c.lineTo(...P(sp.y, 0)); c.lineTo(...P(sp.r1, -sp.to)); c.moveTo(...P(sp.y, 0)); c.lineTo(...P(sp.r1, sp.to)); c.stroke(); }
+      } else if (sp.tb) { // turbine: blades swept round the hub, wide at the hub, thin at the rim
+        for (let i = 0; i < sp.n; i++) { const a = i * 2 * PI / sp.n, P = (r, d) => [Math.sin(a + d) * r, -Math.cos(a + d) * r];
+          c.beginPath(); c.moveTo(...P(sp.r0 * 1.3, -.34)); c.lineTo(...P(sp.r1 * .6, sp.tb * .5 - .1)); c.lineTo(...P(sp.r1, sp.tb - .05)); c.lineTo(...P(sp.r1, sp.tb + .07)); c.lineTo(...P(sp.r1 * .6, sp.tb * .5 + .13)); c.lineTo(...P(sp.r0 * 1.3, .34)); c.closePath(); c.fill(); }
       } else for (let i = 0; i < sp.n; i++) for (const o of sp.to ? [-sp.to, sp.to] : [0]) { c.save(); c.rotate(i * 2 * PI / sp.n + o); c.fillRect(-w / 2, -sp.r1, w, sp.r1 - sp.r0); c.restore(); }
       c.strokeStyle = WCOL.R; wring(c, sp.rim, sp.lip); if (sp.hub) wdisc(c, sp.hub, sp.hc);
       if (st) { c.strokeStyle = WCOL.G; wring(c, sp.sr, sp.sw); }

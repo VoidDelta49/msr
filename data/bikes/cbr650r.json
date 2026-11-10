@@ -378,7 +378,7 @@
         }
       ]
     },
-    "rims": {"l": "Rim design", "o": [{"n": "Stock", "rimD": 0}, {"n": "6-spoke cast", "rimD": 1, "dm": 0}, {"n": "Twin 5-spoke", "rimD": 2, "dm": -0.4}, {"n": "10-spoke forged", "note": "Lightest", "rimD": 3, "dm": -1.2}, {"n": "3-spoke", "rimD": 4, "dm": 0.3}, {"n": "7 Y-spoke", "rimD": 5, "dm": -0.6}, {"n": "Wire spokes", "note": "Classic laced rim", "rimD": 6, "dm": 0.8}]},
+    "rims": {"l": "Mags / rims", "o": [{"n": "Stock", "rimD": 0}, {"n": "6-spoke cast", "rimD": 1, "dm": 0}, {"n": "Twin 5-spoke", "rimD": 2, "dm": -0.4}, {"n": "10-spoke forged", "note": "Lightest", "rimD": 3, "dm": -1.2}, {"n": "3-spoke", "rimD": 4, "dm": 0.3}, {"n": "7 Y-spoke", "rimD": 5, "dm": -0.6}, {"n": "Wire spokes", "note": "Classic laced rim", "rimD": 6, "dm": 0.8}, {"n": "Racing 8-spoke", "note": "Thin forged spokes", "rimD": 7, "dm": -1.5}, {"n": "Turbine", "note": "Swept blades", "rimD": 8, "dm": -0.3}]},
     "disc": {"l": "Brake disc", "o": [{"n": "Stock"}, {"n": "Floating wave disc", "dscK": 1, "brake": 1.03}, {"n": "Oversize wave kit", "note": "Bigger disc + bracket", "dscK": 2, "brake": 1.08, "dm": 0.4}]},
     "caliper": {"l": "Caliper colour", "o": [{"n": "Stock"}, {"n": "Gold", "calC": "#c9a24a"}, {"n": "Red", "calC": "#c21d1d"}, {"n": "Blue", "calC": "#1f4fbf"}, {"n": "Lime", "calC": "#7bd11f"}, {"n": "Titanium", "calC": "#8d8f94"}]},
     "levers": {"l": "Levers", "o": [{"n": "Stock"}, {"n": "Black", "levC": "#17181b"}, {"n": "Gold", "levC": "#c9a24a"}, {"n": "Red", "levC": "#c21d1d"}, {"n": "Blue", "levC": "#1f4fbf"}, {"n": "Purple", "levC": "#7a3fd0"}, {"n": "Titanium", "levC": "#8d8f94"}]},
