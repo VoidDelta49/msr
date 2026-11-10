@@ -176,7 +176,7 @@ function visuals(dt, now) {
   B.body.position.z = 0; if (S.wp) { // wheelie / stoppie: also turn about the contact patch of the wheel on the ground (rear +z, front -z)
     const c = Math.cos(S.wp), sn = Math.sin(S.wp), pz = S.wp > 0 ? (sp.base || sp).lr : -(sp.base || sp).lf, y0 = B.body.position.y; B.body.rotation.x += S.wp; B.body.position.y = y0 * c + pz * sn; B.body.position.z = pz + y0 * sn - pz * c;
   }
-  B.steer.rotation.y = -S.delta; B.slider.position.y = -G.fork + (clamp(S.cF, -.07, .11) - sp.yf) / Math.cos(G.rake); B.rearH.position.y = G.rw + clamp(S.cR, -.07, .11) - sp.yr; // yf/yr: ride height lifts the chassis, wheels stay down
+  B.steer.rotation.y = -S.delta; B.slider.position.y = -G.fork + (clamp(S.cF, -.07, sp.bump[0]) - sp.yf) / Math.cos(G.rake); B.rearH.position.y = G.rw + clamp(S.cR, -.07, sp.bump[1]) - sp.yr; // yf/yr: ride height lifts the chassis, wheels stay down
   const dy = B.rearH.position.y - G.pivotY, dz = G.rearZ - G.pivotZ; B.swing.position.set(G.swingX, G.pivotY + dy / 2, G.pivotZ + dz / 2); B.swing.rotation.x = -Math.atan2(dy, dz); B.swing.scale.z = Math.hypot(dy, dz);
   B.frontW.rotation.x = -S.wA; B.rearW.rotation.x = -S.wAR; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3; lamps(!!(S.key || S.running || ctx.GAR), S.brake > .05 && !!(S.key || S.running)); ledTick(now);
   B.cluL.rotation.y = (sp.type === 'cvt' ? S.brake : Math.max(S.cl, ctx.bcfg.autoClutch && S.c < .5 ? 1 : 0)) * .3;

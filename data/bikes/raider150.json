@@ -20,7 +20,7 @@
     "drag": 0.19,
     "roll": 25,
     "brake": 0.9,
-    "travel": [0.1, 0.09],
+    "travel": [0.1, 0.09], "susp": {"fork": "tele", "rear": "mono", "reb": [2, 2], "dz": [1, 1], "prog": [0.25, 0.15]},
     "pil": {"dz": 0.31, "dy": 0.03, "x": -0.08, "h": 1.16}
   },
   "engine": {

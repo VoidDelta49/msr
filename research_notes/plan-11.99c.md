@@ -1,6 +1,6 @@
 # Plan: 11.99c (ISLA)
 
-Status: **in progress.** Done: item 1 (ISLA rename), item 2 (weather; see "Item 2: what was built" at the end), item 3 (wheels; the XMAX still has no thin tyre), item 5 (swing-arm / Engine Support; see "Item 5: what was built" at the end). Not started: item 6 (suspension), item 4 (character looks). Item 7 still blocked. BUILD is still 11.99b (bump at release). Source: the owner's handwritten "Plan 4" note plus the discussion after it.
+Status: **in progress.** Done: item 1 (ISLA rename), item 2 (weather; see "Item 2: what was built" at the end), item 3 (wheels; the XMAX still has no thin tyre), item 5 (swing-arm / Engine Support; see "Item 5: what was built" at the end). Done: item 6 (suspension; see "Item 6: what was built" at the end). Not started: item 4 (character looks). Item 7 still blocked. BUILD is still 11.99b (bump at release). Source: the owner's handwritten "Plan 4" note plus the discussion after it.
 
 Already shipped in 11.99 / 11.99b (not part of this plan): Dyno fine-tuning (`js/tune.js`), "Thai concept skinny" tires, rim designs (`maker/parts-gen.mjs`), real-clock day/night (`js/daynight.js`).
 
@@ -103,3 +103,11 @@ Built: part `swarm` on every bike from `maker/parts-gen.mjs` (row `arm` = pivot-
 - **Changed from the decision "ES is a slider plus presets": it is a list of presets only (a part, not a slider).** Slider values are not sent to other players, so a stretched bike would look stock to friends; a part travels with the look. Say if a fine slider is still wanted on top.
 - Numbers are first guesses (mass share that moves: 10 % chain bikes, 30 % scooters). Only looked at in headless Chromium side views; not ridden on a phone, Rapier not browser-tested.
 - Not done: a scooter's shocks and muffler do not follow the engine back; no shorter-than-stock arm.
+
+## Item 6: what was built, and what is left
+
+Built: `chassis.susp` in every bike file = `{fork: tele | usd, rear: twin | mono | link | unit, reb: [f, r] rebound / compression damping, dz: [f, r] damping x per end, prog: [f, r] rate rise at full travel}`, read in `computeSpec`. `chassis.travel` is now the real total wheel travel: the bike sits 30 % into it on the stock springs (softer spring / less preload = deeper, less left before the bump stop: `sp.bump`, `sp.sagw`). Rapier springs: rising rate, rebound stronger than compression (mean = the Damping slider). Model: fork and rear wheel stop at the real bump travel; on the seven bikes with visible shocks the damper rod rides with the wheel into the shock body (`rod()` in model.js, `B.shk`).
+
+- The travel numbers already in the files matched the makers' figures where one is published (CBR650R 120 / 128, H2 120 / 135, XMAX 110 / 79); the small bikes' are estimates. All `susp` numbers are first guesses by layout and price class.
+- Headless baseline did not move. The springs only run in Rapier: `tools/smoke.mjs` passes, but the feel was not ridden on a phone.
+- Not done: top-out is still the old rule (spring unloaded + 3 cm), spring rates are still wheel rates without installed preload, the Raider / Smash / CBR / H2 models have no visible rear shock to animate.

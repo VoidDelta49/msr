@@ -53,6 +53,13 @@ export function computeSpec(bike, b) {
   // a sidecar's own wheel carries scW of the rig, the bike's springs only the rest
   s.ms = s.sc ? s.m * (1 - s.scW) : s.m;
   s.sag = (s.ms * s.lr / s.wb * 9.81 / s.kf + s.ms * s.lf / s.wb * 9.81 / s.kr) / 2;
+  // suspension (chassis.travel = the real wheel travel, chassis.susp = layout + damper character). The bike sits 30 % into its stroke
+  // on the stock springs; a softer spring or less preload sits deeper and has less left before the bump stop (bump), a stiffer one more.
+  // dz: damping x per end, reb: rebound / compression ratio (cheap twin shocks ~1.4, good dampers 2.5-3), prog: how much the rate has
+  // risen at full travel (fork air gap, dual-rate springs, a linkage). Read by bumpStop (physics.js), the springs (rapier.js), main.js
+  const su = s.susp || {}, df = bike.defaults, sg = (i, k, k0, p) => Math.min(.6, Math.max(.1, .3 * (k0 * 1000 || k) / k - p / s.travel[i])) * s.travel[i];
+  s.sagw = [sg(0, s.kf, df.kf, s.pf), sg(1, s.kr / s.krx, df.kr, s.pr)]; s.bump = [s.travel[0] - s.sagw[0], s.travel[1] - s.sagw[1]];
+  s.reb = su.reb || [1, 1]; s.dz = su.dz || [1, 1]; s.prog = su.prog || [0, 0];
   s.tqMax = Math.max(...s.TQ.map(p => p[1]));
   DRIVES[bike.drivetrain].spec(s, bike, b);
   return s;
