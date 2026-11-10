@@ -12,7 +12,7 @@
 // token buckets (state 25/s, control 4/s, look 1 per 2 s) and a disconnect for clients that keep flooding (a dropped
 // message has still been counted against the quota; closing the socket is what stops it), packet sanity checks.
 //
-// Weather (11.99c, wx.js): one live snapshot for the whole game from Open-Meteo, for a fixed point in the Philippines. Fetched
+// Weather (12.00, wx.js): one live snapshot for the whole game from Open-Meteo, for a fixed point in the Philippines. Fetched
 // through Cloudflare's edge cache (15 minutes), so all rooms and all solo riders share about one upstream call per quarter hour
 // per data centre. Rooms get it as a server -> client `wx` message right after `hi` and again every 15 minutes while somebody
 // is in the room (a Durable Object alarm that is not renewed once the room is empty). Solo riders GET /wx. Clients send nothing.

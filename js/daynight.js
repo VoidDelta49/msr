@@ -93,7 +93,7 @@ export function dayNight() {
   key(el, 1, SKYU.zen.value); key(el, 2, SKYU.hor.value); key(el, 3, SKYU.cloud.value); key(el, 4, SKYU.glow.value);
   SKYU.sun.value.copy(SUN); SKYU.moon.value.copy(MOON); SKYU.sunVis.value = sstep(-1.5, .5, el); SKYU.night.value = night * (1 - .7 * SKY.phase * sstep(0, .2, MOON.y));
   SKYU.moonVis.value = (.35 + .65 * SKY.phase) * sstep(-1, 1, Math.asin(MOON.y) / R) * (1 - sstep(-4, 6, el) * .85);
-  // Weather (11.99c, weather.js): cloud cover greys the sky and the horizon (= the fog), rain clouds darken, the cloud mask grows
+  // Weather (12.00, weather.js): cloud cover greys the sky and the horizon (= the fog), rain clouds darken, the cloud mask grows
   // (SKYU.ovc), the sunset glow and the moon go behind the deck, lightning lights it all for a moment. K also dims the sun and
   // the sky light below and sets the fog range from the visibility. A clear day leaves every number as it was.
   const K = wxSky(FOGF, FOGN), flz = WX.flash;

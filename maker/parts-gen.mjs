@@ -13,7 +13,7 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 // per bike: mu = stock grip, sz = [stock, sport, skinny, wide, knobby] tyre sizes front · rear (null = not sold for this rim),
 // wire = stock wheels are wire-spoked, disc = has a front disc, mir = handlebar mirrors (fairing-mounted ones stay), halo = halogen
 // headlamp (an LED conversion shows), box = takes a top box, big = big bike (road tyre range only, existing option names kept).
-// 11.99c: donut = the scooter's donut set (fat low tyres on small wide mags, front · rear), thin = the drag-skinny pair where the
+// 12.00: donut = the scooter's donut set (fat low tyres on small wide mags, front · rear), thin = the drag-skinny pair where the
 // size is really made (17 in), mags = this bike's own extra rim designs (RIMS ids in model.js: 7 racing 8-spoke, 8 turbine,
 // 9 dish 4-spoke) on top of the range every bike has.
 // arm = the swing-arm's pivot-to-axle length in m (chain bikes: a longer arm on the same shock mount works the spring through more

@@ -10,7 +10,7 @@ export const KS = .85; // sliding force / peak force
 // normalised longitudinal force for x = |slip| / KP: rises to 1 at x = 1, then eases down to the sliding level KS
 export const tyreF = x => x <= 1 ? Math.sin(1.5707963 * x) : KS + (1 - KS) / (1 + .5 * (x - 1) * (x - 1));
 
-// Wet road (11.99c, weather.js): grip x for `wet` 0..1 of water on the road (ctx.wet) at speed v. wet = 0 is exactly 1.
+// Wet road (12.00, weather.js): grip x for `wet` 0..1 of water on the road (ctx.wet) at speed v. wet = 0 is exactly 1.
 //  - wet asphalt: a road tyre keeps ~70 % of its dry grip. sp.wetg = the fitted tyre's wet grip (1 road tyre; siped / narrow
 //    more, wide and slick less: the loss is 0.3 / wetg).
 //  - mud: dirt and grass (surf < 1) lose more again when soaked.

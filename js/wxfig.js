@@ -1,4 +1,4 @@
-// Weather (11.99c): the drawn half and the per-frame glue. weather.js decides (headless), wxnet.js fetches, this file runs it
+// Weather (12.00): the drawn half and the per-frame glue. weather.js decides (headless), wxnet.js fetches, this file runs it
 // every frame and draws the rain; daynight.js reads WX for the sky, the light and the fog (wxSky), audio.js for the rain bed.
 //
 // Rain = ONE draw, simulated on the GPU, no per-drop data (like the grass): drop i gets a fixed random place in a box round the

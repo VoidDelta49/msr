@@ -1,4 +1,4 @@
-// Live weather for the relay (11.99c): one snapshot for everybody, from Open-Meteo (no key), for ONE fixed point: the
+// Live weather for the relay (12.00): one snapshot for everybody, from Open-Meteo (no key), for ONE fixed point: the
 // middle-of-the-Philippines point js/daynight.js uses for the sun. Never a player's location.
 // Pure functions (tools/weather.mjs runs them in Node on a saved API answer); worker.js does the fetching.
 //

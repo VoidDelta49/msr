@@ -1,4 +1,4 @@
-// The main menu's picture follows the real sky (11.99c, owner's choice: live sky and weather instead of a fixed image):
+// The main menu's picture follows the real sky (12.00, owner's choice: live sky and weather instead of a fixed image):
 // the hour in the Philippines (blue day, orange dusk, dark night with the sun gone), the live cloud cover (greyer, more
 // clouds, the sun dimmed), rain (falling streaks) and lightning. Plain SVG + CSS on the menu's own drawing: the game (three.js)
 // is not loaded yet at this point. Once in game the pause menu is see-through and the real scene is behind it.

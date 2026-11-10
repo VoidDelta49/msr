@@ -302,7 +302,7 @@ const TWN2=FEAT.find(f=>f.name==='town2');let GW,GCOL,GMH; // terrain grass dens
       if(!SR&&!r.bridge&&(r.hwy||r.w===7)&&i%16===0&&i>0&&i<r.s.length-1&&lastCarve<.2){const px=s.x+nx*(hw+1.8),pz=s.z+nz*(hw+1.8),ph=H(px,pz);if(!nearLM(px,pz)){poles.push({x:px,y:ph,z:pz,ry,r});addOBB(px,pz,.2,.2)}}});
     B.base=0}
   // road ribbons split into terrain-tile-sized chunks so they get frustum + distance culled like everything else
-  // Wet roads (11.99c, weather): FOGU.wet 0..1 (wxfig.js) darkens the asphalt and makes it shiny; from half wet, puddles (a fixed
+  // Wet roads (12.00, weather): FOGU.wet 0..1 (wxfig.js) darkens the asphalt and makes it shiny; from half wet, puddles (a fixed
   // low-frequency pattern in world x,z, so they stay put) fill in as near-mirrors of the sky. wet = 0 is the old dry material.
   const wetRoad=m=>{if(Q.lite)return m;const W=FOGU.wet,p=positionWorld.xz,pn=sin(p.x.mul(.31).add(sin(p.y.mul(.17)).mul(2.1))).mul(sin(p.y.mul(.27).add(sin(p.x.mul(.13)).mul(1.7)))).mul(.5).add(.5),pud=smoothstep(.78,.9,pn.add(W.mul(.25).sub(.12))).mul(smoothstep(.45,.9,W));
     m.colorNode=texture(m.map,uv()).mul(mix(float(1),float(.62),W).mul(mix(float(1),float(.7),pud)));m.roughnessNode=mix(float(m.roughness),mix(float(.3),float(.04),pud),W);return m};

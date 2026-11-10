@@ -1,4 +1,4 @@
-// Weather (11.99c): the headless half. A snapshot in (from the relay: a room's `wx` message or GET /wx, see server/wx.js), sky,
+// Weather (12.00): the headless half. A snapshot in (from the relay: a room's `wx` message or GET /wx, see server/wx.js), sky,
 // rain, wind, lightning and road-wetness values out. No three.js, no DOM: `node tools/weather.mjs` runs it. Drawing and the
 // fetching are js/wxfig.js; daynight.js reads WX for the light, physics.js reads ctx.wet for the grip (tyre.js wetGrip).
 // Everything is blended on the client: a new snapshot only moves the targets, the sky then eases to it over a few seconds.

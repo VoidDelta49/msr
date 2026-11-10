@@ -1,6 +1,6 @@
-# Plan: 11.99c (ISLA)
+# Plan: 12.00 (ISLA; planned as 11.99c, the owner released it straight as 12.00)
 
-Status: **in progress.** Done: item 1 (ISLA rename), item 2 (weather; see "Item 2: what was built" at the end), item 3 (wheels; the XMAX still has no thin tyre), item 5 (swing-arm / Engine Support; see "Item 5: what was built" at the end). Done: item 6 (suspension; see "Item 6: what was built" at the end). Done: item 4 (character looks; see "Item 4: what was built" at the end, **waiting for the owner's review**). Left: the release steps. Item 7 still blocked. BUILD is still 11.99b (bump at release). Source: the owner's handwritten "Plan 4" note plus the discussion after it.
+Status: **in progress.** Done: item 1 (ISLA rename), item 2 (weather; see "Item 2: what was built" at the end), item 3 (wheels; the XMAX still has no thin tyre), item 5 (swing-arm / Engine Support; see "Item 5: what was built" at the end). Done: item 6 (suspension; see "Item 6: what was built" at the end). Done: item 4 (character looks; see "Item 4: what was built" at the end, **waiting for the owner's review**). Left: redeploy the relay. Item 7 still blocked. Released as BUILD 12.00 (11.99c was skipped). Source: the owner's handwritten "Plan 4" note plus the discussion after it.
 
 Already shipped in 11.99 / 11.99b (not part of this plan): Dyno fine-tuning (`js/tune.js`), "Thai concept skinny" tires, rim designs (`maker/parts-gen.mjs`), real-clock day/night (`js/daynight.js`).
 

@@ -99,7 +99,7 @@ People walk the sidewalks of every road on the island and do everyday things: **
 
 **As data:** `data/interiors.json` (rooms: which building types they belong to, size, colours, props, counters, people and their poses) and `data/shop.json` (items with prices and effects, shops, what sari-sari stores sell at the door, what you can treat a friend to). A new interior, item or shop is a data entry; effects live in `js/effects.js`.
 
-## Weather (11.99c)
+## Weather (12.00)
 
 The sky is the real weather over the Philippines right now (Options > Game > Weather: Live PH, or a fixed Clear / Light rain / Storm). Cloud cover, rain, wind, visibility and thunderstorms come from [Open-Meteo](https://open-meteo.com/) for one fixed point, through the multiplayer relay, so everyone in a room rides under the same sky (and sees the same lightning); solo riders get the same snapshot. Never your location. Rain wets the road: about 30 % less grip on asphalt with a road tyre, more on mud, painted centre lines and bridge decks, and hydroplaning at speed on a soaked road. Tyres differ in the wet (the skinny one cuts through water, wide and racing ones give up sooner). The road dries in 10-40 minutes after the rain. The dyno always runs dry.
 
