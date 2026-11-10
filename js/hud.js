@@ -138,6 +138,30 @@ function sniper(g, sp) {
   else if (S.lim && (performance.now() / 90 | 0) % 2) { g.fillStyle = '#ffd0c8'; g.fillText('SHIFT', 150, 130); }
   else if (S.cl > .05) { g.fillStyle = lit; g.fillText('CLUTCH ' + (S.cl * 100 | 0) + '%', 150, 130); }
 }
+/* winner: Honda Winner X full digital meter (negative LCD: light segments on black). Tach bar across the top over a 0-12 scale,
+   gear position digit on the left, big speed in the middle, fuel blocks F-E down the right edge, clock and odometer along the bottom */
+function winner(g, sp) {
+  g.fillStyle = '#07080a'; g.beginPath(); g.moveTo(60, 6); g.lineTo(452, 6); g.lineTo(506, 60); g.lineTo(478, 218); g.lineTo(34, 218); g.lineTo(6, 60); g.closePath(); g.fill(); g.strokeStyle = '#2a2d33'; g.lineWidth = 4; g.stroke();
+  g.fillStyle = '#020304'; rr(g, 44, 34, 424, 172, 8); g.fill();
+  const lit = '#eaf4ff', dim = 'rgba(255,255,255,.1)', MAX = sp.tachMax, rpm = dispRpm(sp), now = phNow(), K = MAX / 1000, X = t => 64 + t * 384, Y = t => 78 - 14 * Math.sin(t * PI);
+  g.font = 'bold 15px system-ui'; g.textAlign = 'center'; g.fillStyle = S.gear ? '#12261a' : '#43e07a'; g.fillText('N', 100, 26);                 // neutral lamp above the glass
+  g.fillStyle = S.lim ? '#ff5a4a' : '#2a1210'; g.beginPath(); g.arc(412, 20, 6, 0, 2 * PI); g.fill();
+  for (let i = 0; i < 56; i++) { const t = i / 55, r0 = t * MAX; g.fillStyle = rpm > r0 && rpm > 0 ? (r0 >= sp.red ? '#ff8a7a' : lit) : dim; g.fillRect(X(t) - 2.5, Y(t) - 16, 5, 14); }
+  g.font = 'bold 11px system-ui';
+  for (let k = 0; k <= K; k++) { const t = k / K; g.fillStyle = k * 1000 >= sp.red ? '#ff8a7a' : lit; g.fillRect(X(t) - 1, Y(t), 2, k % 2 ? 4 : 7); if (!(k % 2)) g.fillText(k, X(t), Y(t) + 19); }
+  g.fillStyle = lit; g.font = 'bold 8px system-ui'; g.textAlign = 'right'; g.fillText('x1000r/min', 452, 112);
+  g.strokeStyle = lit; g.lineWidth = 2; rr(g, 60, 112, 50, 62, 6); g.stroke();
+  g.textAlign = 'center'; g.font = 'bold 46px ' + MONO; g.fillText(S.gear || 'N', 85, 160); g.font = 'bold 9px system-ui'; g.fillText('GEAR', 85, 186);
+  g.textAlign = 'right'; g.font = 'italic bold 84px ' + MONO; g.fillStyle = GH; g.fillText('188', 352, 178); g.fillStyle = lit; g.fillText(S.keyT < 1.2 ? 188 : kmh(), 352, 178);
+  g.font = 'italic bold 13px system-ui'; g.textAlign = 'left'; g.fillText('km/h', 358, 178);
+  const fr = S.fuel / sp.fuel.cap; for (let i = 0; i < 6; i++) { g.fillStyle = fr > (i + .5) / 6 ? (fr < .18 ? '#ff8a7a' : lit) : dim; g.fillRect(428, 184 - i * 12, 22, 9); }
+  g.fillStyle = lit; g.font = 'bold 10px system-ui'; g.textAlign = 'center'; g.fillText('F', 418, 132); g.fillText('E', 418, 193);
+  g.textAlign = 'left'; g.font = 'bold 14px ' + MONO; g.fillText(clk(now), 124, 198); g.textAlign = 'right'; g.fillText((S.odo / 1000).toFixed(1), 376, 198); g.font = 'bold 9px system-ui'; g.fillText('ODO', 310, 198); g.textAlign = 'left'; g.fillText('km', 380, 198);
+  g.font = 'bold 12px system-ui';
+  if (!S.running) { g.fillStyle = '#ffb4a8'; g.fillText('ENGINE OFF', 124, 126); }
+  else if (S.lim && (performance.now() / 90 | 0) % 2) { g.fillStyle = '#ffb4a8'; g.fillText('SHIFT', 124, 126); }
+  else if (S.cl > .05) { g.fillStyle = lit; g.fillText('CLUTCH ' + (S.cl * 100 | 0) + '%', 124, 126); }
+}
 /* ns: Rouser NS125 (Bajaj Pulsar NS cluster). Big grey-faced analog tach in the middle (0 at the bottom, clockwise to 12, red
    numbers from the redline, orange needle) with the LCD fuel bar inset; LCD on the right: clock, speed, odometer; telltale
    wedge on the left (N, battery); rev-limit lamp on top */
@@ -362,7 +386,7 @@ function nmax(g, sp, x = 0) {
 }
 // key off: the dash is dead
 function dead(g) { g.fillStyle = '#05070a'; rr(g, 4, 4, 504, 216, 26); g.fill(); }
-const CLUSTERS = { sport, scooter, aerox, sniper, ns, tft, smash, tmx, h2, nmax, xmax: (g, sp) => nmax(g, sp, 1) };
+const CLUSTERS = { sport, scooter, aerox, sniper, winner, ns, tft, smash, tmx, h2, nmax, xmax: (g, sp) => nmax(g, sp, 1) };
 // Redrawn only when something on it changes; the texture is uploaded to the GPU only while the in-world cluster can
 // be seen (1st person / garage). In 3rd person the same canvas is shown as the on-screen HUD, no upload needed.
 let cluKey = '', texDirty = true;

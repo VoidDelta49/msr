@@ -236,6 +236,20 @@ function drawLivery(kind, paint, lv = '') {
     poly(W, .12, .695, .5, .75, .62, .78, .62, .755, .5, .725, .12, .67);                      // side cowl slash (block)
     poly(Sv, .12, .65, .42, .7, .42, .685, .12, .635);                                         // slash underline
     poly(K, .56, .76, .8, .81, .9, .84, .9, .82, .6, .75);                                     // tail underside seam
+  } else if (kind === 'winner') { // Honda Winner X (dealer studio shots): the side fairing's middle is a black panel on every colour, the belly pan
+    // and the cowl above it carry the paint; lv: k matte black (gold pinstripe), m matte red, s Infinity Red, w white, r ABS Racing tricolour
+    const W = '#eef0f2', Rd = '#c81e28', Bl = '#1f3fa6', Gd = '#c9a24a', A = { k: Gd, m: Gd, s: W, w: Rd, r: W }[lv] || W;
+    poly(lv === 'k' ? '#0b0b0d' : K, -.5, .52, -.3, .5, -.06, .52, .06, .5, .06, .4, -.02, .37, -.2, .31, -.42, .35);    // black wing panel
+    if (lv !== 'k' && lv !== 'm') poly(A, -.47, .36, -.22, .3, -.05, .36, -.05, .345, -.22, .285, -.47, .345);          // V line under the panel (the Premium colours are plain)
+    for (const z of [-.3, -.25, -.2]) poly(K, z, .25, z + .05, .25, z + .03, .19, z - .02, .19);                         // belly vent slits
+    poly(K, .1, .56, .34, .6, .56, .72, .7, .84, .9, .84, .9, .5, .1, .5);                                               // black underside of the side cowl / tail
+    if (lv === 'r') { // Racing: white nose top, blue + white bands slanting back across the fairing, white HONDA block on the belly, blue / white tail flash
+      poly(W, -.72, .78, -.5, .88, -.36, .92, -.36, .8, -.52, .76, -.66, .7); poly(Bl, -.5, .62, -.1, .6, -.02, .56, -.44, .56); poly(W, -.44, .56, -.02, .56, .04, .525, -.4, .525);
+      poly(W, -.36, .215, -.14, .225, -.13, .18, -.35, .17); poly(Bl, .1, .68, .5, .76, .66, .83, .6, .78, .46, .7, .1, .63); poly(W, .1, .63, .46, .7, .6, .78, .56, .74, .44, .665, .1, .6);
+    } else {
+      poly(A, -.62, .7, -.46, .785, -.32, .8, -.32, .788, -.46, .772, -.61, .69);                                        // accent line along the cowl under the mask
+      if (lv === 's' || lv === 'w') { const C2 = lv === 'w' ? K : W; poly(C2, .1, .68, .5, .755, .68, .835, .62, .79, .48, .715, .1, .645); poly(A, .1, .64, .46, .705, .46, .69, .1, .625); } // tail slash + underline
+    }
   } else if (kind === 'sport' && lv === 'gb') { // Raider R150 Fi matte grey/blue (reference photos): grey shroud + belly pan, black tank band,
     // black side panel and tail with grey jagged camo and blue fades, dark "R150" plate on the shroud, black cowl with a blue edge
     const Bl = '#1f48d8', D = '#3d4045', G = '#8d9197';
@@ -557,6 +571,87 @@ function sniper(ct) {
     if (s === 0) {
       const Q = (t, n) => [a[2] + d[2] * t + Math.sin(an) * n, a[1] + d[1] * t - Math.cos(an) * n];
       mk(prof([Q(-.1, .02), Q(.06, .08), Q(.36, .05), Q(.42, 0), Q(.1, -.02)], .016, .004), MB, B.exh, .155 + Rr, 0, 0); mk(prof([Q(.27, .078), Q(.4, .062), Q(.45, .005), Q(.33, .012)], .018, .004), MAlu, B.exh, .157 + Rr, 0, 0);
+    }
+    batchExh();
+  };
+}
+
+/* ---------- sport underbone (Honda Winner X, 2024 PH model = the 2022 "v3" body) ---------- */
+// Reference: Honda PH dealer studio shots of all four colours, Top Gear PH launch / track photos, owner's photos (both sides).
+// 2,019 x 725 x 1,104 mm, 1,278 mm wheelbase, 795 mm seat, 151 mm clearance, 90/80-17 + 120/70-17. An underbone: the bodywork is
+// on the frame, only the small black handlebar cover (stubby smoked visor, meter) turns. Big angular LED headlamp in the nose
+// of the front cowl with a black mask above it, a full side fairing each side from the cowl down to a belly pan (black "wing"
+// panel in the middle, three vent slits low down), black tunnel, stepped seat, sharp two-level tail with black grab handles
+// and a long drooping plate hanger, short fat black can angled up on the right, silver cast pillion-peg hangers and heel
+// plates, 5 twin-spoke mags, wave disc + 2-pot caliper in front (right side), rear disc, chain on the left. Fork legs are
+// gold on the ABS Premium colours (B.look), black on the others.
+const MFkW = std(0x15161a, .34, .3);
+function winner(ct) {
+  B.G = { rw: .3, rearZ: .645, fork: .73, rake: .445, pivotY: .43, pivotZ: .09, swingX: 0 }; B.wheelCol = 0x16171a; B.cargo = { y: .9, z: .5 }; B.fenderPaint = true; B.decal = MDec;
+  B.look = sp => { const gold = sp.lv === 'k' || sp.lv === 'm'; MFkW.color.set(gold ? 0xb8923c : 0x15161a); MFkW.metalness = gold ? .8 : .3; };
+  B.rearH = new THREE.Group(); B.rearH.position.set(0, .3, .645); ct.add(B.rearH); B.rearW = wheelS(.257, .045, 1.35, .212, false, .11); B.rearH.add(B.rearW);
+  mk(cyl(.078, .078, .012, 10), MB, B.rearH, -.065, 0, 0, 0, 0, PI / 2);                                       // 44T sprocket
+  mk(box(.03, .06, .07), MCal, B.rearH, .095, .1, -.07);                                                       // rear caliper
+  mk(arc(.312, .336, 1.3, 2.55, .13), MF, B.rearH, 0, 0, 0);                                                  // inner rear fender (hugger under the tail)
+  // double-sided box swingarm + chain (one mesh, stretched pivot->axle each frame)
+  B.swing = mk(mergeGeometries([box(.03, .065, 1).translate(.1, 0, 0), box(.03, .065, 1).translate(-.1, 0, 0), box(.012, .012, 1).translate(-.065, .045, 0), box(.012, .012, 1).translate(-.065, -.04, 0), box(.2, .04, .05).translate(0, 0, -.46)]), MK, ct, 0, .365, .37);
+  // engine (mostly behind the fairing): crankcase, forward-leaning DOHC head, round clutch cover on the right, generator cover on the left
+  mk(prof([[-.06, .5], [.16, .5], [.22, .4], [.18, .24], [-.02, .2], [-.12, .3]], .25, .02), ME, ct, 0, 0, 0);
+  mk(prof([[-.3, .5], [-.06, .53], [-.06, .32], [-.27, .35]], .17, .015), MG, ct, 0, 0, 0);
+  mk(cyl(.09, .09, .03, 12), ME, ct, .14, .36, .05, 0, 0, PI / 2); mk(cyl(.05, .05, .036, 10), MCov, ct, .14, .36, .05, 0, 0, PI / 2); mk(cyl(.07, .07, .03, 10), ME, ct, -.14, .35, .02, 0, 0, PI / 2);
+  mk(box(.2, .2, .035), MGrl, ct, 0, .47, -.4, .1);                                                           // radiator, between the fairing sides
+  // bodywork
+  mk(taper(prof([[-.715, .655], [-.7, .7], [-.62, .775], [-.5, .86], [-.4, .9], [-.32, .885], [-.25, .78], [-.08, .665], [.08, .61], [.03, .56], [-.26, .5], [-.44, .56], [-.58, .6], [-.68, .62]], .37, .022), [[-.72, .5], [-.6, .86], [-.44, 1], [-.2, 1], [.08, .78]]), MP, ct, 0, 0, 0); // front cowl: headlamp nose to seat wedge
+  mk(taper(prof([[-.68, .745], [-.5, .875], [-.38, .915], [-.3, .9], [-.3, .85], [-.4, .86], [-.5, .825], [-.66, .705]], .15, .006), [[-.68, .5], [-.5, 1]]), MK, ct, 0, 0, 0); // black mask / centre panel above the lamp
+  mk(prof([[-.34, .9], [-.28, .895], [-.2, .79], [-.05, .685], [.06, .72], [.06, .56], [-.3, .56]], .2, .015), MK, ct, 0, 0, 0); // tunnel: the underbone dip between cowl and seat
+  mk(taper(prof([[-.735, .64], [-.7, .715], [-.62, .735], [-.6, .665], [-.66, .625]], .3, .01), [[-.74, .55], [-.6, 1]]), MK, ct, 0, 0, 0); // headlamp housing across the nose
+  for (const s of [-1, 1]) {
+    mk(prof([[-.52, .6], [-.3, .56], [-.02, .57], [.06, .5], [-.02, .38], [-.14, .24], [-.24, .16], [-.4, .14], [-.47, .3], [-.5, .46]], .045, .012), MP, ct, s * .145, 0, 0); // side fairing down to the belly
+    mk(box(.125, .06, .03), MHead, ct, s * .078, .69, -.727, .25, -s * .42, s * .26);                             // LED headlamp eye
+    tube([s * .1, .725, -.705], [s * .15, .8, -.58], .009, MHead, ct, 4);                                      // position light line up the cowl edge
+    mk(box(.014, .032, .06), MAmb, ct, s * .172, .615, -.49, .5, 0, 0);                                           // turn signal let into the fairing's leading edge
+    mk(new THREE.PlaneGeometry(.075, .05), MDec, ct, s * .171, .46, -.24, 0, s * PI / 2, 0);                   // wing badge on the black panel
+    mk(prof([[.28, .5], [.47, .575], [.52, .56], [.46, .42], [.4, .4], [.36, .46]], .014, .004), MAlu, ct, s * .13, 0, 0); // silver pillion-peg hanger
+    mk(prof([[.12, .43], [.21, .44], [.24, .31], [.15, .28]], .012, .004), MAlu, ct, s * .135, 0, 0);            // silver heel plate
+    mk(box(.09, .02, .035), MB, ct, s * .18, .32, .17); mk(box(.07, .02, .03), MB, ct, s * .165, .43, .5);       // rider + pillion pegs
+  }
+  mk(prof([[-.38, .2], [-.2, .22], [-.1, .2], [-.12, .15], [-.36, .13]], .27, .01), MK, ct, 0, 0, 0);          // belly joint under the engine
+  mk(prof([[.04, .77], [.34, .79], [.6, .86], [.68, .845], [.52, .71], [.3, .6], [.12, .56], [.04, .58]], .25, .02), MP, ct, 0, 0, 0); // side cowl
+  mk(taper(prof([[.56, .86], [.8, .93], [.97, .985], [.985, .955], [.86, .83], [.62, .77], [.54, .79]], .17, .02), [[.54, 1], [.98, .55]]), MP, ct, 0, 0, 0); // tail, pointed and upswept
+  mk(prof([[.04, .66], [.34, .7], [.4, .58], [.3, .48], [.08, .48]], .2, .01), MK, ct, 0, 0, 0);            // frame cover
+  mk(prof([[.02, .775], [.06, .81], [.28, .8], [.38, .85], [.64, .905], [.69, .885], [.46, .77], [.06, .75]], .25, .025, 2), MS, ct, 0, 0, 0); // stepped seat (795 mm)
+  for (const s of [-1, 1]) { tube([s * .105, .875, .56], [s * .105, .93, .8], .015, MK, ct); tube([s * .105, .93, .8], [s * .06, .95, .88], .015, MK, ct); } // grab handles along the tail
+  mk(box(.1, .03, .04), MTail, ct, 0, .955, .97, .6);                                                         // LED tail lamp in the tip
+  mk(prof([[.84, .84], [.92, .85], [1.075, .6], [1.05, .55], [.98, .62], [.88, .74]], .1, .01), MK, ct, 0, 0, 0); // long rear fender / plate hanger
+  mk(box(.2, .12, .008), MPl, ct, 0, .66, 1.05, .55); for (const s of [-1, 1]) mk(box(.05, .028, .045), MAmb, ct, s * .11, .79, .97);
+  // steering: fork, handlebar cover, bars
+  T0 = [-.32, .95]; RK = .445;
+  const tilt = new THREE.Group(); tilt.position.set(0, .95, -.32); tilt.rotation.x = .445; ct.add(tilt);
+  const st = B.steer = new THREE.Group(); tilt.add(st);
+  for (const s of [-1, 1]) mk(cyl(.0155, .0155, .46), MC, st, s * .08, -.18, 0);                              // 31 mm stanchions
+  mk(box(.22, .03, .08), MB, st, 0, .04, 0); mk(box(.2, .025, .07), MB, st, 0, -.13, 0);                    // yokes
+  B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -.73;
+  for (const s of [-1, 1]) { mk(cyl(.029, .027, .2, 8), MFkW, B.slider, s * .08, .24, 0); mk(cyl(.027, .025, .15, 8), MK, B.slider, s * .08, .075, 0); } // fork legs (gold tops on the ABS Premium)
+  B.frontW = wheelS(.246, .042, 1.05, .204, true, .148, true); B.slider.add(B.frontW);                        // 296 mm wave disc
+  mk(arc(.295, .32, 1.0 + .445, 2.55 + .445, .11), MF, B.slider, 0, 0, 0);                                    // front fender (paint)
+  mk(box(.05, .08, .1), MCal, B.slider, .09, .03, .08);                                                      // 2-pot caliper
+  mk(profSt([[-.45, .93], [-.42, .88], [-.24, .88], [-.17, .95], [-.19, 1.0], [-.27, 1.045], [-.38, 1.0]], .22, .015), MK, st, 0, 0, 0); // black handlebar cover
+  mk(taper(profSt([[-.47, .93], [-.4, 1.0], [-.31, 1.06], [-.285, 1.045], [-.37, .975], [-.45, .905]], .2, .008), [[-.14, .5], [-.05, 1]]), MK, st, 0, 0, 0); // its pointed front
+  mk(profSt([[-.35, 1.035], [-.3, 1.095], [-.28, 1.085], [-.3, 1.045]], .17, .005), MVisG, st, 0, 0, 0);       // stubby smoked visor
+  clusterPlane(st, 0, .106, .06, -1.4, .19);
+  controls(st, .08, .05, .29, .2, [.305, .07, -.05]);
+  rider(ct, [1.08, .3, -.25], [1.45, .18], [.22, 1.16, -.015, -.61, .49], [[.15, .86, .2, .2, .45, .14], [.18, .54, .02, -.2, .42, .11]]);
+  B.cam = new THREE.Group(); B.cam.position.set(0, 1.36, .1); ct.add(B.cam);
+  B.exh = new THREE.Group(); ct.add(B.exh);
+  // stock: black header under the engine into a short fat black can with a black shield and end cap; aftermarket: slimmer, louder cans
+  B.buildExh = (s, cf) => {
+    B.exh.clear(); const L = [.42, .38, .32][s], Rr = [.068, .054, .048][s], col = [0x17181b, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, s ? .35 : .6, s ? .8 : .25);
+    tube([.04, .33, -.26], [.07, .16, -.1], .022, MB, B.exh); tube([.07, .16, -.1], [.13, .2, .3], .024, MB, B.exh);
+    const an = .4, a = [.155, .25, .3], d = [0, Math.sin(an), Math.cos(an)], at = t => a.map((v, i) => v + d[i] * t), b = at(L);
+    tube(a, b, Rr, m, B.exh, 10); tube(b, at(L + .05), Rr * .8, MB, B.exh, 8); tube(at(-.07), a, Rr * .6, MB, B.exh, 8); // can, end cap, inlet cone
+    if (s === 0) {
+      const Q = (t, n) => [a[2] + d[2] * t + Math.sin(an) * n, a[1] + d[1] * t - Math.cos(an) * n];
+      mk(prof([Q(.02, -.02), Q(.08, -.085), Q(.36, -.08), Q(.41, -.03), Q(.38, .03), Q(.06, .03)], .016, .004), MB, B.exh, .16 + Rr, 0, 0); // black heat shield over the upper outside
     }
     batchExh();
   };
@@ -1413,7 +1508,7 @@ function xmax(ct) {
   };
 }
 
-const MODELS = { sport, sniper, scooter, supersport, underbone, tmx, aerox, rouser, h2, nmax, xmax, macho: (ct, v) => tmx(ct, v, 1), barako: (ct, v) => tmx(ct, v, 2), surf: (ct) => underbone(ct, 2, 1) };
+const MODELS = { sport, sniper, winner, scooter, supersport, underbone, tmx, aerox, rouser, h2, nmax, xmax, macho: (ct, v) => tmx(ct, v, 1), barako: (ct, v) => tmx(ct, v, 2), surf: (ct) => underbone(ct, 2, 1) };
 // Lamps (11.99). Colour: LED units are cool white, the halogen bikes (B.halo: Smash, TMX, Macho, Rouser) warm; the beam on the
 // road (renderer's `head`) follows. lamps(on, brake): headlamp and tail lamp burn with the ignition on, the tail lamp
 // brightens under braking. A fresh build is lit, so the frozen copies of other players' bikes (snapshot) keep their lights.
