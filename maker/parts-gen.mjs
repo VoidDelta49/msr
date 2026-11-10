@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Garage bolt-ons that every bike gets from one table: tyres (real sizes that fit the rim), rim designs, brake disc + caliper,
-// mirrors, levers, grips, seat cover, top box / delivery bag, headlamp bulb, aux lamps, underglow and wheel LEDs.
+// mirrors, swing-arm / Engine Support, levers, grips, seat cover, top box / delivery bag, headlamp bulb, aux lamps, underglow and wheel LEDs.
 //   node maker/parts-gen.mjs        writes the parts + their defaults into every data/bikes/<id>.json (re-running replaces them)
 // What each key does: tools/README.md "Garage bolt-ons". The drawing is js/model.js (tyre(), wheelFaces(), controls(), fit(),
 // applyLook()), the physics keys js/spec.js. A new bike: add a row to BIKES below and run this.
@@ -16,19 +16,21 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 // 11.99c: donut = the scooter's donut set (fat low tyres on small wide mags, front · rear), thin = the drag-skinny pair where the
 // size is really made (17 in), mags = this bike's own extra rim designs (RIMS ids in model.js: 7 racing 8-spoke, 8 turbine,
 // 9 dish 4-spoke) on top of the range every bike has.
+// arm = the swing-arm's pivot-to-axle length in m (chain bikes: a longer arm on the same shock mount works the spring through more
+// leverage, krx), es = unit-swing scooter: Engine Support brackets instead (the whole engine + wheel hang further back / lower).
 // SAVED SETUPS AND OTHER PLAYERS STORE THE OPTION INDEX: only ever ADD options at the END of a list, never insert or reorder.
 const BIKES = {
-  raider150: { thin: '45/90-17 · 50/100-17', mags: [7, 8], mu: .85, sz: ['70/90-17 · 80/90-17', '80/80-17 · 100/80-17', '60/80-17 · 70/80-17', '90/80-17 · 120/70-17', '70/100-17 · 90/90-17'], disc: 1, mir: 1, box: 1 },
-  smash115: { thin: '45/90-17 · 50/100-17', mags: [7], mu: .85, sz: ['70/90-17 · 80/90-17', '70/80-17 · 90/80-17', '50/100-17 · 60/80-17', '80/90-17 · 100/80-17', '70/100-17 · 80/100-17'], wire: 1, mir: 1, halo: 1, box: 1 },
-  ns125: { thin: '45/90-17 · 50/100-17', mags: [7, 8], mu: .85, sz: ['80/100-17 · 100/90-17', '90/80-17 · 110/80-17', '60/80-17 · 70/80-17', '100/80-17 · 130/70-17', '80/100-17 · 110/90-17'], disc: 1, mir: 1, halo: 1, box: 1 },
-  tmx155: { mags: [7], mu: .85, sz: ['80/100-18 · 90/90-18', '80/90-18 · 100/80-18', '2.25-18 · 2.50-18', '90/90-18 · 110/90-18', '3.00-18 · 3.50-18'], wire: 1, mir: 1, halo: 1, box: 1 },
-  macho125: { thin: '45/90-17 · 50/100-17', mags: [7], mu: .85, sz: ['2.75-17 · 3.00-17', '80/90-17 · 90/90-17', '2.25-17 · 2.50-17', '3.00-17 · 110/80-17', '2.75-17 · 3.50-17'], wire: 1, mir: 1, halo: 1, box: 1 },
-  click125: { donut: '120/70-12 · 130/70-12', mags: [8, 9], mu: .85, sz: ['80/90-14 · 90/90-14', '90/80-14 · 100/80-14', '60/80-14 · 70/80-14', '100/80-14 · 120/70-14', '90/90-14 · 100/90-14'], disc: 1, mir: 1, box: 1 },
-  aerox155: { donut: '130/70-12 · 140/70-12', mags: [8, 9], mu: .85, sz: ['110/80-14 · 140/70-14', '120/70-14 · 140/70-14', '70/80-14 · 80/80-14', '120/70-14 · 150/70-14', '110/80-14 · 130/80-14'], disc: 1, mir: 1, box: 1 },
-  nmax155: { donut: '130/70-12 · 140/70-12', mags: [8, 9], mu: .85, sz: ['110/70-13 · 130/70-13', '110/70-13 · 130/70-13', '90/80-13 · 100/80-13', '120/70-13 · 140/70-13', '110/80-13 · 130/80-13'], disc: 1, mir: 1, box: 1 },
-  xmax300: { donut: '130/70-13 · 150/70-13', mags: [8, 9], mu: .85, sz: ['120/70-15 · 140/70-14', '120/70-15 · 140/70-14', null, '130/70-15 · 150/70-14', '120/80-15 · 140/80-14'], disc: 1, mir: 1, box: 1 },
-  cbr650r: { mags: [7, 8], mu: 1.05, big: ['Stock (Roadsport)', 'Hypersport', 'Track'], sz: ['120/70-17 · 180/55-17'], disc: 1, box: 1 },
-  ninjah2: { mags: [7, 8], mu: 1.12, big: ['Stock (hypersport)', 'Track day', 'Slicks'], sz: ['120/70-17 · 200/55-17'], disc: 1 },
+  raider150: { arm: 0.57, thin: '45/90-17 · 50/100-17', mags: [7, 8], mu: .85, sz: ['70/90-17 · 80/90-17', '80/80-17 · 100/80-17', '60/80-17 · 70/80-17', '90/80-17 · 120/70-17', '70/100-17 · 90/90-17'], disc: 1, mir: 1, box: 1 },
+  smash115: { arm: 0.5, thin: '45/90-17 · 50/100-17', mags: [7], mu: .85, sz: ['70/90-17 · 80/90-17', '70/80-17 · 90/80-17', '50/100-17 · 60/80-17', '80/90-17 · 100/80-17', '70/100-17 · 80/100-17'], wire: 1, mir: 1, halo: 1, box: 1 },
+  ns125: { arm: 0.54, thin: '45/90-17 · 50/100-17', mags: [7, 8], mu: .85, sz: ['80/100-17 · 100/90-17', '90/80-17 · 110/80-17', '60/80-17 · 70/80-17', '100/80-17 · 130/70-17', '80/100-17 · 110/90-17'], disc: 1, mir: 1, halo: 1, box: 1 },
+  tmx155: { arm: 0.52, mags: [7], mu: .85, sz: ['80/100-18 · 90/90-18', '80/90-18 · 100/80-18', '2.25-18 · 2.50-18', '90/90-18 · 110/90-18', '3.00-18 · 3.50-18'], wire: 1, mir: 1, halo: 1, box: 1 },
+  macho125: { arm: 0.5, thin: '45/90-17 · 50/100-17', mags: [7], mu: .85, sz: ['2.75-17 · 3.00-17', '80/90-17 · 90/90-17', '2.25-17 · 2.50-17', '3.00-17 · 110/80-17', '2.75-17 · 3.50-17'], wire: 1, mir: 1, halo: 1, box: 1 },
+  click125: { es: 1, donut: '120/70-12 · 130/70-12', mags: [8, 9], mu: .85, sz: ['80/90-14 · 90/90-14', '90/80-14 · 100/80-14', '60/80-14 · 70/80-14', '100/80-14 · 120/70-14', '90/90-14 · 100/90-14'], disc: 1, mir: 1, box: 1 },
+  aerox155: { es: 1, donut: '130/70-12 · 140/70-12', mags: [8, 9], mu: .85, sz: ['110/80-14 · 140/70-14', '120/70-14 · 140/70-14', '70/80-14 · 80/80-14', '120/70-14 · 150/70-14', '110/80-14 · 130/80-14'], disc: 1, mir: 1, box: 1 },
+  nmax155: { es: 1, donut: '130/70-12 · 140/70-12', mags: [8, 9], mu: .85, sz: ['110/70-13 · 130/70-13', '110/70-13 · 130/70-13', '90/80-13 · 100/80-13', '120/70-13 · 140/70-13', '110/80-13 · 130/80-13'], disc: 1, mir: 1, box: 1 },
+  xmax300: { es: 1, donut: '130/70-13 · 150/70-13', mags: [8, 9], mu: .85, sz: ['120/70-15 · 140/70-14', '120/70-15 · 140/70-14', null, '130/70-15 · 150/70-14', '120/80-15 · 140/80-14'], disc: 1, mir: 1, box: 1 },
+  cbr650r: { arm: 0.58, mags: [7, 8], mu: 1.05, big: ['Stock (Roadsport)', 'Hypersport', 'Track'], sz: ['120/70-17 · 180/55-17'], disc: 1, box: 1 },
+  ninjah2: { arm: 0.6, mags: [7, 8], mu: 1.12, big: ['Stock (hypersport)', 'Track day', 'Slicks'], sz: ['120/70-17 · 200/55-17'], disc: 1 },
 };
 const r2 = v => Math.round(v * 100) / 100;
 // tyT = section height x (low profile = bigger rim showing), tyW = width x, tyK = knobs, tyS = sidewall band colour;
@@ -51,6 +53,16 @@ function tires(b) {
 }
 // per-bike mags (BIKES row `mags`), by RIMS id in model.js
 const MAGS = { 7: { n: 'Racing 8-spoke', note: 'Thin forged spokes', rimD: 7, dm: -1.5 }, 8: { n: 'Turbine', note: 'Swept blades', rimD: 8, dm: -.3 }, 9: { n: 'Dish 4-spoke', note: 'Deep dish, wide spokes', rimD: 9, dm: .5 } };
+// swing-arm length / Engine Support. swl = metres the rear axle moves back (spec.js: wheelbase, weight split, pitch inertia; model.js
+// moves the wheel, the arm stretches to it, a scooter's engine hangs on a visible bracket), swf = share of the bike's mass that moves
+// with it, krx = rear wheel rate x (leverage), yrd = metres the rear sits higher (negative = lowered)
+function swarm(b) {
+  const o = (n, note, mm, x = {}) => ({ n, note, swl: mm / 1000, ...(b.arm ? { krx: r2((b.arm / (b.arm + mm / 1000)) ** 2) } : {}), dm: r2(mm * (b.es ? .012 : .008)), ...x });
+  if (b.es) return { l: 'Engine support (ES)', o: [{ n: 'Stock' }, o('Lowered ES', 'Rear 30 mm lower, 20 mm longer', 20, { yrd: -.03 }), o('Extended ES 2 in', 'Engine and wheel 50 mm back', 50),
+    o('Extended ES 4 in', '100 mm back · calm, slow to turn', 100), o('Lowered + extended', '30 mm lower, 80 mm back', 80, { yrd: -.03 })] };
+  return { l: 'Swing-arm', o: [{ n: 'Stock' }, o('Extended 2 in', '50 mm longer', 50), o(b.big ? 'Extended 4 in' : 'Thai stretch 4 in', '100 mm longer · softer rear', 100),
+    o('Drag stretch 6 in', '150 mm longer · hard to wheelie, wide turns', 150)] };
+}
 const COL = { Gold: '#c9a24a', Red: '#c21d1d', Blue: '#1f4fbf', Purple: '#7a3fd0', Orange: '#e2661a', Lime: '#7bd11f', Titanium: '#8d8f94', Black: '#17181b', White: '#e9e9e4' };
 const cols = (key, names, first = 'Stock') => [{ n: first }, ...names.map(n => ({ n, [key]: COL[n] }))];
 const LEDS = [['Red', '#ff0a0a'], ['Amber', '#ff7a00'], ['Green', '#10ff30'], ['Cyan', '#00d8ff'], ['Blue', '#1440ff'], ['Purple', '#9a1cff'], ['Pink', '#ff1ea0'], ['White', '#ffffff']];
@@ -64,6 +76,7 @@ function parts(b) {
     P.caliper = { l: 'Caliper colour', o: cols('calC', ['Gold', 'Red', 'Blue', 'Lime', 'Titanium']) };
   }
   if (b.mir) P.mirrors = { l: 'Mirrors', o: [{ n: 'Stock' }, { n: 'Bar-end round', mirK: 1 }, { n: 'Short sport', mirK: 2, dm: -.2 }, { n: 'Removed', note: 'Track look', mirK: 3, dm: -.6 }] };
+  P.swarm = swarm(b);
   P.levers = { l: 'Levers', o: cols('levC', ['Black', 'Gold', 'Red', 'Blue', 'Purple', 'Titanium'], 'Stock') };
   P.grips = { l: 'Grips', o: cols('grpC', ['Red', 'Blue', 'Orange', 'Purple', 'Lime', 'White'], 'Stock black') };
   P.seat = { l: 'Seat cover', o: [{ n: 'Stock black' }, { n: 'Brown leather', seatC: '#6b3f22' }, { n: 'Tan', seatC: '#b08552' }, { n: 'Red', seatC: '#8e1a1f' }, { n: 'Blue', seatC: '#1e3a7a' }, { n: 'White', seatC: '#d9d6cf' }] };

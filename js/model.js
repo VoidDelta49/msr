@@ -1332,7 +1332,7 @@ export function ledTick(t) {
   }
 }
 // what the garage can change about the model's shape: a different key = buildModel() again (main.js). Colours never rebuild.
-export const shapeOf = (sp, bike) => sp ? [sp.var | 0, sp.sc && bike.sidecar ? 1 : 0, sp.tyT || 1, sp.tyW || 1, sp.tyK | 0, sp.tyS ? 1 : 0, sp.rimD | 0, sp.dscK | 0, sp.wledC ? 1 : 0, sp.mirK | 0, sp.boxK | 0, sp.glowC ? 1 : 0, sp.auxK | 0].join() : '';
+export const shapeOf = (sp, bike) => sp ? [sp.var | 0, sp.sc && bike.sidecar ? 1 : 0, sp.tyT || 1, sp.tyW || 1, sp.tyK | 0, sp.tyS ? 1 : 0, sp.rimD | 0, sp.dscK | 0, sp.wledC ? 1 : 0, sp.mirK | 0, sp.boxK | 0, sp.glowC ? 1 : 0, sp.auxK | 0, sp.swl || 0].join() : '';
 // Bolt-ons that are the same on every bike, placed from what each builder leaves behind (B.G, B.cargo, B.bar): top box on a rack
 // over the tail, LED strips under the belly, a pair of aux lamps (on the bar by the switch pods; on the fork legs of the clip-on bikes).
 function fit(ct, sp, wb) {
@@ -1361,6 +1361,12 @@ export function buildModel(bike, spec) {
   B.ct.clear(); B.halo = false; B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.calCol = null; B.bar = null; B.sc = 0; B.scDz = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model;
   fit(B.ct, sp, bike.chassis.wb); lampKind(sp.hlC, sp.auxC); LED.d = 1;
   if (spec?.sc && bike.sidecar) { B.sc = 1; sidecar(B.ct, bike.sidecar, bike.chassis.wb); } SC_BLOB.p.z = B.scDz; // any bike with sidecar mount data
+  // swing-arm length / Engine Support (sp.swl, parts-gen swarm): the rear wheel sits further back. A chain bike's arm stretches to it
+  // (main.js, every frame; the shocks stay on their mounts); a scooter's whole unit swing hangs back on a visible bracket instead
+  if (sp.swl) {
+    const d = sp.swl, G = B.G; B.rearH.position.z += d; G.rearZ += d;
+    if (bike.drivetrain === 'cvt') { for (const s of [-1, 1]) mk(box(.012, .05, d + .05), MAlu, B.ct, G.swingX + .1 + s * .075, G.pivotY, G.pivotZ + d / 2); mk(cyl(.014, .014, .19, 8), MC, B.ct, G.swingX + .1, G.pivotY, G.pivotZ + d, 0, 0, PI / 2); G.pivotZ += d; }
+  }
   setLiveryUV();
   const pc = bike.chassis.pil; // pillion seat (data/bikes/*.json chassis.pil): where the recoloured rider copy goes + the passenger's eye (ride.js)
   B.G.pil = pc ? { dz: pc.dz, dy: pc.dy, hip: B.hip, cam: { x: .1, y: B.cam.position.y + pc.dy + .08, z: B.cam.position.z + pc.dz } } : null;

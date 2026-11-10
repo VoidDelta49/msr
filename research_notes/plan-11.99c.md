@@ -1,6 +1,6 @@
 # Plan: 11.99c (ISLA)
 
-Status: **in progress.** Done: item 1 (ISLA rename), item 2 (weather: relay, client, wet physics; see "Item 2: what was built" at the end). Done: item 3 (wheels: Donut tyres on the four scooters, Drag skinny on the four 17-inch small bikes, three new mag designs given per bike; the XMAX still has no thin tyre: no real narrow 15 / 14 inch pair was found). Not started: items 4-6. Item 7 still blocked. BUILD is still 11.99b (bump at release). Source: the owner's handwritten "Plan 4" note plus the discussion after it.
+Status: **in progress.** Done: item 1 (ISLA rename), item 2 (weather; see "Item 2: what was built" at the end), item 3 (wheels; the XMAX still has no thin tyre), item 5 (swing-arm / Engine Support; see "Item 5: what was built" at the end). Not started: item 6 (suspension), item 4 (character looks). Item 7 still blocked. BUILD is still 11.99b (bump at release). Source: the owner's handwritten "Plan 4" note plus the discussion after it.
 
 Already shipped in 11.99 / 11.99b (not part of this plan): Dyno fine-tuning (`js/tune.js`), "Thai concept skinny" tires, rim designs (`maker/parts-gen.mjs`), real-clock day/night (`js/daynight.js`).
 
@@ -95,3 +95,11 @@ Left / to tune on a real phone:
 - All wet-grip and tyre wet numbers are first guesses. Sky / fog / rain amounts were only looked at in headless Chromium.
 - Not done: manhole covers (the map has none), rain splashes on the ground, NPC umbrellas / raincoats (item 4), humidity / temperature in the dyno (optional in the plan).
 - Wet grip in Rapier situations (crashes, suspension) was not browser-tested beyond riding off in the rain.
+
+## Item 5: what was built, and what is left
+
+Built: part `swarm` on every bike from `maker/parts-gen.mjs` (row `arm` = pivot-to-axle m on chain bikes, `es: 1` on scooters), on the garage's suspension tab. Chain bikes: Stock, Extended 2 in, Thai stretch 4 in (big bikes: Extended 4 in), Drag stretch 6 in. Scooters "Engine support (ES)": Stock, Lowered ES, Extended ES 2 in, Extended ES 4 in, Lowered + extended. Option keys: `swl` (m the rear axle moves back), `krx` (rear wheel rate x from the longer lever), `yrd` (rear ride height, m), `dm`. Physics in `computeSpec` (wheelbase, weight split, pitch inertia, pillion seat position); model in `buildModel` (rear wheel moves, the arm and chain stretch, a scooter's engine unit hangs back on bracket plates). `swl = 0` changes nothing, baseline untouched.
+
+- **Changed from the decision "ES is a slider plus presets": it is a list of presets only (a part, not a slider).** Slider values are not sent to other players, so a stretched bike would look stock to friends; a part travels with the look. Say if a fine slider is still wanted on top.
+- Numbers are first guesses (mass share that moves: 10 % chain bikes, 30 % scooters). Only looked at in headless Chromium side views; not ridden on a phone, Rapier not browser-tested.
+- Not done: a scooter's shocks and muffler do not follow the engine back; no shorter-than-stock arm.

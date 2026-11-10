@@ -467,7 +467,8 @@
     "hl": {"l": "Headlight bulb", "o": [{"n": "Stock halogen"}, {"n": "LED white 6000K", "hlC": "#eef4ff"}, {"n": "Yellow 3000K", "hlC": "#ffd23a"}, {"n": "Ice blue 8000K", "hlC": "#8fc4ff"}]},
     "aux": {"l": "Auxiliary lights", "o": [{"n": "None"}, {"n": "Mini driving lights", "note": "More light on the road", "auxK": 1, "dm": 0.5}, {"n": "Yellow fog pair", "note": "More light on the road", "auxK": 1, "auxC": "#ffd23a", "dm": 0.5}]},
     "glow": {"l": "Underglow", "o": [{"n": "Off"}, {"n": "Red", "glowC": "#ff0a0a"}, {"n": "Amber", "glowC": "#ff7a00"}, {"n": "Green", "glowC": "#10ff30"}, {"n": "Cyan", "glowC": "#00d8ff"}, {"n": "Blue", "glowC": "#1440ff"}, {"n": "Purple", "glowC": "#9a1cff"}, {"n": "Pink", "glowC": "#ff1ea0"}, {"n": "White", "glowC": "#ffffff"}, {"n": "RGB cycle", "note": "Runs through every colour", "glowC": "rgb"}]},
-    "wled": {"l": "Wheel LEDs", "o": [{"n": "Off"}, {"n": "Red", "wledC": "#ff0a0a"}, {"n": "Amber", "wledC": "#ff7a00"}, {"n": "Green", "wledC": "#10ff30"}, {"n": "Cyan", "wledC": "#00d8ff"}, {"n": "Blue", "wledC": "#1440ff"}, {"n": "Purple", "wledC": "#9a1cff"}, {"n": "Pink", "wledC": "#ff1ea0"}, {"n": "White", "wledC": "#ffffff"}, {"n": "RGB cycle", "note": "Runs through every colour", "wledC": "rgb"}]}
+    "wled": {"l": "Wheel LEDs", "o": [{"n": "Off"}, {"n": "Red", "wledC": "#ff0a0a"}, {"n": "Amber", "wledC": "#ff7a00"}, {"n": "Green", "wledC": "#10ff30"}, {"n": "Cyan", "wledC": "#00d8ff"}, {"n": "Blue", "wledC": "#1440ff"}, {"n": "Purple", "wledC": "#9a1cff"}, {"n": "Pink", "wledC": "#ff1ea0"}, {"n": "White", "wledC": "#ffffff"}, {"n": "RGB cycle", "note": "Runs through every colour", "wledC": "rgb"}]},
+    "swarm": {"l": "Swing-arm", "o": [{"n": "Stock"}, {"n": "Extended 2 in", "note": "50 mm longer", "swl": 0.05, "krx": 0.83, "dm": 0.4}, {"n": "Thai stretch 4 in", "note": "100 mm longer · softer rear", "swl": 0.1, "krx": 0.7, "dm": 0.8}, {"n": "Drag stretch 6 in", "note": "150 mm longer · hard to wheelie, wide turns", "swl": 0.15, "krx": 0.6, "dm": 1.2}]}
   },
   "sliders": [
     {
@@ -599,6 +600,7 @@
     "hl": 0,
     "aux": 0,
     "glow": 0,
-    "wled": 0
+    "wled": 0,
+    "swarm": 0
   }
 }
