@@ -1,4 +1,4 @@
-# CPM: Motor Edition
+# ISLA
 
 A 3D web game about riding and parking Philippine-market motorcycles on a Philippine-style island. Built with Three.js (WebGPU with WebGL 2 fallback), targeted at mobile browsers. No build step.
 

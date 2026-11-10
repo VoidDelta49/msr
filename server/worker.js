@@ -1,4 +1,4 @@
-// CPM: Motor Edition multiplayer relay (Cloudflare Worker + one Durable Object per room code).
+// ISLA multiplayer relay (Cloudflare Worker + one Durable Object per room code).
 // The relay doesn't simulate anything: every phone runs its own physics and sends its bike state; the room just
 // forwards it. Binary messages (bike state, 44 bytes) are broadcast with the sender's id byte in front. Text messages
 // are JSON control messages (only 'ping', 'look' and 'race' are accepted, and only known fields are forwarded):

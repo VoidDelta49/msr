@@ -1,6 +1,6 @@
 # Third-party software and credits
 
-CPM: Motor Edition's own code is under the MIT License (see `LICENSE`). It also uses the libraries below. Copies are included in `vendor/` (see the importmap in `index.html`) so the game works offline; each folder carries the library's license file.
+ISLA's own code is under the MIT License (see `LICENSE`). It also uses the libraries below. Copies are included in `vendor/` (see the importmap in `index.html`) so the game works offline; each folder carries the library's license file.
 
 | Library | Version | License | Source |
 |---|---|---|---|

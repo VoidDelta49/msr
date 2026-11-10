@@ -1,6 +1,6 @@
 # Legal notes
 
-CPM: Motor Edition is an **unofficial, non-commercial fan project**. It is not affiliated with, authorized by, sponsored by or endorsed by Honda, Suzuki, or any other company named in it. All product names, brands and trademarks belong to their owners and are used only to say which real motorcycle a model represents.
+ISLA (formerly "CPM: Motor Edition") is an **unofficial, non-commercial fan project**. It is not affiliated with, authorized by, sponsored by or endorsed by Honda, Suzuki, or any other company named in it. All product names, brands and trademarks belong to their owners and are used only to say which real motorcycle a model represents.
 
 This is a working risk note for the maintainer, not legal advice. It records what the game borrows from the real world, how risky each thing is, and the rules to keep it that way. If the project ever becomes public-facing or earns money, talk to a lawyer (preferably one who knows Philippine IP law) before launch.
 
@@ -33,7 +33,6 @@ Overall risk today: **low**. The risks below grow quickly with publicity or mone
 | Supplier names in text ("Showa" in the CBR blurb) | `data/bikes/cbr650r.json`, comment in `js/model.js` | Component-maker marks. | Drop from user-visible text. |
 | Body shapes and liveries (CBR650R traced from photos; Click, Raider, TMX Supremo, Aerox 155, Rouser NS125 and Macho 125 modelled after reference photos, Ninja H2 traced from a side photo, NMAX 155 modelled after reference photos (PH black unit), XMAX 300 modelled after reference photos (PH 2023: light grey, matte dark grey, red), per the comments in `js/model.js`; the Macho reuses the TMX builder) | `js/model.js` | Industrial design and trade dress. Low-poly, stylised, no real logos or lettering, but recognisably the real bikes. | Keep stylised. Don't add more detail that gets closer to a copy. Avoid exact factory decal artwork. |
 | Spec figures (power, weight, gearing, geometry) | `data/bikes/*.json`, `README.md` | Facts are not copyrightable. | Fine. Don't paste text, tables or images from owner's manuals or spec sheets. |
-| Name "CPM" | project title | Resembles the title of *Car Parking Multiplayer*, a commercial mobile game. | Fine for a repo. Rename before any app-store listing. |
 
 Not an issue as far as the repo shows: jeepneys, tricycles, palms, the island and the town (generic or invented), the fictional "MSR49" plate text, and gas-station props (no real brand names found).
 
@@ -44,7 +43,7 @@ Not an issue as far as the repo shows: jeepneys, tricycles, palms, the island an
 | Friends-only playtests, free | Low | Today. |
 | Free public link, shared on social media | Moderate | More likely to be noticed by brand owners. Make the remaining Honda feature and paint names generic first. |
 | Ads, donations, paywall, in-game purchases | High | Commercial use of third-party marks and designs. Use generic names and get permission or advice first. |
-| App store / Play Store listing | High | Stores check for trademark and IP complaints. "CPM" name also needs changing. |
+| App store / Play Store listing | High | Stores check for trademark and IP complaints. |
 | Marketing as "the real Honda / Suzuki experience" | High | Suggests endorsement. Never do this. |
 
 ## Rules for new content
@@ -66,7 +65,6 @@ Do these before any wider launch:
 - Rename the remaining Honda feature and paint names generically (the decal and gauge lettering are already unbranded).
 - Add a **generic names** option (for example "Scooter 125", "Underbone 150", "Supersport 650"), either as the default or as a switch. This removes most trademark exposure with one change.
 - Or ask Honda and Suzuki (Philippines) for written permission.
-- Rename the project if "CPM" would be confused with *Car Parking Multiplayer*.
 - Get legal advice on trade dress and industrial design for the bike models.
 - Add a privacy notice if you start collecting any player data. The game currently stores only settings in the browser (`localStorage`).
 
