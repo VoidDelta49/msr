@@ -148,22 +148,6 @@ let pipe = null, scenePass = null;
 // not bright paint. A 5-mip blur (wide mips turned down) at a fraction of the resolution. Strength and threshold are uniforms that daynight.js moves with the
 // sun (subtle at noon, strongest at night), so nothing recompiles.
 export const BLOOM = { on: !!cfg.bloom && !Q.lite, k: null, th: null };
-// Ink outlines (Options "Outlines", Medium/High): one look at the scene pass's depth. Depth is 1/distance-linear across the
-// screen for any flat surface, so the "depth Laplacian" (a pixel against the two neighbours either side of it, in 4
-// directions, at 1 px) is exactly 0 on a plane, even at a grazing angle, and jumps at a silhouette. There a thin dark
-// line is drawn: near things only (fades out by ~170 m) so it inks the bike, people and buildings and doesn't fizz on
-// distant trees. 1 + 8 depth taps, no extra pass (it runs in the post shader already there).
-export const SHADE = { on: !!cfg.shade && !Q.lite, ink: null, nf: null }; // nf: camera near/far (they move: interiors, Ilalim), set in draw()
-function shade(T, src, dep) {
-  const S = SHADE; S.ink = T.uniform(.75); S.nf = T.uniform(new THREE.Vector2(camera.near, camera.far)); const n = S.nf.x, f = S.nf.y;
-  const B = n.mul(f).div(f.sub(n)), u = T.screenUV, px = T.vec2(1).div(T.screenSize);
-  const D = o => dep.sample(u.add(o)).x, dc = D(T.vec2(0)), z = n.mul(f).div(f.sub(dc.mul(f.sub(n)))), k = z.div(B);
-  const lap = o => dc.mul(2).sub(D(o)).sub(D(o.negate())).mul(k);                     // relative: (1/za + 1/zb - 2/zc)·zc
-  const lw = T.max(1, T.screenSize.y.div(900));
-  let e = T.float(0); for (const [x, y] of [[1, 0], [0, 1], [.7, .7], [.7, -.7]]) e = T.max(e, lap(px.mul(T.vec2(x, y)).mul(lw)).abs());
-  const ink = T.smoothstep(.05, .22, e).mul(T.smoothstep(170, 50, z)).mul(S.ink);
-  return T.vec4(src.rgb.mul(ink.mul(.6).oneMinus()), 1);
-}
 // Sun glare (with bloom): when the sun is on screen and not hidden (5 depth taps around it see the sky), a soft halo
 // round it and a few faint ghosts on the line through the screen centre, in the sun's colour. GLARE.k (daynight.js)
 // is 0 by night, underground and indoors; at 0 the whole thing is skipped (uniform branch).
@@ -187,15 +171,14 @@ function glare(T, src, dep) {
     return T.vec4(res, 1);
   })();
 }
-if (BLOOM.on || SHADE.on || AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx || cfg.mblur) {
+if (BLOOM.on || AA.fx || AA.ms || cfg.n64 || cfg.grade || cfg.nightFx || cfg.mblur) {
   const T = await import('three/tsl'); scenePass = T.pass(scene, camera, AA.ms ? { samples: AA.ms } : {}); AA.rt = scenePass.renderTarget.samples; /* what the target really carries (tools/options.mjs) */
   // MSAA: only the resolved (1-sample) colour is ever read, so the 4-sample buffer need not be written back to memory: on a phone's tiled
   // GPU that store is 4 x 8 bytes per pixel every frame (~47 MB at 1808x812). Depth: motion blur samples the multisampled depth texture,
   // so it is kept then; without motion blur nothing reads it. The scene is one render pass (no viewport/transmission textures split it).
-  if (AA.ms) { const rt = scenePass.renderTarget; rt.storeMultisampledColorBuffer = false; if (!cfg.mblur && !SHADE.on && !BLOOM.on) rt.storeMultisampledDepthBuffer = rt.storeMultisampledStencilBuffer = false; }
+  if (AA.ms) { const rt = scenePass.renderTarget; rt.storeMultisampledColorBuffer = false; if (!cfg.mblur && !BLOOM.on) rt.storeMultisampledDepthBuffer = rt.storeMultisampledStencilBuffer = false; }
   let src = scenePass;
   if (cfg.mblur) { const { motionBlur } = await import('./mblur.js'), m = motionBlur(scenePass, { gpu: !!renderer.backend.isWebGPUBackend, taps: Q.lite ? 5 : Q.shadow >= 2048 ? 8 : 6 }); MB = m.MB; src = m.node; }
-  if (SHADE.on) src = shade(T, src, scenePass.getTextureNode('depth'));
   if (BLOOM.on) {
     const { bloom } = await import('three/addons/tsl/display/BloomNode.js'), b = bloom(scenePass.getTextureNode(), .3, 0, 1.5);
     b.setResolutionScale(Q.shadow >= 2048 ? .5 : .35); b.smoothWidth.value = .3;
@@ -260,7 +243,6 @@ export async function drunkFx() {
 }
 export const draw = () => {
   if (DRUNK.pipe && DRUNK.k > .01 && BX.post) { DRUNK.ku.value = DRUNK.k; DRUNK.tu.value = DRUNK.t; DRUNK.pipe.render(); return; }
-  if (SHADE.nf) SHADE.nf.value.set(camera.near, camera.far);
   if (MB) MB.update(camera, performance.now()); pipe && BX.post ? pipe.render() : renderer.render(scene, camera);
 };
 // Shader warm-up, during loading: build every material's shader/pipeline now instead of on first use (the first
