@@ -1,6 +1,6 @@
 # Plan: 11.99c (ISLA)
 
-Status: **in progress.** Done: item 1 (ISLA rename), item 2 (weather; see "Item 2: what was built" at the end), item 3 (wheels; the XMAX still has no thin tyre), item 5 (swing-arm / Engine Support; see "Item 5: what was built" at the end). Done: item 6 (suspension; see "Item 6: what was built" at the end). Not started: item 4 (character looks). Item 7 still blocked. BUILD is still 11.99b (bump at release). Source: the owner's handwritten "Plan 4" note plus the discussion after it.
+Status: **in progress.** Done: item 1 (ISLA rename), item 2 (weather; see "Item 2: what was built" at the end), item 3 (wheels; the XMAX still has no thin tyre), item 5 (swing-arm / Engine Support; see "Item 5: what was built" at the end). Done: item 6 (suspension; see "Item 6: what was built" at the end). Done: item 4 (character looks; see "Item 4: what was built" at the end, **waiting for the owner's review**). Left: the release steps. Item 7 still blocked. BUILD is still 11.99b (bump at release). Source: the owner's handwritten "Plan 4" note plus the discussion after it.
 
 Already shipped in 11.99 / 11.99b (not part of this plan): Dyno fine-tuning (`js/tune.js`), "Thai concept skinny" tires, rim designs (`maker/parts-gen.mjs`), real-clock day/night (`js/daynight.js`).
 
@@ -111,3 +111,12 @@ Built: `chassis.susp` in every bike file = `{fork: tele | usd, rear: twin | mono
 - The travel numbers already in the files matched the makers' figures where one is published (CBR650R 120 / 128, H2 120 / 135, XMAX 110 / 79); the small bikes' are estimates. All `susp` numbers are first guesses by layout and price class.
 - Headless baseline did not move. The springs only run in Rapier: `tools/smoke.mjs` passes, but the feel was not ridden on a phone.
 - Not done: top-out is still the old rule (spring unloaded + 3 cm), spring rates are still wheel rates without installed preload, the Raider / Smash / CBR / H2 models have no visible rear shock to animate.
+
+## Item 4: what was built (a proposal: the owner reviews and corrects)
+
+- Skin (`palettes.skin` in `data/npc.json`): the range now runs from a light mestiza / chinita tone to deep kayumanggi, weighted to the middle browns; the pale pink tone is gone. Rider and default skin `#c08a5e`.
+- Hair: black and near-black; `dyed` (brown, copper, bleached) for some students and tambays; more greys for the old.
+- Clothes: basketball jerseys with matching shorts on the sando boys, public-school khaki and checked skirts on students, off-white barong-style polo for office workers, white camisa for lolos.
+- New people: Nanay in a duster (some with a payong against the sun), street vendor, magsasaka, barangay tanod (out at night), delivery rider (helmet, hi-vis top, box on the back; no brand).
+- New parts (figlook.js `PARTS`, figure.js): `hat` salakot / buri hat, `umb` payong (the right arm holds it), `coat` kapote with hood. In the rain (`rain` in npc.json: from / umb / coat) half the street opens a payong and a quarter wear a kapote (`rainMask` in npc.js, colours `palettes.rain`); joggers get neither.
+- Looked at in headless Chromium line-ups, clear and rain. Not done: the rider on the bike keeps the same jacket / jeans / helmet (only the skin tone changed); no Filipiniana / fiesta wear; people indoors (`data/interiors.json`) use the same archetypes and were not looked at.

@@ -84,6 +84,11 @@ export const npcDoors = () => DOORS;
 const pickW = (obj, f = v => v) => { let t = 0; for (const k in obj) t += Math.max(0, f(obj[k], k)); let x = rnd() * t; for (const k in obj) { x -= Math.max(0, f(obj[k], k)); if (x <= 0) return k; } return Object.keys(obj)[0]; };
 const rr = a => Array.isArray(a) ? a[0] + rnd() * (a[1] - a[0]) : a;
 const oneOf = L => L && L.length ? L[(rnd() * L.length) | 0] : '';
+// rain: who opens a payong, who wears a kapote (fixed per person by id, so no extra random draws), nobody while running
+export function rainMask(a, rain) {
+  const R = D.rain; if (!R || !(rain > R.from) || a.run) return 0; const k = (a.id * 2654435761 >>> 0) % 1000 / 1000;
+  return k < R.umb ? optMask(['umb']) : k < R.umb + R.coat ? optMask(['coat']) : 0;
+}
 function newAgent(arch, x, z) {
   const A = D.archetypes[arch], a = FREE.pop() || {}, lk = resolveLook(A, D.palettes, rnd);
   Object.assign(a, {
