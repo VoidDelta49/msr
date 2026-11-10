@@ -22,7 +22,7 @@ function rider(sim, { rate = 2.5, thr = 1 } = {}) {
     if (type === 'cvt') { S.cl = 0; return; }
     if (type === 'rotary') {
       if (ph === 'init') { sim.shift(1); ph = 'drive'; }
-      else if (S.rpm >= sp.red - 500 && S.gear < sp.nG && S.shCD <= 0) sim.shift(1);
+      else if ((tm -= TICK) <= 0 && S.rpm >= sp.red - 500 && S.gear < sp.nG && S.shCD <= 0) { sim.shift(1); tm = .5; } // wait for the gear to bite: the revs flare while the pedal is down
       return;
     }
     if (ph === 'init') { S.cl = 1; S.thr = 0; if (S.gear !== 1 && S.shCD <= 0) sim.shift(S.gear === 0 && sp.pat === 'down' ? 1 : -1); if (S.gear === 1) ph = 'launch'; }

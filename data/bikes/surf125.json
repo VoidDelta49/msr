@@ -4,7 +4,7 @@
  "short": "Surf 125",
  "tag": "4-speed semi-auto · budget underbone",
  "class": "UNDERBONE",
- "blurb": "The budget underbone: 125 cc air-cooled SOHC 2-valve carb single, 9.5 hp @ 7,500 rpm, 9.6 Nm @ 6,500 rpm, electric + kick start. 4-speed semi-automatic gearbox with a centrifugal clutch (no clutch lever), chain drive, front disc and rear drum, 17\" cast wheels (2.50-17, 2.75-17), telescopic fork and twin rear shocks, about 95 km/h flat out.",
+ "blurb": "The budget underbone: 125 cc air-cooled SOHC 2-valve carb single, 9.5 hp @ 7,500 rpm, 9.6 Nm @ 6,500 rpm, electric + kick start. 4-speed semi-automatic gearbox with a centrifugal clutch (no clutch lever), chain drive, front disc and rear drum, 17\" cast wheels (2.50-17, 2.75-17), telescopic fork and twin rear shocks, about 95 km/h flat out. Takes the tricycle sidecar in Parts.",
  "model": "surf",
  "cluster": "smash",
  "drivetrain": "rotary",
@@ -124,15 +124,19 @@
    ],
    [
     8000,
-    8.3
+    8.5
+   ],
+   [
+    8500,
+    7.85
    ],
    [
     9000,
-    6.6
+    7.1
    ],
    [
     10000,
-    4.6
+    5
    ]
   ],
   "fric": [
@@ -201,11 +205,12 @@
  },
  "sound": {
   "sc": {
-   "rattle": 2,
+   "rattle": 2.1,
    "thump": 1.5,
    "thumpHz": 0.8,
-   "peg": 0,
-   "lash": 1.8
+   "lash": 1.8,
+   "sq": 0.85,
+   "peg": 0
   },
   "parts": {
    "sq": 1.15,
@@ -241,6 +246,26 @@
   "starter": 0.9
  },
  "parts": {
+  "sidecar": {
+   "l": "Sidecar",
+   "o": [
+    {
+     "n": "Solo"
+    },
+    {
+     "n": "Tricycle sidecar (+110 kg)",
+     "sc": 1,
+     "scm": 110,
+     "dm": 110,
+     "scW": 0.32,
+     "scX": 0.95,
+     "scD": 1.5,
+     "drag": 0.62,
+     "roll": 42,
+     "brake": 0.95
+    }
+   ]
+  },
   "tune": {
    "l": "Engine tune",
    "int": 1,
@@ -1331,6 +1356,7 @@
  ],
  "toggles": [],
  "defaults": {
+  "sidecar": 0,
   "mj": 0,
   "nc": 3,
   "ps": 1.75,
@@ -1387,5 +1413,5 @@
   "disc": 0,
   "caliper": 0
  },
- "hint": "KEY on, hold START (the clutch is automatic, so any gear works), then twist. ▲▼ shift with no clutch: N-1-2-3-4, and 4 → N only when stopped"
+ "hint": "KEY on, hold START (the clutch is automatic, so any gear works), then twist. ▲▼ shift with no clutch: N-1-2-3-4, and 4 → N only when stopped. With the sidecar: it pulls toward the sidecar when you accelerate and away when you brake, and the sidecar lifts in fast turns toward it"
 }
