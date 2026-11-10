@@ -1,0 +1,40 @@
+<!doctype html><meta charset="utf-8"><title>radio render</title>
+<!-- tools/radio.mjs drives this page in headless Chrome: renders a station offline (OfflineAudioContext) from the real radiogen.js + radiosynth.js and reports levels -->
+<script type="module">
+import { makeSong, stepEvents, STATIONS } from '../js/radiogen.js';
+import { buildStation, createPlayer, noiseBuffer } from '../js/radiosynth.js';
+const SR = 44100;
+// render `secs` seconds starting at the fullest section of a song; only = list of instrument names to keep (null = all); returns levels in dBFS
+window.renderStation = async (si, seed, secs, only, wav) => {
+  const AC = new OfflineAudioContext(1, SR * secs, SR), noise = noiseBuffer(AC), song = makeSong(si, seed), st = buildStation(AC, si, AC.destination, noise);
+  st.out.gain.value = 1; st.setTempo(song.stepDur); const pl = createPlayer(AC, st, noise);
+  let best = 0; song.plan.forEach((p, i) => { if (p.length > song.plan[best].length) best = i; }); // the section with the most layers (the last full one)
+  const s0 = best * song.secBars * song.spb, n = Math.min(song.total - s0, Math.ceil(secs / song.stepDur) + 4);
+  for (let k = 0; k < n; k++) {
+    const t = k * song.stepDur + (k & 1 ? song.swing * song.stepDur : 0); if (t > secs) break;
+    for (const ev of stepEvents(song, s0 + k)) if (!only || only.includes(ev.i)) pl.play(ev, t, song.stepDur);
+  }
+  const buf = await AC.startRendering(), d = buf.getChannelData(0); let pk = 0, ss = 0, bad = 0, dc = 0; const win = [], W = SR;
+  for (let i = 0; i < d.length; i++) { const x = d[i]; if (!Number.isFinite(x)) { bad++; continue; } const a = Math.abs(x); if (a > pk) pk = a; ss += x * x; dc += x; }
+  for (let w = 0; w + W <= d.length; w += W) { let q = 0; for (let i = w; i < w + W; i++) q += d[i] * d[i]; win.push(10 * Math.log10(q / W + 1e-12)); }
+  // crude spectrum: energy below 200 Hz, 200-2000, above 2000, from first differences of 1-pole low-passes
+  const lp = (f) => { const a = 1 - Math.exp(-2 * Math.PI * f / SR); let y = 0, e = 0; for (let i = 0; i < d.length; i++) { y += a * (d[i] - y); e += y * y; } return e; };
+  const e200 = lp(200), e2k = lp(2000), eAll = ss + 1e-12, db = x => 10 * Math.log10(x / d.length + 1e-12);
+  const out = { title: song.title, bpm: song.bpm, peak: +(20 * Math.log10(pk + 1e-9)).toFixed(1), rms: +db(ss).toFixed(1), nan: bad, dc: +(dc / d.length).toFixed(5), minWin: +Math.min(...win).toFixed(1), maxWin: +Math.max(...win).toFixed(1),
+    low: +(100 * e200 / eAll).toFixed(0), mid: +(100 * (e2k - e200) / eAll).toFixed(0), high: +(100 * (eAll - e2k) / eAll).toFixed(0) };
+  if (wav) { const pcm = new Int16Array(d.length); for (let i = 0; i < d.length; i++) pcm[i] = Math.max(-1, Math.min(1, d[i])) * 32767; out.pcm = Array.from(pcm); }
+  return out;
+};
+
+// the real engine voice (engine-worklet.js) for one bike at a steady rpm / throttle, through the same bus gain audio.js uses: its RMS is what the radio has to sit under
+window.renderEngine = async (bike, rpm, load, secs) => {
+  const b = await (await fetch('../data/bikes/' + bike + '.json')).json(), s = b.sound, AC = new OfflineAudioContext(1, SR * secs, SR);
+  await AC.audioWorklet.addModule('../js/engine-worklet.js');
+  const E = new AudioWorkletNode(AC, 'cpm-engine', { numberOfInputs: 0, outputChannelCount: [1] }), g = AC.createGain(); g.gain.value = s.gain * 1.35; E.connect(g); g.connect(AC.destination);
+  E.port.postMessage({ cyl: s.cyl || 1, body: s.body, bq: s.bq, punch: s.punch, rough: s.rough, mech: s.mech, intake: s.intake, crackRpm: s.crackRpm || 5000, pipe: s.pipe, pq: s.pq, bright: s.bright, crackle: Math.min(1, s.crackle), drive: s.drive });
+  const P = E.parameters; P.get('rpm').value = rpm; P.get('load').value = load; P.get('on').value = 1; P.get('cut').value = 0; P.get('vol').value = 1;
+  const d = (await AC.startRendering()).getChannelData(0); let ss = 0, pk = 0; for (let i = SR; i < d.length; i++) { ss += d[i] * d[i]; pk = Math.max(pk, Math.abs(d[i])); }
+  return { rms: +(10 * Math.log10(ss / (d.length - SR) + 1e-12)).toFixed(1), peak: +(20 * Math.log10(pk + 1e-9)).toFixed(1) };
+};
+window.stationCount = STATIONS.length; window.ready = true;
+</script>
