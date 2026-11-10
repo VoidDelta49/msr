@@ -5,7 +5,7 @@ import { S, ctx } from './state.js';
 import { tq } from './spec.js';
 import { say } from './hud.js';
 import { igPre, igPost } from './ignition.js';
-import { KP, KS, MUX, BRK, tyreF } from './tyre.js';
+import { KP, KS, MUX, BRK, tyreF, wetGrip } from './tyre.js';
 import { cfg } from './config.js';
 import { blip } from './audio.js';
 
@@ -105,7 +105,7 @@ export function step(dt) {
   // road and headless). The fore / aft shift comes from the force the tyres carry at road level against the mass centre h above it:
   // S.at = net acceleration + the slope's pull + air drag. So a climb or a top-speed run loads the rear, a descent the front.
   const g = 9.81, gr = (S.hF - S.hR) / sp.wb, cg = 1 / Math.sqrt(1 + gr * gr), sg = gr * cg, nf = ctx.stand ? 1 : S.nf ?? 1, gn = g * cg * nf, lq = 1 / Math.min(1, nf); // cg, sg: cos / sin of the slope
-  const mb = sp.sc ? m * (1 - sp.scW) : m, mu = sp.mu * (S.surf || 1), mt = mu * MUX, mw = (sp.Iw || .6) / (r * r), wp = S.wp || 0, offF = wp > .04, offR = wp < -.04, N = mb * gn;
+  const mb = sp.sc ? m * (1 - sp.scW) : m, mu = sp.mu * (S.surf || 1) * wetGrip(ctx.wet, av, sp, S.surf || 1, S.slick), mt = mu * MUX, mw = (sp.Iw || .6) / (r * r), wp = S.wp || 0, offF = wp > .04, offR = wp < -.04, N = mb * gn;
   const Nr = offF ? .97 * N : offR ? .03 * N : clamp(N * sp.lf / sp.wb + clamp(mb * (S.at || 0) * sp.h / sp.wb, -N, N), .03 * N, .97 * N), Pr = mt * Nr, Pf = mt * (N - Nr);
   S.lr = Nr / N; // share of the load on the rear tyre (telemetry, tools/sim.mjs)
   const ayu = S.ayu || 0, Pxr = Pr * Math.sqrt(1 - ayu * ayu); // rear force left once cornering has taken its share (friction circle)

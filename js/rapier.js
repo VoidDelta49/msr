@@ -14,7 +14,7 @@ import { blip } from './audio.js';
 import { say } from './hud.js';
 import * as THREE from 'three';
 import { step, bumpStop } from './physics.js';
-import { surfaceMu } from './tyre.js';
+import { surfaceMu, slickAt } from './tyre.js';
 import { cfg } from './config.js';
 import { B, blobAdd } from './model.js';
 import { scene } from './renderer.js';
@@ -125,7 +125,7 @@ export function tickR() {
   // drivetrain + steering. In the air the wheel is unloaded: engine free-revs, speed and heading carry on.
   // grip of what is under the tyres, eased. The lookup (road search + zone blend) is the dearest thing here besides Rapier, and the
   // easing (~0.17 s) hides sampling it at 20 Hz
-  if (surfT-- <= 0) { surfT = 5; surfTgt = surfaceMu(S.x, S.z); if (sp.offr) surfTgt = 1 - (1 - surfTgt) * (1 - sp.offr); } // knobby tyres bite on dirt and grass
+  if (surfT-- <= 0) { surfT = 5; surfTgt = surfaceMu(S.x, S.z); if (sp.offr) surfTgt = 1 - (1 - surfTgt) * (1 - sp.offr); S.slick = ctx.wet > 0 ? slickAt(S.x, S.z) : 0; } // knobby tyres bite on dirt and grass
   S.surf = (S.surf || 1) + (surfTgt - (S.surf || 1)) * Math.min(1, TICK * 6);
   const v0 = S.v, p0 = S.psi, stand = ctx.stand; if (S.air) ctx.stand = true;
   for (let i = 0; i < 3; i++) step(TICK / 3);

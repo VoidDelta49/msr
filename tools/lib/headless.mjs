@@ -32,6 +32,7 @@ export const loadAll = () => Object.fromEntries(bikeIds.map(id => [id, loadBike(
 //   opts.parts: { key: optionIndex, ... } and opts.set: { slider/toggle: value } override the bike's defaults
 //   opts.spec: raw spec overrides applied after computeSpec (e.g. { mu: 1.6 } for a sticky tyre)
 //   opts.cfg: game options to override (wc = wheelie control, tough = tough biker)
+//   opts.set.wet: 0..1 water on the road (weather.js; tyre.js wetGrip), opts.set.slick: 0..1 paint / steel under the tyres
 //   opts.pax: kg of pillion passenger on the back (spec.js withPassenger: more mass, centre of mass back and up)
 export function createSim(id, opts = {}) {
   const bike = typeof id === 'string' ? loadBike(id) : id;
@@ -45,6 +46,7 @@ export function createSim(id, opts = {}) {
     thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, leanV: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
     fuel: ctx.spec.fuel.cap, wp: 0, wpv: 0, wA: 0, wAR: 0, ws: 0, lkF: false, lkR: false, ayu: 0, skid: 0, fxr: 0, surf: 1, cutT: 0, act: 0, qbT: 0, shCD: 0, lim: false, padT: 0, hits: 0, odo: 0,
   });
+  ctx.wet = +(opts.set && opts.set.wet) || 0; S.slick = +(opts.set && opts.set.slick) || 0; // dry unless asked (--set wet=1)
   ctx.drive.reset(S);
   const sim = {
     bike, spec: ctx.spec, S, ctx, t: 0, dist: 0,

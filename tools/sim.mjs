@@ -6,6 +6,7 @@
 //   node tools/sim.mjs all launch > /tmp/before; (edit) ; node tools/sim.mjs all launch | diff /tmp/before -
 import { createSim, bikeIds, TICK, S, ign, withPassenger, ROOT } from './lib/headless.mjs';
 import { pathToFileURL } from 'node:url';
+const { wetGrip } = await import(pathToFileURL(ROOT + '/js/tyre.js').href);
 const { dynoRun } = await import(pathToFileURL(ROOT + '/js/dyno.js').href);
 const { tuneRead, sliderOn } = await import(pathToFileURL(ROOT + '/js/tune.js').href), { tq } = await import(pathToFileURL(ROOT + '/js/spec.js').href);
 
@@ -178,6 +179,16 @@ const SC = {
     sim.run(30, () => { S.thr = 0; S.brake = 0; });
     return { ok: S.running ? 1 : 0, rpm: Math.round(S.rpm), idleSpec: sp.idle, v: r2(Math.abs(S.v)), fuelPerH: r2((f0 - S.fuel) / 30 * 3600), nan: sim.finite() };
   },
+};
+// wet road (weather.js -> ctx.wet, tyre.js wetGrip): the same full-lever stop from 60 km/h dry, on a damp road (wet 0.5), soaked (1) and
+// soaked on paint (slick 1); 0-60 soaked; lean held at 15 m/s soaked; grip x at 60 and at 130 km/h soaked (hydroplaning)
+SC.wet = o => {
+  const m = {}, stop = set => { const sim = createSim(o.bike, { ...o, set: { ...o.set, ...set } }); sim.quickStart(); S.v = 60 / 3.6; S.gear = sim.spec.type === 'cvt' ? 0 : 3; S.cl = 1; S.thr = 0; S.brake = 1; const d0 = S.odo; sim.run(20, () => { if (S.v < .05) return false; }); m.nan = m.nan || sim.finite(); return r1(S.odo - d0); };
+  m.dryM = stop({ wet: 0 }); m.dampM = stop({ wet: .5 }); m.wetM = stop({ wet: 1 }); m.paintM = stop({ wet: 1, slick: 1 });
+  { const sim = createSim(o.bike, { ...o, set: { ...o.set, wet: 1 } }); sim.quickStart(); const go = rider(sim, { rate: o.rate }); sim.run(60, s => { go(); if (s.kmh() >= 60) { m.t60 = r2(s.t); return false; } }); m.nan = m.nan || sim.finite(); }
+  for (const [k, w] of [['leanDry', 0], ['leanWet', 1]]) { const sim = createSim(o.bike, { ...o, set: { ...o.set, wet: w } }); sim.quickStart(); S.gear = 0; S.cl = 1; sim.run(4, () => { S.v = 15; S.steer = .6; S.thr = 0; S.brake = 0; }); m[k] = r1(deg(Math.abs(S.lean))); m.nan = m.nan || sim.finite(); }
+  const sp = createSim(o.bike, o).spec; m.g60 = r2(wetGrip(1, 60 / 3.6, sp)); m.g130 = r2(wetGrip(1, 130 / 3.6, sp));
+  return m;
 };
 export const SCENARIOS = Object.keys(SC);
 export function runScenario(name, bike, o = {}) { return SC[name]({ ...o, bike }); }

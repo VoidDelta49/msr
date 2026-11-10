@@ -22,7 +22,7 @@ export function computeSpec(bike, b) {
     type: bike.drivetrain, ...ch,
     ie: en.Ie, ie0: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
     peakPS: en.peakPS, tachMax: en.tachMax, ram: en.ram || 0, sound: bike.sound, geo: en.geo,
-    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, ccx: 1, crd: 0, evo: 0, muf: 1, hdr: .85, sIn: 0, sBri: 0, sMech: 0, sPun: 0, sRgh: 0, sCrk: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0, air: 1, rollx: 1, dragx: 1, offr: 0,
+    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, ccx: 1, crd: 0, evo: 0, muf: 1, hdr: .85, sIn: 0, sBri: 0, sMech: 0, sPun: 0, sRgh: 0, sCrk: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0, air: 1, rollx: 1, dragx: 1, offr: 0, wetg: 1, aqua: 1,
   };
   for (const [k, p] of Object.entries(bike.parts)) {
     const o = p.o[b[k]] || p.o[0]; s.air *= airOf(k, o); // air: how much more air the fitted parts flow (tune.js: the fuel it then needs)

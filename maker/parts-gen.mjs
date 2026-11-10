@@ -31,13 +31,13 @@ const r2 = v => Math.round(v * 100) / 100;
 // rollx / dragx = rolling and air drag x, offr = share of the off-road grip loss the tread wins back, dm = kg
 function tires(b) {
   const m = b.mu, s = b.sz;
-  if (b.big) return [{ n: b.big[0], note: s[0], mu: m }, { n: b.big[1], note: 'Stickier, lower profile', mu: r2(m + .1), tyT: .93, tyW: 1.04 },
-    { n: b.big[2], note: 'Soft compound, red band', mu: r2(m + .2), tyT: .9, tyW: 1.08, tyS: '#d42a2a', rollx: 1.05 }];
-  const o = [{ n: 'Stock', note: s[0], mu: m }, { n: 'Sport', note: s[1], mu: r2(m + .15), tyT: .9, tyW: 1.12, dm: .3 },
-    { n: 'Racing soft', note: 'Wider, red band · wears fast', mu: r2(m + .35), tyT: .86, tyW: 1.22, tyS: '#d42a2a', rollx: 1.06, dm: .5 }];
-  if (s[2]) o.push({ n: 'Thai concept skinny', note: s[2], mu: r2(m - .15), tyT: .62, tyW: .6, rollx: .78, dragx: .985, dm: -1.8 });
-  o.push({ n: 'Wide fat', note: s[3], mu: r2(m + .08), tyT: 1.14, tyW: 1.34, rollx: 1.14, dragx: 1.01, dm: 1.5 });
-  o.push({ n: 'Dual-sport knobby', note: s[4], mu: r2(m - .07), tyT: 1.1, tyW: 1.1, tyK: 1, offr: .65, rollx: 1.16, dm: .9 });
+  if (b.big) return [{ n: b.big[0], note: s[0], mu: m }, { n: b.big[1], note: 'Stickier, lower profile', mu: r2(m + .1), tyT: .93, tyW: 1.04, wetg: .9, aqua: .92 },
+    { n: b.big[2], note: 'Soft compound, red band', mu: r2(m + .2), tyT: .9, tyW: 1.08, tyS: '#d42a2a', rollx: 1.05, wetg: .6, aqua: .7 }];
+  const o = [{ n: 'Stock', note: s[0], mu: m }, { n: 'Sport', note: s[1], mu: r2(m + .15), tyT: .9, tyW: 1.12, dm: .3, wetg: .95, aqua: .93 },
+    { n: 'Racing soft', note: 'Wider, red band · wears fast', mu: r2(m + .35), tyT: .86, tyW: 1.22, tyS: '#d42a2a', rollx: 1.06, dm: .5, wetg: .7, aqua: .82 }];
+  if (s[2]) o.push({ n: 'Thai concept skinny', note: s[2], mu: r2(m - .15), tyT: .62, tyW: .6, rollx: .78, dragx: .985, dm: -1.8, wetg: 1.12, aqua: 1.3 });
+  o.push({ n: 'Wide fat', note: s[3], mu: r2(m + .08), tyT: 1.14, tyW: 1.34, rollx: 1.14, dragx: 1.01, dm: 1.5, wetg: .95, aqua: .75 });
+  o.push({ n: 'Dual-sport knobby', note: s[4], mu: r2(m - .07), tyT: 1.1, tyW: 1.1, tyK: 1, offr: .65, rollx: 1.16, dm: .9, wetg: .95, aqua: 1.2 });
   o.push({ n: 'Whitewall classic', note: s[0], mu: m, tyT: 1.04, tyS: '#f1f1ec' });
   return o;
 }

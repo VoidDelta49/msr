@@ -198,7 +198,7 @@
         }
       ]
     },
-    "tires": {"l": "Tires", "o": [{"n": "Stock (Roadsport)", "note": "120/70-17 · 180/55-17", "mu": 1.05}, {"n": "Hypersport", "note": "Stickier, lower profile", "mu": 1.15, "tyT": 0.93, "tyW": 1.04}, {"n": "Track", "note": "Soft compound, red band", "mu": 1.25, "tyT": 0.9, "tyW": 1.08, "tyS": "#d42a2a", "rollx": 1.05}]},
+    "tires": {"l": "Tires", "o": [{"n": "Stock (Roadsport)", "note": "120/70-17 · 180/55-17", "mu": 1.05}, {"n": "Hypersport", "note": "Stickier, lower profile", "mu": 1.15, "tyT": 0.93, "tyW": 1.04, "wetg": 0.9, "aqua": 0.92}, {"n": "Track", "note": "Soft compound, red band", "mu": 1.25, "tyT": 0.9, "tyW": 1.08, "tyS": "#d42a2a", "rollx": 1.05, "wetg": 0.6, "aqua": 0.7}]},
     "paint": {
       "l": "Paint",
       "o": [

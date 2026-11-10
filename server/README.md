@@ -26,6 +26,13 @@ Local test: `npx wrangler dev` (relay on http://127.0.0.1:8787).
   that player; the server adds `echo` to `go` so both racers start together. `ride` (passengers, js/ride.js) and `soc` (friends, js/social.js:
   `op` wave / treat / cheers / clink / call / thanks + `to`; `item` (a-z0-9_, ≤16) for treat; `x, z` (±5 km) and `place` (≤32 letters) for call) go to one player.
   `soc` was added without a PROTO bump: an older relay drops it silently (the friend actions then do nothing), so redeploy to enable it.
+- Weather (11.99c): server → client `wx {wx: {t, c, p, r, th, w, d, v, k, h}}` (small integers, see `wx.js`: 15-minute step, cloud %,
+  rain now and over the last hour, thunder, wind, visibility, temperature, humidity), sent right after `hi` and every 15 minutes while
+  the room has players (a Durable Object alarm; an empty room sets none). Clients send nothing for it. `GET /wx` returns the same
+  snapshot as JSON for solo riders (same `ORIGINS` allowlist, `Cache-Control` until the next step). Source: Open-Meteo, one fixed
+  point, fetched through the edge cache (`cacheTtl: 900`), so about one upstream call per 15 minutes per data centre. If it fails the
+  last snapshot is served for up to 2 hours, then nothing (clients fall back to clear). Added without a PROTO bump: an older client
+  drops the unknown `wx` message, an older relay just never sends it (the game then shows clear weather), so redeploy to enable it.
 - Binary: bike state (exactly 44 bytes, layout in js/net.js `pack()`, finite position within ±5 km); the server prepends the sender id byte.
 - Change the format → bump `PROTO` in both `worker.js` and `js/net.js`, redeploy. Old cached clients get a "reload" message.
 
