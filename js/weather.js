@@ -61,13 +61,13 @@ export function flashOf(st, nowMs) {
 
 /* one frame: dt seconds, nowMs = the real clock, mode = cfg.wx, sun 0..1 = how much sun reaches the road (drying). */
 export function wxStep(dt, nowMs, mode = 'live', sun = .5) {
-  const s = wxPick(mode, nowMs), t = wxDerive(s), first = !WX.init, sw = WX.mode !== (mode || 'live') || first;
+  const src0 = WX.src, s = wxPick(mode, nowMs), t = wxDerive(s), first = !WX.init, sw = WX.mode !== (mode || 'live') || first || WX.src !== src0; // (src changes when the first live snapshot arrives, or it goes stale)
   WX.mode = mode || 'live'; WX.init = true;
   const k = first ? 1 : 1 - Math.exp(-dt / 5);
   for (const f of ['cover', 'rain', 'mmh', 'thunder', 'wind', 'vis', 'temp', 'hum']) WX[f] += (t[f] - WX[f]) * k;
   // wind direction: ease the vector, keep it a unit
   { const x = WX.wx + (t.wx - WX.wx) * k, z = WX.wz + (t.wz - WX.wz) * k, l = Math.hypot(x, z); if (l > 1e-3) { WX.wx = x / l; WX.wz = z / l; } else { WX.wx = t.wx; WX.wz = t.wz; } }
-  // road water. Picking a weather in Options (or the first snapshot) puts the road where that weather would have it;
+  // road water. Picking a weather in Options (or the first live snapshot arriving) puts the road where that weather would have it;
   // after that it fills in the rain (a downpour soaks it in half a minute, drizzle in a few) and dries in 10-40 minutes:
   // faster in sun, wind and heat, slower in humid air.
   if (sw) WX.wet = t.wet0;
@@ -82,10 +82,24 @@ export function wxStep(dt, nowMs, mode = 'live', sun = .5) {
   if (WX.strike) { WX.flash = clamp(flashOf(WX.strike, nowMs), 0, 1) * WX.thunder; if (nowMs - WX.strike.at > 40000) WX.strike = null; }
   return WX;
 }
+// one line for Options: what the sky is doing now
+export function wxText(W = WX) {
+  const sky = W.cover < .2 ? 'clear' : W.cover < .55 ? 'partly cloudy' : W.cover < .85 ? 'cloudy' : 'overcast';
+  const rn = W.thunder > .5 ? 'thunderstorm' : W.mmh < .1 ? '' : W.mmh < 2.5 ? 'light rain' : W.mmh < 8 ? 'rain' : 'heavy rain';
+  return `${Math.round(W.temp)} °C · ${sky}${rn ? ' · ' + rn : ''} · wind ${Math.round(W.wind * 3.6)} km/h${W.wet > .15 && !rn ? ' · wet roads' : ''}`;
+}
 // the thunder of the last strike has reached us (sound takes dist / 343 s): true once per strike
 export function thunderDue(nowMs) {
   const st = WX.strike; if (!st || st.heard || nowMs < st.at + st.dist / .343) return null;
   st.heard = true; return st;
+}
+
+// sun elevation in degrees over the middle of the Philippines at `ms` (the same low-precision formula as daynight.js astro():
+// here without three.js, for the main menu's sky before the game is loaded)
+export function sunElev(ms) {
+  const R = Math.PI / 180, d = ms / 864e5 - 10957.5, e = (23.439 - 3.6e-7 * d) * R, g = (357.529 + .98560028 * d) * R, L = (280.459 + .98564736 * d) * R + (1.915 * Math.sin(g) + .02 * Math.sin(2 * g)) * R;
+  const ra = Math.atan2(Math.cos(e) * Math.sin(L), Math.cos(L)), dec = Math.asin(Math.sin(e) * Math.sin(L)), ha = (280.46061837 + 360.98564736629 * d + 121.77) * R - ra, la = 12.88 * R;
+  return Math.asin(clamp(Math.sin(la) * Math.sin(dec) + Math.cos(la) * Math.cos(dec) * Math.cos(ha), -1, 1)) / R;
 }
 
 /* what the sky and the light do with it (daynight.js / wxfig.js): all 0..1 unless said.
@@ -95,7 +109,7 @@ const SK = {};
 export function wxSky(farMax = 1100, nearMax = 121, W = WX, o = SK) {
   const thick = clamp(W.cover * .55 + W.rain * .5 + W.thunder * .2, 0, 1), ov = sstep(.3, 1, W.cover);
   o.ovc = W.cover; o.thick = thick; o.grey = ov * (.55 + .45 * thick);
-  o.sunK = 1 - .88 * ov * (.5 + .5 * thick); o.hemiK = 1 - .42 * thick * ov; o.dark = .5 * thick * ov; // dark: cloud undersides
+  o.sunK = 1 - .88 * ov * (.5 + .5 * thick); o.hemiK = 1 - .55 * thick * ov; o.dark = .7 * thick * ov; // dark: cloud undersides
   const far = Math.min(farMax, W.vis, 4000 - 3300 * W.rain), haze = sstep(20000, 1500, W.vis) * .7 + W.rain * .25;
   o.far = Math.max(150, far); o.near = Math.max(8, nearMax * (o.far / farMax) * (1 - Math.min(.85, haze)));
   return o;

@@ -13,6 +13,7 @@
 //    seat cleanly (feet, camera, figure off) and GET OFF puts us back on our own bike; getting off our own bike drops our passenger; and
 //    the FOV setting (pinch / wheel / Options) reaches the camera.
 // Nothing here touches the network: WebSocket is replaced by a stub that records what the game sends.
+import { wxRoute } from './lib/wxroute.mjs';
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -23,6 +24,7 @@ let pw; try { pw = createRequire(import.meta.url)(process.env.PW || 'playwright-
 const srv = await serve(0), url = `http://localhost:${srv.address().port}/`, errs = [], shot = opt('--shot');
 let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] }); } catch (e) { console.log('pillion: skipped (no chromium)'); srv.close(); process.exit(0); }
 const pg = await br.newPage({ viewport: { width: 1000, height: 600 }, deviceScaleFactor: 1 });
+await wxRoute(pg); // live weather answered locally (tools/lib/wxroute.mjs)
 pg.on('pageerror', e => errs.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 300)); });
 if (shot) mkdirSync(shot, { recursive: true });
 const rows = [];

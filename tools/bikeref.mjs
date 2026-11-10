@@ -4,6 +4,7 @@
 //   PW=/opt/node22/lib/node_modules/playwright PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tools/bikeref.mjs --shot dir [--bike id[,id]] [--views right,left,front,rear,top,q] [--var n] [--paint n] [--rider] [--grid]
 // Writes dir/<bike>-<view>.png (default views: right,left,q). --grid: 10 cm grid lines (thicker every 50 cm) through the ground / rear axle.
 // The scale is the same for every bike (2.6 m across the picture), so two bikes can be compared too.
+import { wxRoute } from './lib/wxroute.mjs';
 import { createRequire } from 'node:module';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -16,6 +17,7 @@ mkdirSync(dir, { recursive: true });
 const srv = await serve(0), url = `http://localhost:${srv.address().port}/`, errs = [];
 let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] }); } catch (e) { console.log('bikeref: skipped (no chromium)'); srv.close(); process.exit(0); }
 const pg = await br.newPage({ viewport: { width: 1300, height: 800 }, deviceScaleFactor: 1 });
+await wxRoute(pg); // live weather answered locally (tools/lib/wxroute.mjs)
 pg.on('pageerror', e => errs.push('pageerror: ' + e.message));
 try {
   await pg.addInitScript(() => { sessionStorage.setItem('cpmGL', '1'); localStorage.setItem('cpmme', JSON.stringify({ tod: 12 })); });

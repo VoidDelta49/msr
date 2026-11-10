@@ -10,6 +10,7 @@
 // passes) plus the biggest groups of visible objects (what to batch next). Swiftshader timings are meaningless; counts are exact.
 // Without playwright it exits 0 with "skipped" so it never blocks tools/test.mjs workflows. First run for real in 11.43 (playwright-core +
 // a chromium build were already on that machine). If it fails for a harness reason, fix the harness, not the game.
+import { wxRoute } from './lib/wxroute.mjs';
 import { createRequire } from 'node:module';
 import { serve } from './serve.mjs';
 
@@ -18,11 +19,14 @@ let pw; try { pw = createRequire(import.meta.url)(process.env.PW || 'playwright-
 const srv = await serve(0), url = `http://localhost:${srv.address().port}/`, errs = [];
 let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu', ...(a.includes('--webgpu') ? ['--enable-features=Vulkan', '--use-vulkan=swiftshader'] : [])] }); } catch (e) { console.log('smoke: skipped (no chromium: ' + e.message.split('\n')[0] + ')'); srv.close(); process.exit(0); }
 const pg = await br.newPage({ viewport: { width: 900, height: 500 } });
+await wxRoute(pg); // live weather answered locally (tools/lib/wxroute.mjs)
 pg.on('pageerror', e => errs.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 300)); });
 try {
   const bike = opt('--bike'), gfx = opt('--gfx'), tod = opt('--tod'), aa = opt('--aa'), mb = opt('--mblur'), bl = opt('--bloom'), set = { ...(bike && { bike }), ...(gfx && { gfx }), ...(tod && { tod: +tod }), ...(aa && { aa }), ...(mb && { mblur: mb === '1' }), ...(bl && { bloom: bl === '1' }) };
   if (Object.keys(set).length) await pg.addInitScript(o => localStorage.setItem('cpmme', JSON.stringify(o)), set);
   if (!a.includes('--webgpu')) await pg.addInitScript(() => sessionStorage.setItem('cpmGL', '1'));
+  // live weather: light rain instead of the tools' usual clear sky, so the live path is exercised (snapshot -> rain, wet road)
+  let wxAsked = 0; await pg.unroute('**/wx'); await wxRoute(pg, { c: 90, p: 30, r: 20, w: 20, d: 20, v: 80, k: 26, h: 90 }, () => wxAsked++);
   await pg.goto(url); await pg.click('#mPlay');
   await pg.waitForFunction(() => window.__cpm && window.__cpm.RP && window.__cpm.RP.ok, null, { timeout: 120000 });
   const r = await pg.evaluate(async () => {
@@ -30,6 +34,8 @@ try {
     for (const id of Object.keys(c.ctx.bikes)) { c.setBike(id); await new Promise(r => setTimeout(r, 150)); out[id] = { v: +S.v.toFixed(2), x: Number.isFinite(S.x) }; }
     return { bikes: out, build: document.getElementById('mFoot').textContent, gpu: !!c.renderer.backend.isWebGPUBackend, bun: { on: c.BUNDLE.on, n: c.BUNDLE.objects, ej: c.BUNDLE.ejected } };
   });
+  { const w = await pg.evaluate(async () => { const W = await import('./js/weather.js'), F = await import('./js/wxfig.js'); await new Promise(r => setTimeout(r, 1500)); return { src: W.WX.src, rain: W.WX.rain, wet: window.__cpm.ctx.wet, drops: F.RAIN.drawn }; });
+    if (!wxAsked || w.src !== 'live' || !(w.rain > .3) || !(w.wet > .5) || !(w.drops > 50)) errs.push(`live weather did not arrive (asked /wx ${wxAsked}x, ${JSON.stringify(w)})`); }
   if (a.includes('--webgpu') && !r.gpu) errs.push('--webgpu: the game is running on WebGL (WebGPU device lost or unavailable)');
   if (r.gpu && (!r.bun.on || r.bun.n < 20)) errs.push(`render bundles (bundle.js) not active on WebGPU: ${JSON.stringify(r.bun)}`); // (static town: ~150 objects)
   if (r.gpu && r.bun.ej) errs.push(`render bundles: ${r.bun.ej} object(s) kept changing and were moved back out of the bundles (bundle.js eject)`);

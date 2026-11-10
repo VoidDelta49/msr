@@ -99,6 +99,10 @@ People walk the sidewalks of every road on the island and do everyday things: **
 
 **As data:** `data/interiors.json` (rooms: which building types they belong to, size, colours, props, counters, people and their poses) and `data/shop.json` (items with prices and effects, shops, what sari-sari stores sell at the door, what you can treat a friend to). A new interior, item or shop is a data entry; effects live in `js/effects.js`.
 
+## Weather (11.99c)
+
+The sky is the real weather over the Philippines right now (Options > Game > Weather: Live PH, or a fixed Clear / Light rain / Storm). Cloud cover, rain, wind, visibility and thunderstorms come from [Open-Meteo](https://open-meteo.com/) for one fixed point, through the multiplayer relay, so everyone in a room rides under the same sky (and sees the same lightning); solo riders get the same snapshot. Never your location. Rain wets the road: about 30 % less grip on asphalt with a road tyre, more on mud, painted centre lines and bridge decks, and hydroplaning at speed on a soaked road. Tyres differ in the wet (the skinny one cuts through water, wide and racing ones give up sooner). The road dries in 10-40 minutes after the rain. The dyno always runs dry.
+
 ## Multiplayer (Build 9.0)
 
 Main menu > MULTIPLAYER: type a name, then JOIN a room code or make a NEW ROOM and share its code (up to 8 riders per room). Everyone rides their own bike with their own physics; other riders appear as ghost bikes (no collisions) with their real bike and paint, a name tag and a cyan dot on the minimap.
@@ -145,7 +149,8 @@ js/main.js            game: loads data, bike switching, camera/animation, loop
 js/spec.js            bike data + garage settings -> flat spec the physics reads
 js/drivetrain.js      manual gearbox + CVT (ratio, clutch capacity, variator, Idling Stop)
 js/physics.js         engine, clutch-slip solver, steering/lean, bump-stop helper
-js/tyre.js            tyre slip->force curve and surface grip (asphalt / dirt shoulder / grass / paddy)
+js/tyre.js            tyre slip->force curve and surface grip (asphalt / dirt shoulder / grass / paddy), wet-road grip
+js/weather.js         live weather, headless: snapshot -> sky, rain, wind, lightning, road wetness (wxnet.js fetches, wxfig.js draws the rain, menusky.js the menu's sky)
 js/rapier.js          Rapier3D chassis: dynamic bike body, suspension probes, streamed static colliders (fixed 120 Hz tick)
 js/model.js           3D models (Raider R150 underbone, Click 125i scooter, Smash 115 step-through, CBR650R supersport, TMX Supremo + tricycle sidecar, Aerox 155 maxi-sport scooter, NMAX 155 maxi-scooter (Standard / Tech MAX), XMAX 300 big maxi-scooter, Rouser NS125 street bike, Macho 125 on the TMX builder, Ninja H2 hyperbike), low-poly extruded panels
 js/tex.js             N64-style procedural textures (tiny, dithered, bilinear) + sky
@@ -174,7 +179,7 @@ js/pool.js            billiards physics (headless, nine-ball rack)
 js/social.js          friends: wave, treat a drink, cheers, call over; friend list in MULTIPLAYER
 data/interiors.json   interiors: rooms, props, counters, people
 data/shop.json        items (price, effects), shops, walk-up stores, friend treats
-server/               Cloudflare Worker + Durable Object relay (one room per code)
+server/               Cloudflare Worker + Durable Object relay (one room per code) + the live weather snapshot (wx.js, GET /wx)
 js/audio.js (+ engine-worklet.js), controls.js, garage.js, options.js, missions.js, config.js, state.js, util.js
 ```
 

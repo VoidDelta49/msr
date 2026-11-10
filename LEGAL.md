@@ -38,6 +38,9 @@ Not an issue as far as the repo shows: jeepneys, tricycles, palms, the island an
 
 ## Risk by situation
 
+(Also: the live weather uses Open-Meteo's free API, which is non-commercial only. See `THIRD_PARTY.md`.)
+
+
 | Situation | Risk | Notes |
 |---|---|---|
 | Friends-only playtests, free | Low | Today. |

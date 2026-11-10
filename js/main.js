@@ -27,6 +27,7 @@ import { bundleStatic, BUNDLE } from './bundle.js';
 import { autoRes, resScale, jankStart, jankEnd, jankText } from './perf.js';
 import { cull } from './gpucull.js';
 import { grassFrame } from './grass.js';
+import { wxFrame } from './wxfig.js';
 import './layout.js'; // HUD + touch-control layout (after controls.js: needs body.touch)
 import { NET, netFrame, join as netJoin, leave as netLeave } from './net.js';
 import { raceTick } from './race.js';
@@ -191,6 +192,7 @@ function visuals(dt, now) {
     const bx = Math.sin(S.psi), bz = Math.cos(S.psi), ox = bx * Math.cos(LK.y) + bz * Math.sin(LK.y), oz = bz * Math.cos(LK.y) - bx * Math.sin(LK.y); tmp.set(S.x + ox * 4.2, 1.9 + S.zH + LK.p * 4, S.z + oz * 4.2); camera.position.lerp(tmp, 1 - Math.exp(-dt * 5)); camera.position.y = Math.max(camera.position.y, H(camera.position.x, camera.position.z) + .6); if (ctx.ugCam) ctx.ugCam(camera.position, S.x, 1.4 + S.zH, S.z); // underground: never inside the rock
     camera.lookAt(S.x - bx * 2, 1 + S.zH, S.z - bz * 2);
   }
+  wxFrame(dt, camera, !ctx.GAR); // weather: sky values, road wetness, rain (before dayNight, which lights the scene with it)
   if (!ctx.GAR) dayNight(); // the studio has its own lights
   dom('wg', 'rotate(' + (S.steer * WMAX() * 57.3).toFixed(1) + ')', (e, v) => e.setAttribute('transform', v)); dom('cluFill', (S.cl * 100).toFixed(0) + '%', (e, v) => e.style.height = v); dom('bKey', !!S.key, (e, v) => e.classList.toggle('on', v)); dom('bKill', !!S.kill, (e, v) => e.classList.toggle('on', v)); dom('brkFill', (S.brake * 100).toFixed(0) + '%', (e, v) => e.style.setProperty('--p', v)); dom('thrg', (S.thr * 36).toFixed(1) + 'px', (e, v) => e.style.backgroundPositionY = v);
   const fb = ctx.GAR || ctx.OPT || ctx.paused || ctx.ride || ctx.racing || S.crashed ? '' : F.on ? ((pickAct() || {}).label || '') : !offBlock() ? 'GET OFF' : ''; // the touch button (F / E on a keyboard): on foot whatever act.js offers

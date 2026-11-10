@@ -5,6 +5,7 @@ import { cfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { clamp, sstep, vnoise } from './util.js';
 import { at } from './foot.js';
+import { WX } from './weather.js';
 import { acoustics } from './spec.js';
 
 let AC = null, E = null, lastSpec = null, ambT = 0, crashWas = false, airWas = false, offR = 0, lastT = 0;
@@ -90,6 +91,8 @@ export function initAudio() {
   A.rusF = node('bandpass', 1800, .8); A.rus = feed(node('gain'), [w1, A.rusF]); chain(w1, A.rusF, A.rus, A.amb);          // wind in leaves / palms
   A.crk = node('gain'); const kAM = node('gain', 0, 0, .5), kO = AC.createOscillator(), kD = node('gain', 0, 0, .5); kO.frequency.value = 5.2; kO.type = 'square'; kO.connect(kD); kD.connect(kAM.gain); kO.start();
   const ckF = node('bandpass', 4300, 14); feed(A.crk, [w2, ckF]); chain(w2, ckF, kAM, A.crk, A.amb);                                             // night crickets: pulsed narrow band
+  // rain (weather.js): hiss of the drops + the low drum of it on the ground / the helmet
+  const rnF = node('bandpass', 3400, .35), rnL = node('lowpass', 480, .6); A.rain = feed(node('gain'), [w2, rnF], [b1, rnL]); chain(w2, rnF, A.rain, A.amb); chain(b1, rnL, node('gain', 0, 0, .8), A.rain);
   const tfF = node('lowpass', 420, .7); A.trf = feed(node('gain'), [b2, tfF]); chain(b2, tfF, A.trf, A.amb);                              // distant traffic wash in town
   // ---- engine voice ----
   const ok = () => { A.wk = true; };
@@ -220,7 +223,10 @@ function ambience(t, v, live) {
   sg(A.riv, z.river * .22, .3); if (A.rivP.pan) st(A.rivP.pan, pdir(z.rx, z.rz), .5);
   const nt = ctx.night || 0, day = 1 - nt, cic = (z.wild + z.paddy * .6 * nt) * (.5 + .5 * Math.sin(t * .45) * Math.sin(t * .17 + 1)); // night: insects louder and in the paddies, town quieter
   const breeze = .5 + .5 * vnoise(t * .25, 8.3);
-  sg(A.rus, (z.wild * .9 + z.paddy * .5 + z.coast * .2) * .07 * breeze * (1 - .4 * nt), .5); st(A.rusF.frequency, 1300 + 900 * breeze, .5);
+  // weather: rain is loudest in the open, a dull drum on the roof indoors, gone underground; a strong wind works the trees harder
+  const out = ctx.ug && ctx.ug.on ? 0 : ctx.inside ? .3 : 1 - .5 * (ctx.shelter || 0), wind = Math.min(2.5, WX.wind / 7);
+  sg(A.rain, Math.pow(WX.rain, .8) * .2 * out, .6);
+  sg(A.rus, ((z.wild * .9 + z.paddy * .5 + z.coast * .2) * (1 + wind) + .25 * Math.max(0, wind - .8)) * .07 * breeze * (1 - .4 * nt) * (out > 0 ? 1 : 0), .5); st(A.rusF.frequency, 1300 + 900 * breeze, .5);
   sg(A.crk, (z.wild * .6 + z.paddy) * nt * .035 * (.6 + .4 * Math.sin(t * .31)), .5); sg(A.trf, z.town * .06 * (1 - .5 * nt), .5);
   sg(A.cic, cic * .05 * (1 + .8 * nt), .4); sg(A.hum, z.town * .05 * (1 - .6 * nt), .4); sg(A.vol, z.volc * .35, .5);
   if (!on || ctx.paused) return;
@@ -370,6 +376,8 @@ const SFX = {
   pebble(t) { nb(t, rr(.012, .024), 'highpass', rr(2500, 5500), .7, rr(.02, .05)); },
   chirp(t, a) { const g = .07 * Math.min(1, .4 + a) * (ctx.spec?.sound?.chirp ?? 1); for (let i = 0; i < 4; i++) { const o = t + i * .042, f = rr(2500, 2900) - i * 180; tn(o, f, f * .72, .045, g * (1 - i * .2), 'triangle'); nb(o, .03, 'bandpass', f * 1.3, 4, g * .5 * (1 - i * .2)); } }, // supercharger surge on a closed throttle
   tink(t) { const f = rr(2200, 3700) * pv('tinkHz'), g = pv('tink'); tn(t, f, f * .985, .35, .045 * g); tn(t, f * 2.7, f * 2.65, .2, .015 * g); }, // exhaust / engine cooling ping
+  // thunder (weather.js): a = how near the strike was (1 = overhead: a crack first; far = only the long roll)
+  thunder(t, a) { const k = .25 + .75 * a; if (a > .55) { nb(t, .09, 'highpass', 1800, .7, .5 * a); nb(t + .05, .5, 'bandpass', 700, .5, .45 * a); } nb(t + .08, 2.2 + 2 * (1 - a), 'lowpass', 150, .7, .9 * k); nb(t + .5, 3.5 + 2 * (1 - a), 'lowpass', 75, .6, .8 * k); nb(t + 1.4, 3, 'lowpass', 110, .5, .4 * k); tn(t, 62, 26, 1.8, .3 * k); },
   splash(t) { nb(t, .5, 'bandpass', 900, .6, .5); nb(t, .9, 'lowpass', 500, .6, .4); for (let i = 0; i < 4; i++) { const f = rr(300, 600); tn(t + .1 + i * rr(.05, .12), f, f * 2.2, .1, .06); } }, // into the sea
   clank(t, a) { const f = rr(500, 1400), k = .3 + .7 * a; [1, 2.76, 5.4].forEach((m, i) => tn(t, f * m, f * m * .99, .22 / (i + 1), .08 * k / (i + 1))); nb(t, .05, 'bandpass', 3000, 1, .1 * k); }, // loose metal bouncing on tarmac
   // interiors (interiorfig / places.js): billiard balls kissing, a ball dropping into a pocket, a cushion, a gulp, a door, a hiccup

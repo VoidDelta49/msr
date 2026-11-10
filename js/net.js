@@ -11,6 +11,7 @@ import { say } from './hud.js';
 import { $ } from './util.js';
 import { F, at } from './foot.js';
 
+import { wxFromRoom } from './wxnet.js';
 export const PROTO = 3; // = PROTO in server/worker.js
 export const NET = ctx.NET = { st: 'off', id: 0, room: '', max: 8, peers: new Map(), err: '', note: '', on: {}, rtt: 0, live: 0, near: 1e9, slow: false };
 const KEEP = 24, PKT = 44, HB = 15000, DEAD = 40000, LEAVE_GRACE = 6000, MAX_TRIES = 40;
@@ -102,6 +103,7 @@ function text(m) {
   else if (m.t === 'race') { if (NET.on.race) NET.on.race(m); }
   else if (m.t === 'ride') { if (NET.on.ride) NET.on.ride(m); } // tricycle passengers (ride.js)
   else if (m.t === 'soc') { if (NET.on.soc) NET.on.soc(m); } // friends: wave, treat, cheers, call (social.js)
+  else if (m.t === 'wx') wxFromRoom(m.wx); // live weather for the room, from the relay (wxnet.js); nothing is ever sent for it
   else if (m.t === 'pong') { const r = performance.now() - m.c; NET.rtt = NET.rtt ? NET.rtt * .6 + r * .4 : r; if (NET.rtt > 900) slowUntil = performance.now() + 10000; }
   else if (m.t === 'err') { NET.err = m.msg || m.code; changed(); }
 }

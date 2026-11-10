@@ -40,6 +40,7 @@ export function weatherTests() {
   reset(); wxLive(cleanWx(want)); wxStep(.016, now, 'live');
   if (WX.src !== 'live' || Math.abs(WX.cover - .84) > 1e-9 || !(WX.rain > .3 && WX.rain < .4) || !(WX.wet > .7)) bad(`live snapshot not applied at once (src ${WX.src}, cover ${WX.cover}, rain ${WX.rain}, wet ${WX.wet})`);
   if (Math.abs(Math.hypot(WX.wx, WX.wz) - 1) > 1e-6 || !(WX.wz > .8 && WX.wx < 0)) bad(`wind from 26 deg (NNE) should blow toward the south-south-west: (${WX.wx}, ${WX.wz})`);
+  reset(); wxStep(.016, now, 'live'); wxLive(cleanWx(want)); wxStep(.016, now + 16, 'live'); if (!(WX.wet > .7 && WX.rain < .05)) bad(`a snapshot arriving after the start: wet ${WX.wet} (should be the rainy hour's road at once), rain ${WX.rain} (should ease in)`);
   wxStep(.016, now + 3 * 3600e3, 'live'); if (WX.src !== 'clear') bad('a 3-hour-old snapshot is still used (should fall back to clear)');
   for (const [m] of WX_MODES) { reset(); wxLive(cleanWx(want)); wxStep(.016, now, m); if (m !== 'live' && WX.src !== m) bad(`mode ${m} gives ${WX.src}`); }
   reset(); wxStep(.016, now, 'storm'); if (!(WX.rain > .95 && WX.thunder === 1 && WX.wet > .95 && WX.cover === 1)) bad('storm preset is not a storm');

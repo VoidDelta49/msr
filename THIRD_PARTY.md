@@ -17,6 +17,13 @@ Copyright © Dimforge. Released under the Apache License, Version 2.0: https://w
 
 `vendor/rapier/LICENSE` is the Apache-2.0 text; the npm package ships no `NOTICE` file. Copyright notices inside the files are kept.
 
+## Weather data
+
+The live weather (Options > Game > Weather > Live PH) is [Open-Meteo](https://open-meteo.com/) data, fetched by the relay
+(`server/wx.js`) for one fixed point in the Philippines. Weather data by Open-Meteo.com, licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Their free API is for **non-commercial** use (under 10,000 calls a day; the
+relay makes about 100): if the game is ever sold or carries ads, move to their paid plan or another source first.
+
 ## Not third-party
 
 - **Textures** are generated in code (`js/tex.js`); no image files are in the repository.

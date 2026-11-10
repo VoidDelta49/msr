@@ -6,6 +6,7 @@
 import { $, LOG } from './util.js';
 import { ctx } from './state.js';
 import { cfg, save, BUILD, GLOBAL_DEF, AA_MODES, QUALITY } from './config.js';
+import { WX, WX_MODES, wxText } from './weather.js';
 
 export const O = { onPerf: null, setDPR: null, api: '', live: false, gpu: false, aa: null, snap };
 
@@ -105,6 +106,7 @@ const tAud = () => sec('SOUND') +
   slider('vol', 'Volume', '', !cfg.sound);
 const tGame = () => sec('WORLD') +
   seg('tod', 'Time of day', 'Live follows the clock in the Philippines.', TOD, cfg.tod ?? 'live') +
+  seg('wx', 'Weather', (cfg.wx ?? 'live') !== 'live' ? 'A fixed weather. Rain makes the road slippery: brake earlier, lean less.' : WX.src === 'live' ? 'The real weather over the Philippines right now: ' + wxText() + '.' : 'Live: the real weather over the Philippines. No data right now (offline?), so the sky is clear.', WX_MODES, cfg.wx ?? 'live') +
   seg('npc', 'Pedestrians', 'People walking around town. Some wave you down for a ride. Fewer on Low quality and at night.', NPCS, cfg.npc ?? 'auto') +
   sec('RIDING') +
   sw('tough', 'Tough Biker mode', 'No falls: walls only stop you, and flips and hard landings are survived.') +

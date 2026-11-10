@@ -41,16 +41,21 @@ export const SKYU = {};
   const t = new THREE.CanvasTexture(clouds()); t.wrapS = THREE.RepeatWrapping;
   const U = (k, v) => (SKYU[k] = T.uniform(v));
   const zen = U('zen', new THREE.Color(ZENITH)), hor = U('hor', new THREE.Color(HORIZON)), cl = U('cloud', new THREE.Color(0xf4f4f4)), gl = U('glow', new THREE.Color(0)),
-    sd = U('sun', new THREE.Vector3(0, 1, 0)), md = U('moon', new THREE.Vector3(0, -1, 0)), sv = U('sunVis', 1), mv = U('moonVis', 0), nt = U('night', 0);
+    sd = U('sun', new THREE.Vector3(0, 1, 0)), md = U('moon', new THREE.Vector3(0, -1, 0)), sv = U('sunVis', 1), mv = U('moonVis', 0), nt = U('night', 0),
+    ov = U('ovc', 0), fl = U('flash', 0); // weather (weather.js via daynight.js): cloud cover 0..1, lightning 0..1
   const m = new THREE.MeshBasicNodeMaterial({ side: THREE.BackSide, fog: false, depthWrite: false });
   m.positionNode = T.positionLocal.add(T.cameraPosition);
   // Drawn LAST of the opaques, pinned to the far plane (clip z = w, the classic skybox trick): the depth test then skips every
   // pixel the ground, buildings and trees already covered, so the sky shader (texture, pows, star hash) only runs on the sky
   // itself instead of on the whole screen before being painted over. It writes no depth, so motion blur still reads "far".
   const clip = T.cameraProjectionMatrix.mul(T.cameraViewMatrix).mul(T.vec4(m.positionNode, 1)); m.vertexNode = T.vec4(clip.xy, clip.w.mul(.9999999), clip.w);
-  const dir = T.positionLocal.normalize(), up = T.uv().y.mul(2).sub(1).clamp(0, 1), c = T.texture(t, T.uv()), w = c.r, open = w.oneMinus(), above = T.step(0, dir.y);
+  // cloud mask: the fair-weather puffs near the horizon (R), plus the weather's cover: the noise field (B) above a threshold that
+  // drops as the cover rises (0 = none of it, so a clear day is exactly the old sky; 1 = the whole dome)
+  const dir = T.positionLocal.normalize(), up = T.uv().y.mul(2).sub(1).clamp(0, 1), c = T.texture(t, T.uv()), th = ov.mul(-1.2).add(1);
+  const w = T.max(c.r, T.smoothstep(th, th.add(.25), c.b).mul(T.smoothstep(0, .06, ov))), open = w.oneMinus(), above = T.step(0, dir.y);
   const base = T.mix(hor, zen, T.pow(up, .7)), s = T.dot(dir, sd).max(0), mo = T.dot(dir, md).max(0);
-  let col = T.mix(base, cl.mul(c.g.mul(.075).add(.925)), w);
+  let col = T.mix(base, cl.mul(c.g.mul(.075).add(.925)).mul(T.mix(T.float(1), c.b.mul(.3).add(.82).min(1), ov)), w); // (under weather cover B also shades the deck: lumpy, not a flat sheet)
+  col = col.add(T.vec3(.75, .8, 1).mul(fl.mul(w.mul(.55).add(.25))));                                          // lightning lights the clouds from inside
   col = col.add(gl.mul(T.pow(s, 6).mul(.55).add(T.pow(s, 40).mul(.6))));                                     // glow around the sun (sunsets)
   col = col.add(T.vec3(1, .96, .85).mul(T.smoothstep(.9988, .9993, s).mul(sv).mul(open).mul(above).mul(4)));   // sun disc
   col = col.add(T.vec3(.85, .88, 1).mul(T.smoothstep(.99935, .99965, mo).mul(mv).mul(open).mul(above)));       // moon disc
@@ -71,6 +76,7 @@ export const FOGU = {};
 {
   const T = await import('three/tsl'), F = scene.fog, ref = (k, t) => T.reference(k, t, F).setGroup(T.renderGroup);
   const col = ref('color', 'color'), near = ref('near', 'float'), far = ref('far', 'float'), mist = FOGU.mist = T.uniform(0), gk = FOGU.glow = T.uniform(1);
+  FOGU.wet = T.uniform(0).setGroup(T.renderGroup); // water on the road 0..1 (wxfig.js): read by the road material (world.js). Render group: updated once per frame, so it also reaches render bundles
   scene.fogNode = T.Fn(() => {
     const vz = T.positionView.z.negate(), dir = T.positionWorld.sub(T.cameraPosition).normalize(), s = T.dot(dir, SKYU.sun).max(0);
     const c = col.add(SKYU.glow.mul(T.pow(s, 6).mul(.55).add(T.pow(s, 40).mul(.6))).mul(gk));

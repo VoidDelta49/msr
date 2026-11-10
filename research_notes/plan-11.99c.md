@@ -1,6 +1,6 @@
 # Plan: 11.99c (ISLA)
 
-Status: **planning only, nothing started.** Current build is 11.99b. Source: the owner's handwritten "Plan 4" note plus the discussion after it.
+Status: **in progress.** Done: item 1 (ISLA rename), item 2 (weather: relay, client, wet physics; see "Item 2: what was built" at the end). Not started: items 3-6. Item 7 still blocked. BUILD is still 11.99b (bump at release). Source: the owner's handwritten "Plan 4" note plus the discussion after it.
 
 Already shipped in 11.99 / 11.99b (not part of this plan): Dyno fine-tuning (`js/tune.js`), "Thai concept skinny" tires, rim designs (`maker/parts-gen.mjs`), real-clock day/night (`js/daynight.js`).
 
@@ -85,3 +85,13 @@ Decisions made: live data, client-side blending, wet physics included, typhoons 
 ## Open questions
 
 None left. All six were answered (title, menu background, Pantras, ES, swing-arm effect, character-look references, Rusi Surf specs). The Rusi Surf still waits for the owner's go and first photos.
+
+## Item 2: what was built, and what is left
+
+Built: `server/wx.js` + `/wx` + room `wx` message and alarm; `js/weather.js`, `js/wxnet.js`, `js/wxfig.js`, `js/menusky.js`; sky cloud cover, grey light, fog from visibility and rain, GPU rain, lightning + delayed thunder, rain sound, wind on the grass and the rain's slant, wet road sheen and puddles, lamps and headlight under a storm sky; Options > Game > Weather; wet grip (`wetGrip`, `wetg` / `aqua` per tyre), slick painted centre lines and bridge decks; `tools/weather.mjs`, `sim.mjs wet`.
+
+Left / to tune on a real phone:
+- **Redeploy the relay** (`cd server && npx wrangler deploy`). Until then Live shows clear skies (the fixed weathers work without it).
+- All wet-grip and tyre wet numbers are first guesses. Sky / fog / rain amounts were only looked at in headless Chromium.
+- Not done: manhole covers (the map has none), rain splashes on the ground, NPC umbrellas / raincoats (item 4), humidity / temperature in the dyno (optional in the plan).
+- Wet grip in Rapier situations (crashes, suspension) was not browser-tested beyond riding off in the rain.

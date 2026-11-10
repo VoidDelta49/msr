@@ -8,6 +8,7 @@
 //   - the solver reports a viewport as not ok
 // Needs playwright (Chromium); exits 0 with "skipped" without it, like smoke.mjs.
 //   node tools/layout-dom.mjs [--size WxH] [--shot dir]      --shot writes PNGs of a few scenarios (of --size, else six common viewports) into dir
+import { wxRoute } from './lib/wxroute.mjs';
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
 import { serve } from './serve.mjs';
@@ -18,6 +19,7 @@ let pw; try { pw = createRequire(import.meta.url)(process.env.PW || 'playwright'
 const srv = await serve(0), base = `http://localhost:${srv.address().port}/`;
 let br; try { br = await pw.chromium.launch(); } catch (e) { console.log('layout-dom: skipped (no chromium: ' + e.message.split('\n')[0] + ')'); srv.close(); process.exit(0); }
 const pg = await br.newPage({ viewport: { width: 400, height: 800 } }), errs = [];
+await wxRoute(pg); // live weather answered locally (tools/lib/wxroute.mjs)
 pg.on('pageerror', e => errs.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 200)); });
 // serve index.html without the title menu / game script, plus a stand-in look for the canvases and a handle on layout.js
 await pg.route('**/index.html*', async r => {

@@ -7,6 +7,7 @@
 // and comparable before / after a change on the same machine. --alloc: the sampling heap profiler instead: bytes allocated
 // per frame by function (garbage = GC pauses on a phone; swiftshader runs ~1 fps, so timer-driven code looks bigger per frame).
 // (program)/(idle)/(garbage collector) rows are V8's own.
+import { wxRoute } from './lib/wxroute.mjs';
 import { createRequire } from 'node:module';
 import { writeFileSync } from 'node:fs';
 import { serve } from './serve.mjs';
@@ -17,6 +18,7 @@ const gpu = a.includes('--webgpu'), top = +opt('--top', 40), secs = +opt('--secs
 const srv = await serve(0), url = `http://localhost:${srv.address().port}/`;
 let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu', ...(gpu ? ['--enable-features=Vulkan', '--use-vulkan=swiftshader'] : [])] }); } catch (e) { console.log('prof: skipped (no chromium: ' + e.message.split('\n')[0] + ')'); srv.close(); process.exit(0); }
 const pg = await br.newPage({ viewport: { width: 640, height: 360 } }); let bad = 0;
+await wxRoute(pg); // live weather answered locally (tools/lib/wxroute.mjs)
 pg.on('pageerror', e => { bad++; console.log('pageerror: ' + e.message.slice(0, 200)); });
 try {
   await pg.addInitScript(([g]) => { if (g) sessionStorage.setItem('cpmGL', '1'); sessionStorage.setItem('cpmBench', String(Date.now())); localStorage.removeItem('cpmBench'); }, [!gpu]);

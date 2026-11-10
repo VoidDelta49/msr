@@ -3,9 +3,9 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { PI, clamp, sstep, fbm, rand, hash2 } from './util.js';
-import { scene, ctex, std, vcol, ANISO, GPU } from './renderer.js';
+import { scene, ctex, std, vcol, ANISO, GPU, FOGU } from './renderer.js';
 import { cfg, Q, BUILD } from './config.js';
-import { attribute, texture, uv, vec2, vec3, float, select, positionWorld, cameraPosition, time, normalMap, mix, smoothstep } from 'three/tsl';
+import { attribute, texture, uv, vec2, vec3, float, select, positionWorld, cameraPosition, time, normalMap, mix, smoothstep, sin } from 'three/tsl';
 import { gpuInst, finishGpuInst } from './gpucull.js';
 import { buildGrass } from './grass.js';
 import * as T from './tex.js';
@@ -302,7 +302,11 @@ const TWN2=FEAT.find(f=>f.name==='town2');let GW,GCOL,GMH; // terrain grass dens
       if(!SR&&!r.bridge&&(r.hwy||r.w===7)&&i%16===0&&i>0&&i<r.s.length-1&&lastCarve<.2){const px=s.x+nx*(hw+1.8),pz=s.z+nz*(hw+1.8),ph=H(px,pz);if(!nearLM(px,pz)){poles.push({x:px,y:ph,z:pz,ry,r});addOBB(px,pz,.2,.2)}}});
     B.base=0}
   // road ribbons split into terrain-tile-sized chunks so they get frustum + distance culled like everything else
-  for(const[k,B]of Object.entries(rb)){const mat=new THREE.MeshStandardMaterial({map:k==='hwy'?tHwy:k==='strip'?tCon:tRoad,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2}),ch=new Map();
+  // Wet roads (11.99c, weather): FOGU.wet 0..1 (wxfig.js) darkens the asphalt and makes it shiny; from half wet, puddles (a fixed
+  // low-frequency pattern in world x,z, so they stay put) fill in as near-mirrors of the sky. wet = 0 is the old dry material.
+  const wetRoad=m=>{if(Q.lite)return m;const W=FOGU.wet,p=positionWorld.xz,pn=sin(p.x.mul(.31).add(sin(p.y.mul(.17)).mul(2.1))).mul(sin(p.y.mul(.27).add(sin(p.x.mul(.13)).mul(1.7)))).mul(.5).add(.5),pud=smoothstep(.78,.9,pn.add(W.mul(.25).sub(.12))).mul(smoothstep(.45,.9,W));
+    m.colorNode=texture(m.map,uv()).mul(mix(float(1),float(.62),W).mul(mix(float(1),float(.7),pud)));m.roughnessNode=mix(float(m.roughness),mix(float(.3),float(.04),pud),W);return m};
+  for(const[k,B]of Object.entries(rb)){const mat=wetRoad(new THREE.MeshStandardNodeMaterial({map:k==='hwy'?tHwy:k==='strip'?tCon:tRoad,roughness:.85,polygonOffset:true,polygonOffsetFactor:-2})),ch=new Map();
     for(let t=0;t<B.i.length;t+=3){const a=B.i[t],b=B.i[t+1],c=B.i[t+2],key=Math.floor((B.p[a*3]+B.p[b*3]+B.p[c*3])/3/TILE)*1000+Math.floor((B.p[a*3+2]+B.p[b*3+2]+B.p[c*3+2])/3/TILE);
       let C=ch.get(key);if(!C)ch.set(key,C={p:[],u:[],i:[],map:new Map()});for(const v of[a,b,c]){let n=C.map.get(v);if(n===undefined){n=C.p.length/3;C.map.set(v,n);C.p.push(B.p[v*3],B.p[v*3+1],B.p[v*3+2]);C.u.push(B.u[v*2],B.u[v*2+1])}C.i.push(n)}}
     const RG=[...ch.values()].map(C=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(C.p,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(C.u,2));g.setIndex(C.i);g.computeVertexNormals();return g});
