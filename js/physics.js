@@ -13,13 +13,16 @@ import { blip } from './audio.js';
 // front for a stoppie). Net longitudinal acceleration a acts at the CG height h, gravity pulls it back; wp is the angle off the ground
 // (+ front up, - rear up), wpv its rate. It only starts once the load transfer has unloaded the other wheel (a > g lr / h, or
 // a < -g lf / h); the balance point is unstable, so it needs throttle / rear brake to hold, and a light rider damping.
+// a is the acceleration the tyres give the bike (S.at: net + the part that holds it against the slope and the wind), gn the part of
+// gravity pressing it onto the road: uphill the front comes up earlier, downhill the rear does, and at speed the push against the
+// wind already carries weight onto the rear tyre.
 const WMAX = 1.25;
-function pitchUp(sp, a, dt) {
+function pitchUp(sp, a, gn, dt) {
   let p = S.wp || 0, pv = S.wpv || 0;
   if (S.air || ctx.stand) { S.wp = S.wpv = 0; return; }
   // the trigger looks at a smoothed acceleration with a margin, so a one-step spike (clutch dump, grip returning after wheelspin,
   // brake release) can't tip the bike up; once it is up the real acceleration drives it
-  const g = 9.81, h = sp.h, af = S.af = (S.af || 0) + (a - (S.af || 0)) * Math.min(1, dt / .15), M = 1.12;
+  const g = gn, h = sp.h, af = S.af = (S.af || 0) + (a - (S.af || 0)) * Math.min(1, dt / .15), M = 1.12;
   const up = p > 0 || p === 0 && af * h > M * g * sp.lr, dn = !up && (p < 0 || -af * h > M * g * sp.lf);
   if (!up && !dn) return;
   const L = up ? sp.lr : sp.lf, sg = up ? 1 : -1, q0 = Math.abs(p), sn = Math.sin(q0), cs = Math.cos(q0);
@@ -77,7 +80,7 @@ export function step(dt) {
   // wheelie control (Options, on by default): the ECU trims torque as the acceleration nears the lift point and cuts it once the
   // front leaves the ground. Cuts fast, gives drive back gently, so the front stays down or only skims up
   if (cfg.wc !== false && !ctx.stand) {
-    const aw = 9.81 * sp.lr / sp.h, tgt = clamp((1.04 * aw - (S.af || 0)) / (.14 * aw), 0, 1) * (1 - sstep(0, .04, S.wp || 0));
+    const aw = 9.81 * sp.lr / sp.h / Math.sqrt(1 + ((S.hF - S.hR) / sp.wb) ** 2), tgt = clamp((1.04 * aw - (S.af || 0)) / (.14 * aw), 0, 1) * (1 - sstep(0, .04, S.wp || 0));
     S.wcF = (S.wcF ?? 1) + (tgt - (S.wcF ?? 1)) * Math.min(1, dt / (tgt < (S.wcF ?? 1) ? .03 : .3)); wl *= S.wcF;
   } else S.wcF = 1;
   // traction control (chassis.tc, e.g. the H2's KTRC; garage toggle 'tc'): trims drive while the rear spins faster than the road,
@@ -97,18 +100,26 @@ export function step(dt) {
   const R = ctx.stand ? 0 : D.ratio(sp, S);
   // tyres. Axle loads = static split + load transfer under accel/braking; peak tyre force = grip (bike x surface) x load.
   // Load transfer is not capped: past a = g lr / h the front is unloaded (wheelie, wp > 0), past -g lf / h the rear is (stoppie, wp < 0).
-  const g = 9.81, mb = sp.sc ? m * (1 - sp.scW) : m, mu = sp.mu * (S.surf || 1), mt = mu * MUX, mw = (sp.Iw || .6) / (r * r), wp = S.wp || 0, offF = wp > .04, offR = wp < -.04;
-  const Nr = offF ? .97 * mb * g : offR ? .03 * mb * g : clamp(mb * g * sp.lf / sp.wb + clamp(mb * (S.a || 0) * sp.h / sp.wb, -mb * g, mb * g), .03 * mb * g, .97 * mb * g), Pr = mt * Nr, Pf = mt * (mb * g - Nr);
+  // The load is what really presses the tyres down, not just the weight: gravity across the slope (cg), times how hard the suspension
+  // is pushing right now (S.nf from rapier.js: light over a crest or a bump's far side, heavy in a dip and on landing; 1 on smooth
+  // road and headless). The fore / aft shift comes from the force the tyres carry at road level against the mass centre h above it:
+  // S.at = net acceleration + the slope's pull + air drag. So a climb or a top-speed run loads the rear, a descent the front.
+  const g = 9.81, gr = (S.hF - S.hR) / sp.wb, cg = 1 / Math.sqrt(1 + gr * gr), sg = gr * cg, nf = ctx.stand ? 1 : S.nf ?? 1, gn = g * cg * nf, lq = 1 / Math.min(1, nf); // cg, sg: cos / sin of the slope
+  const mb = sp.sc ? m * (1 - sp.scW) : m, mu = sp.mu * (S.surf || 1), mt = mu * MUX, mw = (sp.Iw || .6) / (r * r), wp = S.wp || 0, offF = wp > .04, offR = wp < -.04, N = mb * gn;
+  const Nr = offF ? .97 * N : offR ? .03 * N : clamp(N * sp.lf / sp.wb + clamp(mb * (S.at || 0) * sp.h / sp.wb, -N, N), .03 * N, .97 * N), Pr = mt * Nr, Pf = mt * (N - Nr);
+  S.lr = Nr / N; // share of the load on the rear tyre (telemetry, tools/sim.mjs)
   const ayu = S.ayu || 0, Pxr = Pr * Math.sqrt(1 - ayu * ayu); // rear force left once cornering has taken its share (friction circle)
   // brakes: lever force split front/rear (bf). Past a tyre's peak the wheel locks and only slides (KS x peak) until the
   // brake is eased well off; ABS bikes hold each wheel at its peak instead. Standing still nothing locks.
   const Fc = S.brake * sl * sp.brake * sp.mu * BRK * mb * g, Fcf = Fc * (sp.bf ?? .85), Fcr = Fc - Fcf, rolling = av > .8 && !S.air;
   // a wheel that is in the air (wheelie / stoppie) can't lock and only passes what little load it has
-  const lkF = rolling && !sp.abs && !offF && (S.lkF ? Fcf > .9 * KS * Pf : Fcf > 1.05 * Pf), lkR = rolling && !sp.abs && !offR && (S.lkR ? Fcr > .9 * KS * Pr : Fcr > 1.05 * Pr);
+  // (lq: a tyre gone light over a bump for a moment slips, it passes no more than its peak below, but does not latch into a lock
+  // that outlasts the bump: locking is judged at the load it carries on smooth ground, letting go at the load it has now)
+  const lkF = rolling && !sp.abs && !offF && (S.lkF ? Fcf > .9 * KS * Pf : Fcf > 1.05 * Pf * lq), lkR = rolling && !sp.abs && !offR && (S.lkR ? Fcr > .9 * KS * Pr : Fcr > 1.05 * Pr * lq);
   S.lkF = lkF; S.lkR = lkR;
   S.absA = sp.abs && rolling && S.brake > .1 && (Fcf > .97 * Pf || Fcr > .97 * Pr) ? 1 : 0; // ABS is modulating a wheel (audio.js: lever pulsing)
-  const Fbf = lkF ? KS * Pf : rolling && (sp.abs || offF) ? Math.min(Fcf, .97 * Pf) : Fcf, Fbr = lkR ? KS * Pr : rolling && (sp.abs || offR) ? Math.min(Fcr, .97 * Pr) : Fcr, Fb = Fbf + Fbr;
-  const Fg = -m * 9.81 * Math.sin(Math.atan((S.hF - S.hR) / sp.wb));
+  const Fbf = lkF ? KS * Pf : rolling && (sp.abs || offF) ? Math.min(Fcf, .97 * Pf) : rolling && nf < 1 ? Math.min(Fcf, 1.05 * Pf) : Fcf, Fbr = lkR ? KS * Pr : rolling && (sp.abs || offR) ? Math.min(Fcr, .97 * Pr) : rolling && nf < 1 ? Math.min(Fcr, 1.05 * Pr) : Fcr, Fb = Fbf + Fbr;
+  const Fg = -m * g * sg;
   NF.sp = sp; NF.Fg = Fg; NF.Fb = Fb;
   // BACK: bikes have no reverse gear, so the rider paddles it backwards with his feet (~3 km/h). Only when (nearly)
   // stopped, throttle shut, and nothing driving the rear wheel (neutral / clutch pulled; the CVT clutch is open at idle).
@@ -154,7 +165,7 @@ export function step(dt) {
     }
   } else { S.rpm = clamp((we + Te / sp.ie * dt) * 30 / PI, 0, sp.red + 100); a = netF(0, v) / m; S.v = Math.max(0, v + a * dt); }
   S.fxr = fxr; S.a = a; S.odo += Math.abs(S.v) * dt;
-  pitchUp(sp, a, dt);
+  pitchUp(sp, S.at = a + g * sg + (S.v > 0 ? sp.drag * S.v * S.v / m : 0), g * cg, dt);
   if (S.running && S.rpm < 650) { S.running = false; S.rpm = 0; say('Stalled. Press START (R)'); }
   if (!S.running && S.rpm < 200 && !(R > 0 && c > .5)) S.rpm = Math.max(0, S.rpm - 3000 * dt);
   if (S.running) { S.fuel -= dt * (sp.fuel.idle + sp.fuel.k * S.thrEff * S.rpm / sp.red0); if (S.fuel <= 0) { S.fuel = 0; S.running = false; S.issOff = false; say('Out of fuel!'); } }
@@ -168,13 +179,13 @@ export function step(dt) {
   // mid-corner at full lock asks clearly more than the tyres have
   // (a tricycle rider asks less of the grip: full lock at speed just lifts the chair)
   const hb = sstep(3, 8, sv), gc = Math.min(fl, rl), v2 = Math.max(vv * vv, .01);
-  let kk = Math.tan(si * md) / sp.wb * (1 - hb) + si * (sp.sc ? .7 : .9) * (.5 + .5 * gc) * mu * g / v2 * hb; const kl = mu * g * .95 * gc / v2; S.over = Math.abs(kk) / kl; // over > 1: asking more grip than the tyres have
+  let kk = Math.tan(si * md) / sp.wb * (1 - hb) + si * (sp.sc ? .7 : .9) * (.5 + .5 * gc) * mu * gn / v2 * hb; const kl = mu * gn * .95 * gc / v2; S.over = Math.abs(kk) / kl; // over > 1: asking more grip than the tyres have
   // low-side check. ABS keeps the wheels turning, so braking hard mid-corner makes the bike run wide (kk is still clamped to kl
   // below) instead of tucking the front: only the grip drive / wheelspin takes from the rear counts against it
-  S.overLS = sp.abs ? Math.abs(kk) * v2 / (mu * g * .95 * (spun ? .5 : Math.sqrt(1 - Math.min(.85, Math.abs(fxr) / Math.max(Pr, 1)) ** 2))) : S.over;
+  S.overLS = sp.abs ? Math.abs(kk) * v2 / (mu * gn * .95 * (spun ? .5 : Math.sqrt(1 - Math.min(.85, Math.abs(fxr) / Math.max(Pr, 1)) ** 2))) : S.over;
   if (sp.sc) S.overLS = Math.min(S.overLS, 1.3); // three wheels: running wide or sliding, never a low-side
   kk = clamp(kk, -kl, kl);
-  S.ayu = Math.min(.95, vv * vv * Math.abs(kk) / (mu * g * .95)); S.skid = lkF || spun ? Math.min(1, (v + (S.ws || 0)) / 3) : 0; // skid: tyre noise
+  S.ayu = Math.min(.95, vv * vv * Math.abs(kk) / (mu * gn * .95)); S.skid = lkF || spun ? Math.min(1, (v + (S.ws || 0)) / 3) : 0; // skid: tyre noise
   if (sp.sc) trike(sp, kk, vv, sv, a, dt);
   else {
     const tl = Math.atan(vv * vv * kk / 9.81);

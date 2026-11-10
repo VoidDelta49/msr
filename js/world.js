@@ -46,9 +46,24 @@ function islD(x,z,I){const F=I.F,n=F.length;let d=1e18,ins=false;for(let i=0,j=n
 // Build 11.93: a coarse signed-distance grid per island (16 m cells, built once), bilinear; the exact outline is only
 // walked within 40 m of its coast. The big city island has ~700 outline points: walking them for every terrain vertex took seconds.
 const SDC=16;for(const I of ISL){const x0=I.x0-220,z0=I.z0-220,nx=Math.ceil((I.x1-I.x0+440)/SDC)+1,nz=Math.ceil((I.z1-I.z0+440)/SDC)+1,G=new Float32Array(nx*nz);
-  for(let j=0;j<nz;j++)for(let i=0;i<nx;i++)G[i+nx*j]=islD(x0+i*SDC,z0+j*SDC,I);I.sd={x0,z0,nx,nz,G}}
+  for(let j=0;j<nz;j++)for(let i=0;i<nx;i++)G[i+nx*j]=islD(x0+i*SDC,z0+j*SDC,I);I.sd={x0,z0,nx,nz,G};I.nq={x0:I.x0-300,z0:I.z0-300,C:new Map(),R:new Map()}} // nq: islDn's cells (made here, not on first use: a new property mid-build changes the object's shape under the optimised terrain code)
 function islSD(x,z,I){const q=I.sd,fx=(x-q.x0)/SDC,fz=(z-q.z0)/SDC,i=Math.min(q.nx-2,Math.max(0,Math.floor(fx))),j=Math.min(q.nz-2,Math.max(0,Math.floor(fz))),u=fx-i,v=fz-j,G=q.G,k=i+q.nx*j;
-  const d=(G[k]*(1-u)+G[k+1]*u)*(1-v)+(G[k+q.nx]*(1-u)+G[k+q.nx+1]*u)*v;return Math.abs(d)<40?islD(x,z,I):d}
+  const d=(G[k]*(1-u)+G[k+1]*u)*(1-v)+(G[k+q.nx]*(1-u)+G[k+q.nx+1]*u)*v;return Math.abs(d)<40?islDn(x,z,I):d}
+// islD for a point islSD found within 40 m of the coast on the 16 m grid, i.e. truly within 40 + 16 sqrt(2) = 63 m of it (the
+// signed distance changes at most 1 m per metre). The same arithmetic on fewer segments, so the same number: the nearest
+// segment is one of those within 70 m of the point's 32 m cell, and inside / outside only needs the segments that cross the
+// point's z row. Both lists are made the first time a cell / row is asked (the city outline has ~700 segments).
+function islDn(x,z,I){const q=I.nq,ci=Math.floor((x-q.x0)/32),cj=Math.floor((z-q.z0)/32),F=I.F,n=F.length;
+  if(ci<0||cj<0||ci>4095||cj>4095)return islD(x,z,I);
+  let A=q.C.get(ci+cj*4096),B=q.R.get(cj);
+  if(!A){const x0=q.x0+ci*32,x1=x0+32,z0=q.z0+cj*32,z1=z0+32,L=[];for(let i=0,j=n-2;i<n;j=i,i+=2){const ax=F[j],az=F[j+1],bx=F[i],bz=F[i+1],dx=Math.max(Math.min(ax,bx)-x1,x0-Math.max(ax,bx),0),dz=Math.max(Math.min(az,bz)-z1,z0-Math.max(az,bz),0);if(dx*dx+dz*dz<=4900)L.push(j,i)}
+    q.C.set(ci+cj*4096,A=Int32Array.from(L))}
+  if(!B){const z0=q.z0+cj*32,z1=z0+32,L=[];for(let i=0,j=n-2;i<n;j=i,i+=2){const az=F[j+1],bz=F[i+1];if(Math.min(az,bz)<=z1&&Math.max(az,bz)>=z0)L.push(j,i)}q.R.set(cj,B=Int32Array.from(L))}
+  if(!A.length)return islD(x,z,I);
+  let d=1e18,ins=false;
+  for(let k=0;k<B.length;k+=2){const j=B[k],i=B[k+1],ax=F[j],az=F[j+1],bx=F[i],bz=F[i+1];if((az>z)!==(bz>z)&&x<(bx-ax)*(z-az)/(bz-az)+ax)ins=!ins}
+  for(let k=0;k<A.length;k+=2){const j=A[k],i=A[k+1],ax=F[j],az=F[j+1],bx=F[i],bz=F[i+1],ex=bx-ax,ez=bz-az;let t=((x-ax)*ex+(z-az)*ez)/(ex*ex+ez*ez||1);t=t<0?0:t>1?1:t;const dx=ax+ex*t-x,dz=az+ez*t-z,e=dx*dx+dz*dz;if(e<d)d=e}
+  return ins?Math.sqrt(d):-Math.sqrt(d)}
 let iX=NaN,iZ=NaN,iV=0;
 const inland=(x,z)=>{if(x===iX&&z===iZ)return iV;let v=coastR(Math.atan2(z-ICZ,x-ICX))-Math.hypot(x-ICX,z-ICZ);
   for(const I of ISL)if(x>I.x0-220&&x<I.x1+220&&z>I.z0-220&&z<I.z1+220){const gx=Math.max(I.x0-x,0,x-I.x1),gz=Math.max(I.z0-z,0,z-I.z1),g=Math.sqrt(gx*gx+gz*gz);if(g>0&&-g<=v)continue;const d=islSD(x,z,I);if(d>v)v=d}
@@ -74,11 +89,19 @@ const roughW=(f,x,z)=>{const d=Math.hypot(x-f.x,z-f.z);return d<f.r?1-sstep(f.r*
 // box outside which a feature adds nothing (volcano: everywhere); cached on the feature, checked before any maths
 const FBOX=f=>{const t=f.type,R=t==='hill'?f.r*2.5:t==='terraces'?f.r+260:t==='rough'?f.r:0;
   return t==='volcano'?[-1e18,1e18,-1e18,1e18]:t==='ridge'?f.bb:t==='flat'?[f.x0-f.blend,f.x1+f.blend,f.z0-f.blend,f.z1+f.blend]:[f.x-R,f.x+R,f.z-R,f.z+R]};
+// Feature index: terrBase runs ~1.5 million times while the island is built, and walking all ~80 features (box test + type
+// test on objects of different shapes) for each was the dearest single thing in the load. Per 140 m cell: the features whose
+// box reaches it, in file order (so the result is bit-identical). Rebuilt when a feature is added (landmark flats, below).
+const FC=140;let FIX=null,FIN=-1;
+function featIdx(){const x0=GX-TSZ/2,z0=GZ-TSZ/2,n=Math.ceil(TSZ/FC),C=Array.from({length:n*n},()=>[]),ix=v=>Math.min(n-1,Math.max(0,Math.floor(v/FC)));
+  for(const f of FEAT){const b=f.box||(f.box=FBOX(f));if(b[1]<x0||b[3]<z0||b[0]>x0+n*FC||b[2]>z0+n*FC)continue;for(let j=ix(b[2]-z0);j<=ix(b[3]-z0);j++)for(let i=ix(b[0]-x0);i<=ix(b[1]-x0);i++)C[i+n*j].push(f)}
+  FIN=FEAT.length;FIX={x0,z0,n,C}}
 function terrBase(x,z){
-  const inl=inland(x,z);
+  if(FIN!==FEAT.length)featIdx();
+  const inl=inland(x,z),ci=Math.floor((x-FIX.x0)/FC),cj=Math.floor((z-FIX.z0)/FC),FL=ci>=0&&cj>=0&&ci<FIX.n&&cj<FIX.n?FIX.C[ci+FIX.n*cj]:FEAT;
   let h=inl>0?SEA+.2+Math.min(inl,60)*.045:Math.max(-10,SEA-.2+inl*.06);
   const hl=sstep(HL.inl0,HL.inl1,inl);h+=(fbm(x*HL.scale+7,z*HL.scale)*HL.amp+HL.off)*hl;if(inl>60)h=Math.max(h,SEA+3); // hollows in the hills would fill with sea water (the sea plane is everywhere)
-  for(const f of FEAT){const b=f.box||(f.box=FBOX(f));if(x<b[0]||x>b[1]||z<b[2]||z>b[3])continue;const t=f.type;
+  for(let fi=0;fi<FL.length;fi++){const f=FL[fi],b=f.box;if(x<b[0]||x>b[1]||z<b[2]||z>b[3])continue;const t=f.type;
     if(t==='volcano'){const dv=Math.hypot(x-f.x,z-f.z);h+=f.h*Math.exp(-Math.pow(dv/f.r,1.8))-f.crater*Math.exp(-((dv/f.craterR)**2))}
     else if(t==='terraces'){const dt=Math.hypot(x-f.x,z-f.z);if(dt<f.r+260){/* was r+40: the hill gaussian ended in a 2.5 m step on a circle */h+=f.h*Math.exp(-((dt/100)**2));const w=1-sstep(f.r-40,f.r,dt),q=h/f.step,fr=q-Math.floor(q);h+=((Math.floor(q)+sstep(.7,1,fr))*f.step-h)*w*.85}}
     else if(t==='ridge'){if(x>f.bb[0]&&x<f.bb[1]&&z>f.bb[2]&&z<f.bb[3]){const p=polyD(x,z,f.pts);h+=p.h*Math.exp(-((p.d/f.w)**2))*sstep(0,80,inl)*(1+.18*(fbm(x*.02+3,z*.02)-.5))}}
@@ -107,7 +130,8 @@ function frame(b){const t=b[0],[OX,OZ]=LMO[t],x=b[1],z=b[2],ry=b[3]||0,c=Math.co
 const LMF={church:[],plaza:[],market:[],gas:[],lot:[]};
 for(const b of LMB){const F=frame(b),[hx,hz]=LMH[F.t],ex=Math.abs(hx*Math.cos(F.ry))+Math.abs(hz*Math.sin(F.ry))+4,ez=Math.abs(hx*Math.sin(F.ry))+Math.abs(hz*Math.cos(F.ry))+4;
   F.y=terrBase(F.x,F.z);FEAT.push({type:'flat',x0:F.x-ex,z0:F.z-ez,x1:F.x+ex,z1:F.z+ez,h:F.y,blend:30});LMF[F.t].push(F)}
-const nearLM=(x,z)=>[...LMF.lot,...LMF.gas].some(F=>{const[a,d]=F.loc(x,z),h=F.t==='lot'?30:22;return Math.hypot(Math.max(Math.abs(a)-h,0),Math.max(Math.abs(d)-h,0))<=2});
+const LMN=[...LMF.lot,...LMF.gas].map(F=>({x:F.x,z:F.z,c:Math.cos(F.ry),s:Math.sin(F.ry),h:F.t==='lot'?30:22})); // (was a spread + two closures per call, for every terrain vertex)
+const nearLM=(x,z)=>{for(let i=0;i<LMN.length;i++){const F=LMN[i],dx=x-F.x,dz=z-F.z,a=dx*F.c-dz*F.s,d=dx*F.s+dz*F.c;if(Math.hypot(Math.max(Math.abs(a)-F.h,0),Math.max(Math.abs(d)-F.h,0))<=2)return true}return false};
 const atGas=(x,z)=>LMF.gas.some(F=>{const[a,d]=F.loc(x,z);return Math.abs(a)<6&&Math.abs(d)<3.5});
 // @terrain-end
 const GEN=[]; // roadside houses the generator placed this load (map maker bakes them into 'buildings')
@@ -139,8 +163,9 @@ function foot(x,z,hx,hz,ry=0){const c=Math.cos(ry),s=Math.sin(ry);let lo=1e9,hi=
   FP.lo=lo;FP.hi=hi;return FP}
 
 /* collision footprints: oriented boxes (Rapier makes colliders from these) */
-const OBBS=[];
-function addOBB(cx,cz,hx,hz,ry=0,y){const b={cx,cz,hx,hz,ry,c:Math.cos(ry),s:-Math.sin(ry),y};OBBS.push(b)} // y: height of the box centre (default: the ground there + 1), for guardrails on a high bridge
+const OBBS=[],OBG=new Map(),OBC=32; // OBG: the same boxes in a 32 m hash grid (inBld below asked all ~3,500 of them for every tree and palm)
+function addOBB(cx,cz,hx,hz,ry=0,y){const b={cx,cz,hx,hz,ry,c:Math.cos(ry),s:-Math.sin(ry),y};OBBS.push(b);const R=Math.hypot(hx,hz)+.6;
+  for(let i=Math.floor((cx-R)/OBC);i<=Math.floor((cx+R)/OBC);i++)for(let j=Math.floor((cz-R)/OBC);j<=Math.floor((cz+R)/OBC);j++){const k=i*65536+j,L=OBG.get(k);if(L)L.push(b);else OBG.set(k,[b])}} // y: height of the box centre (default: the ground there + 1), for guardrails on a high bridge
 function addBox(x0,z0,x1,z1){addOBB((x0+x1)/2,(z0+z1)/2,(x1-x0)/2,(z1-z0)/2)}
 const dummy=new THREE.Object3D(),CELL=700; // CELL: power-wire chunk size
 // Instanced props, split into static 700 m chunks (one InstancedMesh per type per chunk). Buffers never change after
@@ -527,7 +552,7 @@ const TWN2=FEAT.find(f=>f.name==='town2');let GW,GCOL,GMH; // terrain grass dens
   const frondsOf=blade=>mergeGeometries(Array.from({length:8},(_,i)=>blade().translate(0,0,1.8).rotateX(.45+(i%2)*.25).rotateY(i*PI/4).translate(1.3,8,0)));
   const fronds=frondsOf(()=>new THREE.BoxGeometry(.55,.04,3.6)),frondsLo=frondsOf(()=>{const t=new THREE.PlaneGeometry(.55,3.6).rotateX(-PI/2);return mergeGeometries([t,t.clone().rotateZ(PI)])});
   const palms=[],trees=[];
-  const inBld=(x,z)=>OBBS.some(b=>{const dx=x-b.cx,dz=z-b.cz;return Math.abs(dx*b.c+dz*b.s)<b.hx+.6&&Math.abs(dz*b.c-dx*b.s)<b.hz+.6}); // no palm grows through a building (checked after the palm's random numbers are drawn, so the layout does not reshuffle)
+  const inBld=(x,z)=>{const L=OBG.get(Math.floor(x/OBC)*65536+Math.floor(z/OBC));if(L)for(let i=0;i<L.length;i++){const b=L[i],dx=x-b.cx,dz=z-b.cz;if(Math.abs(dx*b.c+dz*b.s)<b.hx+.6&&Math.abs(dz*b.c-dx*b.s)<b.hz+.6)return true}return false}; // no palm grows through a building (checked after the palm's random numbers are drawn, so the layout does not reshuffle)
   const PP=PROPS.palms,TP=PROPS.trees;
   for(let i=0;i<PP.tries&&palms.length<PP.max;i++){const th=rand()*2*PI,r=coastR(th)-8-rand()*rand()*PP.band,x=ICX+Math.cos(th)*r,z=ICZ+Math.sin(th)*r,h=terr(x,z);
     if(h<SEA+.4||h>12||lastCarve>.05)continue;if(hg.some(o=>Math.hypot(x-o.x,z-o.z)<22))continue;const q=nearRoad(x,z);if(q&&q.d<q.w/2+2.5)continue;if(rd(x,z,TOWN)<1&&rand()<.85)continue;

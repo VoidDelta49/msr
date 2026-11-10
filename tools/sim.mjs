@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Headless physics scenarios on the game's real solver (see lib/headless.mjs). No browser, a few seconds for all bikes.
 //   node tools/sim.mjs [bike|all] [scenario|all] [--json] [--part exhaust=1 ...] [--set kf=14 ...] [--no-wc] [--tough]
-// scenarios: launch start brake corner wheelie stall idle iss pillion dyno      (default: all, every bike)
+// scenarios: launch start brake grade corner wheelie stall idle iss pillion dyno      (default: all, every bike)
 // Output is one compact line per bike+scenario. Numbers are comparable between runs, so use them to see what a change did:
 //   node tools/sim.mjs all launch > /tmp/before; (edit) ; node tools/sim.mjs all launch | diff /tmp/before -
 import { createSim, bikeIds, TICK, S, ign, withPassenger, ROOT } from './lib/headless.mjs';
@@ -64,6 +64,32 @@ const SC = {
       m[name + 'M'] = r1(S.odo - d0); m[name + 'T'] = r2(sim.t); m[name + 'G'] = r2(aMax / 9.81); if (name === 'full') { m.lockMs = Math.round(lk * TICK * 1000); m.stoppie = r1(deg(-wp)); m.abs = sim.spec.abs ? 1 : 0; }
       m.nan = m.nan || sim.finite();
     }
+    return m;
+  },
+  // what presses the tyres on the road (physics.js: slope, the wind, the suspension's push S.nf). rear*: share of the load on the rear
+  // tyre standing on the flat, on a 15% climb / descent, and flat out (the drive against the air drag carries weight back);
+  // up60 / dn60: 0-60 km/h up and down the 15% hill; dnM: full-lever stop from 60 km/h down it (m) and dnStop its nose-down angle;
+  // wUp / wDn: the synthetic wheelie (see wheelie, control off) up and down the hill; lightM: the same stop on the flat with the
+  // tyres carrying 60% of the weight (over a crest), heavyM with 130% (in a dip); lightLean / heavyLean: lean at 15 m/s, bars at 0.6
+  grade(o) {
+    const m = {}, G = .15, hill = (sim, g) => { S.hF = g * sim.spec.wb / 2; S.hR = -g * sim.spec.wb / 2; };
+    const rest = g => { const sim = createSim(o.bike, o); sim.quickStart(); hill(sim, g); S.brake = 1; sim.run(.5, () => { S.brake = 1; S.thr = 0; }); m.nan = m.nan || sim.finite(); return r1(S.lr * 100); };
+    m.rear = rest(0); m.rearUp = rest(G); m.rearDn = rest(-G);
+    for (const [k, g] of [['up60', G], ['dn60', -G], ['top', 0]]) {
+      const sim = createSim(o.bike, o); sim.quickStart(); hill(sim, g); const go = rider(sim, { rate: o.rate }); let top = 0, last = 0, t = null;
+      sim.run(k === 'top' ? 100 : 40, s => { go(); const v = s.kmh(); if (v > top + .05) { top = v; last = s.t; } if (k !== 'top' && v >= 60) { t = r2(s.t); return false; } if (s.t - last > 6 && s.t > 8) return false; });
+      if (k === 'top') m.rearTop = r1(S.lr * 100); else if (t != null) m[k] = t; m.nan = m.nan || sim.finite();
+    }
+    const stop = (g, nf) => { const sim = createSim(o.bike, o); sim.quickStart(); hill(sim, g); S.v = 60 / 3.6; S.gear = sim.spec.type === 'cvt' ? 0 : 3; S.cl = 1; S.thr = 0; S.brake = 1; if (nf) S.nf = nf; let wp = 0; const d0 = S.odo;
+      sim.run(12, () => { wp = Math.min(wp, S.wp || 0); if (S.v < .05) return false; }); m.nan = m.nan || sim.finite(); return [r1(S.odo - d0), r1(deg(-wp))]; };
+    [m.dnM, m.dnStop] = stop(-G); m.lightM = stop(0, .6)[0]; m.heavyM = stop(0, 1.3)[0];
+    for (const [k, g] of [['wUp', G], ['wDn', -G]]) {
+      const sim = createSim(o.bike, { ...o, spec: { mu: 1.6, pow: 8, ...o.spec }, set: { autoClutch: false, ...o.set }, cfg: { ...o.cfg, wc: false } }); sim.quickStart(); hill(sim, g); S.v = 5 / 3.6; let wp = 0;
+      if (sim.spec.type === 'manual') { S.gear = 1; S.cl = 1; } else if (sim.spec.type === 'rotary') S.gear = 1;
+      sim.run(6, () => { S.thr = 1; S.brake = 0; S.steer = 0; if (sim.spec.type === 'manual') S.cl = appr(S.cl, 0, 6 * TICK); wp = Math.max(wp, S.wp || 0); });
+      m[k] = r1(deg(wp)); m.nan = m.nan || sim.finite();
+    }
+    for (const [k, nf] of [['lightLean', .6], ['heavyLean', 1.3]]) { const sim = createSim(o.bike, o); sim.quickStart(); S.gear = 0; S.cl = 1; S.nf = nf; sim.run(4, () => { S.v = 15; S.steer = .6; S.thr = 0; S.brake = 0; }); m[k] = r1(deg(Math.abs(S.lean))); m.nan = m.nan || sim.finite(); }
     return m;
   },
   // constant speed (neutral/coasting, speed pinned), bars over: lean, turn radius, how much grip is being asked for

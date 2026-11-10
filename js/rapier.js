@@ -79,7 +79,7 @@ export function setMass() { if (!RP.ok || !ctx.spec) return; const sp = ctx.spec
 export function syncBody() {
   if (!RP.ok || !ctx.spec) return; const sp = ctx.spec; if (S.crashed) endCrash();
   setMass();
-  S.chair = S.chairV = 0; const sx = (sp.sc || 0) * (sp.scX ?? .95); scap.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); sbox.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); scap.setEnabled(!!sp.sc); sbox.setEnabled(false);
+  S.chair = S.chairV = 0; S.nf = 1; const sx = (sp.sc || 0) * (sp.scX ?? .95); scap.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); sbox.setTranslationWrtParent({ x: sx, y: .1, z: .05 }); scap.setEnabled(!!sp.sc); sbox.setEnabled(false);
   stream(true); body.setTranslation({ x: S.x, y: S.zH + Y0, z: S.z }, true); body.setRotation(qYX(S.psi, S.th || 0), true);
   S.hF = H(S.x - Math.sin(S.psi) * sp.lf, S.z - Math.cos(S.psi) * sp.lf); S.hR = H(S.x + Math.sin(S.psi) * sp.lr, S.z + Math.cos(S.psi) * sp.lr);
   body.setLinvel({ x: -Math.sin(S.psi) * S.v, y: 0, z: -Math.cos(S.psi) * S.v }, true); body.setAngvel({ x: 0, y: 0, z: 0 }, true);
@@ -119,6 +119,9 @@ export function tickR() {
   const mF = sp.ms * lr / sp.wb, mR = sp.ms * lf / sp.wb; // sprung load on the bike's wheels (a sidecar carries its own share)
   const Ff = Math.max(0, mF * g + sp.kf * (cF + sp.pf) + sp.damp * 2 * Math.sqrt(sp.kf * mF) * vF), Fr = Math.max(0, mR * g + sp.kr * (cR + sp.pr) + sp.damp * 2 * Math.sqrt(sp.kr * mR) * vR);
   S.cF = cF; S.cR = cR; S.Ff = Ff; S.Fr = Fr; S.air = Ff <= 0 && Fr <= 0;
+  // how hard the springs press the tyres on the road, against the bike's weight (1 on smooth ground): the tyres' grip follows it
+  // (physics.js). Eased over ~60 ms, about what the tyre's own carcass does, so one sharp edge is a blip and not a lock-up
+  S.nf = (S.nf ?? 1) + (clamp((Ff + Fr) / (sp.ms * g), .3, 1.5) - (S.nf ?? 1)) * Math.min(1, TICK / .06);
   // drivetrain + steering. In the air the wheel is unloaded: engine free-revs, speed and heading carry on.
   // grip of what is under the tyres, eased. The lookup (road search + zone blend) is the dearest thing here besides Rapier, and the
   // easing (~0.17 s) hides sampling it at 20 Hz
@@ -126,7 +129,7 @@ export function tickR() {
   S.surf = (S.surf || 1) + (surfTgt - (S.surf || 1)) * Math.min(1, TICK * 6);
   const v0 = S.v, p0 = S.psi, stand = ctx.stand; if (S.air) ctx.stand = true;
   for (let i = 0; i < 3; i++) step(TICK / 3);
-  ctx.stand = stand; if (S.air) { S.v = v0; S.psi = p0; S.yaw = 0; }
+  ctx.stand = stand; if (S.air) { S.v = v0 - Math.sign(v0) * sp.drag * v0 * v0 / m * TICK; S.psi = p0; S.yaw = 0; } // in the air only the wind slows it
   if (!cfg.tough && (S.wp > 1.1 || S.wp < -.95)) return crash(S.wp > 0 ? 'loop' : 'flip');
   // tricycle past its tipping point (physics.js trike): rolls over. Tough Biker: it just hangs there and drops back
   if (sp.sc && (S.chair > .8 || S.chair < -.6)) { if (!cfg.tough) return crash('roll'); S.chair = clamp(S.chair, -.4, .5); S.chairV = 0; }
@@ -145,7 +148,7 @@ export function tickR() {
   // load transfer only up to the point where it lifts a wheel (a = g lr / h, or -g lf / h). Past that the chassis would keep pitching
   // about the other axle with nothing to stop it (hard braking stood the bike on its nose and kept it there while the brake was held);
   // lifting a wheel further is the wheelie / stoppie model's job (physics.js pitchUp, S.wp), which has the angle limit and crash checks
-  const aLT = clamp(S.a || 0, -g * lf / sp.h, g * lr / sp.h);
+  const aLT = clamp(S.at ?? S.a ?? 0, -g * lf / sp.h, g * lr / sp.h); // S.at: what the tyres carry (net + slope + air drag)
   const tau = Ff * lf - Fr * lr + (S.air ? 0 : m * aLT * sp.h);
   // applied straight to the velocities we set anyway (same as a force over one tick, 4 fewer calls into WASM)
   vy += (Ff + Fr) / m * TICK; w += tau / sp.I * TICK;
