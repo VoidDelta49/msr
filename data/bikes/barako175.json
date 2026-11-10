@@ -1,0 +1,857 @@
+{
+ "id": "barako175",
+ "name": "Kawasaki Barako II 175",
+ "short": "Barako 175",
+ "tag": "4-speed manual · torque hauler",
+ "class": "WORKHORSE",
+ "blurb": "The tricycle king: 176.6 cc air-cooled SOHC 2-valve single (65.5 x 52.4 mm, 9.3:1), Mikuni VM24 carb, 13.41 hp @ 7,500 rpm, 13.7 Nm (1.4 kgf·m) @ 5,500 rpm, DC-CDI, electric + kick start. 4-speed return shift, wet multi-plate clutch, chain drive, 150 mm drum brakes front and rear, 17\" spoke wheels (3.00-17 both ends), semi-double-cradle frame, four rear shocks, 1,250 mm wheelbase, 132 kg, 775 mm seat, 12 L tank.",
+ "model": "barako",
+ "cluster": "tmx",
+ "drivetrain": "manual",
+ "sidecar": {
+  "struts": [
+   [
+    0.1,
+    0.32,
+    -0.25,
+    0.3
+   ],
+   [
+    0.11,
+    0.34,
+    0.4,
+    0.3
+   ],
+   [
+    0.1,
+    0.78,
+    0.3,
+    0.9
+   ]
+  ]
+ },
+ "chassis": {
+  "m": 197,
+  "r": 0.295,
+  "wb": 1.25,
+  "lf": 0.71,
+  "lr": 0.54,
+  "h": 0.61,
+  "I": 42,
+  "drag": 0.27,
+  "roll": 26,
+  "brake": 0.72,
+  "bf": 0.6,
+  "travel": [
+   0.11,
+   0.075
+  ],
+  "susp": {
+   "fork": "tele",
+   "rear": "twin",
+   "reb": [
+    1.5,
+    1.4
+   ],
+   "dz": [
+    0.9,
+    0.9
+   ],
+   "prog": [
+    0.2,
+    0.3
+   ]
+  },
+  "pil": {
+   "dz": 0.3,
+   "dy": 0.03,
+   "x": 0.04,
+   "h": 1.25
+  }
+ },
+ "engine": {
+  "Ie": 0.019,
+  "idle": 1400,
+  "red": 9000,
+  "peakPS": 13.6,
+  "tachMax": 11000,
+  "geo": {
+   "bore": 65.5,
+   "stroke": 52.4,
+   "cr": 9.3,
+   "peak": 7500
+  },
+  "torque": [
+   [
+    0,
+    4.5
+   ],
+   [
+    1000,
+    7.5
+   ],
+   [
+    2000,
+    10
+   ],
+   [
+    3000,
+    11.8
+   ],
+   [
+    4000,
+    12.9
+   ],
+   [
+    5000,
+    13.55
+   ],
+   [
+    5500,
+    13.7
+   ],
+   [
+    6000,
+    13.6
+   ],
+   [
+    7000,
+    13.1
+   ],
+   [
+    7500,
+    12.73
+   ],
+   [
+    8000,
+    12
+   ],
+   [
+    8500,
+    11
+   ],
+   [
+    9000,
+    9.7
+   ],
+   [
+    10000,
+    7
+   ]
+  ],
+  "fric": [
+   0.9,
+   0.00028
+  ],
+  "tune": {
+   "fuel": [
+    5,
+    3,
+    6
+   ],
+   "ign": [
+    3,
+    3
+   ],
+   "knock": [
+    5,
+    6
+   ],
+   "jets": [
+    80,
+    82.5,
+    85,
+    87.5,
+    90,
+    92.5,
+    95,
+    97.5,
+    100,
+    102.5,
+    105,
+    107.5,
+    110,
+    112.5,
+    115,
+    117.5,
+    120
+   ],
+   "jet": 97.5,
+   "scr": -1
+  },
+  "fuel": {
+   "cap": 12,
+   "idle": 0.0002,
+   "k": 0.0028
+  }
+ },
+ "manual": {
+  "prim": 3.5,
+  "gears": [
+   0,
+   2.692,
+   1.647,
+   1.19,
+   0.923
+  ],
+  "eta": 0.87,
+  "clutchCap": 32,
+  "final": [
+   "rs",
+   "fs"
+  ]
+ },
+ "sound": {
+  "parts": {
+   "sq": 0.65,
+   "sqHz": 1150,
+   "hiss": 0.5,
+   "chain": 1.5,
+   "chainHz": 2000,
+   "lash": 1.7,
+   "clutch": 1.3,
+   "thump": 1.3,
+   "thumpHz": 0.85,
+   "rattle": 0.9,
+   "key": 1.1,
+   "keyHz": 0.8,
+   "tink": 1.5,
+   "tinkHz": 0.8,
+   "peg": 0.95
+  },
+  "sc": {
+   "rattle": 2,
+   "thump": 1.6,
+   "thumpHz": 0.75,
+   "lash": 1.9,
+   "sq": 0.8,
+   "peg": 0
+  },
+  "lp": 0.72,
+  "gain": 0.95,
+  "whine": 0,
+  "cyl": 1,
+  "pq": 5.5,
+  "bq": 2.4,
+  "punch": 1.2,
+  "rough": 0.28,
+  "crackle": 0.14,
+  "crackRpm": 5000,
+  "mech": 0.8,
+  "intake": 0.55,
+  "bright": 0.7,
+  "drive": 1.6,
+  "starter": 1
+ },
+ "parts": {
+  "sidecar": {
+   "l": "Sidecar",
+   "o": [
+    {
+     "n": "Solo"
+    },
+    {
+     "n": "Tricycle sidecar (+110 kg)",
+     "sc": 1,
+     "scm": 110,
+     "dm": 110,
+     "scW": 0.32,
+     "scX": 0.95,
+     "scD": 1.5,
+     "drag": 0.62,
+     "roll": 42,
+     "brake": 0.95
+    }
+   ]
+  },
+  "exhaust": {
+   "l": "Exhaust",
+   "o": [
+    {
+     "n": "Stock",
+     "pow": 1,
+     "snd": 0
+    },
+    {
+     "n": "Slip-on (+5%)",
+     "muf": 0.6,
+     "pow": 1.05,
+     "snd": 1
+    },
+    {
+     "n": "Open pipe (+9%)",
+     "muf": 0,
+     "hdr": 1,
+     "pow": 1.09,
+     "snd": 2
+    }
+   ]
+  },
+  "tune": {
+   "l": "Engine tune",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock",
+     "pow": 1
+    },
+    {
+     "n": "Street tune (+4%)",
+     "sPun": 0.05,
+     "sRgh": 0.25,
+     "sCrk": 0.75,
+     "pow": 1.04,
+     "ie": 0.92
+    },
+    {
+     "n": "Bore-up 200 cc (+12%)",
+     "sPun": 0.1,
+     "sRgh": 0.5,
+     "sCrk": 1.5,
+     "ccx": 1.13,
+     "pow": 1.12,
+     "ie": 0.9,
+     "idle": 1450
+    }
+   ]
+  },
+  "tires": {"l": "Tires", "o": [{"n": "Stock", "note": "3.00-17 · 3.00-17", "mu": 0.85}, {"n": "Sport", "note": "90/80-17 · 100/80-17", "mu": 1, "tyT": 0.9, "tyW": 1.12, "dm": 0.3, "wetg": 0.95, "aqua": 0.93}, {"n": "Racing soft", "note": "Wider, red band · wears fast", "mu": 1.2, "tyT": 0.86, "tyW": 1.22, "tyS": "#d42a2a", "rollx": 1.06, "dm": 0.5, "wetg": 0.7, "aqua": 0.82}, {"n": "Thai concept skinny", "note": "2.50-17 · 2.75-17", "mu": 0.7, "tyT": 0.62, "tyW": 0.6, "rollx": 0.78, "dragx": 0.985, "dm": -1.8, "wetg": 1.12, "aqua": 1.3}, {"n": "Wide fat", "note": "3.00-17 · 110/80-17", "mu": 0.93, "tyT": 1.14, "tyW": 1.34, "rollx": 1.14, "dragx": 1.01, "dm": 1.5, "wetg": 0.95, "aqua": 0.75}, {"n": "Dual-sport knobby", "note": "3.00-17 · 3.50-17", "mu": 0.78, "tyT": 1.1, "tyW": 1.1, "tyK": 1, "offr": 0.65, "rollx": 1.16, "dm": 0.9, "wetg": 0.95, "aqua": 1.2}, {"n": "Whitewall classic", "note": "3.00-17 · 3.00-17", "mu": 0.85, "tyT": 1.04, "tyS": "#f1f1ec"}, {"n": "Drag skinny", "note": "45/90-17 · 50/100-17", "mu": 0.6, "tyT": 0.5, "tyW": 0.47, "rollx": 0.7, "dragx": 0.978, "dm": -2.5, "wetg": 1.15, "aqua": 1.4}]},
+  "paint": {
+   "l": "Paint",
+   "o": [
+    {
+     "n": "Black",
+     "c": "#141518",
+     "lv": "k"
+    },
+    {
+     "n": "Red",
+     "c": "#b3161c",
+     "lv": "r"
+    },
+    {
+     "n": "Blue",
+     "c": "#1c3f8f",
+     "lv": "b"
+    },
+    {
+     "n": "Matte Grey",
+     "c": "#4a4d52",
+     "lv": "g",
+     "rough": 0.7,
+     "metal": 0.15
+    }
+   ]
+  },
+  "intake": {
+   "l": "Air filter",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Sport foam (+3%)",
+     "sIn": 1.5,
+     "pow": 1.03
+    },
+    {
+     "n": "Cold-air intake (+5%)",
+     "sIn": 3,
+     "pow": 1.05
+    }
+   ]
+  },
+  "flywheel": {
+   "l": "Flywheel",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Lightened (quicker revs)",
+     "ie": 0.8
+    },
+    {
+     "n": "Heavy (smoother)",
+     "ie": 1.3
+    }
+   ]
+  },
+  "carb": {
+   "l": "Carburetor",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Keihin PE26 (+3%)",
+     "jet": 105,
+     "sIn": 0.75,
+     "sBri": 0.05,
+     "pow": 1.03,
+     "tqs": 0.02,
+     "fux": 1.05
+    },
+    {
+     "n": "Keihin PE28 (+6%, thirsty)",
+     "jet": 115,
+     "sIn": 1.5,
+     "sBri": 0.1,
+     "pow": 1.06,
+     "tqs": 0.05,
+     "fux": 1.12
+    }
+   ]
+  },
+  "valves": {
+   "l": "Valve springs",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Racing springs (+400 rpm limit)",
+     "sMech": 0.6,
+     "redd": 400
+    }
+   ]
+  },
+  "port": {
+   "l": "Head work",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Ported & polished (+3%)",
+     "sIn": 0.5,
+     "sBri": 0.15,
+     "pow": 1.03,
+     "tqs": 0.02
+    }
+   ]
+  },
+  "piston": {
+   "l": "Piston",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock cast"
+    },
+    {
+     "n": "Forged high-compression (+3%)",
+     "crd": 1,
+     "pow": 1.03,
+     "ie": 0.98
+    }
+   ]
+  },
+  "oil": {
+   "l": "Engine oil",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock mineral"
+    },
+    {
+     "n": "Full synthetic (−6% friction)",
+     "frx": 0.94
+    },
+    {
+     "n": "Racing ester (−9% friction)",
+     "frx": 0.91
+    }
+   ]
+  },
+  "coil": {
+   "l": "Ignition coil",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "High-output coil (+1%)",
+     "pow": 1.01
+    }
+   ]
+  },
+  "cdi": {
+   "l": "CDI",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock (limited)"
+    },
+    {
+     "n": "Racing CDI (+600 rpm limit)",
+     "sPun": 0.1,
+     "sRgh": 0.5,
+     "sCrk": 1.5,
+     "pow": 1.01,
+     "redd": 600
+    }
+   ]
+  },
+  "brakes": {
+   "l": "Brake pads",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Sintered",
+     "brake": 1.08
+    },
+    {
+     "n": "Race compound",
+     "brake": 1.17
+    }
+   ]
+  },
+  "plug": {
+   "l": "Spark plug",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock nickel"
+    },
+    {
+     "n": "Iridium (+1%)",
+     "pow": 1.01
+    }
+   ]
+  },
+  "cam": {
+   "l": "Camshaft",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Racing cam (+5%)",
+     "evo": 8,
+     "pow": 1.05,
+     "tqs": 0.05
+    }
+   ]
+  },
+  "battery": {
+   "l": "Battery",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock lead-acid"
+    },
+    {
+     "n": "Lithium LiFePO4 (−1.6 kg)",
+     "dm": -1.6
+    }
+   ]
+  },
+  "clutch": {
+   "l": "Clutch",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Heavy-duty springs (+25% hold)",
+     "capx": 1.25
+    }
+   ]
+  },
+  "chain": {
+   "l": "Chain",
+   "int": 1,
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "X-ring sealed (+1% drive)",
+     "etax": 1.01
+    }
+   ]
+  },
+  "wheelcol": {
+   "l": "Wheel colour",
+   "o": [
+    {
+     "n": "Match paint"
+    },
+    {
+     "n": "Black",
+     "wc": "#16171a"
+    },
+    {
+     "n": "Gold",
+     "wc": "#c9a24a"
+    },
+    {
+     "n": "Silver",
+     "wc": "#b9bdc2"
+    },
+    {
+     "n": "Red",
+     "wc": "#c21d1d"
+    },
+    {
+     "n": "Blue",
+     "wc": "#1f4fbf"
+    },
+    {
+     "n": "White",
+     "wc": "#e9e9e4"
+    }
+   ]
+  },
+  "cover": {
+   "l": "Engine cover",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Black",
+     "ec": "#1b1c1f"
+    },
+    {
+     "n": "Gold",
+     "ec": "#c9a24a"
+    },
+    {
+     "n": "Red",
+     "ec": "#a8161c"
+    },
+    {
+     "n": "Blue",
+     "ec": "#1f44d8"
+    }
+   ]
+  },
+  "cffender": {
+   "l": "Fenders",
+   "g": "Carbon fiber",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Carbon (−0.4 kg)",
+     "dm": -0.4,
+     "cff": 1
+    }
+   ]
+  },
+  "cfexh": {
+   "l": "Muffler cover",
+   "g": "Carbon fiber",
+   "o": [
+    {
+     "n": "Stock"
+    },
+    {
+     "n": "Carbon (−0.3 kg)",
+     "dm": -0.3,
+     "cfx": 1
+    }
+   ]
+  },
+  "rims": {"l": "Mags / rims", "o": [{"n": "Stock wire spokes", "rimD": 0}, {"n": "6-spoke cast", "rimD": 1, "dm": -0.6}, {"n": "Twin 5-spoke", "rimD": 2, "dm": -1}, {"n": "10-spoke forged", "note": "Lightest", "rimD": 3, "dm": -1.8}, {"n": "3-spoke", "rimD": 4, "dm": 0.3}, {"n": "7 Y-spoke", "rimD": 5, "dm": -1.2}, {"n": "Racing 8-spoke", "note": "Thin forged spokes", "rimD": 7, "dm": -1.5}]},
+  "mirrors": {"l": "Mirrors", "o": [{"n": "Stock"}, {"n": "Bar-end round", "mirK": 1}, {"n": "Short sport", "mirK": 2, "dm": -0.2}, {"n": "Removed", "note": "Track look", "mirK": 3, "dm": -0.6}]},
+  "levers": {"l": "Levers", "o": [{"n": "Stock"}, {"n": "Black", "levC": "#17181b"}, {"n": "Gold", "levC": "#c9a24a"}, {"n": "Red", "levC": "#c21d1d"}, {"n": "Blue", "levC": "#1f4fbf"}, {"n": "Purple", "levC": "#7a3fd0"}, {"n": "Titanium", "levC": "#8d8f94"}]},
+  "grips": {"l": "Grips", "o": [{"n": "Stock black"}, {"n": "Red", "grpC": "#c21d1d"}, {"n": "Blue", "grpC": "#1f4fbf"}, {"n": "Orange", "grpC": "#e2661a"}, {"n": "Purple", "grpC": "#7a3fd0"}, {"n": "Lime", "grpC": "#7bd11f"}, {"n": "White", "grpC": "#e9e9e4"}]},
+  "seat": {"l": "Seat cover", "o": [{"n": "Stock black"}, {"n": "Brown leather", "seatC": "#6b3f22"}, {"n": "Tan", "seatC": "#b08552"}, {"n": "Red", "seatC": "#8e1a1f"}, {"n": "Blue", "seatC": "#1e3a7a"}, {"n": "White", "seatC": "#d9d6cf"}]},
+  "box": {"l": "Top box", "o": [{"n": "None"}, {"n": "Top box 30 L", "boxK": 1, "dm": 3.4, "dragx": 1.02}, {"n": "Top box 45 L", "boxK": 2, "dm": 4.6, "dragx": 1.04}, {"n": "Delivery bag green", "boxK": 3, "boxC": "#1faa55", "dm": 2.8, "dragx": 1.07}, {"n": "Delivery bag pink", "boxK": 3, "boxC": "#e0317f", "dm": 2.8, "dragx": 1.07}]},
+  "hl": {"l": "Headlight bulb", "o": [{"n": "Stock halogen"}, {"n": "LED white 6000K", "hlC": "#eef4ff"}, {"n": "Yellow 3000K", "hlC": "#ffd23a"}, {"n": "Ice blue 8000K", "hlC": "#8fc4ff"}]},
+  "aux": {"l": "Auxiliary lights", "o": [{"n": "None"}, {"n": "Mini driving lights", "note": "More light on the road", "auxK": 1, "dm": 0.5}, {"n": "Yellow fog pair", "note": "More light on the road", "auxK": 1, "auxC": "#ffd23a", "dm": 0.5}]},
+  "glow": {"l": "Underglow", "o": [{"n": "Off"}, {"n": "Red", "glowC": "#ff0a0a"}, {"n": "Amber", "glowC": "#ff7a00"}, {"n": "Green", "glowC": "#10ff30"}, {"n": "Cyan", "glowC": "#00d8ff"}, {"n": "Blue", "glowC": "#1440ff"}, {"n": "Purple", "glowC": "#9a1cff"}, {"n": "Pink", "glowC": "#ff1ea0"}, {"n": "White", "glowC": "#ffffff"}, {"n": "RGB cycle", "note": "Runs through every colour", "glowC": "rgb"}]},
+  "wled": {"l": "Wheel LEDs", "o": [{"n": "Off"}, {"n": "Red", "wledC": "#ff0a0a"}, {"n": "Amber", "wledC": "#ff7a00"}, {"n": "Green", "wledC": "#10ff30"}, {"n": "Cyan", "wledC": "#00d8ff"}, {"n": "Blue", "wledC": "#1440ff"}, {"n": "Purple", "wledC": "#9a1cff"}, {"n": "Pink", "wledC": "#ff1ea0"}, {"n": "White", "wledC": "#ffffff"}, {"n": "RGB cycle", "note": "Runs through every colour", "wledC": "rgb"}]},
+  "swarm": {"l": "Swing-arm", "o": [{"n": "Stock"}, {"n": "Extended 2 in", "note": "50 mm longer", "swl": 0.05, "krx": 0.83, "dm": 0.4}, {"n": "Thai stretch 4 in", "note": "100 mm longer · softer rear", "swl": 0.1, "krx": 0.69, "dm": 0.8}, {"n": "Drag stretch 6 in", "note": "150 mm longer · hard to wheelie, wide turns", "swl": 0.15, "krx": 0.59, "dm": 1.2}]}
+ },
+ "sliders": [
+  {
+   "k": "pf",
+   "l": "Fork preload",
+   "min": -20,
+   "max": 20,
+   "u": " mm"
+  },
+  {
+   "k": "pr",
+   "l": "Shock preload",
+   "min": -20,
+   "max": 20,
+   "u": " mm"
+  },
+  {
+   "k": "yf",
+   "l": "Front ride height",
+   "min": -25,
+   "max": 25,
+   "step": 5,
+   "u": " mm"
+  },
+  {
+   "k": "yr",
+   "l": "Rear ride height",
+   "min": -25,
+   "max": 25,
+   "step": 5,
+   "u": " mm"
+  },
+  {
+   "k": "fs",
+   "l": "Front sprocket",
+   "min": 13,
+   "max": 16,
+   "u": "T"
+  },
+  {
+   "k": "rs",
+   "l": "Rear sprocket",
+   "min": 36,
+   "max": 48,
+   "u": "T"
+  },
+  {
+   "k": "kf",
+   "l": "Fork spring",
+   "min": 7,
+   "max": 18,
+   "u": " kN/m"
+  },
+  {
+   "k": "kr",
+   "l": "Shock spring",
+   "min": 14,
+   "max": 40,
+   "u": " kN/m"
+  },
+  {
+   "k": "damp",
+   "l": "Damping",
+   "min": 20,
+   "max": 90,
+   "u": "%"
+  },
+  {
+   "k": "mj",
+   "l": "Main jet",
+   "min": -4,
+   "max": 5,
+   "u": "",
+   "f": "jet"
+  },
+  {
+   "k": "nc",
+   "l": "Needle clip (1 = top groove, leanest)",
+   "min": 1,
+   "max": 5,
+   "u": ""
+  },
+  {
+   "k": "ps",
+   "l": "Air screw (out = leaner)",
+   "min": 0.5,
+   "max": 3.5,
+   "step": 0.25,
+   "u": " turns"
+  },
+  {
+   "k": "ig",
+   "l": "Ignition timing",
+   "min": -6,
+   "max": 6,
+   "step": 0.5,
+   "u": "°",
+   "sg": 1
+  },
+  {
+   "k": "ct",
+   "l": "Cam timing (+ advanced, − retarded)",
+   "min": -6,
+   "max": 6,
+   "u": "°",
+   "sg": 1
+  },
+  {
+   "k": "idl",
+   "l": "Idle speed",
+   "min": -200,
+   "max": 400,
+   "step": 50,
+   "u": " rpm",
+   "sg": 1
+  }
+ ],
+ "toggles": [
+  {
+   "k": "autoClutch",
+   "l": "Anti-stall clutch"
+  }
+ ],
+ "hint": "KEY on, hold START in neutral, pull CLUTCH, shift ▼ into 1st (1-N-2-3-4) and ease it out. Only four gears, but it pulls from low revs: short-shift and ride the torque",
+ "defaults": {
+  "mj": 0,
+  "nc": 3,
+  "ps": 1.5,
+  "ig": 0,
+  "ct": 0,
+  "idl": 0,
+  "sidecar": 0,
+  "exhaust": 0,
+  "tune": 0,
+  "tires": 0,
+  "paint": 0,
+  "intake": 0,
+  "flywheel": 0,
+  "carb": 0,
+  "valves": 0,
+  "port": 0,
+  "piston": 0,
+  "oil": 0,
+  "coil": 0,
+  "cdi": 0,
+  "brakes": 0,
+  "plug": 0,
+  "cam": 0,
+  "battery": 0,
+  "clutch": 0,
+  "chain": 0,
+  "wheelcol": 0,
+  "cover": 0,
+  "cffender": 0,
+  "cfexh": 0,
+  "pf": 0,
+  "pr": 0,
+  "yf": 0,
+  "yr": 0,
+  "fs": 14,
+  "rs": 41,
+  "kf": 9,
+  "kr": 22,
+  "damp": 45,
+  "autoClutch": true,
+  "rims": 0,
+  "mirrors": 0,
+  "levers": 0,
+  "grips": 0,
+  "seat": 0,
+  "box": 0,
+  "hl": 0,
+  "aux": 0,
+  "glow": 0,
+  "wled": 0,
+  "swarm": 0
+ }
+}

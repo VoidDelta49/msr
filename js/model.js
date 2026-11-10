@@ -306,6 +306,17 @@ function drawLivery(kind, paint, lv = '') {
     poly(Gy, .1, .7, .46, .79, .46, .82, .1, .73);                                              // grey slash
     poly(K, .4, .6, 1.1, .6, 1.1, .9, .86, .89, .5, .85, .4, .86);                              // tail underside
     poly(K, -.75, .8, -.5, .86, -.62, .98, -.75, 1.0);                                          // cowl lower edge
+  } else if (kind === 'barako') { // Barako II (reference photos): dark patterned band along the tank with a thin gold line, dark lower edge
+    const G = lv === 'k' ? '#33363b' : '#1d1e22', Au = '#b08a4a';
+    poly(K, -.36, .78, -.1, .79, -.04, .815, -.3, .815);                                         // lower tank edge
+    poly(G, -.34, .825, .13, .85, .14, .9, -.3, .875);                                           // band
+    poly(Au, -.3, .882, .14, .907, .14, .914, -.3, .889);                                        // gold line
+  } else if (kind === 'surf') { // Surf 125 (reference pictures): black tail with a swept silver + accent stripe, black lower legshield fin
+    const W = '#c9ccd1', ac = lv === 'k' ? '#8fc23a' : lv === 'o' ? '#e2600f' : W;
+    poly(K, .34, .45, 1.05, .45, 1.05, .95, .62, .95, .46, .79);                                 // tail
+    poly(W, .38, .615, .7, .725, .95, .84, .95, .856, .7, .745, .38, .64);
+    poly(ac, .38, .58, .7, .69, .95, .812, .95, .826, .7, .708, .38, .6);
+    poly(K, -.4, .3, -.05, .3, -.05, .47, -.2, .5, -.38, .47);                                   // legshield fin
   } else if (kind === 'macho') { // Macho 125 (reference photos): white sweep with an accent line along the tank and the side cover, dark lower tank edge
     const W = '#f1f1ec', ac = lv === 'r' ? '#b9bdc2' : lv === 'k' ? '#d42a2a' : '#e6e6e1';
     poly(K, -.36, .78, -.1, .79, -.04, .83, -.3, .83);                                           // lower tank edge
@@ -895,7 +906,8 @@ function wheelWire(R, t, rim, drum, disc) {
   wheelFaces(g, { rim, lip: .012, n: 16, w: .007, to: 0, r0: .045, r1: rim - .005, sc: 'B', hub: 0, hc: 'R', plates: [[-.04, drum, 'drum'], [.04, drum, 'drum'], ...(disc ? [[.05, disc, 'disc']] : [])] }, f);
   return g;
 }
-function underbone(ct, v) {
+function underbone(ct, v, sf = 0) { // sf: Rusi Surf 125 (maker's side + front pictures): black 5-spoke mags + front disc, black tail with a stripe,
+  // position lamps in the legshield, no visor, long chrome muffler
   const rw = .285, rake = .454, headY = .9, fork = (headY - rw) / Math.cos(rake), headZ = -.62 + fork * Math.sin(rake);
   B.G = { rw, rearZ: .62, fork, rake, pivotY: .37, pivotZ: .06, swingX: 0 }; B.wheelCol = v === 2 ? 0x1c1d21 : 0xc3c8cd; B.cargo = { y: .86, z: .62 };
   B.fenderPaint = true; B.decal = MDec; B.halo = true; // halogen bulb
@@ -914,7 +926,7 @@ function underbone(ct, v) {
   tube([.15, .33, .14], [.17, .45, .3], .012, MC, ct, 5); mk(box(.03, .02, .08), MB, ct, .17, .45, .34);       // kick starter
   for (const s of [-1, 1]) { mk(box(.09, .02, .035), MB, ct, s * .17, .3, .14); mk(box(.025, .07, .05), MAlu, ct, s * .13, .33, .14); } // pegs
   mk(box(.03, .02, .22), MC, ct, -.17, .32, .08, .1);                                                       // heel-toe gear pedal
-  mk(prof([[-.3, .37], [-.12, .43], [-.06, .36], [-.1, .27], [-.28, .27]], .012, .004), MB, ct, .135, 0, 0);  // Smash Fi heat guard over the leg side of the cylinder
+  if (!sf) mk(prof([[-.3, .37], [-.12, .43], [-.06, .36], [-.1, .27], [-.28, .27]], .012, .004), MB, ct, .135, 0, 0);  // Smash Fi heat guard over the leg side of the cylinder
   // bodywork
   // 11.99 accuracy round: the legshield is slim and swept back (down the fork line, then a fin running back past the cylinder), not an upright slab
   const front = prof([[-.27, .98], [-.4, .95], [-.5, .84], [-.525, .7], [-.47, .56], [-.36, .46], [-.22, .385], [-.1, .36], [-.08, .43], [-.2, .5], [-.255, .62], [-.23, .76], [-.24, .9]], .32, .025);
@@ -929,6 +941,7 @@ function underbone(ct, v) {
   mk(prof([[.86, .76], [.96, .8], [1.02, .6], [.98, .55], [.91, .64]], .1, .01), MK, ct, 0, 0, 0);               // plate hanger
   mk(box(.18, .1, .008), MPl, ct, 0, .57, 1.01, .3);
   for (const s of [-1, 1]) { mk(new THREE.PlaneGeometry(.26, .05), MDec, ct, s * .138, .69, .4, 0, s * PI / 2, 0); mk(box(.04, .03, .04), MAmb, ct, s * .14, .87, -.44); } // side script, front signals
+  if (sf) for (const s of [-1, 1]) mk(box(.04, .055, .02), MHead, ct, s * .075, .73, -.522, .15, 0, s * .25); // position lamps
   mk(new THREE.PlaneGeometry(.12, .025), MDec, ct, 0, .78, -.522, .21, PI, 0);                                  // front badge
   // steering: fork, painted handlebar cover with the headlamp and meter
   T0 = [headZ, headY]; RK = rake;
@@ -943,7 +956,7 @@ function underbone(ct, v) {
   if (v) mk(box(.045, .07, .09), MCal, B.slider, .08, .03, .06);                                                // disc caliper
   mk(profSt([[-.24, 1.05], [-.36, 1.085], [-.5, 1.065], [-.58, 1.01], [-.585, .93], [-.45, .945], [-.3, .985], [-.23, 1.0]], .3, .022), MP, st, 0, 0, 0); // handlebar cover (tall front face for the lamp)
   mk(profSt([[-.585, .93], [-.53, .885], [-.42, .885], [-.29, .94], [-.45, .945]], .2, .012), MK, st, 0, 0, 0); // black lower cover
-  mk(profSt([[-.42, 1.06], [-.52, 1.035], [-.56, 1.0], [-.5, 1.1], [-.44, 1.12]], .16, .008), MVisG, st, 0, 0, 0); // small visor
+  if (!sf) mk(profSt([[-.42, 1.06], [-.52, 1.035], [-.56, 1.0], [-.5, 1.1], [-.44, 1.12]], .16, .008), MVisG, st, 0, 0, 0); // small visor
   mkSt(box(.18, .085, .02), MC, 0, -.612, .97, .1); mkSt(box(.15, .06, .02), MHead, 0, -.62, .97, .1);          // headlamp
   clusterPlane(st, 0, .19, .0, -1.0, .22);
   controls(st, .16, .06, .3, .2, [.28, .2, -.04], true);
@@ -952,9 +965,9 @@ function underbone(ct, v) {
   B.exh = new THREE.Group(); ct.add(B.exh);
   // stock: header from the head down under the engine into a long silver can with a chrome heat guard; aftermarket: shorter, louder
   B.buildExh = (s, cf) => {
-    B.exh.clear(); const L = [.48, .38, .32][s], Rr = [.05, .047, .045][s], col = [0x9aa0a8, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, s ? .35 : .4, s ? .8 : .6);
-    tube([.04, .3, -.34], [.06, .13, -.2], .018, MB, B.exh); tube([.06, .13, -.2], [.145, .17, .16], .02, MB, B.exh);
-    const an = .3, a = [.155, .19, .2], d = [0, Math.sin(an), Math.cos(an)], at = t => a.map((v, i) => v + d[i] * t), b = at(L);
+    B.exh.clear(); const L = [sf ? .6 : .48, .38, .32][s], Rr = [sf ? .045 : .05, .047, .045][s], col = [sf ? 0xd5dae0 : 0x9aa0a8, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, s ? .35 : sf ? .2 : .4, s ? .8 : sf ? 1 : .6), MH = sf ? MC : MB;
+    tube([.04, .3, -.34], [.06, .13, -.2], .018, MH, B.exh); tube([.06, .13, -.2], [.145, .17, .16], .02, MH, B.exh);
+    const an = sf && !s ? .12 : .3, a = [.155, .19, .2], d = [0, Math.sin(an), Math.cos(an)], at = t => a.map((v, i) => v + d[i] * t), b = at(L);
     tube(a, b, Rr, m, B.exh, 8); tube(b, at(L + .05), Rr * .8, s ? MB : MC, B.exh, 8);
     if (s === 0) { const Q = (t, n) => [a[2] + d[2] * t + Math.sin(an) * n, a[1] + d[1] * t - Math.cos(an) * n]; mk(prof([Q(-.08, .03), Q(.04, .07), Q(.34, .06), Q(.38, 0), Q(.06, -.02)], .014, .004), MC, B.exh, .158 + Rr, 0, 0); }
     batchExh();
@@ -1014,15 +1027,18 @@ function sidecar(ct, mt, wb) {
 }
 // m = 1: Rusi Macho 125 (CG-style budget classic, reference photos): 17" spokes (2.75-17, 3.00-17 ≈ 0.29 m), 1,260 mm wheelbase,
 // painted side covers with a stripe, chrome carrier, chrome fenders, rubber fork gaiters, bigger square lamp in a black visor
-function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see buildModel)
-  const rw = m ? .29 : .31, rake = .47, headY = 1.0, fZ = m ? -.64 : -.686, fork = (headY - rw) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
-  B.G = { rw, rearZ: .62, fork, rake, pivotY: .37, pivotZ: .1, swingX: 0 }; B.wheelCol = 0xc3c8cd; B.cargo = { y: .97, z: .52 }; B.decal = MDec; B.halo = true;
-  const wheel = front => m ? wheelWire(.255, .035, .215, front ? .07 : .075, 0) : wheelWire(.27, .04, .23, front ? .078 : .082, 0);
+function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see buildModel). m: 1 = Macho 125, 2 = Barako II 175
+  // Barako (Kawasaki's side + 3/4 photos): 3.00-17 both ends, 1,250 mm wheelbase, two shocks per side, black frame / carrier / megaphone
+  // muffler with a silver heat shield, painted front fender, fork gaiters, square lamp in a black bikini cowl, "175" on the seat
+  const bk = m === 2, rw = bk ? .295 : m ? .29 : .31, rake = .47, headY = 1.0, fZ = bk ? -.63 : m ? -.64 : -.686, fork = (headY - rw) / Math.cos(rake), headZ = fZ + fork * Math.sin(rake);
+  B.G = { rw, rearZ: .62, fork, rake, pivotY: .37, pivotZ: .1, swingX: 0 }; B.wheelCol = 0xc3c8cd; B.cargo = { y: .97, z: .52 }; B.decal = MDec; B.halo = true; if (bk) B.fenderPaint = true;
+  const wheel = front => bk ? wheelWire(.255, .04, .215, .075, 0) : m ? wheelWire(.255, .035, .215, front ? .07 : .075, 0) : wheelWire(.27, .04, .23, front ? .078 : .082, 0);
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .62); ct.add(B.rearH); B.rearW = wheel(false); B.rearH.add(B.rearW);
   mk(cyl(.085, .085, .012, 10), MB, B.rearH, -.07, 0, 0, 0, 0, PI / 2);                                       // sprocket
   // swingarm (tubes) + top chain guard on the left (one mesh, stretched pivot->axle each frame)
   B.swing = mk(mergeGeometries([box(.03, .045, 1).translate(.1, 0, 0), box(.03, .045, 1).translate(-.1, 0, 0), box(.05, .02, .9).translate(-.075, .06, .02), box(.22, .035, .05).translate(0, 0, -.46)]), MK, ct, 0, .33, .36);
-  for (const s of [-1, 1]) { rod([s * .11, .36, .6], [s * .11, .8, .44], .012, MC); tube([s * .11, .42, .575], [s * .11, .68, .48], .03, m ? MC : MK, ct, 8); } // twin shocks
+  for (const s of [-1, 1]) { rod([s * .11, .36, .6], [s * .11, .8, .44], .012, MC); tube([s * .11, .42, .575], [s * .11, .68, .48], .03, m === 1 ? MC : MK, ct, 8);
+    if (bk) { rod([s * .11, .36, .52], [s * .11, .8, .36], .012, MC); tube([s * .11, .42, .495], [s * .11, .68, .4], .03, MK, ct, 8); } } // twin shocks (Barako: two per side)
   // frame: backbone under the tank, downtube in front of the engine, seat rails
   tube([0, .93, headZ + .03], [0, .8, .1], .03, MK, ct); tube([0, .88, headZ + .05], [0, .24, -.2], .028, MK, ct); tube([0, .24, -.2], [0, .22, .12], .025, MK, ct);
   for (const s of [-1, 1]) { tube([s * .08, .8, .1], [s * .08, .8, .7], .015, MK, ct); tube([s * .08, .4, .14], [s * .08, .79, .45], .015, MK, ct); }
@@ -1042,16 +1058,17 @@ function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see build
   mk(taper(prof(m ? [[-.34, .93], [-.27, .995], [.07, .985], [.15, .93], [.14, .83], [-.1, .79], [-.34, .8]] : [[-.34, .93], [-.24, 1.0], [-.02, .99], [.08, .93], [.07, .82], [-.1, .79], [-.34, .8]], .3, .03), m ? [[-.36, .8], [-.2, 1], [.16, .92]] : [[-.36, .78], [-.15, 1], [.1, .86]]), MP, ct, 0, 0, 0); // teardrop tank (Macho: the long flat-topped CG tank)
   for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.17, .045), MDec, ct, s * .152, .89, -.13, 0, s * PI / 2, -.12 * s);      // tank badge
   mk(prof([[.04, .82], [.36, .82], [.42, .74], [.36, .55], [.08, .52], [.02, .66]], .25, .015), MP, ct, 0, 0, 0); // side covers (painted on both: the Supremo's carry the tank's colour and stripe)
-  mk(prof([[.04, .82], [.09, .89], [.5, .89], [.7, .87], [.69, .815], [.06, .8]], .27, .025, 2), MS, ct, 0, 0, 0); // long flat seat (thick)
-  mk(arc(rw + .02, rw + .045, .9, 2.5, .13), m ? MC : MK, B.rearH, 0, 0, 0);                                                     // rear fender
+  mk(prof(bk ? [[.04, .82], [.08, .915], [.5, .92], [.72, .905], [.71, .815], [.06, .8]] : [[.04, .82], [.09, .89], [.5, .89], [.7, .87], [.69, .815], [.06, .8]], .27, .025, 2), MS, ct, 0, 0, 0); // long flat seat (thick; the Barako's is a deep slab)
+  mk(arc(rw + .02, rw + .045, .9, 2.5, .13), m === 1 ? MC : MK, B.rearH, 0, 0, 0);                                                     // rear fender
   mk(prof([[.62, .8], [.86, .78], [.92, .7], [.86, .66], [.66, .74]], .15, .01), MK, ct, 0, 0, 0);             // tail
   mk(box(.15, .06, .05), MTail, ct, 0, .76, .9, .3); for (const s of [-1, 1]) { tube([s * .1, .74, .86], [s * .2, .74, .88], .007, MB, ct, 4); mk(box(.045, .035, .05), MAmb, ct, s * .22, .74, .88); }
   mk(box(.18, .1, .008), MPl, ct, 0, .6, .96, .25);
   // black carrier rack over the back of the seat
-  const MRk = m ? MC : MK;
-  const cz = m ? .98 : .8; // the Macho's chrome carrier reaches well behind the seat
+  const MRk = m === 1 ? MC : MK;
+  if (bk) for (const s of [-1, 1]) mk(new THREE.PlaneGeometry(.13, .055), MDec, ct, s * .139, .865, .57, 0, s * PI / 2, 0); // "175" on the seat
+  const cz = bk ? .93 : m ? .98 : .8; // the Macho's chrome carrier reaches well behind the seat
   for (const s of [-1, 1]) { tube([s * .13, .9, .38], [s * .13, .9, cz], .012, MRk, ct); tube([s * .13, .9, .4], [s * .1, .8, .35], .012, MRk, ct); tube([s * .13, .9, cz], [s * .11, .78, cz - .1], .012, MRk, ct); }
-  for (const z of m ? [.55, .68, .8, .9, .98] : [.55, .68, .8]) tube([-.13, .9, z], [.13, .9, z], .01, MRk, ct);
+  for (const z of bk ? [.55, .68, .8, .93] : m ? [.55, .68, .8, .9, .98] : [.55, .68, .8]) tube([-.13, .9, z], [.13, .9, z], .01, MRk, ct);
   // steering: chrome fork with painted upper covers (Supremo) or black ones + gaiters (Macho), silver fender, small black cowl with the chrome-rimmed lamp, signals on stalks, round dials
   T0 = [headZ, headY]; RK = rake;
   const tilt = new THREE.Group(); tilt.position.set(0, headY, headZ); tilt.rotation.x = rake; ct.add(tilt);
@@ -1061,10 +1078,11 @@ function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see build
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
   for (const s of [-1, 1]) mk(cyl(.028, .026, .3, 8), MAlu, B.slider, s * .075, .15, 0);
   B.frontW = wheel(true); B.slider.add(B.frontW);
-  mk(arc(rw + .02, rw + .042, 1.0 + rake, 2.45 + rake, .1), m ? MC : MSil, B.slider, 0, 0, 0);                                    // silver front fender
+  mk(arc(rw + .02, rw + .042, 1.0 + rake, 2.45 + rake, .1), bk ? MF : m ? MC : MSil, B.slider, 0, 0, 0);                                    // silver front fender
   mk(profSt([[headZ - .03, 1.12], [headZ - .2, 1.1], [headZ - .27, 1.0], [headZ - .26, .9], [headZ - .1, .9], [headZ - .03, 1.0]], .22, .02), MK, st, 0, 0, 0); // headlamp cowl
   mk(profSt([[headZ - .04, 1.16], [headZ - .2, 1.15], [headZ - .22, 1.11], [headZ - .04, 1.11]], .16, .01), MK, st, 0, 0, 0); // little top cover
-  if (m) { mkSt(box(.2, .16, .02), MC, 0, headZ - .278, .98, .2); mkSt(box(.17, .13, .02), MHead, 0, headZ - .285, .98, .2); mkSt(box(.2, .1, .01), MVis, 0, headZ - .22, 1.1, -.5); } // square lamp + visor
+  if (bk) mk(profSt([[headZ - .03, 1.2], [headZ - .22, 1.17], [headZ - .29, 1.08], [headZ - .27, 1.0], [headZ - .05, 1.02]], .24, .02), MK, st, 0, 0, 0); // Barako: the tall bikini cowl round the lamp
+  if (m) { mkSt(box(.2, .16, .02), bk ? MK : MC, 0, headZ - .278, .98, .2); mkSt(box(.17, .13, .02), MHead, 0, headZ - .285, .98, .2); mkSt(box(.2, .1, .01), MVis, 0, headZ - .22, 1.1, -.5); } // square lamp + visor
   else { mkSt(box(.17, .14, .02), MC, 0, headZ - .275, .985, .2); mkSt(box(.14, .11, .02), MHead, 0, headZ - .282, .985, .2); } // lamp + chrome rim
   for (const s of [-1, 1]) { tube([s * .08, 0, 0], [s * .17, -.03, -.08], .007, MB, st, 4); mkSt(box(.06, .045, .05), MAmb, s * .2, headZ - .21, .97, 0, s * .3); }
   clusterPlane(st, 0, .19, .02, -1.0, .22);
@@ -1074,11 +1092,11 @@ function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see build
   B.exh = new THREE.Group(); ct.add(B.exh);
   // stock: chrome header round the front of the engine into a long chrome muffler with a heat shield; aftermarket: shorter, louder
   B.buildExh = (s, cf) => {
-    B.exh.clear(); const L = [.62, .44, .36][s], Rr = [.05, .048, .045][s], col = [0xd5dae0, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, s ? .35 : .22, s ? .8 : 1);
-    tube([.05, .55, -.27], [.08, .22, -.24], .02, MC, B.exh); tube([.08, .22, -.24], [.15, .22, .1], .021, MC, B.exh);
+    B.exh.clear(); const L = [.62, .44, .36][s], Rr = [bk ? .055 : .05, .048, .045][s], col = [bk ? 0x17181b : 0xd5dae0, 0x111111, 0x6f7fa8][s], m = cf ? MCF : xstd(col, s ? .35 : bk ? .5 : .22, s ? .8 : bk ? .4 : 1), MH = bk ? MB : MC;
+    tube([.05, .55, -.27], [.08, .22, -.24], .02, MH, B.exh); tube([.08, .22, -.24], [.15, .22, .1], .021, MH, B.exh);
     const an = .16, a = [.16, .23, .12], d = [0, Math.sin(an), Math.cos(an)], at = t => a.map((v, i) => v + d[i] * t), b = at(L);
-    tube(a, b, Rr, m, B.exh, 8); tube(b, at(L + .05), Rr * .75, s ? MB : MC, B.exh, 8);
-    if (s === 0) { const Q = (t, n) => [a[2] + d[2] * t + Math.sin(an) * n, a[1] + d[1] * t - Math.cos(an) * n]; mk(prof([Q(.02, .03), Q(.08, .07), Q(.36, .065), Q(.4, .02), Q(.06, -.01)], .014, .004), MC, B.exh, .163 + Rr, 0, 0); }
+    tube(a, b, Rr, m, B.exh, 8); tube(b, at(L + .05), Rr * .75, s || bk ? MB : MC, B.exh, 8);
+    if (s === 0) { const Q = (t, n) => [a[2] + d[2] * t + Math.sin(an) * n, a[1] + d[1] * t - Math.cos(an) * n]; mk(prof(bk ? [Q(-.06, .0), Q(.0, .06), Q(.2, .065), Q(.26, .02), Q(.2, -.03), Q(.0, -.03)] : [Q(.02, .03), Q(.08, .07), Q(.36, .065), Q(.4, .02), Q(.06, -.01)], .014, .004), bk ? MSil : MC, B.exh, .163 + Rr, 0, 0); }
     batchExh();
   };
 }
@@ -1395,7 +1413,7 @@ function xmax(ct) {
   };
 }
 
-const MODELS = { sport, sniper, scooter, supersport, underbone, tmx, aerox, rouser, h2, nmax, xmax, macho: (ct, v) => tmx(ct, v, 1) };
+const MODELS = { sport, sniper, scooter, supersport, underbone, tmx, aerox, rouser, h2, nmax, xmax, macho: (ct, v) => tmx(ct, v, 1), barako: (ct, v) => tmx(ct, v, 2), surf: (ct) => underbone(ct, 2, 1) };
 // Lamps (11.99). Colour: LED units are cool white, the halogen bikes (B.halo: Smash, TMX, Macho, Rouser) warm; the beam on the
 // road (renderer's `head`) follows. lamps(on, brake): headlamp and tail lamp burn with the ignition on, the tail lamp
 // brightens under braking. A fresh build is lit, so the frozen copies of other players' bikes (snapshot) keep their lights.
