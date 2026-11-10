@@ -7,6 +7,7 @@
 import { createSim, bikeIds, TICK, S, ign, withPassenger, ROOT } from './lib/headless.mjs';
 import { pathToFileURL } from 'node:url';
 const { dynoRun } = await import(pathToFileURL(ROOT + '/js/dyno.js').href);
+const { tuneRead, sliderOn } = await import(pathToFileURL(ROOT + '/js/tune.js').href), { tq } = await import(pathToFileURL(ROOT + '/js/spec.js').href);
 
 const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
 const appr = (v, t, s) => v < t ? Math.min(t, v + s) : Math.max(t, v - s);
@@ -133,6 +134,17 @@ const SC = {
     const sim = createSim(o.bike, o), d = dynoRun(sim.spec, sim.ctx.drive, sim.ctx.bcfg);
     const ok = d.pts.every(q => Number.isFinite(q.hp) && Number.isFinite(q.rpm)) && d.hp > 0 && d.hp < d.crank;
     return { whp: r1(d.hp), whpRpm: Math.round(d.hpRpm / 50) * 50, wtq: r1(d.tq), crank: r1(d.crank), loss: r1(d.loss * 100), pull: r1(d.T), ok: ok ? 1 : 0 };
+  },
+  // garage > DYNO fine tuning (js/tune.js): crank peak against the untuned engine for a sensible tune (a little richer, a little more
+  // advance), a bad one (lean and far too much advance: knock) and a retarded cam; stock AFR; idle and limiter offsets reach the spec
+  tune(o) {
+    const sim = createSim(o.bike, o), bk = sim.bike, sp0 = sim.spec, carb = bk.sliders.some(s => s.k === 'mj' && sliderOn(s, sp0)), has = k => bk.sliders.some(s => s.k === k && sliderOn(s, sp0));
+    // one sim at a time: createSim reuses the shared ctx, so each variant is measured before the next is made
+    const meas = set => { const s = createSim(o.bike, { ...o, set: { ...o.set, ...set } }), r = tuneRead(bk, s.spec, s.ctx.bcfg); return { crank: dynoRun(s.spec, s.ctx.drive, s.ctx.bcfg).crank, low: tq(s.spec, .3 * s.spec.red0), kn: Math.max(...r.knock), afr: r.afr, any: r.any, idle: s.spec.idle, red: s.spec.red, fk: s.spec.fuel.k }; };
+    const z = meas({}), good = meas(carb ? { mj: 1, ig: 2 } : { fl: 3, fm: 3, fh: 3, il: 1, ih: 2 }), bad = meas(carb ? { mj: -3, nc: 1, ig: 6 } : { fl: -10, fm: -10, fh: -10, il: 6, ih: 6 });
+    const cam = meas({ ct: -4 }), lim = meas({ idl: 200, ...(has('rl') && { rl: -500 }) }), pct = (a, k = 'crank') => r1((a[k] / z[k] - 1) * 100);
+    return { good: pct(good), bad: pct(bad), badKnock: r1(bad.kn), camTop: pct(cam), camLow: pct(cam, 'low'), afrLo: r1(z.afr[0]), afrMid: r1(z.afr[1]), afrTop: r1(z.afr[2]),
+      dIdle: lim.idle - z.idle, dRed: lim.red - z.red, fuelGood: pct(good, 'fk'), ok: bad.crank < z.crank && bad.kn > 0 && cam.low < z.low && !z.any && z.kn === 0 ? 1 : 0 };
   },
   // neutral, nothing touched: stays running near its idle speed, doesn't roll, burns a little fuel
   idle(o) {

@@ -47,6 +47,7 @@
       [10500, 5]
     ],
     "fric": [0.7, 0.00024],
+    "tune": {"fuel": [5, 4, 6], "ign": [2.5, 3], "knock": [4, 5]},
     "fuel": {
       "cap": 5.5,
       "idle": 0.0002,
@@ -369,12 +370,28 @@
     { "k": "yr", "l": "Rear ride height", "min": -25, "max": 25, "step": 5, "u": " mm" },
     { "k": "kf", "l": "Fork spring", "min": 5, "max": 14, "u": " kN/m" },
     { "k": "kr", "l": "Shock spring", "min": 8, "max": 24, "u": " kN/m" },
-    { "k": "damp", "l": "Damping", "min": 20, "max": 90, "u": "%" }
+    { "k": "damp", "l": "Damping", "min": 20, "max": 90, "u": "%" },
+    {"k": "fl", "l": "Fuel trim, low rpm", "min": -12, "max": 12, "u": " %", "sg": 1},
+    {"k": "fm", "l": "Fuel trim, mid rpm", "min": -12, "max": 12, "u": " %", "sg": 1},
+    {"k": "fh", "l": "Fuel trim, high rpm", "min": -12, "max": 12, "u": " %", "sg": 1},
+    {"k": "il", "l": "Ignition timing, low-mid rpm", "min": -6, "max": 6, "step": 0.5, "u": "°", "sg": 1},
+    {"k": "ih", "l": "Ignition timing, high rpm", "min": -6, "max": 6, "step": 0.5, "u": "°", "sg": 1},
+    {"k": "ct", "l": "Cam timing (+ advanced, − retarded)", "min": -6, "max": 6, "u": "°", "sg": 1},
+    {"k": "idl", "l": "Idle speed", "min": -200, "max": 400, "step": 50, "u": " rpm", "sg": 1},
+    {"k": "rl", "l": "Rev limit", "min": -1000, "max": 500, "step": 100, "u": " rpm", "sg": 1}
   ],
   "toggles": [
     { "k": "iss", "l": "Idling Stop" }
   ],
   "defaults": {
+    "fl": 0,
+    "fm": 0,
+    "fh": 0,
+    "il": 0,
+    "ih": 0,
+    "ct": 0,
+    "idl": 0,
+    "rl": 0,
     "pf": 0,
     "pr": 0,
     "rollers": 2,

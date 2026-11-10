@@ -107,6 +107,17 @@ const bikes = {};
     if (!(en.fuel && ['cap', 'idle', 'k'].every(k => isNum(en.fuel[k])))) err(A, 'engine.fuel needs cap, idle, k');
     if (!(en.geo && ['bore', 'stroke', 'cr', 'peak'].every(k => isNum(en.geo[k]) && en.geo[k] > 0))) err(A, 'engine.geo needs the real bore, stroke (mm), cr (compression ratio) and peak (peak-power rpm): the engine sound is computed from them (spec.js acoustics)');
     else if (en.geo.cr < 6 || en.geo.cr > 15 || en.geo.peak > en.red * 1.2 || en.geo.bore < 30 || en.geo.bore > 120) warn(A, 'engine.geo looks off (cr 6-15, peak <= redline, bore 30-120 mm)');
+    { // fine tuning (js/tune.js, garage > DYNO): fuel the engine wants beyond stock per rev band, timing left on the table, knock margin; carbs their jet series
+      const T = en.tune, tk = (b.sliders || []).map(s => s.k), n = (v, len) => Array.isArray(v) && v.length === len && v.every(isNum);
+      if (!T) err(A, 'engine.tune missing: { fuel: [low, mid, high] %, ign: [low, high] deg, knock: [low, high] deg } (fine tuning on the dyno, js/tune.js)');
+      else {
+        if (!n(T.fuel, 3) || !n(T.ign, 2) || !n(T.knock, 2)) err(A, 'engine.tune needs fuel [3], ign [2] and knock [2] numbers');
+        else if (T.knock[0] < T.ign[0] - 1 || T.knock[1] < T.ign[1] - 1 || T.knock.some(v => v < 0) || T.fuel.some(v => Math.abs(v) > 8)) warn(A, 'engine.tune looks off (knock margin below the timing it wants, or fuel beyond +-8%)');
+        if (tk.includes('mj') && !(Array.isArray(T.jets) && T.jets.length > 4 && T.jets.every((v, i) => isNum(v) && (!i || v > T.jets[i - 1])) && T.jets.includes(T.jet))) err(A, 'main jet slider (mj) needs engine.tune.jets (the carb\'s rising jet series) and jet (the stock size, one of them)');
+        if (!tk.some(k => k === 'fl' || k === 'mj')) warn(A, 'engine.tune without fuel sliders (fl fm fh or mj nc ps): nothing to tune on the dyno');
+        for (const s of b.sliders || []) if (s.on && s.on !== 'carb' && s.on !== 'fi') err(A, `slider ${s.k}: on must be 'carb' or 'fi'`);
+      }
+    }
     const D = b.drivetrain === 'cvt' ? b.cvt : b.manual, DN = b.drivetrain === 'cvt' ? 'cvt' : 'manual';
     if (!D) err(A, `drivetrain ${b.drivetrain} needs a "${DN}" block`);
     else if (b.drivetrain === 'cvt') {

@@ -1,6 +1,7 @@
 // Turns a bike definition + its garage settings into the flat spec the physics reads.
 import { lerpTable } from './util.js';
 import { DRIVES } from './drivetrain.js';
+import { applyTune, airOf } from './tune.js';
 
 // part option keys that multiply instead of replace (capx: clutch torque capacity, etax: chain/belt efficiency; drivetrain.js applies both;
 // frx: engine friction, e.g. oil; fux: fuel use; ccx: displacement, e.g. a bore-up kit)
@@ -20,10 +21,10 @@ export function computeSpec(bike, b) {
     type: bike.drivetrain, ...ch,
     ie: en.Ie, ie0: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
     peakPS: en.peakPS, tachMax: en.tachMax, ram: en.ram || 0, sound: bike.sound, geo: en.geo,
-    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, ccx: 1, crd: 0, evo: 0, muf: 1, hdr: .85, sIn: 0, sBri: 0, sMech: 0, sPun: 0, sRgh: 0, sCrk: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0,
+    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, ccx: 1, crd: 0, evo: 0, muf: 1, hdr: .85, sIn: 0, sBri: 0, sMech: 0, sPun: 0, sRgh: 0, sCrk: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0, air: 1,
   };
   for (const [k, p] of Object.entries(bike.parts)) {
-    const o = p.o[b[k]] || p.o[0];
+    const o = p.o[b[k]] || p.o[0]; s.air *= airOf(k, o); // air: how much more air the fitted parts flow (tune.js: the fuel it then needs)
     for (const [kk, v] of Object.entries(o)) { if (kk === 'n') continue; if (MUL.has(kk)) s[kk] *= v; else if (ADD.has(kk)) s[kk] += v; else s[kk] = v; }
   }
   // engine internals: tilt the torque curve about 60% of the stock redline (tqs 0.05 = 5% less at idle-ish revs, ~2% more at the top),
@@ -32,6 +33,7 @@ export function computeSpec(bike, b) {
   if (s.redd) s.red = Math.min(s.red + s.redd, s.TQ[s.TQ.length - 1][0]);
   if (s.frx !== 1) s.fric = [s.fric[0] * s.frx, s.fric[1] * s.frx];
   if (s.fux !== 1) s.fuel = { ...s.fuel, idle: s.fuel.idle * s.fux, k: s.fuel.k * s.fux };
+  applyTune(bike, s, b); // garage > DYNO fine tuning: fuel, ignition and cam timing, idle, limiter (tune.js)
   if (b.cc) s.c = b.cc; if (b.cw) s.wc = b.cw; // custom body / wheel colours from the garage's pickers
   s.m0 = s.m; s.m += s.dm;
   s.kf = b.kf * 1000; s.kr = b.kr * 1000; s.damp = b.damp / 100;

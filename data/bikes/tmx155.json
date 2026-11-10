@@ -88,6 +88,7 @@
       0.8,
       0.00025
     ],
+    "tune": {"fuel": [6, 2, 5], "ign": [3, 4], "knock": [6, 7], "jets": [88, 90, 92, 95, 98, 100, 102, 105, 108, 110, 112, 115, 118, 120, 122, 125], "jet": 105, "scr": 1},
     "fuel": {
       "cap": 10.3,
       "idle": 0.00017,
@@ -279,8 +280,8 @@
       "int": 1,
       "o": [
         { "n": "Stock" },
-        { "n": "Keihin PE24 (+3%)", "sIn": 0.75, "sBri": 0.05, "pow": 1.03, "tqs": 0.02, "fux": 1.05 },
-        { "n": "Keihin PE28 (+6%, thirsty)", "sIn": 1.5, "sBri": 0.1, "pow": 1.06, "tqs": 0.05, "fux": 1.12 }
+        { "n": "Keihin PE24 (+3%)", "jet": 108, "sIn": 0.75, "sBri": 0.05, "pow": 1.03, "tqs": 0.02, "fux": 1.05 },
+        { "n": "Keihin PE28 (+6%, thirsty)", "jet": 118, "sIn": 1.5, "sBri": 0.1, "pow": 1.06, "tqs": 0.05, "fux": 1.12 }
       ]
     },
     "valves": {
@@ -539,7 +540,13 @@
       "min": 20,
       "max": 90,
       "u": "%"
-    }
+    },
+    {"k": "mj", "l": "Main jet", "min": -4, "max": 5, "u": "", "f": "jet"},
+    {"k": "nc", "l": "Needle clip (1 = top groove, leanest)", "min": 1, "max": 5, "u": ""},
+    {"k": "ps", "l": "Pilot screw (out = richer)", "min": 0.5, "max": 3.5, "step": 0.25, "u": " turns"},
+    {"k": "ig", "l": "Ignition timing", "min": -6, "max": 6, "step": 0.5, "u": "°", "sg": 1},
+    {"k": "ct", "l": "Cam timing (+ advanced, − retarded)", "min": -6, "max": 6, "u": "°", "sg": 1},
+    {"k": "idl", "l": "Idle speed", "min": -200, "max": 400, "step": 50, "u": " rpm", "sg": 1}
   ],
   "toggles": [
     {
@@ -549,6 +556,12 @@
   ],
   "hint": "KEY on, hold START in neutral, pull CLUTCH, shift ▼ into 1st (1-N-2-3-4-5) and ease it out. With the sidecar: it pulls toward the sidecar when you accelerate and away when you brake, and the sidecar lifts in fast turns toward it",
   "defaults": {
+    "mj": 0,
+    "nc": 3,
+    "ps": 2,
+    "ig": 0,
+    "ct": 0,
+    "idl": 0,
     "sidecar": 0,
     "exhaust": 0,
     "tune": 0,

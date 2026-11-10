@@ -11,6 +11,7 @@ import { TC } from './controls.js';
 import { view, accent, pulse, reframe } from './studio.js';
 import { bikeCard } from './bikecard.js';
 import { dynoRun, dynoGear, DRUM } from './dyno.js';
+import { tuneRead, sliderOn, jetOf } from './tune.js';
 
 export const G = { onBike: null, onChange: null };   // set by main.js
 const GAME = 'cpm-motor-edition', $$ = s => document.querySelectorAll(s), esc = s => String(s).replace(/[&<>"']/g, c => '&#' + c.charCodeAt(0) + ';');
@@ -23,7 +24,8 @@ const TABS = [
   ['stats', 'STATS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }], ['dyno', 'DYNO', { az: 1.5, el: .06, r: 2.7, ty: .4, tz: -.45 }], ['builds', 'BUILDS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }],
 ];
 const WHERE = { exhaust: 'engine', ecu: 'engine', fuelsys: 'engine', tune: 'engine', trim: 'wheels', intake: 'engine', flywheel: 'engine', rollers: 'drive', cspring: 'drive', clspring: 'drive', pulley: 'drive', fs: 'drive', rs: 'drive', autoClutch: 'drive', iss: 'drive', qs: 'drive', tc: 'drive', ver: 'drive', ysp: 'drive', kit: 'engine', frame: 'look', decal: 'look', tb: 'engine', injector: 'engine', carb: 'engine', valves: 'engine', port: 'engine', cyl: 'engine', piston: 'engine', oil: 'engine', coil: 'engine', cdi: 'engine', plug: 'engine', cam: 'engine', battery: 'engine', clutch: 'drive', chain: 'drive', belt: 'drive', lines: 'wheels',
-  pf: 'susp', pr: 'susp', yf: 'susp', yr: 'susp', kf: 'susp', kr: 'susp', damp: 'susp', tires: 'wheels', brakes: 'wheels', wheelcol: 'wheels', rimstripe: 'wheels' };
+  pf: 'susp', pr: 'susp', yf: 'susp', yr: 'susp', kf: 'susp', kr: 'susp', damp: 'susp', tires: 'wheels', brakes: 'wheels', wheelcol: 'wheels', rimstripe: 'wheels',
+  fl: 'dyno', fm: 'dyno', fh: 'dyno', il: 'dyno', ih: 'dyno', ig: 'dyno', ct: 'dyno', idl: 'dyno', rl: 'dyno', mj: 'dyno', nc: 'dyno', ps: 'dyno' }; // fine tuning (tune.js)
 const where = k => WHERE[k] || (k.startsWith('cf') ? 'carbon' : 'look');
 const has = t => t === 'look' || t === 'dyno' || t === 'wheels' || t === 'stats' || t === 'builds' || Object.keys(ctx.bike.parts).some(k => where(k) === t) || ctx.bike.sliders.some(s => where(s.k) === t) || ctx.bike.toggles.some(s => where(s.k) === t);
 let tab = 'engine', sId = '', sSpec = null;
@@ -96,6 +98,9 @@ function subHTML(bike, b) {
   if (!subs.some(x => x[0] === sub)) sub = subs[0][0];
   return `<div class=gsub>${subs.map(([id, l]) => { const n = ks.filter(k => subOf(k) === id && b[k] !== bike.defaults[k]).length; return `<button class="gs${id === sub ? ' on' : ''}" data-sub=${id}>${l}${n ? `<i>${n}</i>` : ''}</button>`; }).join('')}</div><p class=gsubd>${SUBS.find(x => x[0] === sub)[2]}</p>`;
 }
+// a slider's value as shown: signed offsets get their +, the main jet shows the jet's real size
+const sval = (s, v) => s.f === 'jet' ? '#' + jetOf(ctx.bike, ctx.spec, v - ctx.bike.defaults[s.k])[0] : (s.sg && v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + s.u;
+const sliderHTML = (s, b, def) => `<div class=pr><div class=pl>${s.l} <b id=v_${s.k}>${sval(s, b[s.k])}</b>${b[s.k] !== def[s.k] ? `<small> stock ${sval(s, def[s.k])}</small>` : ''}</div><input type=range min=${s.min} max=${s.max} step=${s.step || 1} value=${b[s.k]} data-s=${s.k}></div>`;
 const hex = v => /^#[0-9a-f]{6}$/i.test(v) ? v : '#888888';
 function body(keep) {
   const bike = ctx.bike, b = ctx.bcfg, def = bike.defaults; let h = '';
@@ -107,7 +112,7 @@ function body(keep) {
     for (const [k, p] of Object.entries(bike.parts)) if (where(k) === tab && (tab !== 'engine' || subOf(k) === sub)) {
       h += `<div class=pr><div class=pl>${p.l}</div><div class=opts>${p.o.map((o, i) => { const sw = o.c || o.wc || o.rim || o.ec || o.hd; return `<button class="opt${b[k] == i ? ' on' : ''}" data-k=${k} data-i=${i}>${sw ? `<i class=dot style="background:${sw}"></i>` : ''}<b>${o.n}</b>${b[k] == i ? '<small>fitted</small>' : `<small>${delta(k, i)}</small>`}</button>`; }).join('')}</div></div>`;
     }
-    for (const s of bike.sliders) if (where(s.k) === tab) h += `<div class=pr><div class=pl>${s.l} <b id=v_${s.k}>${b[s.k]}${s.u}</b>${b[s.k] !== def[s.k] ? `<small> stock ${def[s.k]}${s.u}</small>` : ''}</div><input type=range min=${s.min} max=${s.max} step=${s.step || 1} value=${b[s.k]} data-s=${s.k}></div>`;
+    for (const s of bike.sliders) if (where(s.k) === tab) h += sliderHTML(s, b, def);
     const tg = bike.toggles.filter(s => where(s.k) === tab);
     if (tg.length) h += `<div class=pr><div class=pl>Assists</div><div class=chips>${tg.map(t => `<button class="chip${b[t.k] ? ' on' : ''}" data-t=${t.k}>${t.l}</button>`).join('')}</div></div>`;
     if (tab === 'look' || tab === 'wheels') { const k = tab === 'look' ? 'cc' : 'cw'; h += `<div class=pr><div class=pl>Custom ${tab === 'look' ? 'body' : 'wheel'} colour</div><div class=crow><input type=color data-cc=${k} value="${hex(b[k] || (tab === 'look' ? ctx.spec.c : ctx.spec.wc))}"><button class=chip data-clr=${k}>Clear</button></div></div>`; }
@@ -146,7 +151,7 @@ $('garage').onclick = e => {
 };
 $('garage').oninput = e => {
   const d = e.target.dataset, b = ctx.bcfg;
-  if (d.s) { b[d.s] = +e.target.value; $('v_' + d.s).textContent = b[d.s] + ctx.bike.sliders.find(x => x.k === d.s).u; changed(false); }
+  if (d.s) { b[d.s] = +e.target.value; changed(false); $('v_' + d.s).textContent = sval(ctx.bike.sliders.find(x => x.k === d.s), b[d.s]); if (tab === 'dyno') tuneLive(); }
   else if (d.cc) { b[d.cc] = e.target.value; changed(false); }
 };
 // RESET TO STOCK: two taps (the first arms it) so a stray tap can't wipe a build
@@ -168,30 +173,49 @@ function buildName() {
   const bike = ctx.bike, b = ctx.bcfg, def = bike.defaults, L = [];
   for (const [k, p] of Object.entries(bike.parts)) if ((where(k) === 'engine' || where(k) === 'drive') && b[k] !== def[k] && p.o[b[k]]) L.push(p.o[b[k]].n.replace(/\s*\(.*\)/, ''));
   for (const s of bike.sliders) if (where(s.k) === 'drive' && b[s.k] !== def[s.k]) L.push(`${s.l} ${b[s.k]}${s.u}`);
+  if (ctx.spec.tuned) L.push('fine-tuned');
   return L.length ? L.join(', ') : 'Stock engine';
+}
+// ---- fine tuning (js/tune.js): the sliders a tuner works with the bike on the drum, the wideband reading and the knock ears ----
+const TGRP = { fl: ['Fuel', 'Per cent more or less fuel than the fitted map, in three rev bands. Best power sits near 13.0 : 1; leaner saves fuel and crackles on the overrun, far too lean loses power fast. Freer-breathing parts need more fuel.'],
+  mj: ['Carburettor', 'Main jet feeds the top end, the needle clip the mid range, the screw idle and low revs. Best power sits near 13.0 : 1. A freer pipe or filter needs bigger jets.'],
+  il: ['Ignition', 'Degrees of spark advance against stock. A little more usually finds power; too much and the engine pings (knock), sooner with high compression or a lean mixture.'], ig: ['Ignition', 'The pickup plate turns the whole spark curve. A little advance usually finds power; too much and the engine pings (knock), sooner with high compression or a lean mixture.'],
+  ct: ['Cam timing', 'Slotted cam sprocket, crank degrees. Advanced fills in the bottom end, retarded moves the power up the revs.'], idl: ['Idle and limiter', 'Idle speed, and where the rev limiter cuts in.'] };
+const AFRC = v => v > 13.45 ? 'dn' : v < 12.55 ? 'nu' : 'up';
+function tuneLine() {
+  const r = tuneRead(ctx.bike, ctx.spec, ctx.bcfg); if (!r) return '';
+  const k = r.knock, kn = Math.max(...k), wh = k[0] > 0 && k[2] > 0 ? 'right through the revs' : k[2] > 0 ? 'at the top end' : k[0] > 0 ? 'at low revs' : 'in the mid range';
+  return `Wideband AFR · ${['low', 'mid', 'top'].map((l, i) => `${l} <em class=${AFRC(r.afr[i])}>${r.afr[i].toFixed(1)}</em>`).join(' · ')} <small>(best power 12.8–13.2)</small><br>Knock: ${kn > 0 ? `<em class=dn>${kn > 2 ? 'heavy' : 'light'} pinging ${wh}</em>` : '<em class=up>none</em>'} · crank peak <b>${pk(ctx.spec)[0].toFixed(1)} PS</b>`;
+}
+function tuneLive() { const e = $('dTune'); if (e) e.innerHTML = tuneLine(); }
+function tuneHTML() {
+  const bike = ctx.bike, b = ctx.bcfg, sl = bike.sliders.filter(s => where(s.k) === 'dyno' && sliderOn(s, ctx.spec)); if (!sl.length) return '';
+  let h = `<div class=pr><div class=pl>Fine tuning</div><p>Optional: what a tuner adjusts with the bike on the drum. Stock is safe everywhere; change something, RUN again and compare.</p><div class=dlive id=dTune>${tuneLine()}</div></div>`;
+  for (const s of sl) { const g = TGRP[s.k]; if (g) h += `<div class=pr><div class=pl>${g[0]}</div><p>${g[1]}</p></div>`; h += sliderHTML(s, b, bike.defaults); }
+  return h + `<div class=pr><button class=chip data-treset=1>↺ Reset fine tuning to stock</button></div>`;
 }
 function dynoHTML() {
   const s = ctx.spec, g = dGearNow(), L = runs(), busy = !!play;
   const gears = s.type === 'cvt' ? `<p>CVT: the variator shifts by itself through the pull, so the chart runs against road speed.</p>`
     : `<div class=crow>${Array.from({ length: s.nG }, (_, i) => i + 1).map(i => `<button class="chip${i === g ? ' on' : ''}" data-dy=gear data-i=${i}>${ORD(i)}</button>`).join('')}</div>`;
   const best = L[0] ? L[0].r.hp : 0;
-  const row = (x, col, label) => `<tr><td><i style="background:${col}"></i>${label}</td><td><b>${x.r.hp.toFixed(1)}</b></td><td>${r50(x.r.hpRpm)}</td><td><b>${x.r.tq.toFixed(1)}</b></td><td>${r50(x.r.tqRpm)}</td><td>${Math.round(x.r.loss * 100)}%</td><td>${x === L[0] || !best ? '' : `<em class=${x.r.hp >= best ? 'up' : 'dn'}>${x.r.hp >= best ? '+' : '−'}${Math.abs(x.r.hp - best).toFixed(1)}</em>`}</td></tr><tr class=bn><td colspan=7>${esc(x.name)} · ${x.r.cvt ? 'CVT' : ORD(x.r.gear) + ' gear'} · ${x.r.kphEnd.toFixed(0)} km/h at the limiter</td></tr>`;
+  const row = (x, col, label) => `<tr><td><i style="background:${col}"></i>${label}</td><td><b>${x.r.hp.toFixed(1)}</b></td><td>${r50(x.r.hpRpm)}</td><td><b>${x.r.tq.toFixed(1)}</b></td><td>${r50(x.r.tqRpm)}</td><td>${Math.round(x.r.loss * 100)}%</td><td>${x === L[0] || !best ? '' : `<em class=${x.r.hp >= best ? 'up' : 'dn'}>${x.r.hp >= best ? '+' : '−'}${Math.abs(x.r.hp - best).toFixed(1)}</em>`}</td></tr><tr class=bn><td colspan=7>${esc(x.name)} · ${x.r.cvt ? 'CVT' : ORD(x.r.gear) + ' gear'} · ${x.r.kphEnd.toFixed(0)} km/h at the limiter${x.tn ? ` · AFR ${x.tn.afr.map(v => v.toFixed(1)).join(' / ')}${Math.max(...x.tn.knock) > 0 ? ' · <em class=dn>knock</em>' : ''}` : ''}</td></tr>`;
   const tbl = L.length || L.stock ? `<table class=dres><tr><th></th><th>Wheel PS</th><th>rpm</th><th>Nm</th><th>rpm</th><th>Loss</th><th>vs #${L[0] ? L[0].n : ''}</th></tr>${L.stock ? row(L.stock, '#8a929b', 'Stock') : ''}${L.map(x => row(x, x.col, '#' + x.n)).join('')}</table>` : '<p>No runs yet. Fit some parts, then press RUN.</p>';
   return `<div class=pr><div class=pl>Dyno gear</div>${gears}</div>
 <div class=pr><div class=crow><button class="chip on" data-dy=run${busy ? ' disabled' : ''}>${busy ? 'RUNNING…' : '▶ RUN'}</button><button class="chip${L.stock ? ' on' : ''}" data-dy=stock${busy ? ' disabled' : ''}>Stock ghost</button><button class=chip data-dy=clear${busy ? ' disabled' : ''}>Clear runs</button></div>
 <canvas class=dynor width=400 height=250></canvas><div class=dlive id=dLive>${busy ? '' : `Brochure (crank) peak with this build: <b>${dynoRun(s, ctx.drive, ctx.bcfg, g || 1).crank.toFixed(1)} PS</b>. The drum reads what reaches the rear tyre.`}</div></div>
 <div class=pr><div class=pl>Results</div>${tbl}</div>
-<details><summary>How this dyno works</summary><div class=det>An inertia drum (${DRUM} kg at its surface) is spun by the rear tyre at full throttle from low revs to the limiter${s.type === 'cvt' ? ', the CVT shifting as it would on the road' : ' in one gear'}. Power = drum mass × its acceleration × speed, so it shows rear-wheel PS: the chain or belt, gearbox, clutch and the engine's own spinning parts all take their share (Loss = how far below the crank figure). Torque is that power at the engine's rpm. Every fitted part counts: cams and throttle bodies move the curve up the rev range, oil cuts friction, a light flywheel reads higher here, a heavy one lower. No wind on a dyno, so no ram air.</div></details>`;
+${busy ? '' : tuneHTML()}<details><summary>How this dyno works</summary><div class=det>An inertia drum (${DRUM} kg at its surface) is spun by the rear tyre at full throttle from low revs to the limiter${s.type === 'cvt' ? ', the CVT shifting as it would on the road' : ' in one gear'}. Power = drum mass × its acceleration × speed, so it shows rear-wheel PS: the chain or belt, gearbox, clutch and the engine's own spinning parts all take their share (Loss = how far below the crank figure). Torque is that power at the engine's rpm. Every fitted part and every fine-tuning setting counts: cams and throttle bodies move the curve up the rev range, oil cuts friction, a light flywheel reads higher here, a heavy one lower. No wind on a dyno, so no ram air.</div></details>`;
 }
 function dynoAct(a, i) {
   const L = runs(); if (play && a !== 'gear') return;
   if (a === 'gear') { if (play) return; dGear = i; body(1); }
   else if (a === 'clear') { L.length = 0; L.n = 0; L.stock = null; body(1); }
-  else if (a === 'stock') { L.stock = L.stock ? null : { r: dynoRun(stock(), ctx.drive, ctx.bike.defaults, dGearNow()), name: 'Stock', col: '#8a929b' }; body(1); }
+  else if (a === 'stock') { L.stock = L.stock ? null : { r: dynoRun(stock(), ctx.drive, ctx.bike.defaults, dGearNow()), tn: tuneRead(ctx.bike, stock(), ctx.bike.defaults), name: 'Stock', col: '#8a929b' }; body(1); }
   else if (a === 'run') {
     const r = dynoRun(ctx.spec, ctx.drive, ctx.bcfg, dGearNow()), n = ++L.n;
     // the pull plays back in 5-9 s whatever the drum took, with the engine sound following the revs; a short hold on the limiter at the end
-    play = { run: { r, n, name: buildName(), col: DCOL[(n - 1) % DCOL.length] }, t0: performance.now(), k: r.T / Math.min(9, Math.max(5, r.T)), i: 0, end: 0 };
+    play = { run: { r, n, name: buildName(), tn: tuneRead(ctx.bike, ctx.spec, ctx.bcfg), col: DCOL[(n - 1) % DCOL.length] }, t0: performance.now(), k: r.T / Math.min(9, Math.max(5, r.T)), i: 0, end: 0 };
     TC.rev = 1; $('revB').classList.add('on'); body(1);
   }
 }
