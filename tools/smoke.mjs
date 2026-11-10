@@ -34,6 +34,7 @@ try {
   if (r.gpu && (!r.bun.on || r.bun.n < 20)) errs.push(`render bundles (bundle.js) not active on WebGPU: ${JSON.stringify(r.bun)}`); // (static town: ~150 objects)
   if (r.gpu && r.bun.ej) errs.push(`render bundles: ${r.bun.ej} object(s) kept changing and were moved back out of the bundles (bundle.js eject)`);
   const bad = Object.entries(r.bikes).filter(([, v]) => !v.x).map(([k]) => k); if (bad.length) errs.push('non-finite position after switching to ' + bad.join(', '));
+  { const g = await pg.evaluate(grassProbe); if (g.miss) errs.push(`grass window (grass.js grassFrame) leaves out ${g.miss} tufts the camera can see, e.g. ${g.eg}`); if (g.n && g.pct > 85) errs.push(`grass window draws ${g.pct.toFixed(0)}% of the square on ordinary riding views (expected about 70%)`); }
   if (a.includes('--perf')) for (let i = 0; i < 5; i++) { console.log(await pg.evaluate(perfProbe, [i, +(opt('--top') || 14)])); if (opt('--shot')) await pg.screenshot({ path: opt('--shot').replace(/(\.png)?$/, '-' + i + '.png') }); }
   else if (opt('--shot')) await pg.screenshot({ path: opt('--shot') });
   console.log(errs.length ? '' : `smoke: ok (${Object.keys(r.bikes).length} bikes switched, ${r.build})`);
@@ -67,4 +68,27 @@ async function perfProbe([only, top]) {
     out.push(`${name.padEnd(10)} drawCalls ${(dc / 10).toFixed(0).padStart(4)}  tris ${(tri / 10 / 1000).toFixed(0)}k  main-camera objects ${objs}` + '\n' + [...G].sort((a, b) => b[1].n - a[1].n).slice(0, top).map(([k, g]) => '    ' + String(g.n).padStart(4) + '  ' + k + '  (' + (g.v / 1000).toFixed(0) + 'k verts; e.g. ' + g.ex + ')').join('\n'));
   }
   return out.join('\n');
+}
+
+// runs in the page: the grass is only drawn inside a window fitted to the view (grass.js). Random cameras: every tuft of the full
+// square that the frustum can see (within the fade distance) must be inside the window; and on riding views it must really save tufts.
+async function grassProbe() {
+  const THREE = await import('three'), GM = await import('./js/grass.js'), G = GM.GRASS; if (!G.on) return { n: 0 };
+  let seed = 7, miss = 0, eg = '', sw = 0, sf = 0; const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const cam = new THREE.PerspectiveCamera(), fr = new THREE.Frustum(), pm = new THREE.Matrix4(), sp = new THREE.Sphere(); cam.rotation.order = 'YXZ';
+  for (let n = 0; n < 800; n++) {
+    const ride = n < 300; // ride: level-ish chase / first-person views; the rest anything (steep pitch, roll, wide lenses, portrait)
+    cam.fov = ride ? 72 + rnd() * 14 : 50 + rnd() * 74; cam.aspect = [1.33, 1.78, 2.17, .56][ride ? 1 + (n & 1) : n & 3]; cam.near = .1; cam.far = 3000; cam.updateProjectionMatrix();
+    cam.position.set((rnd() - .5) * 2000, rnd() * 60, (rnd() - .5) * 2000); cam.rotation.set(ride ? -.3 + (rnd() - .5) * .3 : (rnd() - .5) * (n % 5 ? 1.2 : 3.1), rnd() * 6.283, (rnd() - .5) * (ride ? .3 : 1.4)); cam.updateMatrixWorld(true);
+    G.full = true; GM.grassFrame(cam, []); const F = { x0: G.x0, z0: G.z0, w: G.w, h: G.h };
+    G.full = false; GM.grassFrame(cam, []); const W = { x0: G.x0, z0: G.z0, w: G.w, h: G.h }; if (ride) { sw += W.w * W.h; sf += F.w * F.h; }
+    if (G.mesh.geometry.instanceCount !== W.w * W.h || W.x0 < F.x0 || W.z0 < F.z0 || W.x0 + W.w > F.x0 + F.w || W.z0 + W.h > F.z0 + F.h) { miss++; eg = 'window outside the square / wrong count'; continue; }
+    pm.multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse.copy(cam.matrixWorld).invert()); fr.setFromProjectionMatrix(pm);
+    for (let j = 0; j < F.h; j += 2) for (let i = 0; i < F.w; i += 2) {
+      const cx = F.x0 + i, cz = F.z0 + j; if (cx >= W.x0 && cx < W.x0 + W.w && cz >= W.z0 && cz < W.z0 + W.h) continue;
+      const x = (cx + .5) * G.SP, z = (cz + .5) * G.SP; if (Math.hypot(x - cam.position.x, z - cam.position.z) > G.RF) continue;
+      for (const dy of [-60, -20, -6, -2, -.5, 0, 3, 15]) { sp.center.set(x, cam.position.y + dy, z); sp.radius = .75; if (fr.intersectsSphere(sp)) { miss++; eg = `pose ${n} cell ${i},${j} dy ${dy}`; break; } }
+    }
+  }
+  return { n: 800, miss, eg, pct: sw / sf * 100 };
 }

@@ -14,7 +14,7 @@ import { cfg, Q } from './config.js';
 export const GRASS = { on: false, mesh: null, n: 0 };
 // per preset: grid size (tufts per side) and the fade radius (m). spacing = 2 * HALF / G
 const LV = { low: { g: 128, r: 26 }, med: { g: 200, r: 40 }, high: { g: 256, r: 52 } };
-const C = uniform(new THREE.Vector2()), CAM = uniform(new THREE.Vector3()), P1 = uniform(new THREE.Vector3(0, 0, -1)), P2 = uniform(new THREE.Vector3(0, 0, -1)), WIND = uniform(1);
+const C = uniform(new THREE.Vector2()), CAM = uniform(new THREE.Vector3()), P1 = uniform(new THREE.Vector3(0, 0, -1)), P2 = uniform(new THREE.Vector3(0, 0, -1)), WIND = uniform(1), NW = uniform(1); // C: the window's first cell, NW: cells per row (a float: three writes every uniform-buffer number as one)
 
 // one tuft: 3 tapered blades round the centre, 2 segments each (5 vertices, 3 triangles), y = 0..1 along the blade.
 // Normals point up: the tufts shade like the ground they stand on instead of flickering as their faces turn.
@@ -52,8 +52,8 @@ export function buildGrass(T) {
     return fract(b.x.add(b.y).mul(b.z));
   };
   {
-    const id = instanceIndex, gx = float(id.mod(uint(G))), gz = float(id.div(uint(G)));
-    const cell = C.add(vec2(gx, gz)).sub(G / 2), h1 = hash(cell), h2 = hash(cell.add(17.7)), h3 = hash(cell.add(vec2(-41.3, 9.1))), h4 = hash(cell.add(vec2(5.3, -63.9)));
+    const id = instanceIndex, nw = uint(NW), gx = float(id.mod(nw)), gz = float(id.div(nw));
+    const cell = C.add(vec2(gx, gz)), h1 = hash(cell), h2 = hash(cell.add(17.7)), h3 = hash(cell.add(vec2(-41.3, 9.1))), h4 = hash(cell.add(vec2(5.3, -63.9)));
     const base = cell.add(vec2(h1, h2)).mul(SP);
     // terrain: the grid cell under the tuft, the same two triangles as the PlaneGeometry (diagonal from (i, j+1) to (i+1, j))
     const g = base.sub(vec2(T.x0, T.z0)).div(T.ts), inside = g.x.greaterThan(0).and(g.y.greaterThan(0)).and(g.x.lessThan(W - 1)).and(g.y.lessThan(W - 1));
@@ -87,17 +87,40 @@ export function buildGrass(T) {
   m.colorNode = vec4(vt.mul(mix(float(.5), float(1.18), y)).add(vec3(.03, .05, 0).mul(y.mul(y))), 1); // dark roots (self-shadow), sunlit tips
   const g = tuft(); g.instanceCount = G * G;
   const mesh = new THREE.Mesh(g, m); mesh.frustumCulled = false; mesh.castShadow = false; mesh.receiveShadow = Q.shadow > 0; mesh.matrixAutoUpdate = false; mesh.name = 'grass';
-  scene.add(mesh); Object.assign(GRASS, { on: true, mesh, n: G * G, SP, HALF });
+  scene.add(mesh); Object.assign(GRASS, { on: true, mesh, n: G * G, G, RF, SP, HALF, drawn: G * G });
 }
 const clampN = v => v < 0 ? 0 : v > 1 ? 1 : v;
 
 // every frame: snap the grid to the camera, shifted ahead of it (little of the field is ever behind you); pushers = [{x, z, r}]
-const fw = new THREE.Vector3();
+// Build 11.99: only the part of that G x G square the camera can see is drawn. The view's footprint on the ground is a sector
+// (the compass bearings of the frustum's four corner rays, out to the fade distance RF); its bounding box, clipped to the
+// square, is the window: C = its first cell, NW = cells per row, instanceCount = cells in it. Tufts are hashed by world cell,
+// so nothing moves or pops, and about a third of the tufts (all of them vertex-shaded before) are never sent to the GPU.
+// Looking steeply down or up (the ground behind the camera is in view) draws the whole square as before.
+const fw = new THREE.Vector3(), SG = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
 export function grassFrame(camera, pushers, show = true) {
   if (!GRASS.on) return; const M = GRASS.mesh; M.visible = show; if (!show) return;
   camera.getWorldPosition(fw); const cx = fw.x, cy = fw.y, cz = fw.z; camera.getWorldDirection(fw);
-  const l = Math.hypot(fw.x, fw.z) || 1, ahead = GRASS.HALF * .4;
-  C.value.set(Math.floor((cx + fw.x / l * ahead) / GRASS.SP), Math.floor((cz + fw.z / l * ahead) / GRASS.SP)); CAM.value.set(cx, cy, cz);
+  const { G, SP, RF } = GRASS, l = Math.hypot(fw.x, fw.z) || 1, ahead = GRASS.HALF * .4, fx = fw.x / l, fz = fw.z / l;
+  let x0 = Math.floor((cx + fx * ahead) / SP) - G / 2, z0 = Math.floor((cz + fz * ahead) / SP) - G / 2, x1 = x0 + G - 1, z1 = z0 + G - 1;
+  if (l > .25 && !GRASS.full) { // (GRASS.full: tools draw the whole square to compare)
+    const e = camera.matrixWorld.elements, P = camera.projectionMatrix.elements, th = 1 / P[0], tv = 1 / P[5]; let lo = 9, hi = -9;
+    for (const [a, b] of SG) { // corner ray = forward + right * a * tan(h/2) + up * b * tan(v/2); its bearing relative to the forward one
+      const dx = fw.x + e[0] * a * th + e[4] * b * tv, dz = fw.z + e[2] * a * th + e[6] * b * tv, f = dx * fx + dz * fz, s = dz * fx - dx * fz;
+      if (f <= 0) { lo = 9; break; } const g = Math.atan2(s, f); if (g < lo) lo = g; if (g > hi) hi = g;
+    }
+    if (lo < 9 && hi - lo < 2.9) {
+      const a0 = Math.atan2(fz, fx), A = a0 + lo - .06, B = a0 + hi + .06, ca = Math.cos(A), sa = Math.sin(A), cb = Math.cos(B), sb = Math.sin(B);
+      let nx = Math.min(0, ca, cb), px = Math.max(0, ca, cb), nz = Math.min(0, sa, sb), pz = Math.max(0, sa, sb);
+      for (let k = Math.ceil(A / (Math.PI / 2)); k * (Math.PI / 2) <= B; k++) { const q = ((k % 4) + 4) % 4; if (q === 0) px = 1; else if (q === 1) pz = 1; else if (q === 2) nx = -1; else nz = -1; } // the arc reaches an axis
+      const mg = 1.2; // tuft width, lean, wind and the push under the bike
+      x0 = Math.max(x0, Math.floor((cx + nx * RF - mg) / SP)); x1 = Math.min(x1, Math.floor((cx + px * RF + mg) / SP));
+      z0 = Math.max(z0, Math.floor((cz + nz * RF - mg) / SP)); z1 = Math.min(z1, Math.floor((cz + pz * RF + mg) / SP));
+    }
+  }
+  const w = Math.max(1, x1 - x0 + 1), h = Math.max(1, z1 - z0 + 1);
+  C.value.set(x0, z0); NW.value = w; M.geometry.instanceCount = GRASS.drawn = w * h; CAM.value.set(cx, cy, cz);
+  GRASS.x0 = x0; GRASS.z0 = z0; GRASS.w = w; GRASS.h = h; // the window, for tools
   const a = pushers[0], b = pushers[1];
   if (a) P1.value.set(a.x, a.z, a.r); else P1.value.z = -1;
   if (b) P2.value.set(b.x, b.z, b.r); else P2.value.z = -1;

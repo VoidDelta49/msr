@@ -119,6 +119,7 @@ export function motionBlur(scenePass, { gpu = false, taps = 6 } = {}) {
   const MB = {
     amount: .5,             // shutter, 0..1 of a 1/30 s exposure (Options slider); also sets the trail length
     on: false,              // main.js: riding, not on foot, the garage, menu or pause
+    warm: false,            // run the Kawase / trail passes regardless (shader warm-up)
     focus: new THREE.Vector3(), radius: 1.5, speed: 0, // world centre + radius of what moves with the camera; its speed (m/s)
     cut() { fresh = true; }, // camera cut (camera mode switch, respawn): no streak and a fresh trail
     active: false, gate: 0, // what the last update decided (tools, HUD)
@@ -148,7 +149,8 @@ export function motionBlur(scenePass, { gpu = false, taps = 6 } = {}) {
       const act = px > 1;
       // trail: frame-rate independent decay (tau .06-.16 s with the strength slider); restarts empty after any gap
       kw.keep.value = act && was ? Math.exp(-dt / (.06 + .1 * this.amount)) : 0;
-      MB.gate = gate; MB.active = kw.on = was = act; uK.value = act ? k : 0; uG.value = act ? gate * (.5 + this.amount) : 0; uT.value = act ? TRAIL * gate : 0;
+      MB.gate = gate; MB.active = was = act; kw.on = act || this.warm; // warm: renderer.js warm() runs the blur chain once so its three shaders are built at load, not at the first 60 km/h
+      uK.value = act ? k : 0; uG.value = act ? gate * (.5 + this.amount) : 0; uT.value = act ? TRAIL * gate : 0;
       pp.copy(cp); fresh = false;
     },
   };

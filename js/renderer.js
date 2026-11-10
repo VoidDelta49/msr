@@ -267,13 +267,14 @@ export const draw = () => {
 // crash, switching to 3rd person, a new area coming into view). Everything hidden is shown and frustum culling is off
 // for the duration. compileAsync links the programs in parallel where the driver allows (KHR_parallel_shader_compile on
 // WebGL, async pipelines on WebGPU), targeting the same render target as the post pass so the variants match; one real
-// draw then catches what compileAsync doesn't cover (shadow-pass depth shaders, post-processing).
+// draw then catches what compileAsync doesn't cover (shadow-pass depth shaders, post-processing, the motion blur chain).
 export async function warm() {
   const hid = [], fc = [], t0 = performance.now();
   scene.traverse(o => { if (!o.visible) { hid.push(o); o.visible = true; } if (o.frustumCulled) { fc.push(o); o.frustumCulled = false; } });
   try {
     if (renderer.compileAsync) { const rt = renderer.getRenderTarget(); if (scenePass) renderer.setRenderTarget(scenePass.renderTarget); try { await renderer.compileAsync(scene, camera); } finally { renderer.setRenderTarget(rt); } }
-    draw();
+    if (MB) MB.warm = true; // the motion blur's half-res passes only run above 60 km/h: without this their shaders were compiled mid-ride, a hitch the first time you got up to speed
+    try { draw(); } finally { if (MB) MB.warm = false; }
   } catch (e) { console.warn('shader warm-up', e); }
   for (const o of hid) o.visible = false; for (const o of fc) o.frustumCulled = true;
   return performance.now() - t0;
