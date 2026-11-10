@@ -191,7 +191,7 @@ const bikes = {};
   for (const b of Object.values(bikes)) for (const k of [...Object.keys(b.parts || {}), ...(b.sliders || []).map(x => x.k), ...(b.toggles || []).map(x => x.k)]) (used[k] ||= new Set()).add(b.id);
   // identifiers the js reads off a spec / bike: a part option or chassis key nobody reads is almost always a typo
   const readKeys = new Set(); for (const f of jsFiles) for (const m of rd('js/' + f).matchAll(/\b(?:sp|s|spec|ctx\.spec|sp2)\.(\w+)/g)) readKeys.add(m[1]);
-  const SPEC_EXTRA = new Set(['n', 'sc', 'scm', 'scX', 'scD', 'scW', 'var', 'carb', 'abs', 'bf', 'cent', 'slipper', 'eclutch', 'roller', 'lo', 'hi']);
+  const SPEC_EXTRA = new Set(['n', 'note', 'sc', 'scm', 'scX', 'scD', 'scW', 'var', 'carb', 'abs', 'bf', 'cent', 'slipper', 'eclutch', 'roller', 'lo', 'hi']);
   for (const [id, b] of Object.entries(bikes)) {
     const A = `wiring/${id}`;
     if (!/^[a-z0-9_-]{1,24}$/.test(id)) err(A, `id "${id}" is rejected by the multiplayer relay (server/worker.js: ^[a-z0-9_-]{1,24}$)`);

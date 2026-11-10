@@ -25,6 +25,7 @@ try {
   const views = opt('--views', 'right,left,q').split(',');
   for (const id of ids) {
     await pg.evaluate(async id => { window.__cpm.setBike(id); await new Promise(r => setTimeout(r, 300)); }, id);
+    if (opt('--parts')) await pg.evaluate(async P => { const c = window.__cpm; for (const kv of P.split(',')) { const [k, i] = kv.split('='); if (c.ctx.bike.parts[k]) c.ctx.bcfg[k] = Math.min(+i, c.ctx.bike.parts[k].o.length - 1); } c.S.key = true; c.recompute(); await new Promise(r => setTimeout(r, 100)); }, opt('--parts')); // garage options, e.g. --parts tires=3,rims=2,box=1
     if (opt('--var')) await pg.evaluate(async v => { const M = await import('./js/model.js'), c = window.__cpm; M.buildModel(c.ctx.bike, { var: +v }); M.applyLook(c.spec()); }, opt('--var'));
     if (opt('--paint')) await pg.evaluate(async n => { const M = await import('./js/model.js'), c = window.__cpm, o = c.ctx.bike.parts.paint?.o; if (o) M.applyLook({ ...c.spec(), ...o[Math.min(+n, o.length - 1)] }); }, opt('--paint'));
     // size of the model as drawn (m), to hold against the real L x W x H (H and W include the mirrors); the skin is built in ct space, bind pose = as drawn at rest

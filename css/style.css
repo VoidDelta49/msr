@@ -276,7 +276,7 @@ body.lefty #gauge{left:auto;right:calc(var(--er) + var(--w) + 16px)}
 .opt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left;padding:8px 10px;border-radius:10px;border:1px solid #2c343d;background:rgba(29,35,42,.8);position:relative}
 .opt b{font:700 13px system-ui;padding-left:0}.opt small{font:500 11px system-ui;color:var(--dim);min-height:13px}
 .opt.on{border-color:var(--hot);background:rgba(255,176,32,.14)}.opt.on small{color:var(--hot)}
-.dot{position:absolute;right:8px;top:8px;width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,255,255,.4)}
+.dot{position:absolute;right:8px;top:8px;width:14px;height:14px;border-radius:50%;border:1px solid rgba(255,255,255,.4)}.opt.sw b{padding-right:18px}
 em{font-style:normal;white-space:nowrap}.up{color:var(--ok)}.dn{color:var(--bad)}.nu{color:#8fb7ff}
 #gBody input[type=range]{width:100%}
 .crow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}

@@ -130,7 +130,7 @@ export function dayNight() {
   const f = -Math.sin(S.psi), g = -Math.cos(S.psi), sd = Math.sin(S.delta || 0) * .6;
   head.position.set(S.x + f * .9, S.zH + .95, S.z + g * .9);
   head.target.position.set(S.x + (f * Math.cos(sd) - g * Math.sin(sd)) * 22, S.zH - 1.5, S.z + (g * Math.cos(sd) + f * Math.sin(sd)) * 22);
-  head.intensity = 900 * gate * (dark ? 1 : 1 - sstep(-4, 4, el) * .7);
+  head.intensity = 900 * (ctx.beamK || 1) * gate * (dark ? 1 : 1 - sstep(-4, 4, el) * .7);
   const hb = ctx.inside || F.on ? 0 : gate * (dark ? 1 : 1 - sstep(-6, 2, el)); HEAD.value = hb; BM.pool.visible = BM.cone.visible = hb > .005;
   if (hb > .005) {
     const hp = head.position, ht = head.target.position, dx = ht.x - hp.x, dz = ht.z - hp.z, dl = Math.hypot(dx, dz) || 1;

@@ -8,7 +8,7 @@ import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad, LMF, OBBS } from './wor
 ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
-import { B, buildModel, applyLook, snapshot, releaseSkin, blobTick, lamps } from './model.js';
+import { B, buildModel, applyLook, snapshot, releaseSkin, blobTick, lamps, ledTick, shapeOf } from './model.js';
 import { step } from './physics.js';
 import { dayNight } from './daynight.js';
 import { initAudio, updAudio, blip } from './audio.js';
@@ -59,9 +59,9 @@ function reset() {
   });
   ctx.drive.reset(S); S.hF = roadH(S.x, S.z); S.hR = S.hF; S.zH = S.hF + (ctx.spec.yf + ctx.spec.yr + ctx.spec.pf + ctx.spec.pr) / 2; syncBody();
 }
-// a part that changes the model's shape (B.var, e.g. spoke vs mag wheels) rebuilds it
+// a part that changes the model's shape (shapeOf: spoke vs mag wheels, tyres, rims, top box...) rebuilds it
 function recompute() {
-  ctx.spec = computeSpec(ctx.bike, ctx.bcfg); if ((ctx.spec.var | 0) !== B.var || (ctx.spec.sc && ctx.bike.sidecar ? 1 : 0) !== B.sc) { buildModel(ctx.bike, ctx.spec); attachCam(); } applyLook(ctx.spec);
+  ctx.spec = computeSpec(ctx.bike, ctx.bcfg); if (shapeOf(ctx.spec, ctx.bike) !== B.shape) { buildModel(ctx.bike, ctx.spec); attachCam(); } applyLook(ctx.spec); ctx.beamK = ctx.spec.auxK ? 1.4 : 1; // aux lamps: more light on the road (daynight.js)
   document.body.classList.toggle('ysh', !!ctx.spec.yec); // YECVT: the scooter gets the ▲▼ Y-Shift buttons back (layoutcalc.js o.ysh)
   $('brkT').textContent = ctx.bike.drivetrain === 'cvt' ? (ctx.spec.abs ? 'BRAKE · ABS' : 'BRAKE · CBS') : 'BRAKE';
 }
@@ -177,7 +177,7 @@ function visuals(dt, now) {
   }
   B.steer.rotation.y = -S.delta; B.slider.position.y = -G.fork + (clamp(S.cF, -.07, .11) - sp.yf) / Math.cos(G.rake); B.rearH.position.y = G.rw + clamp(S.cR, -.07, .11) - sp.yr; // yf/yr: ride height lifts the chassis, wheels stay down
   const dy = B.rearH.position.y - G.pivotY, dz = G.rearZ - G.pivotZ; B.swing.position.set(G.swingX, G.pivotY + dy / 2, G.pivotZ + dz / 2); B.swing.rotation.x = -Math.atan2(dy, dz); B.swing.scale.z = Math.hypot(dy, dz);
-  B.frontW.rotation.x = -S.wA; B.rearW.rotation.x = -S.wAR; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3; lamps(!!(S.key || S.running || ctx.GAR), S.brake > .05 && !!(S.key || S.running));
+  B.frontW.rotation.x = -S.wA; B.rearW.rotation.x = -S.wAR; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3; lamps(!!(S.key || S.running || ctx.GAR), S.brake > .05 && !!(S.key || S.running)); ledTick(now);
   B.cluL.rotation.y = (sp.type === 'cvt' ? S.brake : Math.max(S.cl, ctx.bcfg.autoClutch && S.c < .5 ? 1 : 0)) * .3;
   const av = Math.abs(S.v), fov = (cfg.fov ?? 72) + (F.on ? F.rs * 6 : Math.min(14, av * .35)); // on foot sprinting widens the view a little (F.rs is already eased)
   if (!ctx.GAR && Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); } // pinch / wheel / Options FOV, speed widening, and leaving the garage's 40°

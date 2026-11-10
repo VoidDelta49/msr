@@ -20,10 +20,12 @@ const GAME = 'cpm-motor-edition', $$ = s => document.querySelectorAll(s), esc = 
 const TABS = [
   ['engine', 'ENGINE', { az: 1.2, el: .12, r: 2.3, ty: .5, tz: .05 }], ['drive', 'DRIVETRAIN', { az: 1.25, el: .1, r: 2.4, ty: .45, tz: -.15 }],
   ['susp', 'SUSPENSION', { az: .9, el: .1, r: 2.6, ty: .55, tz: .55 }], ['wheels', 'WHEELS & BRAKES', { az: 1.4, el: .08, r: 2.3, ty: .35, tz: .5 }],
+  ['style', 'ACCESSORIES', { az: 2.5, el: .3, r: 3.1, ty: .8, tz: .1 }], ['lights', 'LIGHTS', { az: .75, el: .14, r: 3.1, ty: .45, tz: 0 }],
   ['look', 'PAINT', { spin: 1, el: .2, r: 3.6, ty: .7, tz: 0 }], ['carbon', 'CARBON', { spin: 1, el: .18, r: 3.3, ty: .7, tz: 0 }],
   ['stats', 'STATS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }], ['dyno', 'DYNO', { az: 1.5, el: .06, r: 2.7, ty: .4, tz: -.45 }], ['builds', 'BUILDS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }],
 ];
 const WHERE = { exhaust: 'engine', ecu: 'engine', fuelsys: 'engine', tune: 'engine', trim: 'wheels', intake: 'engine', flywheel: 'engine', rollers: 'drive', cspring: 'drive', clspring: 'drive', pulley: 'drive', fs: 'drive', rs: 'drive', autoClutch: 'drive', iss: 'drive', qs: 'drive', tc: 'drive', ver: 'drive', ysp: 'drive', kit: 'engine', frame: 'look', decal: 'look', tb: 'engine', injector: 'engine', carb: 'engine', valves: 'engine', port: 'engine', cyl: 'engine', piston: 'engine', oil: 'engine', coil: 'engine', cdi: 'engine', plug: 'engine', cam: 'engine', battery: 'engine', clutch: 'drive', chain: 'drive', belt: 'drive', lines: 'wheels',
+  rims: 'wheels', disc: 'wheels', caliper: 'wheels', mirrors: 'style', levers: 'style', grips: 'style', seat: 'style', box: 'style', hl: 'lights', aux: 'lights', glow: 'lights', wled: 'lights',
   pf: 'susp', pr: 'susp', yf: 'susp', yr: 'susp', kf: 'susp', kr: 'susp', damp: 'susp', tires: 'wheels', brakes: 'wheels', wheelcol: 'wheels', rimstripe: 'wheels',
   fl: 'dyno', fm: 'dyno', fh: 'dyno', il: 'dyno', ih: 'dyno', ig: 'dyno', ct: 'dyno', idl: 'dyno', rl: 'dyno', mj: 'dyno', nc: 'dyno', ps: 'dyno' }; // fine tuning (tune.js)
 const where = k => WHERE[k] || (k.startsWith('cf') ? 'carbon' : 'look');
@@ -82,22 +84,32 @@ function delta(k, i) {
   d(Math.round((s.mu / a.mu - 1) * 100), v => v + '% grip', 1); d(Math.round((s.brake / a.brake - 1) * 100), v => v + '% braking', 1);
   d(Math.round((s.red - a.red) / 50) * 50, v => v + ' rpm limit', 1); d(Math.round((s.ie / a.ie - 1) * 100), v => v + '% flywheel', 0);
   d(Math.round(DRIVES[s.type].top(s) - DRIVES[a.type].top(a)), v => v + ' km/h top', 1);
+  d(Math.round((s.roll / a.roll - 1) * 100), v => v + '% rolling drag', -1); d(Math.round((s.drag / a.drag - 1) * 1000) / 10, v => v + '% air drag', -1);
+  if (s.offr !== a.offr) o.push(`<em class=${s.offr ? 'up' : 'dn'}>${s.offr ? '+' : '−'}off-road grip</em>`);
   d(Math.round((s.cap / a.cap - 1) * 100), v => v + '% clutch hold', 1); d(Math.round((s.eta / a.eta - 1) * 1000) / 10, v => v + '% drive efficiency', 1);
   if (s.slipper !== a.slipper) o.push(`<em class=${s.slipper ? 'up' : 'dn'}>${s.slipper ? '+slipper clutch' : '−slipper clutch'}</em>`);
   return o.slice(0, 3).join(' ');
 }
-// ENGINE tab sub-menu: the engine's parts grouped the way a workshop would (key -> group; unknown engine keys land in ECU & tuning)
+// Sub-menus (ENGINE, WHEELS & BRAKES): the parts grouped the way a workshop would (key -> group; unknown engine keys land in ECU
+// & tuning, unknown wheel keys in RIMS). The last entry of a wheels group is its close-up camera.
 const SUBS = [['intake', 'INTAKE & FUEL', 'Air in and fuel in: filter, throttle body or carburettor, injector.'], ['head', 'HEAD', 'Camshaft, valve springs and port work: how well the engine breathes up high.'],
   ['bottom', 'BOTTOM END', 'Cylinder, piston, flywheel and oil: displacement, compression, rotating mass, friction.'], ['ign', 'IGNITION', 'Spark plug, coil, CDI and battery.'],
   ['exh', 'EXHAUST', 'Pipe and silencer.'], ['ecu', 'ECU & TUNING', 'Fuel and ignition map, rev limit, power modes and kits.']];
-const SUBOF = { intake: 'intake', tb: 'intake', carb: 'intake', injector: 'intake', fuelsys: 'intake', cam: 'head', valves: 'head', port: 'head', cyl: 'bottom', piston: 'bottom', oil: 'bottom', flywheel: 'bottom', tune: 'bottom', plug: 'ign', coil: 'ign', cdi: 'ign', battery: 'ign', exhaust: 'exh', ecu: 'ecu', kit: 'ecu' };
-const subOf = k => SUBOF[k] || 'ecu';
-let sub = 'intake';
-function subHTML(bike, b) {
-  const ks = Object.keys(bike.parts).filter(k => where(k) === 'engine'), subs = SUBS.filter(x => ks.some(k => subOf(k) === x[0]));
-  if (!subs.some(x => x[0] === sub)) sub = subs[0][0];
-  return `<div class=gsub>${subs.map(([id, l]) => { const n = ks.filter(k => subOf(k) === id && b[k] !== bike.defaults[k]).length; return `<button class="gs${id === sub ? ' on' : ''}" data-sub=${id}>${l}${n ? `<i>${n}</i>` : ''}</button>`; }).join('')}</div><p class=gsubd>${SUBS.find(x => x[0] === sub)[2]}</p>`;
+const WSUBS = [['tires', 'TIRES', 'Sizes that fit this bike\'s rims. Grip, weight and rolling drag change, and so does how the bike sits on its wheels.', { az: 1.05, el: .1, r: 2.7, ty: .4, tz: .1 }],
+  ['rims', 'RIMS', 'Wheel design, colour and rim tape.', { az: 1.5, el: .05, r: 2.6, ty: .38, tz: .1 }], ['brakes', 'BRAKES', 'Discs, calipers, pads and lines.', { az: 1.3, el: .06, r: 1.9, ty: .32, tz: -.55 }]];
+const SUBL = { engine: SUBS, wheels: WSUBS }, SUBDEF = { engine: 'ecu', wheels: 'rims' };
+const SUBOF = { intake: 'intake', tb: 'intake', carb: 'intake', injector: 'intake', fuelsys: 'intake', cam: 'head', valves: 'head', port: 'head', cyl: 'bottom', piston: 'bottom', oil: 'bottom', flywheel: 'bottom', tune: 'bottom', plug: 'ign', coil: 'ign', cdi: 'ign', battery: 'ign', exhaust: 'exh', ecu: 'ecu', kit: 'ecu',
+  tires: 'tires', rims: 'rims', wheelcol: 'rims', rimstripe: 'rims', brakes: 'brakes', lines: 'brakes', disc: 'brakes', caliper: 'brakes', trim: 'brakes' };
+const subOf = (k, t = 'engine') => SUBOF[k] || SUBDEF[t];
+const FIRST = new Set(['disc', 'caliper', 'rims']); // the parts you can see lead their group
+const subSel = { engine: 'intake', wheels: 'tires' };
+function subHTML(bike, b, t) {
+  const ks = Object.keys(bike.parts).filter(k => where(k) === t), subs = SUBL[t].filter(x => ks.some(k => subOf(k, t) === x[0]));
+  if (!subs.some(x => x[0] === subSel[t])) subSel[t] = subs[0][0];
+  return `<div class=gsub>${subs.map(([id, l]) => { const n = ks.filter(k => subOf(k, t) === id && b[k] !== bike.defaults[k]).length; return `<button class="gs${id === subSel[t] ? ' on' : ''}" data-sub=${id}>${l}${n ? `<i>${n}</i>` : ''}</button>`; }).join('')}</div><p class=gsubd>${SUBL[t].find(x => x[0] === subSel[t])[2]}</p>`;
 }
+// colour chip of an option (paint, wheels, tape, covers, calipers, levers, grips, seat, sidewall, bag, bulbs, LEDs; 'rgb' = the cycling controller)
+const swatch = o => { const c = o.c || o.wc || o.rim || o.ec || o.hd || o.calC || o.levC || o.grpC || o.seatC || o.boxC || o.tyS || o.hlC || o.auxC || o.glowC || o.wledC; return c === 'rgb' ? 'conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)' : c; };
 // a slider's value as shown: signed offsets get their +, the main jet shows the jet's real size
 const sval = (s, v) => s.f === 'jet' ? '#' + jetOf(ctx.bike, ctx.spec, v - ctx.bike.defaults[s.k])[0] : (s.sg && v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + s.u;
 const sliderHTML = (s, b, def) => `<div class=pr><div class=pl>${s.l} <b id=v_${s.k}>${sval(s, b[s.k])}</b>${b[s.k] !== def[s.k] ? `<small> stock ${sval(s, def[s.k])}</small>` : ''}</div><input type=range min=${s.min} max=${s.max} step=${s.step || 1} value=${b[s.k]} data-s=${s.k}></div>`;
@@ -108,20 +120,21 @@ function body(keep) {
   else if (tab === 'builds') h = buildsHTML();
   else if (tab === 'dyno') h = dynoHTML();
   else {
-    if (tab === 'engine') h += subHTML(bike, b);
-    for (const [k, p] of Object.entries(bike.parts)) if (where(k) === tab && (tab !== 'engine' || subOf(k) === sub)) {
-      h += `<div class=pr><div class=pl>${p.l}</div><div class=opts>${p.o.map((o, i) => { const sw = o.c || o.wc || o.rim || o.ec || o.hd; return `<button class="opt${b[k] == i ? ' on' : ''}" data-k=${k} data-i=${i}>${sw ? `<i class=dot style="background:${sw}"></i>` : ''}<b>${o.n}</b>${b[k] == i ? '<small>fitted</small>' : `<small>${delta(k, i)}</small>`}</button>`; }).join('')}</div></div>`;
+    const sb = SUBL[tab] && subHTML(bike, b, tab); if (sb) h += sb;
+    for (const [k, p] of Object.entries(bike.parts).sort((x, y) => FIRST.has(y[0]) - FIRST.has(x[0]))) if (where(k) === tab && (!sb || subOf(k, tab) === subSel[tab])) {
+      h += `<div class=pr><div class=pl>${p.l}</div><div class=opts>${p.o.map((o, i) => { const sw = swatch(o), nt = o.note ? esc(o.note) : '', on = b[k] == i; return `<button class="opt${on ? ' on' : ''}${sw ? ' sw' : ''}" data-k=${k} data-i=${i}>${sw ? `<i class=dot style="background:${sw}"></i>` : ''}<b>${o.n}</b><small>${on ? 'fitted' + (nt ? ' · ' + nt : '') : [nt, delta(k, i)].filter(Boolean).join(' ')}</small></button>`; }).join('')}</div></div>`;
     }
     for (const s of bike.sliders) if (where(s.k) === tab) h += sliderHTML(s, b, def);
     const tg = bike.toggles.filter(s => where(s.k) === tab);
     if (tg.length) h += `<div class=pr><div class=pl>Assists</div><div class=chips>${tg.map(t => `<button class="chip${b[t.k] ? ' on' : ''}" data-t=${t.k}>${t.l}</button>`).join('')}</div></div>`;
-    if (tab === 'look' || tab === 'wheels') { const k = tab === 'look' ? 'cc' : 'cw'; h += `<div class=pr><div class=pl>Custom ${tab === 'look' ? 'body' : 'wheel'} colour</div><div class=crow><input type=color data-cc=${k} value="${hex(b[k] || (tab === 'look' ? ctx.spec.c : ctx.spec.wc))}"><button class=chip data-clr=${k}>Clear</button></div></div>`; }
+    if (tab === 'look' || (tab === 'wheels' && subSel.wheels === 'rims')) { const k = tab === 'look' ? 'cc' : 'cw'; h += `<div class=pr><div class=pl>Custom ${tab === 'look' ? 'body' : 'wheel'} colour</div><div class=crow><input type=color data-cc=${k} value="${hex(b[k] || (tab === 'look' ? ctx.spec.c : ctx.spec.wc))}"><button class=chip data-clr=${k}>Clear</button></div></div>`; }
     h += `<div class=pr><button class="chip" data-treset=1>↺ Reset ${TABS.find(t => t[0] === tab)[1].toLowerCase()} to stock</button></div>`;
   }
   $('gBody').innerHTML = h; if (!keep) $('gBody').scrollTop = 0; if (tab === 'stats') { sHtml = ''; stats(); } if (tab === 'dyno') drawDyno();
 }
 function tabs() { $('gTabs').innerHTML = TABS.filter(t => has(t[0])).map(t => `<button class="gt gt-${t[0]}${t[0] === tab ? ' on' : ''}" data-tab=${t[0]}>${t[1]}</button>`).join(''); }
-function setTab(t) { tab = t; tabs(); body(); reframe(); view(TABS.find(x => x[0] === t)[2]); }
+const camOf = t => (t === 'wheels' && WSUBS.find(x => x[0] === subSel.wheels) || TABS.find(x => x[0] === t))[t === 'wheels' ? 3 : 2];
+function setTab(t) { tab = t; tabs(); body(); reframe(); view(camOf(t)); }
 
 export function buildGarage() {
   if (!has(tab)) tab = 'engine'; if (play) endRun(false);
@@ -141,7 +154,7 @@ $('garage').onclick = e => {
   else if (d.step) { const L = Object.keys(ctx.bikes), i = L.indexOf(ctx.bike.id); pick(L[(i + +d.step + L.length) % L.length]); }
   else if (d.bike) pick(d.bike);
   else if (d.tab) setTab(d.tab);
-  else if (d.sub) { sub = d.sub; body(); }
+  else if (d.sub) { subSel[tab] = d.sub; body(); if (tab === 'wheels') view(camOf(tab)); }
   else if (d.dy) dynoAct(d.dy, +d.i);
   else if (d.k) { b[d.k] = +d.i; changed(); body(1); }
   else if (d.t) { b[d.t] = !b[d.t]; el.classList.toggle('on', b[d.t]); changed(false); }

@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clone as skelClone } from 'three/addons/utils/SkeletonUtils.js';
-import { attribute, uniformArray, texture, uv, vec2, vec3, float, step, select, instancedBufferAttribute, smoothstep } from 'three/tsl';
+import { attribute, uniformArray, uniform, texture, uv, vec2, vec3, float, step, select, instancedBufferAttribute, smoothstep } from 'three/tsl';
 import { PI } from './util.js';
 import { scene, std, sun, head } from './renderer.js';
 import { Q } from './config.js';
@@ -75,6 +75,12 @@ let T0 = [0, 0], RK = 0;
 const toSt = (z, y) => { const dz = z - T0[0], dy = y - T0[1], c = Math.cos(RK), s = Math.sin(RK); return [-dy * s + dz * c, dy * c + dz * s]; };
 const profSt = (pts, w, b, seg) => prof(pts.map(p => p.length === 4 ? [...toSt(p[0], p[1]), ...toSt(p[2], p[3])] : toSt(p[0], p[1])), w, b, seg);
 function mkSt(geo, m, x, z, y, rx = 0, ry = 0, rz = 0) { const [lz, ly] = toSt(z, y); return mk(geo, m, B.steer, x, ly, lz, rx - RK, ry, rz); }
+// Garage shape options, set by buildModel() from the spec and read by the wheel builders, controls() and fit(): tyre section
+// height x / width x / knobs / sidewall band, rim design, disc kind, wheel LEDs, mirror kind. Their own materials (palette
+// entries, so a colour change never rebuilds): sidewall band, brake caliper, levers, grips, top box, LED strips, aux lamps.
+const TY = { t: 1, w: 1, k: 0, s: 0, rd: 0, dk: 0, led: 0, mir: 0 };
+const MSide = std(0xf1f1ec, .75), MCal = std(0x15161a, .34, .3), MLev = std(0xd5dae0, .22, 1), MGrip = std(0x0d0d0d, .95), MBox = std(0x17181b, .5, .1), MBoxC = std(0x1faa55, .7),
+  MRefl = std(0x8a0d0d, .3, .2), MGlow = std(0x0c0c0c, .4, 0, 0xffffff), MWLed = std(0x0c0c0c, .4, 0, 0xffffff), MAux = std(0x202020, .2, 0, 0xffffff);
 /* ---------- flat wheel faces ---------- */
 // N64 trick: spokes, rim lip, hub, pinstripes and brake discs are NOT geometry. Each wheel gets one flat plane per side (and one
 // per disc / drum) with a cut-out texture, so a wheel is a tyre torus + 4-8 triangles instead of ~700. All faces share one atlas
@@ -83,7 +89,7 @@ function mkSt(geo, m, x, z, y, rx = 0, ry = 0, rz = 0) { const [lz, ly] = toSt(z
 // (entry 2 = MC), black = dark parts, alpha = silhouette. The palette shader (palMat) turns that into colours and discards the
 // transparent pixels (maskNode), so the garage's wheel colour / rim tape / carbon options still work and the faces batch into
 // the one skinned bike mesh: no extra draw calls.
-const WTS = 128, WTW = 8, WTH = 6, WTC = document.createElement('canvas'), MWF = std(0xffffff, .5, .3), WT = new Map();
+const WTS = 128, WTW = 16, WTH = 8, WTC = document.createElement('canvas'), MWF = std(0xffffff, .5, .3), WT = new Map();
 WTC.width = WTS * WTW; WTC.height = WTS * WTH;
 const WTG = WTC.getContext('2d'), WTX = new THREE.CanvasTexture(WTC); WTX.anisotropy = 4;
 const WCOL = { R: '#f00', G: '#0f0', B: '#00f', K: '#000' };
@@ -107,8 +113,15 @@ const wring = (g, r, hw) => { g.lineWidth = 2 * hw; g.beginPath(); g.arc(0, 0, r
 const wdisc = (g, r, c) => { g.fillStyle = WCOL[c]; g.beginPath(); g.arc(0, 0, r, 0, 2 * PI); g.fill(); };
 // sp: rim (rim lip radius), lip (its half width), n/w/to (spoke count, width m, twin-pair offset rad or 0), r0/r1 (spoke radii), sc (spoke colour channel),
 // hub / hc (hub radius + channel), sx (x of the pinstripes) with sr/sw (their radius, half width), plates [[x, r, kind]] ('disc' = brake disc, 'drum' = alloy drum)
-function wheelFaces(g, sp) {
+// Garage: f = how much the tyre option grew / shrank the rim opening (the face plane is scaled, the tile is not redrawn), TY.rd swaps
+// the spokes for an aftermarket design (RIMS, drawn once on a reference wheel and scaled to fit), TY.dk a wave / oversize disc,
+// TY.led two LED rings at the rim.
+const RIMS = [null, { n: 6, w: .026, to: 0 }, { n: 5, w: .015, to: .17 }, { n: 10, w: .011, to: 0 }, { n: 3, w: .06, to: 0 }, { n: 7, w: .013, y: .11, to: .21 }, { n: 18, w: .0055, to: 0, sc: 'B', hc: 'B', hub: .04 }];
+function wheelFaces(g, sp, f = 1) {
+  const D = RIMS[TY.rd], rim0 = sp.rim; let pk = f;
+  if (D) { pk = f * rim0 / .2; sp = { ...sp, rim: .2, lip: .013, y: 0, r0: .04, r1: .2, sc: 'R', hub: .048, hc: 'R', sr: sp.sr && .198, ...D }; }
   const S = sp.rim + .02;
+  if (TY.led) for (const s of [-1, 1]) mk(new THREE.TorusGeometry(rim0 * f - .004, .006, 4, 28), MWLed, g, s * .03, 0, 0, 0, PI / 2);
   for (const s of [-1, 1]) {
     const st = (sp.sx || []).some(x => Math.sign(x) === s), key = JSON.stringify(['f', S, sp.lip, sp.n, sp.w, sp.to, sp.y || 0, sp.r0, sp.r1, sp.sc, sp.hub, sp.hc, st ? [sp.sr, sp.sw] : 0]);
     wheelPlane(g, S, s, s * .016, wheelTile(key, S, (c, k) => {
@@ -120,28 +133,48 @@ function wheelFaces(g, sp) {
       } else for (let i = 0; i < sp.n; i++) for (const o of sp.to ? [-sp.to, sp.to] : [0]) { c.save(); c.rotate(i * 2 * PI / sp.n + o); c.fillRect(-w / 2, -sp.r1, w, sp.r1 - sp.r0); c.restore(); }
       c.strokeStyle = WCOL.R; wring(c, sp.rim, sp.lip); if (sp.hub) wdisc(c, sp.hub, sp.hc);
       if (st) { c.strokeStyle = WCOL.G; wring(c, sp.sr, sp.sw); }
-    }));
+    })).scale.setScalar(pk);
   }
-  for (const [x, r, kind] of sp.plates || []) {
+  for (let [x, r, kind] of sp.plates || []) {
+    if (kind === 'disc' && TY.dk) { kind = 'wave'; if (TY.dk > 1) r = Math.min(r * 1.22, rim0 * f - .012); }
     const S2 = r + .006;
     wheelPlane(g, S2, Math.sign(x), x, wheelTile(JSON.stringify(['p', S2, kind]), S2, c => {
       wdisc(c, r, 'B');
       if (kind === 'disc') { wdisc(c, r * .55, 'K'); c.fillStyle = WCOL.K; for (let i = 0; i < 10; i++) { c.beginPath(); c.arc(Math.cos(i * PI / 5) * r * .78, Math.sin(i * PI / 5) * r * .78, r * .07, 0, 2 * PI); c.fill(); } }
+      if (kind === 'wave') { // floating wave (petal) disc: scalloped edge, slots, a narrow braking band on a dark carrier
+        wdisc(c, r * .66, 'K'); c.fillStyle = WCOL.K; for (let i = 0; i < 18; i++) { const a = i * PI / 9; c.beginPath(); c.arc(Math.cos(a) * r * .83, Math.sin(a) * r * .83, r * .045, 0, 2 * PI); c.fill(); }
+        c.fillStyle = WCOL.B; for (let i = 0; i < 6; i++) { const a = i * PI / 3 + .3; c.beginPath(); c.arc(Math.cos(a) * r * .66, Math.sin(a) * r * .66, r * .06, 0, 2 * PI); c.fill(); }
+        c.globalCompositeOperation = 'destination-out'; for (let i = 0; i < 12; i++) { const a = i * PI / 6; c.beginPath(); c.arc(Math.cos(a) * r * 1.06, Math.sin(a) * r * 1.06, r * .13, 0, 2 * PI); c.fill(); } c.globalCompositeOperation = 'source-over';
+      }
     }));
   }
 }
+// tyre: torus of tube radius t at centre radius R (wx = width / height). The garage's tyre option reshapes it inside the same outer
+// radius (physics keeps sp.r): TY.t = section height x (a low profile leaves a bigger rim, a balloon tyre a smaller one), TY.w =
+// width x, TY.k = knobby blocks, TY.s = a painted sidewall band (whitewall, race stripe; colour in MSide). Returns the rim scale.
+function tyre(g, R, t, wx = 1, seg = 20) {
+  const kn = TY.k ? .012 : 0, t2 = t * TY.t, R2 = R + t - t2 - kn, hw = t * wx * TY.w, f = (R2 - t2) / (R - t);
+  mk(new THREE.TorusGeometry(R2, t2, 6, seg).scale(1, 1, hw / t2), MR, g, 0, 0, 0, 0, PI / 2);
+  if (TY.s) for (const s of [-1, 1]) mk(new THREE.RingGeometry(R2 - .3 * t2, R2 + .3 * t2, seg * 2).rotateY(s > 0 ? PI / 2 : -PI / 2), MSide, g, s * (.866 * hw + .002), 0, 0);
+  if (TY.k) { // two staggered rows of blocks
+    const n = 30, ro = R2 + t2 * .93, L = [];
+    for (let i = 0; i < n; i++) { const a = i * 2 * PI / n; L.push(box(hw * .95, .03, 2 * PI * ro / n * .55).translate((i % 2 ? 1 : -1) * hw * .42, 0, 0).rotateX(a).translate(0, Math.cos(a) * ro, Math.sin(a) * ro)); }
+    mk(mergeGeometries(L), MR, g, 0, 0, 0);
+  }
+  return f;
+}
 // wheel: chunky low-poly tyre torus + flat faces (spokes: twin = "Y" pairs; disc on the right; ex = extra pinstripes / alloy drum)
 function wheelG(R, t, rim, spokes, sw, twin, disc = .11, ex = {}) {
-  const g = new THREE.Group(); mk(new THREE.TorusGeometry(R, t, 6, 20), MR, g, 0, 0, 0, 0, PI / 2);
-  wheelFaces(g, { rim, lip: .013, n: spokes, w: sw, to: ex.y ? ex.to : twin ? .15 : 0, y: ex.y, r0: .045, r1: rim + .015, sc: 'R', hub: .05, hc: 'R', sx: ex.sx, sr: ex.sr, sw: ex.sw, plates: [...(disc ? [[.058, disc, 'disc']] : []), ...(ex.plates || [])] });
+  const g = new THREE.Group(), f = tyre(g, R, t);
+  wheelFaces(g, { rim, lip: .013, n: spokes, w: sw, to: ex.y ? ex.to : twin ? .15 : 0, y: ex.y, r0: .045, r1: rim + .015, sc: 'R', hub: .05, hc: 'R', sx: ex.sx, sr: ex.sr, sw: ex.sw, plates: [...(disc ? [[.058, disc, 'disc']] : []), ...(ex.plates || [])] }, f);
   return g;
 }
 // sport wheel: fat tyre (torus squashed to width wx), rim with paint pinstripes (MRS), 5 split "Y" spokes, floating discs
 // (front: twin 310 mm, rear: 240 mm on the right)
 const MRS = std(0x15161a, .4, .3), MGold = std(0xc39a45, .3, .85), MEng = std(0x3e4249, .5, .6), MCov = std(0x60656d, .4, .7);
 function wheelS(R, t, wx, rim, front, dr = front ? .155 : .12) {
-  const g = new THREE.Group(); mk(new THREE.TorusGeometry(R, t, 6, 22).scale(1, 1, wx), MR, g, 0, 0, 0, 0, PI / 2);
-  wheelFaces(g, { rim, lip: .014, n: 5, w: .028, to: .14, r0: .045, r1: rim - .005, sc: 'R', hub: .055, hc: 'R', sx: [-.045, .045], sr: rim - .002, sw: .006, plates: front ? [[-.075, dr, 'disc'], [.075, dr, 'disc']] : [[.072, dr, 'disc']] });
+  const g = new THREE.Group(), f = tyre(g, R, t, wx, 22);
+  wheelFaces(g, { rim, lip: .014, n: 5, w: .028, to: .14, r0: .045, r1: rim - .005, sc: 'R', hub: .055, hc: 'R', sx: [-.045, .045], sr: rim - .002, sw: .006, plates: front ? [[-.075, dr, 'disc'], [.075, dr, 'disc']] : [[.072, dr, 'disc']] }, f);
   return g;
 }
 const MVis = std(0x0c0f14, .1, .6), MVisG = std(0x2c3036, .15, .5), MAlu = std(0xb9bec4, .32, .75), MCop = std(0xb8682c, .35, .6),
@@ -331,6 +364,7 @@ export function pillionGeo(src, id) {
   for (let i = 0; i < n; i++) if (role[i]) { const q = o[role[i] - 1]; col[i * 3] = q.r; col[i * 3 + 1] = q.g; col[i * 3 + 2] = q.b; }
   g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.computeBoundingSphere(); by.set(k, g); return g;
 }
+export const palUsed = () => PAL.size; // tools: how many of the PN palette entries the built bike uses
 export const B = { root: new THREE.Group(), lean: new THREE.Group(), body: new THREE.Group(), ct: new THREE.Group(), MP };
 B.root.add(B.lean); B.lean.add(B.body); B.body.add(B.ct); B.ct.position.y = -.6; scene.add(B.root);
 
@@ -339,14 +373,19 @@ function clusterPlane(par, x, y, z, rx, w = .25, lift = .025) { const p = mk(new
 // handlebar, grips, throttle, levers, mirrors (st-local, shared by both bikes). y/z = bar height/offset, hw = half width
 function controls(st, y, z, hw, lv, mir, noClu) {
   tube([-hw + .06, y, z], [hw - .06, y, z], .011, MB, st);
-  mk(cyl(.019, .019, .12), MR, st, -hw, y, z, 0, 0, PI / 2);
-  B.thrG = new THREE.Group(); B.thrG.position.set(hw, y, z); st.add(B.thrG); mk(cyl(.02, .02, .12), MR, B.thrG, 0, 0, 0, 0, 0, PI / 2); mk(box(.1, .006, .04), std(0x888888, .5), B.thrG, 0, .02, 0);
-  B.brkL = new THREE.Group(); B.brkL.position.set(lv, y + .005, z - .03); st.add(B.brkL); mk(box(.15, .014, .022), MC, B.brkL, .08, 0, -.05);
-  B.cluL = new THREE.Group(); B.cluL.position.set(-lv, y + .005, z - .03); st.add(B.cluL); if (!noClu) mk(box(.15, .014, .022), MC, B.cluL, -.08, 0, -.05);
+  mk(cyl(.019, .019, .12), MGrip, st, -hw, y, z, 0, 0, PI / 2);
+  B.thrG = new THREE.Group(); B.thrG.position.set(hw, y, z); st.add(B.thrG); mk(cyl(.02, .02, .12), MGrip, B.thrG, 0, 0, 0, 0, 0, PI / 2); mk(box(.1, .006, .04), std(0x888888, .5), B.thrG, 0, .02, 0);
+  B.brkL = new THREE.Group(); B.brkL.position.set(lv, y + .005, z - .03); st.add(B.brkL); mk(box(.15, .014, .022), MLev, B.brkL, .08, 0, -.05);
+  B.cluL = new THREE.Group(); B.cluL.position.set(-lv, y + .005, z - .03); st.add(B.cluL); if (!noClu) mk(box(.15, .014, .022), MLev, B.cluL, -.08, 0, -.05);
+  B.bar = { y, z, hw, lv, mir: !!mir };
   for (const s of [-1, 1]) {
     mk(box(.07, .06, .08), MB, st, s * (lv + .055), y + .01, z);                                                   // switch pods
-    if (!mir) continue; const a = [s * (lv - .02), y + .03, z - .01], b = [s * mir[0], y + mir[1], z + mir[2]]; tube(a, b, .006, MB, st, 5);
-    mk(prof([[-.05, -.02], [.05, -.03], [.055, .025], [-.045, .035]], .016, .005), MB, st, b[0], b[1] + .02, b[2], -.35, PI / 2 + s * .25, 0); // angular mirror head, facing the rider
+    if (!mir || TY.mir === 3) continue;                                                                             // garage: mirrors taken off
+    if (TY.mir === 1) { // bar-end mirrors: a round glass on a short arm below the grip's end
+      tube([s * (hw + .065), y, z], [s * (hw + .1), y - .035, z - .01], .007, MB, st, 5); mk(cyl(.05, .05, .012, 14), MB, st, s * (hw + .115), y - .075, z - .005, PI / 2 - .1, 0, 0); mk(cyl(.019, .019, .02, 8), MLev, st, s * (hw + .065), y, z, 0, 0, PI / 2); continue;
+    }
+    const k = TY.mir === 2 ? .5 : 1, a = [s * (lv - .02), y + .03, z - .01], b = [s * (a[0] * s + (mir[0] - a[0] * s) * k), y + .03 + (mir[1] - .03) * k, z + mir[2] * k]; tube(a, b, .006, MB, st, 5); // 2 = short sport stalks, small heads
+    mk(prof([[-.05, -.02], [.05, -.03], [.055, .025], [-.045, .035]].map(p => [p[0] * (k < 1 ? .72 : 1), p[1] * (k < 1 ? .72 : 1)]), .016, .005), MB, st, b[0], b[1] + .02 * k, b[2], -.35, PI / 2 + s * .25, 0); // angular mirror head, facing the rider
   }
 }
 
@@ -394,7 +433,7 @@ function sport(ct) {
   for (const s of [-1, 1]) mk(cyl(.031, .028, .34, 8), MK, B.slider, s * .08, .17, 0);                        // black fork lowers
   B.frontW = wheelG(.25, .04, .212, 5, .02, true, .13); B.slider.add(B.frontW);
   mk(arc(.3, .325, 1.05 + .436, 2.5 + .436, .1), MF, B.slider, 0, 0, 0);                                      // front fender
-  mk(box(.05, .075, .1), MK, B.slider, .088, .03, .07);                                                      // caliper
+  mk(box(.05, .075, .1), MCal, B.slider, .088, .03, .07);                                                      // caliper
   mk(profSt([[-.3, 1.07], [-.4, 1.06], [-.5, .98], [-.545, .9], [-.51, .84], [-.42, .84], [-.36, .88], [-.3, .96]], .25, .02), MP, st, 0, 0, 0); // cowl: short and tall, tight to the fork (11.99 accuracy round: it was a long beak)
   mk(profSt([[-.41, 1.02], [-.51, .95], [-.555, .9], [-.52, .835], [-.44, .87]], .14, .012), MK, st, 0, 0, 0);   // black face
   mk(profSt([[-.31, 1.07], [-.41, 1.06], [-.47, 1.02], [-.43, 1.1], [-.33, 1.13]], .2, .008), MVisG, st, 0, 0, 0); // smoked grey visor
@@ -474,7 +513,7 @@ function scooter(ct) {
   // big body-colour front fender with a forward beak (drawn as bike-frame offsets from the axle, turned into the slider's raked frame)
   const fs = ([dz, dy]) => [-dy * Math.sin(rake) + dz * Math.cos(rake), dy * Math.cos(rake) + dz * Math.sin(rake)];
   mk(taper(prof([[.12, .272], [.04, .306], [-.06, .312], [-.14, .296], [-.21, .268], [-.17, .254], [-.1, .27], [-.04, .281], [.04, .277], [.12, .25]].map(fs), .13, .01), [[-.36, .45], [-.2, 1]]), MF, B.slider, 0, 0, 0);
-  mk(box(.045, .065, .085), MK, B.slider, .08, .02, .06);
+  mk(box(.045, .065, .085), MCal, B.slider, .08, .02, .06);
   // handlebar cover (black wedge: low pointed front over the cowl, high just ahead of the bars) with the meter on its rear face
   mk(prof([[-.11, .02], [-.02, .03], [.1, .03], [.13, .11], [.05, .2], [-.01, .205], [-.06, .17], [-.11, .06]], .5, .022), MK, st, 0, 0, 0);
   clusterPlane(st, 0, .155, .09, -.71, .24);
@@ -513,7 +552,7 @@ function supersport(ct) {
   B.G = { rw, rearZ: .72, fork, rake, pivotY: .505, pivotZ: .28, swingX: 0 }; B.wheelCol = 0x15161a; B.cargo = { y: .84, z: .6 }; B.fenderPaint = true; B.decal = MDec;
   // rear wheel, sprocket (left), caliper (right), hugger
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .72); ct.add(B.rearH); B.rearW = wheelS(.265, .05, 1.8, .216, false); B.rearH.add(B.rearW);
-  mk(cyl(.1, .1, .012, 12), MB, B.rearH, -.085, 0, 0, 0, 0, PI / 2); mk(box(.03, .06, .07), MB, B.rearH, .1, .09, -.08);
+  mk(cyl(.1, .1, .012, 12), MB, B.rearH, -.085, 0, 0, 0, 0, PI / 2); mk(box(.03, .06, .07), MCal, B.rearH, .1, .09, -.08);
   mk(arc(.33, .35, 1.45, 2.45, .16), MK, B.rearH, 0, 0, 0);
   // cast box swingarm + chain on the left (unit length, stretched pivot -> axle each frame)
   B.swing = mk(mergeGeometries([box(.04, .09, 1).translate(.11, 0, 0), box(.04, .09, 1).translate(-.11, 0, 0), box(.22, .07, .07).translate(0, 0, -.42),
@@ -564,7 +603,7 @@ function supersport(ct) {
   for (const s of [-1, 1]) mk(cyl(.029, .029, .44), MGold, st, s * .1, -.2, 0);
   mk(box(.3, .03, .09), MB, st, 0, .015, 0); mk(box(.28, .03, .08), MB, st, 0, -.13, 0);                     // yokes
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
-  for (const s of [-1, 1]) { mk(cyl(.021, .021, .34, 8), MC, B.slider, s * .1, .19, 0); mk(box(.05, .07, .07), MB, B.slider, s * .1, .02, 0); mk(box(.035, .1, .06), MB, B.slider, s * .108, .1, .1); } // inner tubes, axle feet, radial calipers
+  for (const s of [-1, 1]) { mk(cyl(.021, .021, .34, 8), MC, B.slider, s * .1, .19, 0); mk(box(.05, .07, .07), MB, B.slider, s * .1, .02, 0); mk(box(.035, .1, .06), MCal, B.slider, s * .108, .1, .1); } // inner tubes, axle feet, radial calipers
   B.frontW = wheelS(.25, .05, 1.2, .216, true); B.slider.add(B.frontW);
   mk(arc(.315, .335, 1.35 + rake, 2.45 + rake, .13), MF, B.slider, 0, 0, 0);                                  // front fender (body colour)
   controls(st, -.003, .04, .34, .24, null);
@@ -604,11 +643,11 @@ function cone(a, b, r0, r1, m, par, seg = 8) {
 const MFrm = std(0x3fae2a, .36, .45); MFrm.userData.cc = .9; MFrm.userData.ccr = .07;
 function h2(ct, v) {
   const rw = .326, rake = .4276, headY = .92, fz = -.725, fy = .30, fork = (headY - fy) / Math.cos(rake), headZ = fz + fork * Math.sin(rake), R = v === 1;
-  B.G = { rw, rearZ: .73, fork, rake, pivotY: .46, pivotZ: .14, swingX: 0 }; B.wheelCol = 0x15161a; B.cargo = { y: .9, z: .62 }; B.fenderPaint = false;
+  B.G = { rw, rearZ: .73, fork, rake, pivotY: .46, pivotZ: .14, swingX: 0 }; B.wheelCol = 0x15161a; B.cargo = { y: .9, z: .62 }; B.fenderPaint = false; B.calCol = 0xb9bec4;
   // rear: wheel (disc + caliper on the right), sprocket and the single-sided hub carrier on the left, hugger
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .73); ct.add(B.rearH); B.rearW = wheelS(.274, .052, 1.95, .216, false, .125); B.rearH.add(B.rearW);
   mk(cyl(.1, .1, .012, 12), MB, B.rearH, -.17, 0, 0, 0, 0, PI / 2); mk(cyl(.07, .06, .07, 10), MAlu, B.rearH, -.135, 0, 0, 0, 0, PI / 2);
-  mk(box(.03, .07, .08), MAlu, B.rearH, .1, -.1, -.05); mk(arc(.345, .36, 1.5, 2.4, .2), MK, B.rearH, 0, 0, 0);
+  mk(box(.03, .07, .08), MCal, B.rearH, .1, -.1, -.05); mk(arc(.345, .36, 1.5, 2.4, .2), MK, B.rearH, 0, 0, 0);
   // single-sided cast swingarm on the left + chain outboard of it (unit length, stretched pivot -> axle each frame)
   B.swing = mk(mergeGeometries([box(.07, .12, 1).translate(-.135, 0, 0), box(.27, .08, .08).translate(-.02, 0, -.44),
     box(.012, .012, 1).translate(-.172, .05, 0), box(.012, .012, 1).translate(-.172, -.045, 0)]), MAlu, ct, 0, .4, .5);
@@ -662,7 +701,7 @@ function h2(ct, v) {
   for (const s of [-1, 1]) mk(cyl(.03, .03, .44), MB, st, s * .1, -.2, 0);
   mk(box(.3, .03, .09), MAlu, st, 0, .015, 0); mk(box(.28, .03, .08), MB, st, 0, -.13, 0);
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
-  for (const s of [-1, 1]) { mk(cyl(.0215, .0215, .34, 8), MC, B.slider, s * .1, .19, 0); mk(box(.05, .07, .07), MB, B.slider, s * .1, .02, 0); mk(box(.035, .11, .06), MAlu, B.slider, s * .108, .1, .1); } // radial monobloc calipers
+  for (const s of [-1, 1]) { mk(cyl(.0215, .0215, .34, 8), MC, B.slider, s * .1, .19, 0); mk(box(.05, .07, .07), MB, B.slider, s * .1, .02, 0); mk(box(.035, .11, .06), MCal, B.slider, s * .108, .1, .1); } // radial monobloc calipers
   B.frontW = wheelS(.25, .05, 1.2, .216, true, .165); B.slider.add(B.frontW);
   mk(arc(.315, .335, 1.35 + rake, 2.45 + rake, .13), MF, B.slider, 0, 0, 0);
   controls(st, -.003, .04, .34, .24, null);
@@ -693,7 +732,7 @@ function h2(ct, v) {
 const PN = 48, PA = [], PB = [], PE = [], PAL = new Map();
 for (let i = 0; i < PN; i++) { PA.push(new THREE.Vector4(1, 1, 1, .5)); PB.push(new THREE.Vector4()); PE.push(new THREE.Vector4()); }
 function writePal(m, i) { const c = m.color, e = m.emissive, k = m.emissiveIntensity; PA[i].set(c.r, c.g, c.b, m.roughness); PB[i].set(m.metalness, m === MWF ? 3 : m.map === LIV.t ? 1 : m.map === CF ? 2 : 0, m.userData.cc || 0, m.userData.ccr || .06); PE[i].set(e.r * k, e.g * k, e.b * k, 0); }
-function palIdx(m) { let i = PAL.get(m); if (i === undefined) { i = Math.min(PAL.size, PN - 1); PAL.set(m, i); writePal(m, i); } return i; }
+function palIdx(m) { let i = PAL.get(m); if (i === undefined) { if (PAL.size >= PN) console.warn('bike palette full (PN): a material shares the last entry'); i = Math.min(PAL.size, PN - 1); PAL.set(m, i); writePal(m, i); } return i; }
 function syncPal() { for (const [m, i] of PAL) writePal(m, i); }
 const palable = m => m.isMeshStandardMaterial && !m.vertexColors && !m.transparent && !m.alphaTest && (!m.map || m.map === LIV.t || m.map === CF);
 // palMat(): the palette material for one set of palette arrays + livery texture. MT is the ridden bike's; remote
@@ -759,8 +798,8 @@ function mergeStatic(par, skip) {
 // muffler, black chain case. v = trim: 0 spoke wheels + drum/drum, 1 spokes + front disc, 2 five-spoke mags + front disc.
 // The "Smash" side script and the front badge are pseudo-letter decals (MDec), not real lettering.
 function wheelWire(R, t, rim, drum, disc) {
-  const g = new THREE.Group(); mk(new THREE.TorusGeometry(R, t, 6, 20), MR, g, 0, 0, 0, 0, PI / 2);
-  wheelFaces(g, { rim, lip: .012, n: 16, w: .007, to: 0, r0: .045, r1: rim - .005, sc: 'B', hub: 0, hc: 'R', plates: [[-.04, drum, 'drum'], [.04, drum, 'drum'], ...(disc ? [[.05, disc, 'disc']] : [])] });
+  const g = new THREE.Group(), f = tyre(g, R, t);
+  wheelFaces(g, { rim, lip: .012, n: 16, w: .007, to: 0, r0: .045, r1: rim - .005, sc: 'B', hub: 0, hc: 'R', plates: [[-.04, drum, 'drum'], [.04, drum, 'drum'], ...(disc ? [[.05, disc, 'disc']] : [])] }, f);
   return g;
 }
 function underbone(ct, v) {
@@ -808,7 +847,7 @@ function underbone(ct, v) {
   for (const s of [-1, 1]) mk(cyl(.027, .025, .3, 8), MAlu, B.slider, s * .07, .15, 0);
   B.frontW = wheel(true); B.slider.add(B.frontW);
   mk(arc(.3, .325, 1.05 + rake, 2.45 + rake, .1), MF, B.slider, 0, 0, 0);                                     // front fender (body colour)
-  if (v) mk(box(.045, .07, .09), MK, B.slider, .08, .03, .06);                                                // disc caliper
+  if (v) mk(box(.045, .07, .09), MCal, B.slider, .08, .03, .06);                                                // disc caliper
   mk(profSt([[-.24, 1.05], [-.36, 1.085], [-.5, 1.065], [-.58, 1.01], [-.585, .93], [-.45, .945], [-.3, .985], [-.23, 1.0]], .3, .022), MP, st, 0, 0, 0); // handlebar cover (tall front face for the lamp)
   mk(profSt([[-.585, .93], [-.53, .885], [-.42, .885], [-.29, .94], [-.45, .945]], .2, .012), MK, st, 0, 0, 0); // black lower cover
   mk(profSt([[-.42, 1.06], [-.52, 1.035], [-.56, 1.0], [-.5, 1.1], [-.44, 1.12]], .16, .008), MVisG, st, 0, 0, 0); // small visor
@@ -966,7 +1005,7 @@ function aerox(ct) {
   const wheel = (t, disc) => wheelG(.215, t, .175, 5, .024, true, disc, { sx: [.045], sr: .173, sw: .005 });
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .65); ct.add(B.rearH); B.rearW = wheel(.057, .115); B.rearH.add(B.rearW);
   mk(arc(.285, .31, 1.3, 2.6, .13), MF, B.rearH, 0, 0, 0);                                                   // rear hugger
-  mk(box(.045, .065, .085), MK, B.rearH, .09, .06, -.06);                                                      // rear caliper (2025: 230 mm rear disc)
+  mk(box(.045, .065, .085), MCal, B.rearH, .09, .06, -.06);                                                      // rear caliper (2025: 230 mm rear disc)
   B.look = sp => { const red = sp.lv === 'r'; carbon(MTrim, !red, red ? 0xc81e26 : 0x202226); MStch.color.set(red ? 0xd3202b : 0x2a2c30); };
   B.swing = mk(prof([[-.5, -.07], [-.5, .07], [-.2, .11], [.42, .09], [.52, .02], [.48, -.07], [.2, -.1]], .13, .015), MG, ct, -.1, .3, .345); // unit swing
   mk(prof([[-.14, .2], [.06, .2], [.08, .4], [-.12, .42]], .17, .015), MG, ct, -.02, 0, 0);                 // cylinder + head
@@ -1003,7 +1042,7 @@ function aerox(ct) {
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
   for (const s of [-1, 1]) mk(cyl(.032, .029, .3, 8), MK, B.slider, s * .075, .15, 0);
   B.frontW = wheel(.051, .115); B.slider.add(B.frontW);
-  mk(arc(.28, .305, .95 + rake, 2.6 + rake, .12), MF, B.slider, 0, 0, 0); mk(box(.045, .07, .09), MK, B.slider, .085, .02, .06); // fender, caliper
+  mk(arc(.28, .305, .95 + rake, 2.6 + rake, .12), MF, B.slider, 0, 0, 0); mk(box(.045, .07, .09), MCal, B.slider, .085, .02, .06); // fender, caliper
   mk(prof([[-.2, .06], [-.1, .03], [.09, .03], [.12, .09], [.05, .14], [-.1, .15], [-.22, .1]], .52, .022), MK, st, 0, 0, 0); // handlebar cover
   mk(box(.24, .14, .008), MVis, st, 0, .21, -.17, -.5);                                                         // smoked visor
   clusterPlane(st, 0, .18, .03, -1.05, .26);
@@ -1069,7 +1108,7 @@ function rouser(ct) {
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
   for (const s of [-1, 1]) mk(cyl(.031, .028, .32, 8), MK, B.slider, s * .078, .16, 0);
   B.frontW = wheel(true); B.slider.add(B.frontW);
-  mk(box(.04, .07, .09), MB, B.slider, .085, .03, .07);                                                       // caliper
+  mk(box(.04, .07, .09), MCal, B.slider, .085, .03, .07);                                                       // caliper
   mk(arc(rw + .025, rw + .045, 1.0 + rake, 2.4 + rake, .1), MF, B.slider, 0, 0, 0);                           // front fender
   mk(profSt([[headZ - .02, 1.16], [headZ - .18, 1.14], [headZ - .3, 1.03], [headZ - .3, .93], [headZ - .2, .88], [headZ - .04, .95]], .3, .02), MK, st, 0, 0, 0); // angular cowl (dark, not painted)
   mkSt(box(.2, .1, .01), MVis, 0, headZ - .16, 1.19, -.6);                                                    // smoked visor
@@ -1106,7 +1145,7 @@ function nmax(ct, v) {
   const wheel = (t, disc) => wheelG(.2, t, .16, 5, .022, true, disc, { sx: [.045], sr: .158, sw: v ? .009 : .004 });
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .64); ct.add(B.rearH); B.rearW = wheel(.056, .115); B.rearH.add(B.rearW);
   mk(arc(.27, .295, 1.3, 2.6, .13), MF, B.rearH, 0, 0, 0);                                                    // rear hugger
-  mk(box(.045, .065, .085), MK, B.rearH, .09, .06, -.06);                                                      // rear caliper (disc on the right)
+  mk(box(.045, .065, .085), MCal, B.rearH, .09, .06, -.06);                                                      // rear caliper (disc on the right)
   B.swing = mk(prof([[-.5, -.07], [-.5, .07], [-.2, .11], [.42, .09], [.52, .02], [.48, -.07], [.2, -.1]], .13, .015), MG, ct, -.1, .29, .33); // unit swing (CVT case left)
   mk(prof([[-.14, .19], [.06, .19], [.08, .39], [-.12, .41]], .17, .015), MG, ct, -.02, 0, 0);                 // cylinder + head
   mk(box(.02, .16, .2), MGrl, ct, .145, .35, .08, -.35);                                                       // radiator louvres (right)
@@ -1157,7 +1196,7 @@ function nmax(ct, v) {
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
   for (const s of [-1, 1]) mk(cyl(.031, .028, .3, 8), MK, B.slider, s * .075, .15, 0);
   B.frontW = wheel(.042, .115); B.slider.add(B.frontW);
-  mk(arc(.265, .29, .95 + rake, 2.6 + rake, .12), MF, B.slider, 0, 0, 0); mk(box(.045, .07, .09), MK, B.slider, .085, .02, .06); // fender, caliper
+  mk(arc(.265, .29, .95 + rake, 2.6 + rake, .12), MF, B.slider, 0, 0, 0); mk(box(.045, .07, .09), MCal, B.slider, .085, .02, .06); // fender, caliper
   mk(cyl(.05, .05, .008, 12), MAlu, B.slider, .07, 0, 0, 0, 0, PI / 2);                                         // ABS sensor ring
   mk(prof([[-.08, .03], [.06, .03], [.08, .1], [-.06, .12]], .2, .02), MK, st, 0, 0, 0);                        // bar riser cover
   controls(st, .13, .03, .34, .24, [.31, .22, -.06]);
@@ -1191,7 +1230,7 @@ function xmax(ct) {
   const wheel = (R, t, rim, disc) => wheelG(R, t, rim, 5, .016, true, disc, { sx: [.05], sr: rim - .002, sw: .004 });
   B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, .74); ct.add(B.rearH); B.rearW = wheel(.21, .066, .17, .122); B.rearH.add(B.rearW);
   mk(arc(.29, .315, 1.3, 2.6, .15), MF, B.rearH, 0, 0, 0);                                                     // rear hugger
-  mk(box(.045, .065, .085), MK, B.rearH, .1, .06, -.07);                                                       // rear caliper (disc on the right)
+  mk(box(.045, .065, .085), MCal, B.rearH, .1, .06, -.07);                                                       // rear caliper (disc on the right)
   // engine + drive
   B.swing = mk(prof([[-.55, -.07], [-.55, .08], [-.2, .12], [.5, .1], [.6, .02], [.56, -.08], [.2, -.11]], .14, .015), MEng, ct, -.1, .3, .36); // unit swing (CVT case left)
   mk(prof([[-.16, .2], [.08, .2], [.1, .42], [-.14, .44]], .18, .015), MEng, ct, -.02, 0, 0);                // cylinder + head
@@ -1246,7 +1285,7 @@ function xmax(ct) {
   B.slider = new THREE.Group(); st.add(B.slider); B.slider.position.y = -fork;
   for (const s of [-1, 1]) mk(cyl(.033, .03, .3, 8), MK, B.slider, s * .08, .15, 0);
   B.frontW = wheel(.222, .052, .18, .133); B.slider.add(B.frontW);
-  mk(arc(.29, .315, .95 + rake, 2.6 + rake, .15), MF, B.slider, 0, 0, 0); mk(box(.045, .07, .09), MK, B.slider, .09, .02, .06); // fender, caliper
+  mk(arc(.29, .315, .95 + rake, 2.6 + rake, .15), MF, B.slider, 0, 0, 0); mk(box(.045, .07, .09), MCal, B.slider, .09, .02, .06); // fender, caliper
   mk(cyl(.05, .05, .008, 12), MAlu, B.slider, .075, 0, 0, 0, 0, PI / 2);                                        // ABS sensor ring
   mk(box(.2, .05, .07), MK, st, 0, .12, 0);                                                                     // top clamp
   controls(st, .15, .0, .37, .26, [.34, .3, -.05]);
@@ -1267,18 +1306,56 @@ const MODELS = { sport, scooter, supersport, underbone, tmx, aerox, rouser, h2, 
 // Lamps (11.99). Colour: LED units are cool white, the halogen bikes (B.halo: Smash, TMX, Macho, Rouser) warm; the beam on the
 // road (renderer's `head`) follows. lamps(on, brake): headlamp and tail lamp burn with the ignition on, the tail lamp
 // brightens under braking. A fresh build is lit, so the frozen copies of other players' bikes (snapshot) keep their lights.
+// hl = the garage's bulb colour (spec.hlC: yellow fog-style, ice blue...), ax = the aux lamps' own colour.
 const LAMP = { on: -1, br: -1 };
-function lampKind() { const c = B.halo ? 0xffe2a8 : 0xeef4ff; MHead.emissive.set(c); MHead.color.set(c); head.color.set(B.halo ? 0xffe6b8 : 0xf2f6ff); MHead.emissiveIntensity = 1.5; MTail.emissiveIntensity = 1.2; LAMP.on = LAMP.br = -1; }
+function lampKind(hl, ax) { const c = hl || (B.halo ? 0xffe2a8 : 0xeef4ff); MHead.emissive.set(c); MHead.color.set(c); head.color.set(hl || (B.halo ? 0xffe6b8 : 0xf2f6ff)); if (hl) head.color.lerp(WHITEC, .25); MAux.emissive.set(ax || 0xf4f7ff); MHead.emissiveIntensity = 1.5; MTail.emissiveIntensity = 1.2; LAMP.on = LAMP.br = -1; }
+const WHITEC = new THREE.Color(0xffffff);
 export function lamps(on, br) {
   if (on === LAMP.on && br === LAMP.br) return; LAMP.on = on; LAMP.br = br;
-  MHead.emissiveIntensity = on ? 1.5 : .05; MTail.emissiveIntensity = br ? 2.6 : on ? .8 : .06;
-  for (const m of [MHead, MTail]) { const i = PAL.get(m); if (i !== undefined) writePal(m, i); }
+  MHead.emissiveIntensity = on ? 1.5 : .05; MTail.emissiveIntensity = br ? 2.6 : on ? .8 : .06; MAux.emissiveIntensity = on ? 2.2 : .04; LED.d = 1;
+  for (const m of [MHead, MTail, MAux]) { const i = PAL.get(m); if (i !== undefined) writePal(m, i); }
+}
+// LEDs (garage > LIGHTS): underglow strips (MGlow, plus a pool of light on the road: GLOW, placed in blobTick) and wheel rings
+// (MWLed). A colour, or 'rgb' = the controller cycling through the hues. On with the ignition. ledTick runs every frame but only
+// writes two palette entries, and only while something changes.
+const LED = { g: 0, w: 0, d: 1, c: new THREE.Color() }, GLOWC = new THREE.Color(0);
+const ledCol = (v, t, ph) => v === 'rgb' ? LED.c.setHSL((t * .22 + ph) % 1, 1, .5) : LED.c.set(v);
+export function ledTick(t) {
+  if (!LED.d && LED.g !== 'rgb' && LED.w !== 'rgb') return; LED.d = 0; const on = LAMP.on ? 1 : 0;
+  for (const [m, v, ph] of [[MGlow, LED.g, 0], [MWLed, LED.w, .33]]) {
+    if (v) m.emissive.copy(ledCol(v, t, ph)); m.emissiveIntensity = v && on ? 1.2 : 0; const i = PAL.get(m); if (i !== undefined) writePal(m, i);
+    if (m === MGlow) { GLOWC.copy(v && on ? m.emissive : LED.c.set(0)); GLOW.visible = !!v && !!B.skin; }
+  }
+}
+// what the garage can change about the model's shape: a different key = buildModel() again (main.js). Colours never rebuild.
+export const shapeOf = (sp, bike) => sp ? [sp.var | 0, sp.sc && bike.sidecar ? 1 : 0, sp.tyT || 1, sp.tyW || 1, sp.tyK | 0, sp.tyS ? 1 : 0, sp.rimD | 0, sp.dscK | 0, sp.wledC ? 1 : 0, sp.mirK | 0, sp.boxK | 0, sp.glowC ? 1 : 0, sp.auxK | 0].join() : '';
+// Bolt-ons that are the same on every bike, placed from what each builder leaves behind (B.G, B.cargo, B.bar): top box on a rack
+// over the tail, LED strips under the belly, a pair of aux lamps (on the bar by the switch pods; on the fork legs of the clip-on bikes).
+function fit(ct, sp, wb) {
+  const G = B.G;
+  if (sp.boxK) {
+    const [w, h, d] = [[.38, .27, .36], [.5, .31, .42], [.46, .44, .44]][sp.boxK - 1], bag = sp.boxK === 3, y0 = B.cargo.y + .025, z = Math.max(B.cargo.z + .3, G.rearZ + .1) + d / 2 - .1, m = bag ? MBoxC : MBox;
+    mk(box(.2, .016, d * .8), MB, ct, 0, y0 - .012, z); for (const s of [-1, 1]) tube([s * .08, y0 - .012, z + .04], [s * .07, y0 - .13, z - d / 2 - .06], .009, MB, ct, 5); // rack plate + stays down to the tail
+    if (bag) { mk(box(w, h, d), m, ct, 0, y0 + h / 2, z); mk(box(w + .012, .05, d + .012), MB, ct, 0, y0 + h - .04, z); mk(box(w * .6, h * .45, .006), MSide, ct, 0, y0 + h * .5, z + d / 2 + .003); } // insulated delivery bag: zip band, a blank panel on the back
+    else {
+      mk(prof([[-d / 2, 0], [d / 2 - .03, 0], [d / 2, .05], [d / 2, h * .62], [-d / 2, h * .62]].map(p => [p[0] + z, p[1] + y0]), w, .03), m, ct, 0, 0, 0);                       // base
+      mk(prof([[-d / 2, h * .64], [d / 2, h * .64], [d / 2 - .04, h], [-d / 2 + .08, h]].map(p => [p[0] + z, p[1] + y0]), w * .98, .04), m, ct, 0, 0, 0);                           // lid
+      mk(box(w * .7, .035, .008), MRefl, ct, 0, y0 + h * .5, z + d / 2 + .004); mk(box(w * .5, h * .4, .03), MS, ct, 0, y0 + h * .42, z - d / 2 - .012);                              // reflector, backrest pad
+    }
+  }
+  if (sp.glowC) { const zc = G.rearZ - wb / 2, L = wb * .58; for (const s of [-1, 1]) mk(box(.016, .012, L), MGlow, ct, s * .11, .175, zc); mk(box(.2, .012, .016), MGlow, ct, 0, .175, zc + L / 2); }
+  if (sp.auxK) for (const s of [-1, 1]) {
+    const b = B.bar, on = b && b.mir, par = on ? B.steer : B.slider, x = s * (on ? b.lv + .06 : .15), y = on ? b.y - .05 : .27, z = on ? b.z - .06 : -.02, g = new THREE.Group(); g.position.set(x, y, z); g.rotation.x = on ? G.rake : 0; par.add(g);
+    mk(cyl(.03, .024, .05, 10), MB, g, 0, 0, 0, PI / 2); mk(cyl(.025, .025, .006, 10), MAux, g, 0, 0, -.027, PI / 2); mk(box(.012, .03, .012), MB, g, 0, on ? .03 : 0, on ? .01 : .0, 0, 0, 0).position.x = on ? 0 : -s * .025;
+  }
 }
 export function buildModel(bike, spec) {
+  const sp = spec || {}; B.shape = shapeOf(sp, bike);
+  Object.assign(TY, { t: sp.tyT || 1, w: sp.tyW || 1, k: sp.tyK | 0, s: sp.tyS ? 1 : 0, rd: sp.rimD | 0, dk: sp.dscK | 0, led: sp.wledC ? 1 : 0, mir: sp.mirK | 0 });
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;
-  B.ct.clear(); B.halo = false; B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.sc = 0; B.scDz = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model;
-  lampKind();
+  B.ct.clear(); B.halo = false; B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.calCol = null; B.bar = null; B.sc = 0; B.scDz = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model;
+  fit(B.ct, sp, bike.chassis.wb); lampKind(sp.hlC, sp.auxC); LED.d = 1;
   if (spec?.sc && bike.sidecar) { B.sc = 1; sidecar(B.ct, bike.sidecar, bike.chassis.wb); } SC_BLOB.p.z = B.scDz; // any bike with sidecar mount data
   setLiveryUV();
   const pc = bike.chassis.pil; // pillion seat (data/bikes/*.json chassis.pil): where the recoloured rider copy goes + the passenger's eye (ride.js)
@@ -1318,6 +1395,10 @@ const blobMat = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite:
 const blobGeo = new THREE.PlaneGeometry(1, 1).rotateX(-PI / 2); // bk reaches the shader through the node only: also adding it to the geometry reads as 0 (r186 WebGL)
 const BLOB = new THREE.InstancedMesh(blobGeo, blobMat, BLOBN); BLOB.name = 'bikeBlobs'; BLOB.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
 BLOB.frustumCulled = false; BLOB.castShadow = BLOB.receiveShadow = false; BLOB.count = 1; BLOB.setMatrixAt(0, new THREE.Matrix4()); scene.add(BLOB); // 1 empty instance: the warm-up compiles it
+// Underglow (garage > LIGHTS): one additive pool of light on the road under the player's own bike, placed like its blob below.
+const GLOW = new THREE.Mesh(blobGeo, new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 }));
+{ const q = uv().sub(.5).mul(2), e = smoothstep(0, 1, q.length().oneMinus()); GLOW.material.colorNode = uniform(GLOWC).mul(e.mul(e).mul(1.6).add(e.mul(.35))); }
+GLOW.name = 'underglow'; GLOW.matrixAutoUpdate = false; GLOW.frustumCulled = false; GLOW.castShadow = GLOW.receiveShadow = false; GLOW.visible = false; scene.add(GLOW);
 // entry: b = the object whose frame is the bike's (its point p = the bike's middle, h0 above the ground when upright),
 // d = wheel spacing, w = width, spread = widening when tipped over (default 1.4), cores = tyre-contact strength, vis() = draw it now, ground = optional floor height fn
 const BL = new Set();
@@ -1345,6 +1426,12 @@ export function blobTick(H) {
     bs.set(e.w * (1 + tip * spread) * grow, 1, e.d * 1.6 * grow); bm.compose(bp.set(bp.x + ox * fade, gy + .02, bp.z + oz * fade), bq, bs);
     BLOB.setMatrixAt(n, bm); BK.array[n * 2] = .85 * fade; BK.array[n * 2 + 1] = e.cores * (1 - tip); n++;
   }
+  if (GLOW.visible) { // same placement as the player's blob (which the garage's real shadows switch off), without the sun's offset
+    const e = BLOB_ME; e.b.updateWorldMatrix(true, false); const mw = e.b.matrixWorld; bp.copy(e.p).applyMatrix4(mw); bf.set(0, 0, -1).transformDirection(mw); bf.y = 0; if (bf.lengthSq() < .04) bf.set(0, 0, -1); bf.normalize();
+    const gr = e.ground || H, hd = e.d / 2, hf = gr(bp.x + bf.x * hd, bp.z + bf.z * hd), hr = gr(bp.x - bf.x * hd, bp.z - bf.z * hd), gy = (hf + hr) / 2, air = Math.max(0, bp.y - gy - e.h0);
+    be.set(Math.atan2(hf - hr, e.d), Math.atan2(-bf.x, -bf.z), 0); bq.setFromEuler(be); bs.set(1.7 + air, 1, e.d * 2 + air); GLOW.matrix.compose(bp.set(bp.x, gy + .03, bp.z), bq, bs); GLOW.matrixWorldNeedsUpdate = true;
+    GLOW.material.opacity = Math.max(0, 1 - air / 1.5); // fades out over a jump
+  }
   if (!n) { BK.array[0] = 0; n = 1; } // keep one (invisible) instance: count 0 would skip the draw and its pipeline
   BLOB.count = n; BLOB.instanceMatrix.needsUpdate = true; BK.needsUpdate = true;
 }
@@ -1353,7 +1440,9 @@ export function applyLook(spec) {
   drawLivery(B.kind, '#' + new THREE.Color(spec.c).getHexString(), spec.lv || ''); MP.userData.r = spec.rough ?? .3; MP.userData.mt = spec.metal ?? .2; // matt paints: rougher; mirror-coated paints: metallic
   carbon(MP, !!spec.cfb, spec.c, spec.cfb === 2); carbon(MF, !!spec.cff, B.fenderPaint ? spec.c : 0x15161a); const wc = spec.wc || B.wheelCol; carbon(MW, !!spec.cfw, wc); // wc: paint scheme's own wheel colour
   MRS.color.set(spec.rim || B.rimCol || wc); MCov.color.set(spec.ec || 0x60656d); MFrm.color.set(spec.fc || 0x3fae2a); if (B.decal) B.decal.color.set(spec.hd || '#f1f1ec');
-  if (B.look) B.look(spec); B.buildExh(spec.snd, !!spec.cfx); syncPal(); // B.look: a builder's own trim colours (palette entries, so no rebuild)
+  MCal.color.set(spec.calC || B.calCol || 0x15161a); MLev.color.set(spec.levC || 0xd5dae0); MGrip.color.set(spec.grpC || 0x0d0d0d); MS.color.set(spec.seatC || 0x1b1b1b);
+  MSide.color.set(spec.tyS || 0xf1f1ec); MBoxC.color.set(spec.boxC || 0x1faa55); lampKind(spec.hlC, spec.auxC); LED.g = spec.glowC || 0; LED.w = spec.wledC || 0; LED.d = 1;
+  if (B.look) B.look(spec); B.buildExh(spec.snd, !!spec.cfx); syncPal(); ledTick(0); // B.look: a builder's own trim colours (palette entries, so no rebuild)
 }
 
 /* ---------- remote players (net.js) ---------- */

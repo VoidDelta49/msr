@@ -5,7 +5,8 @@ import { applyTune, airOf } from './tune.js';
 
 // part option keys that multiply instead of replace (capx: clutch torque capacity, etax: chain/belt efficiency; drivetrain.js applies both;
 // frx: engine friction, e.g. oil; fux: fuel use; ccx: displacement, e.g. a bore-up kit)
-const MUL = new Set(['pow', 'ie', 'csp', 'brake', 'capx', 'etax', 'frx', 'fux', 'ccx']);
+// rollx / dragx: rolling and air drag, e.g. skinny or knobby tyres, a top box)
+const MUL = new Set(['pow', 'ie', 'csp', 'brake', 'capx', 'etax', 'frx', 'fux', 'ccx', 'rollx', 'dragx']);
 // ... and keys that add (dm: mass change in kg, e.g. carbon parts; tqs: torque-curve tilt toward the top end, e.g. a cam;
 // redd: rpm added to the rev limit, e.g. valve springs or a racing CDI; crd: compression ratio points, e.g. a high-comp piston;
 // evo: degrees earlier the exhaust valve opens, e.g. a racing cam). Exhaust options replace muf (muffler volume vs stock, 0 = open
@@ -21,17 +22,18 @@ export function computeSpec(bike, b) {
     type: bike.drivetrain, ...ch,
     ie: en.Ie, ie0: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
     peakPS: en.peakPS, tachMax: en.tachMax, ram: en.ram || 0, sound: bike.sound, geo: en.geo,
-    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, ccx: 1, crd: 0, evo: 0, muf: 1, hdr: .85, sIn: 0, sBri: 0, sMech: 0, sPun: 0, sRgh: 0, sCrk: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0, air: 1,
+    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, ccx: 1, crd: 0, evo: 0, muf: 1, hdr: .85, sIn: 0, sBri: 0, sMech: 0, sPun: 0, sRgh: 0, sCrk: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0, air: 1, rollx: 1, dragx: 1, offr: 0,
   };
   for (const [k, p] of Object.entries(bike.parts)) {
     const o = p.o[b[k]] || p.o[0]; s.air *= airOf(k, o); // air: how much more air the fitted parts flow (tune.js: the fuel it then needs)
-    for (const [kk, v] of Object.entries(o)) { if (kk === 'n') continue; if (MUL.has(kk)) s[kk] *= v; else if (ADD.has(kk)) s[kk] += v; else s[kk] = v; }
+    for (const [kk, v] of Object.entries(o)) { if (kk === 'n' || kk === 'note') continue; if (MUL.has(kk)) s[kk] *= v; else if (ADD.has(kk)) s[kk] += v; else s[kk] = v; }
   }
   // engine internals: tilt the torque curve about 60% of the stock redline (tqs 0.05 = 5% less at idle-ish revs, ~2% more at the top),
   // raise the limiter (never past the end of the torque table), scale friction and fuel use
   if (s.tqs) s.TQ = s.TQ.map(([r, t]) => [r, t * Math.max(.5, 1 + s.tqs * (r / s.red0 - .6))]);
   if (s.redd) s.red = Math.min(s.red + s.redd, s.TQ[s.TQ.length - 1][0]);
   if (s.frx !== 1) s.fric = [s.fric[0] * s.frx, s.fric[1] * s.frx];
+  s.roll *= s.rollx; s.drag *= s.dragx; // tyres, top box (offr, a knobby tyre's share of the off-road grip loss won back, is read by rapier.js)
   if (s.fux !== 1) s.fuel = { ...s.fuel, idle: s.fuel.idle * s.fux, k: s.fuel.k * s.fux };
   applyTune(bike, s, b); // garage > DYNO fine tuning: fuel, ignition and cam timing, idle, limiter (tune.js)
   if (b.cc) s.c = b.cc; if (b.cw) s.wc = b.cw; // custom body / wheel colours from the garage's pickers

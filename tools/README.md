@@ -49,6 +49,12 @@ For a custom experiment write a 10-line script on `tools/lib/headless.mjs` (`cre
 3. `node tools/bike.mjs <id>` and `node tools/bike.mjs` to compare with the others; `node tools/sweep.mjs <id>` and `node tools/fuzz.mjs <id>` must pass.
 4. `node tools/test.mjs` fails with `NEW <id>: N metrics not in baseline` until you review and run `--update`.
 
+## Garage bolt-ons (tyres, rims, brakes, accessories, lights)
+`node maker/parts-gen.mjs` writes them into every bike file from its `BIKES` table (re-running replaces them). Option keys:
+- tyres: `mu`, `tyT` section height x (the rim showing inside grows / shrinks, outer radius stays), `tyW` width x, `tyK: 1` knobs, `tyS` sidewall band colour, `rollx` / `dragx` rolling / air drag x, `offr` share of the off-road grip loss won back (rapier.js, not in the headless sim), `dm` kg.
+- `rimD` rim design (`RIMS` in model.js), `dscK` 1 wave / 2 oversize disc, `calC` caliper, `mirK` 1 bar-end / 2 short / 3 removed, `levC`, `grpC`, `seatC`, `boxK` 1 / 2 top box, 3 delivery bag (`boxC`), `hlC` bulb colour, `auxK` + `auxC` aux lamps, `glowC` / `wledC` LED colour or `'rgb'`.
+- A shape key must be in `shapeOf()` (model.js) or the model is not rebuilt when it changes. `bikeref.mjs --parts k=i,...` shows any combination (ignition on, so lamps and LEDs are lit); `sweep.mjs` runs every option through launch + brake.
+
 ## Adding a feature
 - UI element: `check` fails if a `$('id')` has no element in index.html or any template string.
 - New module: `check` fails if it isn't in index.html's import map (cache busting + offline) or has a syntax error.
