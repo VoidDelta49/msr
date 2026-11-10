@@ -158,7 +158,7 @@ js/model.js           3D models (Raider R150 underbone, Click 125i scooter, Smas
 js/tex.js             N64-style procedural textures (tiny, dithered, bilinear) + sky
 js/layout.js          fits the HUD + touch controls to any phone screen (safe area, orientation, handedness, size): applies the rectangles from layoutcalc.js
 js/layoutcalc.js      pure layout solver behind it (no DOM; tools/layout.mjs sweeps it)
-js/hud.js             gauge clusters (sport / scooter LCD / CBR TFT), messages, minimap
+js/hud.js             gauge clusters, one per real dash (Raider LCD, Click / Aerox / Sniper LCDs, Rouser tach + LCD, Smash and TMX dials, CBR TFT, H2, NMAX / XMAX two-screen), messages, minimap
 js/world.js           builds the island from data/map/island.json: terrain, roads, town, props, collision footprints, parking lot
 data/map/island.json  the island layout (coast, features, river, roads, town blocks, vehicles, hangars, prop counts)
 js/renderer.js        WebGPU/WebGL setup and fallback, quality preset

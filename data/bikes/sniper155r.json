@@ -6,7 +6,7 @@
   "class": "SPORT",
   "blurb": "155 cc liquid-cooled, fuel-injected SOHC 4-valve single with VVA (58.0 × 58.7 mm, 10.5:1), 13.2 kW (17.9 PS) @ 9,500 rpm, 14.4 Nm @ 8,000 rpm. 6-speed constant-mesh gearbox, wet multiplate assist & slipper clutch, chain final drive. Telescopic fork, swingarm, hydraulic front disc (2-pot caliper) + rear disc with ABS, 17\" alloys (90/80-17 front, 120/70-17 rear), 1,290 mm wheelbase, 795 mm seat, 150 mm ground clearance, 123 kg curb, 5.4 L tank. Smart key, 12 V socket, LED lights, digital meter.",
   "model": "sniper",
-  "cluster": "sport",
+  "cluster": "sniper",
   "drivetrain": "manual",
   "sidecar": {
     "struts": [

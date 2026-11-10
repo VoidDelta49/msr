@@ -6,7 +6,7 @@
   "class": "SCOOTER",
   "blurb": "155.09 cc liquid-cooled SOHC 4-valve single with VVA (58.0 × 58.7 mm, 11.6:1), 15.4 PS @ 8,000 rpm, 13.9 Nm @ 6,500 rpm. V-belt CVT (2.300–0.724) with a dry centrifugal clutch, 230 mm discs front and rear (ABS on the SP), 14\" alloys (110/80-14, 140/70-14), twin rear shocks, 1,350 mm wheelbase, 126 kg wet, 5.5 L tank, Stop & Start System.",
   "model": "aerox",
-  "cluster": "scooter",
+  "cluster": "aerox",
   "drivetrain": "cvt",
   "sidecar": {"struts": [[0.1, 0.3, -0.25, 0.3], [0.11, 0.31, 0.34, 0.3], [0.1, 0.69, 0.3, 0.9]]},
   "chassis": {
