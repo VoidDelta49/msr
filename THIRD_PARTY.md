@@ -1,6 +1,6 @@
 # Third-party software and credits
 
-CPM: Motor Edition's own code is under the MIT License (see `LICENSE`). It also uses the libraries below. Copies are included in `vendor/` (see the importmap in `index.html`) so the game works offline; each folder carries the library's license file.
+ISLA's own code is under the MIT License (see `LICENSE`). It also uses the libraries below. Copies are included in `vendor/` (see the importmap in `index.html`) so the game works offline; each folder carries the library's license file.
 
 | Library | Version | License | Source |
 |---|---|---|---|
@@ -16,6 +16,13 @@ Copyright © three.js authors. Released under the MIT License: https://github.co
 Copyright © Dimforge. Released under the Apache License, Version 2.0: https://www.apache.org/licenses/LICENSE-2.0
 
 `vendor/rapier/LICENSE` is the Apache-2.0 text; the npm package ships no `NOTICE` file. Copyright notices inside the files are kept.
+
+## Weather data
+
+The live weather (Options > Game > Weather > Live PH) is [Open-Meteo](https://open-meteo.com/) data, fetched by the relay
+(`server/wx.js`) for one fixed point in the Philippines. Weather data by Open-Meteo.com, licensed under
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Their free API is for **non-commercial** use (under 10,000 calls a day; the
+relay makes about 100): if the game is ever sold or carries ads, move to their paid plan or another source first.
 
 ## Not third-party
 

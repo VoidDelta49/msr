@@ -17,7 +17,9 @@ import { beacon, MI } from './missions.js';
 import { earn } from './shop.js';
 import { setWaypoint, clearWaypoint, WP } from './map.js';
 import { lampsOn } from './lights.js';
-import { NPC, npcEnv, npcStep, poseOf } from './npc.js';
+import { NPC, npcEnv, npcStep, poseOf, rainMask } from './npc.js';
+import { WX } from './weather.js';
+import { OPT } from './figlook.js';
 import { Crowd, humanGeo, dogGeo, POSES, footDrop, dogDrop, handAt, DIMS, joints } from './figure.js';
 
 const D = await (await fetch('data/npc.json?v=' + BUILD)).json();
@@ -91,6 +93,7 @@ export function npcFrame(dt, now) {
   draw(now / 1000, on);
 }
 
+const UMB = 1 << (OPT.umb - 1);
 function draw(t, on) {
   people.clear(); dogs.clear(); let ns = 0, nl = 0, nm = 0;
   if (on) {
@@ -101,7 +104,8 @@ function draw(t, on) {
       sph.center.set(a.x, a.y + .9, a.z); sph.radius = 1.4; a.vis = a.dist < far && fr.intersectsSphere(sph); if (!a.vis) continue;
       const P = POSES[p] || POSES.stand, k = a.st === 'hail' ? a.k : p === 'walk' ? Math.min(1, a.spd / 1.3) : (a.id % 7) / 7;
       P(pose, t + a.id * 1.7, k, a.ph); const drop = p === 'squat' || p === 'sit' || p === 'dazed' ? footDrop(pose) * a.sy : p === 'walk' || p === 'run' ? -.025 * Math.abs(Math.sin(a.ph)) * k : 0;
-      people.push(a.x, a.y, a.z, a.psi, a.sx, a.sy, a.mask, pose, a.pal, drop + a.sink);
+      const mk = a.mask | rainMask(a, WX.rain); if (mk & UMB) pose[1] = .9; // payong up: the right arm holds it
+      people.push(a.x, a.y, a.z, a.psi, a.sx, a.sy, mk, pose, a.pal, drop + a.sink);
       shadow(ns++, a.x, a.y, a.z, .55 * a.sx, a.sink > .6 ? 0 : 1);
       if (a.st === 'hail' && nm < 8) { MK.setMatrixAt(nm++, m4.compose(v3.set(a.x, a.y + 2.25 * a.sy + Math.sin(t * 3 + a.id) * .08, a.z), q4.setFromAxisAngle(s3.set(0, 1, 0), t * 2), s3.set(1, 1, 1))); }
       const g = a.dog; if (!g) continue;

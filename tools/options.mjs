@@ -9,6 +9,7 @@
 //     must clearly add them. Also the reload bar in game: changing a reload-only setting flags it and lists it, changing it back clears the flag,
 //     Apply & reload comes back up running the new mode. Swiftshader timings mean nothing, the counts and the states do.
 // --shot dir: pictures of every tab at 390x844 and 844x390 (part A) to look at.
+import { wxRoute } from './lib/wxroute.mjs';
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import { serve } from './serve.mjs';
@@ -24,6 +25,7 @@ const TABS = ['gfx', 'ctl', 'aud', 'game', 'sys'];
 // a page whose localStorage starts as `store` on the FIRST load only (a reload keeps what the game saved since)
 async function page(vp, store) {
   const pg = await br.newPage({ viewport: { width: vp[0], height: vp[1] } }), errs = [];
+  await wxRoute(pg); // live weather answered locally (tools/lib/wxroute.mjs)
   pg.on('pageerror', e => errs.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 200)); });
   await pg.addInitScript(s => { sessionStorage.setItem('cpmGL', '1'); if (!sessionStorage.getItem('__t')) { sessionStorage.setItem('__t', '1'); if (s) localStorage.setItem('cpmme', JSON.stringify(s)); else localStorage.removeItem('cpmme'); } }, store || null);
   await pg.goto(url); pg.errs = errs; return pg;

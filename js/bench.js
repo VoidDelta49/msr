@@ -172,7 +172,7 @@ function verdict(R) {
   return L;
 }
 function report(R, D) {
-  const out = [`CPM Motor benchmark · build ${BUILD} · ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`,
+  const out = [`ISLA benchmark · build ${BUILD} · ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC`,
     `Device: ${D.ua}`, `        ${D.cores} cores · ${D.mem ? D.mem + ' GB · ' : ''}screen ${D.screen} · canvas ${D.canvas}`, `Renderer: ${D.api}${D.gpu ? ' · ' + D.gpu : ''} · GPU timer ${D.timer}`,
     `Settings: ${['gfx', 'aa', 'ibl', 'grade', 'nightFx', 'n64', 'mblur', 'mbAmt', 'retro', 'gpuCull', 'bundles', 'forceGL', 'bike'].map(k => k + '=' + cfg[k]).join(' ')} (test runs at noon, uncapped, auto-res off, Tough mode on)`, '', 'VERDICT', ...verdict(Object.fromEntries(R.map(p => [p.id, p]))).map(x => ' - ' + x)];
   for (const p of R) {

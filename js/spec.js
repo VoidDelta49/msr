@@ -6,7 +6,7 @@ import { applyTune, airOf } from './tune.js';
 // part option keys that multiply instead of replace (capx: clutch torque capacity, etax: chain/belt efficiency; drivetrain.js applies both;
 // frx: engine friction, e.g. oil; fux: fuel use; ccx: displacement, e.g. a bore-up kit)
 // rollx / dragx: rolling and air drag, e.g. skinny or knobby tyres, a top box)
-const MUL = new Set(['pow', 'ie', 'csp', 'brake', 'capx', 'etax', 'frx', 'fux', 'ccx', 'rollx', 'dragx']);
+const MUL = new Set(['pow', 'ie', 'csp', 'brake', 'capx', 'etax', 'frx', 'fux', 'ccx', 'rollx', 'dragx', 'krx']);
 // ... and keys that add (dm: mass change in kg, e.g. carbon parts; tqs: torque-curve tilt toward the top end, e.g. a cam;
 // redd: rpm added to the rev limit, e.g. valve springs or a racing CDI; crd: compression ratio points, e.g. a high-comp piston;
 // evo: degrees earlier the exhaust valve opens, e.g. a racing cam). Exhaust options replace muf (muffler volume vs stock, 0 = open
@@ -22,7 +22,7 @@ export function computeSpec(bike, b) {
     type: bike.drivetrain, ...ch,
     ie: en.Ie, ie0: en.Ie, idle: en.idle, red: en.red, red0: en.red, TQ: en.torque, fric: en.fric, fuel: en.fuel,
     peakPS: en.peakPS, tachMax: en.tachMax, ram: en.ram || 0, sound: bike.sound, geo: en.geo,
-    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, ccx: 1, crd: 0, evo: 0, muf: 1, hdr: .85, sIn: 0, sBri: 0, sMech: 0, sPun: 0, sRgh: 0, sCrk: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0, air: 1, rollx: 1, dragx: 1, offr: 0,
+    pow: 1, mu: .85, snd: 0, csp: 1, eng: 0, c: '#888888', capx: 1, etax: 1, frx: 1, fux: 1, tqs: 0, redd: 0, dm: 0, ccx: 1, crd: 0, evo: 0, muf: 1, hdr: .85, sIn: 0, sBri: 0, sMech: 0, sPun: 0, sRgh: 0, sCrk: 0, cfb: 0, cff: 0, cfw: 0, cfx: 0, air: 1, rollx: 1, dragx: 1, offr: 0, wetg: 1, aqua: 1, krx: 1, swl: 0, swf: 0, yrd: 0,
   };
   for (const [k, p] of Object.entries(bike.parts)) {
     const o = p.o[b[k]] || p.o[0]; s.air *= airOf(k, o); // air: how much more air the fitted parts flow (tune.js: the fuel it then needs)
@@ -38,14 +38,28 @@ export function computeSpec(bike, b) {
   applyTune(bike, s, b); // garage > DYNO fine tuning: fuel, ignition and cam timing, idle, limiter (tune.js)
   if (b.cc) s.c = b.cc; if (b.cw) s.wc = b.cw; // custom body / wheel colours from the garage's pickers
   s.m0 = s.m; s.m += s.dm;
-  s.kf = b.kf * 1000; s.kr = b.kr * 1000; s.damp = b.damp / 100;
+  // swing-arm length / Engine Support (parts-gen swarm): the rear axle sits swl m further back. The share of the mass that moves with it
+  // (wheel + arm, or a scooter's whole engine unit) pulls the centre of mass back by that share; the rest of the bike is now further
+  // from the rear axle, so it wheelies later, turns wider and pitches slower. krx: a longer arm on the same shock mount = softer wheel rate
+  if (s.swl) {
+    const d = s.swl, f = s.type === 'cvt' ? .3 : .1, lr0 = s.lr; s.wb += d; s.lr += d * (1 - f); s.lf = s.wb - s.lr;
+    s.I += f * s.m0 * ((lr0 + d * (1 - f)) ** 2 - lr0 ** 2) + s.m0 * f * (1 - f) * d * d; if (s.pil) s.pil = { ...s.pil, x: s.pil.x + d };
+  }
+  s.kf = b.kf * 1000; s.kr = b.kr * 1000 * s.krx; s.damp = b.damp / 100;
   // preload: spring pre-compressed by pf/pr metres, so the bike sits that much higher (CG too) with more bump travel left
   s.pf = (b.pf || 0) / 1000; s.pr = (b.pr || 0) / 1000; s.h += (s.pf + s.pr) / 2;
   // ride height (fork tubes slid in the clamps / shock length): chassis sits yf/yr higher, same travel and sag
-  s.yf = (b.yf || 0) / 1000; s.yr = (b.yr || 0) / 1000; s.h += (s.yf + s.yr) / 2;
+  s.yf = (b.yf || 0) / 1000; s.yr = (b.yr || 0) / 1000 + s.yrd; s.h += (s.yf + s.yr) / 2;
   // a sidecar's own wheel carries scW of the rig, the bike's springs only the rest
   s.ms = s.sc ? s.m * (1 - s.scW) : s.m;
   s.sag = (s.ms * s.lr / s.wb * 9.81 / s.kf + s.ms * s.lf / s.wb * 9.81 / s.kr) / 2;
+  // suspension (chassis.travel = the real wheel travel, chassis.susp = layout + damper character). The bike sits 30 % into its stroke
+  // on the stock springs; a softer spring or less preload sits deeper and has less left before the bump stop (bump), a stiffer one more.
+  // dz: damping x per end, reb: rebound / compression ratio (cheap twin shocks ~1.4, good dampers 2.5-3), prog: how much the rate has
+  // risen at full travel (fork air gap, dual-rate springs, a linkage). Read by bumpStop (physics.js), the springs (rapier.js), main.js
+  const su = s.susp || {}, df = bike.defaults, sg = (i, k, k0, p) => Math.min(.6, Math.max(.1, .3 * (k0 * 1000 || k) / k - p / s.travel[i])) * s.travel[i];
+  s.sagw = [sg(0, s.kf, df.kf, s.pf), sg(1, s.kr / s.krx, df.kr, s.pr)]; s.bump = [s.travel[0] - s.sagw[0], s.travel[1] - s.sagw[1]];
+  s.reb = su.reb || [1, 1]; s.dz = su.dz || [1, 1]; s.prog = su.prog || [0, 0];
   s.tqMax = Math.max(...s.TQ.map(p => p[1]));
   DRIVES[bike.drivetrain].spec(s, bike, b);
   return s;

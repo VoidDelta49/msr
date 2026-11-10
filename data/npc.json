@@ -1,27 +1,34 @@
 {
-  "_doc": "Pedestrians (js/npc.js logic, js/npcfig.js drawing). Add a kind of person = add an entry to 'archetypes'; no code change. Colour values: '#rrggbb', '@palette' (a random entry of palettes.palette), '=role' (copy another role), or a list of those (one is picked). Roles: skin hair top sleeve forearm hand thigh shin shoe acc pack tie bag. 'opt': chance of each optional part (cap long pack skirt tie bag); parts listed in 'excl' groups never come together. 'acts': weights of the things they stop to do (idle phone chat squat stretch sweep look wave sit). 'pet': 'dog' walks a dog on a leash. 'hail': chance this person is waiting for a ride (only if fewer than ride.maxHail are). h / wd: height / width scale range, speed: walking speed range (m/s), night: how many are out at night vs by day.",
+  "_doc": "Pedestrians (js/npc.js logic, js/npcfig.js drawing). Add a kind of person = add an entry to 'archetypes'; no code change. Colour values: '#rrggbb', '@palette' (a random entry of palettes.palette), '=role' (copy another role), or a list of those (one is picked). Roles: skin hair top sleeve forearm hand thigh shin shoe acc pack tie bag fur2 (straw of the hat). 'opt': chance of each optional part (cap helmet long pack skirt tie bag hat = salakot / buri hat, umb = payong carried in any weather, coat = kapote); in the rain npc.js hands out a payong or kapote by itself (rain: chances, colours from palettes.rain); parts listed in 'excl' groups never come together. 'acts': weights of the things they stop to do (idle phone chat squat stretch sweep look wave sit). 'pet': 'dog' walks a dog on a leash. 'hail': chance this person is waiting for a ride (only if fewer than ride.maxHail are). h / wd: height / width scale range, speed: walking speed range (m/s), night: how many are out at night vs by day.",
   "density": { "off": 0, "few": 0.45, "auto": 1, "busy": 1.6 },
   "pool": { "low": 14, "med": 22, "high": 30 },
   "night": 0.45,
   "range": { "spawnMin": 30, "spawnMax": 105, "despawn": 135, "near": 32, "mid": 70, "hidden": 55 },
   "ride": { "reach": 5.5, "wait": 0.7, "maxHail": 3, "distMin": 160, "distMax": 700, "stopR": 9, "fareBase": 40, "farePerKm": 18, "seen": 40 },
   "palettes": {
-    "skin": ["#f1c9a5", "#e5b48c", "#d9a27a", "#c99a6e", "#b07e55", "#8d5a3b"],
-    "hair": ["#1d1a18", "#1d1a18", "#2b211a", "#3d2b1f", "#5a3e2b"],
-    "grey": ["#8a8a88", "#b9b8b4", "#d8d6d0"],
+    "skin": ["#e6bc95", "#d7a67c", "#cb996d", "#c08a5e", "#c08a5e", "#b47f54", "#b47f54", "#a87248", "#96623c", "#805133"],
+    "hair": ["#141211", "#141211", "#1d1a18", "#1d1a18", "#1d1a18", "#241c17", "#33251b"],
+    "dyed": ["#141211", "#1d1a18", "#1d1a18", "#5e3a22", "#7d4f2c", "#a8854e"],
+    "grey": ["#55524f", "#8a8a88", "#b9b8b4", "#d8d6d0", "#ecebe6"],
     "bright": ["#e8463a", "#f2c230", "#3aa0e8", "#56c46a", "#c060d0", "#f08a30", "#2bb3a3", "#ff6f91", "#7a5cff"],
     "muted": ["#6b7a8f", "#8c6b4a", "#5a6b4a", "#7b4a5a", "#4a5560", "#a89a7a", "#d9cbb0"],
     "dark": ["#2b2d33", "#1f2226", "#3b3b3b", "#2d3d63", "#4a3a2a"],
     "denim": ["#2d3d63", "#3a4f7a", "#24324f", "#4a5f8a"],
     "light": ["#f2f2ee", "#e9e4d8", "#dfe7ee", "#f5ecd7"],
     "sneaker": ["#f2f2ee", "#e9e6df", "#2b2d33", "#e8463a", "#3aa0e8"],
+    "jersey": ["#1f4fbf", "#c21d1d", "#f2c230", "#1a8f4a", "#6a2fb0", "#f2f2ee", "#17181b", "#f08a30"],
+    "duster": ["#e9a8b8", "#f0c56a", "#8fc7c0", "#b9a0d8", "#f3b08a", "#9cc98a", "#e58a8a", "#a8c4e8"],
+    "check": ["#2f4a7a", "#7a2f3a", "#2f5a3e", "#24324f"],
+    "faded": ["#8a97a8", "#a3a08a", "#9a8f80", "#7f8f86", "#b3a58c", "#6f7f95"],
+    "hivis": ["#1faa55", "#e0317f", "#f08a30", "#e8463a", "#2f6fd0"],
+    "rain": ["#17181b", "#17181b", "#24324f", "#a8202a", "#1a8f4a", "#6a2fb0", "#e9a8b8", "#f2c230", "#3aa0e8"],
     "slipper": ["#2b2d33", "#3aa0e8", "#e8463a", "#56c46a", "#f2c230", "#f2f2ee"]
   },
   "archetypes": {
     "sando": {
       "name": "Sando boy", "w": 4, "speed": [1.15, 1.5], "h": [0.96, 1.05], "wd": [1.0, 1.12],
-      "look": { "skin": "@skin", "hair": "@hair", "top": ["#f2f2ee", "#f2f2ee", "#e9e4d8", "@bright", "#2b2d33"], "sleeve": "=skin", "forearm": "=skin", "hand": "=skin",
-        "thigh": ["@dark", "@bright", "#c9c2b0"], "shin": "=skin", "shoe": "@slipper", "acc": ["@bright", "#2b2d33", "#f2f2ee"] },
+      "look": { "skin": "@skin", "hair": "@hair", "top": ["#f2f2ee", "#f2f2ee", "@jersey", "@jersey", "@jersey", "#2b2d33"], "sleeve": "=skin", "forearm": "=skin", "hand": "=skin",
+        "thigh": ["=top", "@jersey", "@dark", "#c9c2b0"], "shin": "=skin", "shoe": ["@slipper", "@slipper", "@sneaker"], "acc": ["@bright", "#2b2d33", "#f2f2ee"] },
       "opt": { "cap": 0.4 },
       "acts": { "idle": 3, "chat": 4, "squat": 4, "phone": 2, "stretch": 2, "look": 2, "wave": 1 },
       "hail": 0.18, "night": 1.3,
@@ -38,8 +45,8 @@
     },
     "student": {
       "name": "Student", "w": 4, "speed": [1.2, 1.55], "h": [0.86, 0.95], "wd": [0.9, 1.0],
-      "look": { "skin": "@skin", "hair": "@hair", "top": "#f7f7f2", "sleeve": "=top", "forearm": "=skin", "hand": "=skin",
-        "thigh": ["#24324f", "#2b2d33", "#2f4a3a", "#5a2a33"], "shin": ["=thigh", "=skin"], "shoe": ["#1f2226", "#1f2226", "#f2f2ee"],
+      "look": { "skin": "@skin", "hair": ["@hair", "@hair", "@dyed"], "top": "#f7f7f2", "sleeve": "=top", "forearm": "=skin", "hand": "=skin",
+        "thigh": ["#24324f", "#2b2d33", "#2b2d33", "#b9a878", "@check"], "shin": ["=thigh", "=skin"], "shoe": ["#1f2226", "#1f2226", "#f2f2ee"],
         "pack": ["@bright", "@dark", "#ff6f91"], "tie": ["=thigh", "#a8202a", "#24324f"], "bag": ["@bright", "#d9cbb0"] },
       "opt": { "pack": 0.85, "tie": 0.6, "skirt": 0.45, "long": 0.4, "bag": 0.1 },
       "excl": [["pack", "bag"]],
@@ -52,7 +59,7 @@
       "name": "Tita", "w": 2, "speed": [0.95, 1.2], "h": [0.9, 0.97], "wd": [1.0, 1.15],
       "look": { "skin": "@skin", "hair": "@hair", "top": ["@bright", "@muted", "#f5ecd7"], "sleeve": "=top", "forearm": "=skin", "hand": "=skin",
         "thigh": ["@muted", "@dark", "@denim"], "shin": ["=thigh", "=skin"], "shoe": "@slipper", "bag": ["@bright", "#d9cbb0", "#8c6b4a"] },
-      "opt": { "long": 0.6, "bag": 0.7, "skirt": 0.3 },
+      "opt": { "long": 0.6, "bag": 0.7, "skirt": 0.3, "umb": 0.2 },
       "skirtShin": "=skin",
       "acts": { "chat": 5, "idle": 2, "sweep": 2, "phone": 1, "look": 1 },
       "hail": 0.12, "night": 0.4,
@@ -60,16 +67,16 @@
     },
     "lolo": {
       "name": "Lolo", "w": 1, "speed": [0.7, 0.9], "h": [0.9, 0.96], "wd": [0.95, 1.05],
-      "look": { "skin": "@skin", "hair": "@grey", "top": ["@light", "@muted"], "sleeve": "=top", "forearm": "=skin", "hand": "=skin",
+      "look": { "skin": "@skin", "hair": "@grey", "top": ["#f2f2ee", "#f2f2ee", "@light", "@muted"], "sleeve": "=top", "forearm": "=skin", "hand": "=skin",
         "thigh": ["@muted", "#c9c2b0", "@dark"], "shin": "=thigh", "shoe": ["@slipper", "#4a3a2a"], "acc": ["#f2f2ee", "#c9c2b0", "#2b2d33"] },
-      "opt": { "cap": 0.6 },
+      "opt": { "cap": 0.45, "hat": 0.3 }, "excl": [["hat", "cap"]],
       "acts": { "idle": 3, "sit": 4, "look": 3, "chat": 2, "sweep": 1 },
       "hail": 0.1, "night": 0.3,
       "names": ["Lolo Pepe", "Mang Ambo", "Lolo Ising", "Mang Tonyo"]
     },
     "office": {
       "name": "Office worker", "w": 2, "speed": [1.25, 1.55], "h": [0.95, 1.04], "wd": [0.95, 1.05],
-      "look": { "skin": "@skin", "hair": "@hair", "top": ["@light", "#bcd4ea", "#f0d9e0"], "sleeve": "=top", "forearm": "=top", "hand": "=skin",
+      "look": { "skin": "@skin", "hair": "@hair", "top": ["@light", "#efe6cf", "#efe6cf", "#bcd4ea", "#f0d9e0"], "sleeve": "=top", "forearm": "=top", "hand": "=skin",
         "thigh": ["@dark", "#4a5560"], "shin": "=thigh", "shoe": ["#1f2226", "#4a3a2a"], "tie": ["#a8202a", "#24324f", "#2f4a3a"], "bag": ["#1f2226", "#4a3a2a"] },
       "opt": { "tie": 0.45, "bag": 0.6, "long": 0.35 },
       "acts": { "phone": 5, "idle": 1, "chat": 2, "look": 1 },
@@ -87,12 +94,57 @@
     },
     "tambay": {
       "name": "Tambay", "w": 2, "speed": [0.9, 1.15], "h": [0.95, 1.04], "wd": [1.0, 1.15],
-      "look": { "skin": "@skin", "hair": "@hair", "top": ["@muted", "@bright", "#2b2d33"], "sleeve": "=top", "forearm": "=skin", "hand": "=skin",
+      "look": { "skin": "@skin", "hair": ["@hair", "@dyed"], "top": ["@muted", "@jersey", "#2b2d33", "#f2f2ee"], "sleeve": "=top", "forearm": "=skin", "hand": "=skin",
         "thigh": ["@denim", "@dark"], "shin": ["=thigh", "=skin"], "shoe": "@slipper", "acc": ["@bright", "#2b2d33"] },
       "opt": { "cap": 0.35 },
       "acts": { "squat": 4, "chat": 4, "idle": 3, "phone": 2, "sit": 2 },
       "hail": 0.15, "night": 1.5,
       "names": ["Pare", "Totoy", "Boy Pick-up", "Ka Ernie", "Bok"]
+    },
+    "nanay": {
+      "name": "Nanay in a duster", "w": 3, "speed": [0.9, 1.15], "h": [0.89, 0.96], "wd": [1.0, 1.18],
+      "look": { "skin": "@skin", "hair": ["@hair", "@hair", "@grey"], "top": "@duster", "sleeve": "=top", "forearm": "=skin", "hand": "=skin",
+        "thigh": "=top", "shin": "=skin", "shoe": "@slipper", "bag": ["#d9cbb0", "@bright", "#e8463a"] },
+      "opt": { "skirt": 1, "long": 0.5, "bag": 0.45, "umb": 0.25 },
+      "acts": { "chat": 5, "sweep": 4, "idle": 2, "look": 1, "sit": 1 },
+      "hail": 0.1, "night": 0.35,
+      "names": ["Nanay Luz", "Aling Bebang", "Manang Fe", "Nanay Cely", "Aling Puring", "Manang Inday"]
+    },
+    "vendor": {
+      "name": "Street vendor", "w": 2, "speed": [0.85, 1.1], "h": [0.93, 1.02], "wd": [0.98, 1.1],
+      "look": { "skin": "@skin", "hair": "@hair", "top": ["@faded", "#f2f2ee", "@muted"], "sleeve": "=top", "forearm": ["=top", "=top", "=skin"], "hand": "=skin",
+        "thigh": ["@dark", "@denim", "@faded"], "shin": ["=thigh", "=skin"], "shoe": "@slipper", "acc": ["@faded", "#2b2d33"], "bag": ["#8c6b4a", "#4a5560", "@bright"] },
+      "opt": { "hat": 0.6, "cap": 0.3, "bag": 0.8 }, "excl": [["hat", "cap"]],
+      "acts": { "idle": 5, "look": 4, "chat": 3, "squat": 2, "wave": 2 },
+      "hail": 0.05, "night": 0.8,
+      "names": ["Manong Taho", "Mang Kanor", "Aling Dionisia", "Manong Fishball", "Kuya Balut", "Manang Kakanin"]
+    },
+    "farmer": {
+      "name": "Magsasaka", "w": 1, "speed": [0.95, 1.2], "h": [0.93, 1.02], "wd": [0.95, 1.08],
+      "look": { "skin": ["#a87248", "#96623c", "#805133"], "hair": ["@hair", "@grey"], "top": "@faded", "sleeve": "=top", "forearm": "=top", "hand": "=skin",
+        "thigh": ["@faded", "@dark", "#6b5a40"], "shin": "=skin", "shoe": ["=skin", "@slipper", "#2b2d33"], "bag": ["#8c6b4a", "#a89a7a"] },
+      "opt": { "hat": 0.85, "bag": 0.4 },
+      "acts": { "idle": 3, "look": 3, "squat": 3, "stretch": 2, "chat": 2 },
+      "hail": 0.12, "night": 0.1,
+      "names": ["Mang Kardo", "Ka Pedring", "Mang Isko", "Aling Sela", "Ka Andoy"]
+    },
+    "tanod": {
+      "name": "Barangay tanod", "w": 1, "speed": [0.95, 1.2], "h": [0.96, 1.05], "wd": [1.02, 1.18],
+      "look": { "skin": "@skin", "hair": "@hair", "top": ["#1f2226", "#24324f", "#2f4a3a"], "sleeve": "=top", "forearm": "=skin", "hand": "=skin",
+        "thigh": ["#1f2226", "@denim", "#4a5560"], "shin": "=thigh", "shoe": ["#1f2226", "@sneaker"], "acc": ["#1f2226", "#24324f"], "bag": "#1f2226" },
+      "opt": { "cap": 0.8, "bag": 0.3 },
+      "acts": { "look": 5, "idle": 4, "chat": 3, "wave": 1, "phone": 1 },
+      "hail": 0, "night": 1.8,
+      "names": ["Tanod Berto", "Kagawad Nestor", "Tanod Jun-jun", "Ka Domeng"]
+    },
+    "courier": {
+      "name": "Delivery rider", "w": 2, "speed": [1.2, 1.5], "h": [0.95, 1.04], "wd": [0.98, 1.1],
+      "look": { "skin": "@skin", "hair": "@hair", "top": "@hivis", "sleeve": "=top", "forearm": ["=top", "=top", "#1f2226"], "hand": "=skin",
+        "thigh": ["@denim", "@dark"], "shin": "=thigh", "shoe": ["@sneaker", "@slipper"], "acc": ["=top", "#f2f2ee", "#1f2226"], "pack": "=top" },
+      "opt": { "helmet": 0.7, "pack": 0.75 },
+      "acts": { "phone": 6, "idle": 3, "look": 3, "chat": 1 },
+      "hail": 0, "night": 1.2,
+      "names": ["Kuya Rider", "Boss Rider", "Kuya Delivery", "Ate Rider"]
     }
   },
   "dog": {
@@ -105,6 +157,7 @@
     "idle": { "dur": [3, 7] }, "look": { "dur": [3, 6] }, "phone": { "dur": [5, 12], "parts": ["phone"] }, "chat": { "dur": [6, 14], "pair": true },
     "squat": { "dur": [6, 14] }, "sit": { "dur": [8, 16] }, "stretch": { "dur": [3, 5] }, "sweep": { "dur": [5, 10] }, "wave": { "dur": [1.4, 2.2] }
   },
+  "rain": {"from": 0.12, "umb": 0.5, "coat": 0.25},
   "doors": { "enter": 0.12, "exit": 0.3, "near": 14 },
   "lines": {
     "hail": ["Kuya, pa-angkas!", "Uy, pasabay po!", "Pa-hatid naman po!", "Angkas po, kuya!"],

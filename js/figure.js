@@ -68,6 +68,11 @@ export function humanGeo(d = DIMS) {
   part(P, box(.24, .3, .06), R.hair, 0, hy - .12, .125, B.head, B.torso, O.long);
   part(P, new THREE.IcosahedronGeometry(.14, 1).scale(1, .62, 1), R.acc, 0, hy + .065, 0, B.head, B.torso, O.cap); part(P, box(.2, .025, .14), R.acc, 0, hy + .05, -.17, B.head, B.torso, O.cap);
   part(P, new THREE.IcosahedronGeometry(.15, 1), R.acc, 0, hy, -.02, B.head, B.torso, O.helmet); part(P, box(.2, .085, .05), R.dark, 0, hy - .01, -.15, B.head, B.torso, O.helmet);
+  // salakot / buri hat (straw, fur2), kapote (rain poncho + hood, pack colour), payong (canopy in the pack colour, held by the right
+  // hand: npcfig.js lifts that arm while it is open)
+  part(P, new THREE.CylinderGeometry(.03, .31, .13, 10), R.fur2, 0, hy + .16, 0, B.head, B.torso, O.hat);
+  part(P, new THREE.CylinderGeometry(.17, .33, .66, 8), R.pack, 0, J.tcy - .08, 0, B.torso, 0, O.coat); part(P, new THREE.IcosahedronGeometry(.155, 1), R.pack, 0, hy + .012, .028, B.head, B.torso, O.coat);
+  part(P, box(.016, .95, .016), R.dark, .23, hy - .03, -.4, B.torso, 0, O.umb); part(P, new THREE.CylinderGeometry(.03, .56, .15, 10), R.pack, .14, hy + .42, -.26, B.torso, 0, O.umb);
   // torso extras: backpack (+ straps), school tie, shoulder bag strap
   part(P, box(.27, .32, .12), R.pack, 0, J.tcy + .02, .19, B.torso, 0, O.pack); for (const s of [-1, 1]) part(P, box(.04, .3, .02), R.pack, s * .085, J.tcy + .04, -.135, B.torso, 0, O.pack);
   part(P, box(.05, .26, .02), R.tie, 0, J.tcy + .07, -.137, B.torso, 0, O.tie);
@@ -105,7 +110,7 @@ export const hexOf = c => typeof c === 'number' ? c : C1.set(c).getHex(THREE.SRG
 export function packPal(cols, out = new Float32Array(16)) { for (let i = 0; i < 16; i++) out[i] = cols[i] === undefined ? 0x202020 : hexOf(cols[i]); return out; }
 // the rider's outfit as a palette (you on foot, a friend's walker)
 export function riderPal() {
-  const p = []; p[ROLE.skin] = '#c99a6e'; p[ROLE.top] = p[ROLE.sleeve] = p[ROLE.forearm] = JACKET; p[ROLE.hand] = GLOVE; p[ROLE.thigh] = p[ROLE.shin] = JEAN;
+  const p = []; p[ROLE.skin] = '#c08a5e'; p[ROLE.top] = p[ROLE.sleeve] = p[ROLE.forearm] = JACKET; p[ROLE.hand] = GLOVE; p[ROLE.thigh] = p[ROLE.shin] = JEAN;
   p[ROLE.shoe] = SHOE; p[ROLE.acc] = HELM; p[ROLE.dark] = VISOR; p[ROLE.eye] = 0x1d1a18; return packPal(p);
 }
 

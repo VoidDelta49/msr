@@ -5,7 +5,7 @@ import { S, ctx } from './state.js';
 import { tq } from './spec.js';
 import { say } from './hud.js';
 import { igPre, igPost } from './ignition.js';
-import { KP, KS, MUX, BRK, tyreF } from './tyre.js';
+import { KP, KS, MUX, BRK, tyreF, wetGrip } from './tyre.js';
 import { cfg } from './config.js';
 import { blip } from './audio.js';
 
@@ -105,7 +105,7 @@ export function step(dt) {
   // road and headless). The fore / aft shift comes from the force the tyres carry at road level against the mass centre h above it:
   // S.at = net acceleration + the slope's pull + air drag. So a climb or a top-speed run loads the rear, a descent the front.
   const g = 9.81, gr = (S.hF - S.hR) / sp.wb, cg = 1 / Math.sqrt(1 + gr * gr), sg = gr * cg, nf = ctx.stand ? 1 : S.nf ?? 1, gn = g * cg * nf, lq = 1 / Math.min(1, nf); // cg, sg: cos / sin of the slope
-  const mb = sp.sc ? m * (1 - sp.scW) : m, mu = sp.mu * (S.surf || 1), mt = mu * MUX, mw = (sp.Iw || .6) / (r * r), wp = S.wp || 0, offF = wp > .04, offR = wp < -.04, N = mb * gn;
+  const mb = sp.sc ? m * (1 - sp.scW) : m, mu = sp.mu * (S.surf || 1) * wetGrip(ctx.wet, av, sp, S.surf || 1, S.slick), mt = mu * MUX, mw = (sp.Iw || .6) / (r * r), wp = S.wp || 0, offF = wp > .04, offR = wp < -.04, N = mb * gn;
   const Nr = offF ? .97 * N : offR ? .03 * N : clamp(N * sp.lf / sp.wb + clamp(mb * (S.at || 0) * sp.h / sp.wb, -N, N), .03 * N, .97 * N), Pr = mt * Nr, Pf = mt * (N - Nr);
   S.lr = Nr / N; // share of the load on the rear tyre (telemetry, tools/sim.mjs)
   const ayu = S.ayu || 0, Pxr = Pr * Math.sqrt(1 - ayu * ayu); // rear force left once cornering has taken its share (friction circle)
@@ -201,14 +201,14 @@ export function step(dt) {
 }
 
 
-// Hard limit at full travel: lift the chassis at that axle (pivoting on the other one) until it is back at the stop,
+// Hard limit at full travel (sp.bump: what is left of the real stroke above where the bike sits, spec.js): lift the chassis at that axle (pivoting on the other one) until it is back at the stop,
 // and remove the velocity still compressing it. Shared by Classic and Rapier. Returns [zH, th, zV, thV].
 const BS = [0, 0, 0, 0], BT = .5; // BT: share of the ground's rise speed the chassis takes on (the tyre soaks up the rest)
 export function bumpStop(sp, zH, th, zV, thV, hF, hR, dhF, dhR) {
   const wb = sp.wb, lf = sp.lf, lr = sp.lr;
-  let e = hF + sp.yf - (zH + lf * th) - sp.travel[0]; // yf/yr: ride height, the whole stroke sits that much higher
+  let e = hF + sp.yf - (zH + lf * th) - sp.bump[0]; // yf/yr: ride height, the whole stroke sits that much higher
   if (e > 0) { zH += e * lr / wb; th += e / wb; const vr = dhF - (zV + lf * thV); if (vr > 0) { zV += vr * BT * lr / wb; thV += vr * BT / wb; } }
-  e = hR + sp.yr - (zH - lr * th) - sp.travel[1];
+  e = hR + sp.yr - (zH - lr * th) - sp.bump[1];
   if (e > 0) { zH += e * lf / wb; th -= e / wb; const vr = dhR - (zV - lr * thV); if (vr > 0) { zV += vr * BT * lf / wb; thV -= vr * BT / wb; } }
   BS[0] = zH; BS[1] = th; BS[2] = zV; BS[3] = thV; return BS;
 }

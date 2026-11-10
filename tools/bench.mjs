@@ -7,6 +7,7 @@
 // --print: write the report to stdout. Checks: menu says START BENCHMARK, all 10 phases, no page/console errors, no shadow-map
 // refresh while parked (a negative first-frame dt once froze physics and made the interpolated bike glide, refreshing every frame),
 // none in the "shadow-map updates off" phases, post-processing / resolution restored afterwards, options open on System, flag cleared.
+import { wxRoute } from './lib/wxroute.mjs';
 import { createRequire } from 'node:module';
 import { serve } from './serve.mjs';
 const a = process.argv.slice(2), gl = a.includes('--gl');
@@ -14,6 +15,7 @@ let pw; try { pw = createRequire(import.meta.url)(process.env.PW || 'playwright-
 const srv = await serve(0), url = `http://localhost:${srv.address().port}/`, errs = [];
 let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--enable-unsafe-webgpu', ...(gl ? [] : ['--enable-features=Vulkan', '--use-vulkan=swiftshader'])] }); } catch (e) { console.log('bench: skipped (no chromium: ' + e.message.split('\n')[0] + ')'); srv.close(); process.exit(0); }
 const pg = await br.newPage({ viewport: { width: 640, height: 360 } });
+await wxRoute(pg); // live weather answered locally (tools/lib/wxroute.mjs)
 pg.on('pageerror', e => errs.push('pageerror: ' + e.message.slice(0, 200))); pg.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 200)); });
 const ok = (c, m) => { if (!c) errs.push(m); };
 try {

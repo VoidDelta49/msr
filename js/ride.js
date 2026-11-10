@@ -39,7 +39,7 @@ function figGeo(id) {
   const k = id % SHIRT.length; if (GEO.has(k)) return GEO.get(k);
   const P = [], add = (g, c, x, y, z, rx = 0) => { g.rotateX(rx).translate(x, y, z); const col = new THREE.Color(c), n = g.attributes.position.count, a = new Float32Array(n * 3);
     for (let i = 0; i < n; i++) { a[i * 3] = col.r; a[i * 3 + 1] = col.g; a[i * 3 + 2] = col.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); P.push(g.index ? g.toNonIndexed() : g); };
-  const box = (w, h, d) => new THREE.BoxGeometry(w, h, d), sh = SHIRT[k], jn = '#2d3d63', sk = '#c99a6e';
+  const box = (w, h, d) => new THREE.BoxGeometry(w, h, d), sh = SHIRT[k], jn = '#2d3d63', sk = '#c08a5e';
   for (const s of [-1, 1]) {
     add(box(.12, .12, .34), jn, s * .08, .06, -.15); add(box(.1, .3, .1), jn, s * .08, -.09, -.33); add(box(.1, .06, .16), '#e9e6df', s * .08, -.22, -.37);
     add(box(.08, .28, .08), sh, s * .19, .27, -.07, .55); add(box(.07, .07, .07), sk, s * .19, .16, -.17);

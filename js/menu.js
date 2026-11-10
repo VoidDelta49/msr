@@ -6,6 +6,8 @@ import { cfg, save, BUILD, MP_URL, AA_MODES, BENCH } from './config.js';
 import { $ } from './util.js';
 import { ctx } from './state.js';
 import { O, openOpts } from './options.js';
+import { menuSky } from './menusky.js';
+menuSky(); // the menu's sky follows the real hour and weather in the Philippines
 
 // No browser context menu anywhere: right-click, touch-and-hold, long-press on images/links and native drag all do nothing.
 // Text-entry fields keep theirs so name / room code / server URL can still be pasted.

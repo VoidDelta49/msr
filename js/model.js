@@ -65,6 +65,8 @@ function taper(g, zs, ys) {
 }
 // cylinder from point a to point b ([x, y, z]), for pipes and rails
 const UP = new THREE.Vector3(0, 1, 0);
+// a rear shock's damper rod: hangs on the rear hub, so it rides up into the shock body (which stays on the chassis) as the wheel rises
+function rod(a, b, r, m) { const p = B.rearH.position, o = tube([a[0] - p.x, a[1] - p.y, a[2] - p.z], [b[0] - p.x, b[1] - p.y, b[2] - p.z], r, m, B.rearH); (B.shk ||= []).push(o); return o; }
 function tube(a, b, r, m, par, seg = 6) {
   const A = new THREE.Vector3(...a), D = new THREE.Vector3(...b).sub(A), L = D.length(), o = mk(cyl(r, r, L, seg), m, par, 0, 0, 0);
   o.position.copy(A).addScaledVector(D, .5); o.quaternion.setFromUnitVectors(UP, D.normalize()); return o;
@@ -116,20 +118,24 @@ const wdisc = (g, r, c) => { g.fillStyle = WCOL[c]; g.beginPath(); g.arc(0, 0, r
 // Garage: f = how much the tyre option grew / shrank the rim opening (the face plane is scaled, the tile is not redrawn), TY.rd swaps
 // the spokes for an aftermarket design (RIMS, drawn once on a reference wheel and scaled to fit), TY.dk a wave / oversize disc,
 // TY.led two LED rings at the rim.
-const RIMS = [null, { n: 6, w: .026, to: 0 }, { n: 5, w: .015, to: .17 }, { n: 10, w: .011, to: 0 }, { n: 3, w: .06, to: 0 }, { n: 7, w: .013, y: .11, to: .21 }, { n: 18, w: .0055, to: 0, sc: 'B', hc: 'B', hub: .04 }];
+const RIMS = [null, { n: 6, w: .026, to: 0 }, { n: 5, w: .015, to: .17 }, { n: 10, w: .011, to: 0 }, { n: 3, w: .06, to: 0 }, { n: 7, w: .013, y: .11, to: .21 }, { n: 18, w: .0055, to: 0, sc: 'B', hc: 'B', hub: .04 },
+  { n: 8, w: .009, to: 0, hub: .04 }, { n: 9, w: .02, to: 0, tb: .5, hub: .055 }, { n: 4, w: .075, to: 0, hub: .07, r1: .19 }]; // 7 racing 8-spoke, 8 turbine (tb = blade sweep, rad), 9 dish 4-spoke
 function wheelFaces(g, sp, f = 1) {
   const D = RIMS[TY.rd], rim0 = sp.rim; let pk = f;
   if (D) { pk = f * rim0 / .2; sp = { ...sp, rim: .2, lip: .013, y: 0, r0: .04, r1: .2, sc: 'R', hub: .048, hc: 'R', sr: sp.sr && .198, ...D }; }
   const S = sp.rim + .02;
   if (TY.led) for (const s of [-1, 1]) mk(new THREE.TorusGeometry(rim0 * f - .004, .006, 4, 28), MWLed, g, s * .03, 0, 0, 0, PI / 2);
   for (const s of [-1, 1]) {
-    const st = (sp.sx || []).some(x => Math.sign(x) === s), key = JSON.stringify(['f', S, sp.lip, sp.n, sp.w, sp.to, sp.y || 0, sp.r0, sp.r1, sp.sc, sp.hub, sp.hc, st ? [sp.sr, sp.sw] : 0]);
+    const st = (sp.sx || []).some(x => Math.sign(x) === s), key = JSON.stringify(['f', S, sp.lip, sp.n, sp.w, sp.to, sp.y || 0, sp.tb || 0, sp.r0, sp.r1, sp.sc, sp.hub, sp.hc, st ? [sp.sr, sp.sw] : 0]);
     wheelPlane(g, S, s, s * .016, wheelTile(key, S, (c, k) => {
       c.fillStyle = WCOL[sp.sc]; const w = Math.max(sp.w, 2.2 / k);
       if (sp.y) { // Y spokes: a stem from the hub to radius y, splitting into two arms that reach the rim 2 * to apart
         c.strokeStyle = WCOL[sp.sc]; c.lineWidth = w; c.lineCap = 'round';
         for (let i = 0; i < sp.n; i++) { const a = i * 2 * PI / sp.n, P = (r, d) => [Math.sin(a + d) * r, -Math.cos(a + d) * r];
           c.beginPath(); c.moveTo(...P(sp.r0, 0)); c.lineTo(...P(sp.y, 0)); c.lineTo(...P(sp.r1, -sp.to)); c.moveTo(...P(sp.y, 0)); c.lineTo(...P(sp.r1, sp.to)); c.stroke(); }
+      } else if (sp.tb) { // turbine: blades swept round the hub, wide at the hub, thin at the rim
+        for (let i = 0; i < sp.n; i++) { const a = i * 2 * PI / sp.n, P = (r, d) => [Math.sin(a + d) * r, -Math.cos(a + d) * r];
+          c.beginPath(); c.moveTo(...P(sp.r0 * 1.3, -.34)); c.lineTo(...P(sp.r1 * .6, sp.tb * .5 - .1)); c.lineTo(...P(sp.r1, sp.tb - .05)); c.lineTo(...P(sp.r1, sp.tb + .07)); c.lineTo(...P(sp.r1 * .6, sp.tb * .5 + .13)); c.lineTo(...P(sp.r0 * 1.3, .34)); c.closePath(); c.fill(); }
       } else for (let i = 0; i < sp.n; i++) for (const o of sp.to ? [-sp.to, sp.to] : [0]) { c.save(); c.rotate(i * 2 * PI / sp.n + o); c.fillRect(-w / 2, -sp.r1, w, sp.r1 - sp.r0); c.restore(); }
       c.strokeStyle = WCOL.R; wring(c, sp.rim, sp.lip); if (sp.hub) wdisc(c, sp.hub, sp.hc);
       if (st) { c.strokeStyle = WCOL.G; wring(c, sp.sr, sp.sw); }
@@ -475,7 +481,7 @@ function scooter(ct) {
   B.swing = mk(prof([[-.5, -.07], [-.5, .06], [-.2, .1], [.42, .08], [.5, .02], [.46, -.06], [.2, -.09]], .12, .015), MG, ct, -.1, .3, .33);
   mk(prof([[-.12, .2], [.06, .2], [.08, .38], [-.1, .4]], .16, .015), MG, ct, -.02, 0, 0);                 // cylinder + head
   mk(box(.02, .15, .17), MGrl, ct, .135, .36, .12, -.35);                                               // chrome finned radiator cover (right)
-  tube([.12, .33, .62], [.12, .62, .42], .014, MC, ct); tube([.12, .38, .585], [.12, .56, .46], .03, MB, ct, 8); // rear shock
+  rod([.12, .33, .62], [.12, .62, .42], .014, MC); tube([.12, .38, .585], [.12, .56, .46], .03, MB, ct, 8); // rear shock
   // bodywork
   mk(prof([[-.3, .27], [.1, .27], [.12, .33], [-.3, .33]], .32, .012), MK, ct, 0, 0, 0); mk(box(.29, .008, .4), MRib, ct, 0, .335, -.1); // floor + ribbed mat
   mk(prof([[-.4, .31], [-.3, .27], [.24, .27], [.34, .33], [.3, .345], [-.32, .345]], .335, .012), MP, ct, 0, 0, 0); // floor side skirt (body colour, pointed front)
@@ -812,7 +818,7 @@ function underbone(ct, v) {
   mk(arc(.305, .33, 1.3, 2.5, .1), MK, B.rearH, 0, 0, 0);                                                   // rear hugger
   // swingarm + enclosed chain case on the left (one mesh, stretched pivot->axle each frame)
   B.swing = mk(mergeGeometries([box(.03, .05, 1).translate(.09, 0, 0), box(.05, .1, 1).translate(-.085, .01, 0), box(.2, .035, .05).translate(0, 0, -.46)]), MK, ct, 0, .33, .34);
-  for (const s of [-1, 1]) { tube([s * .09, .33, .6], [s * .09, .72, .46], .012, MC, ct); tube([s * .09, .4, .57], [s * .09, .64, .49], .028, s > 0 ? MC : MB, ct, 8); } // twin shocks
+  for (const s of [-1, 1]) { rod([s * .09, .33, .6], [s * .09, .72, .46], .012, MC); tube([s * .09, .4, .57], [s * .09, .64, .49], .028, s > 0 ? MC : MB, ct, 8); } // twin shocks
   // engine: near-horizontal cylinder pointing forward, finned, crankcase with the round clutch cover (right), kick lever
   mk(prof([[-.12, .44], [.14, .45], [.2, .34], [.16, .2], [-.02, .17], [-.14, .24]], .24, .02), ME, ct, 0, 0, 0);
   mk(prof([[-.36, .37], [-.1, .43], [-.1, .26], [-.34, .26]], .16, .015), MG, ct, 0, 0, 0);
@@ -929,7 +935,7 @@ function tmx(ct, v, m = 0) { // v: unused (the sidecar is generic now, see build
   mk(cyl(.085, .085, .012, 10), MB, B.rearH, -.07, 0, 0, 0, 0, PI / 2);                                       // sprocket
   // swingarm (tubes) + top chain guard on the left (one mesh, stretched pivot->axle each frame)
   B.swing = mk(mergeGeometries([box(.03, .045, 1).translate(.1, 0, 0), box(.03, .045, 1).translate(-.1, 0, 0), box(.05, .02, .9).translate(-.075, .06, .02), box(.22, .035, .05).translate(0, 0, -.46)]), MK, ct, 0, .33, .36);
-  for (const s of [-1, 1]) { tube([s * .11, .36, .6], [s * .11, .8, .44], .012, MC, ct); tube([s * .11, .42, .575], [s * .11, .68, .48], .03, m ? MC : MK, ct, 8); } // twin shocks
+  for (const s of [-1, 1]) { rod([s * .11, .36, .6], [s * .11, .8, .44], .012, MC); tube([s * .11, .42, .575], [s * .11, .68, .48], .03, m ? MC : MK, ct, 8); } // twin shocks
   // frame: backbone under the tank, downtube in front of the engine, seat rails
   tube([0, .93, headZ + .03], [0, .8, .1], .03, MK, ct); tube([0, .88, headZ + .05], [0, .24, -.2], .028, MK, ct); tube([0, .24, -.2], [0, .22, .12], .025, MK, ct);
   for (const s of [-1, 1]) { tube([s * .08, .8, .1], [s * .08, .8, .7], .015, MK, ct); tube([s * .08, .4, .14], [s * .08, .79, .45], .015, MK, ct); }
@@ -1010,7 +1016,7 @@ function aerox(ct) {
   B.swing = mk(prof([[-.5, -.07], [-.5, .07], [-.2, .11], [.42, .09], [.52, .02], [.48, -.07], [.2, -.1]], .13, .015), MG, ct, -.1, .3, .345); // unit swing
   mk(prof([[-.14, .2], [.06, .2], [.08, .4], [-.12, .42]], .17, .015), MG, ct, -.02, 0, 0);                 // cylinder + head
   mk(box(.02, .17, .2), MGrl, ct, .14, .37, .1, -.35);                                                       // radiator cover (right)
-  for (const s of [-1, 1]) { tube([s * .12, .33, .63], [s * .12, .66, .44], .014, MC, ct); tube([s * .12, .38, .6], [s * .12, .58, .48], .032, MB, ct, 8); } // twin shocks
+  for (const s of [-1, 1]) { rod([s * .12, .33, .63], [s * .12, .66, .44], .014, MC); tube([s * .12, .38, .6], [s * .12, .58, .48], .032, MB, ct, 8); } // twin shocks
   // bodywork
   mk(prof([[-.34, .28], [.12, .28], [.14, .33], [-.34, .33]], .36, .012), MK, ct, 0, 0, 0); for (const s of [-1, 1]) mk(box(.11, .008, .4), MRib, ct, s * .12, .335, -.12); // floorboards
   mk(prof([[-.44, .31], [-.34, .27], [.26, .27], [.36, .33], [.32, .35], [-.36, .35]], .37, .012), MP, ct, 0, 0, 0); // floor skirt
@@ -1073,7 +1079,7 @@ function rouser(ct) {
   mk(cyl(.085, .085, .012, 10), MB, B.rearH, -.08, 0, 0, 0, 0, PI / 2);                                      // sprocket
   mk(arc(rw + .02, rw + .045, 1.0, 2.4, .12), MF, B.rearH, 0, 0, 0);                                         // rear hugger
   B.swing = mk(mergeGeometries([box(.035, .05, 1).translate(.1, 0, 0), box(.035, .05, 1).translate(-.1, 0, 0), box(.05, .02, .9).translate(-.075, .065, .02), box(.22, .04, .05).translate(0, 0, -.46)]), MK, ct, 0, .35, .35);
-  for (const s of [-1, 1]) { tube([s * .115, .36, .6], [s * .115, .84, .42], .012, MC, ct); tube([s * .115, .42, .575], [s * .115, .74, .46], .032, MK, ct, 8); mk(cyl(.022, .022, .12, 8), MGold, ct, s * .145, .66, .49, -1.2); } // twin gas shocks
+  for (const s of [-1, 1]) { rod([s * .115, .36, .6], [s * .115, .84, .42], .012, MC); tube([s * .115, .42, .575], [s * .115, .74, .46], .032, MK, ct, 8); mk(cyl(.022, .022, .12, 8), MGold, ct, s * .145, .66, .49, -1.2); } // twin gas shocks
   // frame
   tube([0, 1.0, headZ + .03], [0, .86, .1], .03, MK, ct); tube([0, .95, headZ + .05], [0, .3, -.24], .03, MK, ct); tube([0, .3, -.24], [0, .25, .12], .026, MK, ct);
   for (const s of [-1, 1]) { tube([s * .08, .86, .1], [s * .07, .9, .75], .015, MK, ct); tube([s * .08, .42, .14], [s * .08, .85, .45], .015, MK, ct); }
@@ -1150,7 +1156,7 @@ function nmax(ct, v) {
   mk(prof([[-.14, .19], [.06, .19], [.08, .39], [-.12, .41]], .17, .015), MG, ct, -.02, 0, 0);                 // cylinder + head
   mk(box(.02, .16, .2), MGrl, ct, .145, .35, .08, -.35);                                                       // radiator louvres (right)
   for (const s of [-1, 1]) {                                                                                   // twin shocks, copper sub-tanks
-    tube([s * .12, .31, .62], [s * .12, .64, .42], .013, MC, ct); tube([s * .12, .37, .585], [s * .12, .56, .47], .031, MB, ct, 8);
+    rod([s * .12, .31, .62], [s * .12, .64, .42], .013, MC); tube([s * .12, .37, .585], [s * .12, .56, .47], .031, MB, ct, 8);
     mk(cyl(.021, .021, .1, 8), MCop, ct, s * .152, .57, .465, -1.03);
   }
   // bodywork
@@ -1235,7 +1241,7 @@ function xmax(ct) {
   B.swing = mk(prof([[-.55, -.07], [-.55, .08], [-.2, .12], [.5, .1], [.6, .02], [.56, -.08], [.2, -.11]], .14, .015), MEng, ct, -.1, .3, .36); // unit swing (CVT case left)
   mk(prof([[-.16, .2], [.08, .2], [.1, .42], [-.14, .44]], .18, .015), MEng, ct, -.02, 0, 0);                // cylinder + head
   for (const s of [-1, 1]) {                                                                                   // twin shocks, exposed springs
-    tube([s * .13, .32, .71], [s * .13, .67, .5], .013, MC, ct); tube([s * .13, .4, .665], [s * .13, .6, .545], .034, MK, ct, 8);
+    rod([s * .13, .32, .71], [s * .13, .67, .5], .013, MC); tube([s * .13, .4, .665], [s * .13, .6, .545], .034, MK, ct, 8);
   }
   // body
   mk(prof([[-.52, .36], [.06, .36], [.09, .42], [-.5, .42]], .42, .012), ME, ct, 0, 0, 0);                    // floorboard
@@ -1328,7 +1334,7 @@ export function ledTick(t) {
   }
 }
 // what the garage can change about the model's shape: a different key = buildModel() again (main.js). Colours never rebuild.
-export const shapeOf = (sp, bike) => sp ? [sp.var | 0, sp.sc && bike.sidecar ? 1 : 0, sp.tyT || 1, sp.tyW || 1, sp.tyK | 0, sp.tyS ? 1 : 0, sp.rimD | 0, sp.dscK | 0, sp.wledC ? 1 : 0, sp.mirK | 0, sp.boxK | 0, sp.glowC ? 1 : 0, sp.auxK | 0].join() : '';
+export const shapeOf = (sp, bike) => sp ? [sp.var | 0, sp.sc && bike.sidecar ? 1 : 0, sp.tyT || 1, sp.tyW || 1, sp.tyK | 0, sp.tyS ? 1 : 0, sp.rimD | 0, sp.dscK | 0, sp.wledC ? 1 : 0, sp.mirK | 0, sp.boxK | 0, sp.glowC ? 1 : 0, sp.auxK | 0, sp.swl || 0].join() : '';
 // Bolt-ons that are the same on every bike, placed from what each builder leaves behind (B.G, B.cargo, B.bar): top box on a rack
 // over the tail, LED strips under the belly, a pair of aux lamps (on the bar by the switch pods; on the fork legs of the clip-on bikes).
 function fit(ct, sp, wb) {
@@ -1354,9 +1360,15 @@ export function buildModel(bike, spec) {
   Object.assign(TY, { t: sp.tyT || 1, w: sp.tyW || 1, k: sp.tyK | 0, s: sp.tyS ? 1 : 0, rd: sp.rimD | 0, dk: sp.dscK | 0, led: sp.wledC ? 1 : 0, mir: sp.mirK | 0 });
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;
-  B.ct.clear(); B.halo = false; B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.calCol = null; B.bar = null; B.sc = 0; B.scDz = 0; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model;
+  B.ct.clear(); B.halo = false; B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.calCol = null; B.bar = null; B.sc = 0; B.scDz = 0; B.shk = null; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model;
   fit(B.ct, sp, bike.chassis.wb); lampKind(sp.hlC, sp.auxC); LED.d = 1;
   if (spec?.sc && bike.sidecar) { B.sc = 1; sidecar(B.ct, bike.sidecar, bike.chassis.wb); } SC_BLOB.p.z = B.scDz; // any bike with sidecar mount data
+  // swing-arm length / Engine Support (sp.swl, parts-gen swarm): the rear wheel sits further back. A chain bike's arm stretches to it
+  // (main.js, every frame; the shocks stay on their mounts); a scooter's whole unit swing hangs back on a visible bracket instead
+  if (sp.swl) {
+    const d = sp.swl, G = B.G; B.rearH.position.z += d; G.rearZ += d; if (B.shk) for (const o of B.shk) o.position.z -= d; // the shocks stay on their mounts
+    if (bike.drivetrain === 'cvt') { for (const s of [-1, 1]) mk(box(.012, .05, d + .05), MAlu, B.ct, G.swingX + .1 + s * .075, G.pivotY, G.pivotZ + d / 2); mk(cyl(.014, .014, .19, 8), MC, B.ct, G.swingX + .1, G.pivotY, G.pivotZ + d, 0, 0, PI / 2); G.pivotZ += d; }
+  }
   setLiveryUV();
   const pc = bike.chassis.pil; // pillion seat (data/bikes/*.json chassis.pil): where the recoloured rider copy goes + the passenger's eye (ride.js)
   B.G.pil = pc ? { dz: pc.dz, dy: pc.dy, hip: B.hip, cam: { x: .1, y: B.cam.position.y + pc.dy + .08, z: B.cam.position.z + pc.dz } } : null;

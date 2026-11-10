@@ -6,6 +6,7 @@
 // --var n: rebuild the model as variant n (body kits, trims) before measuring.  --left: also a 3/4 shot of the left side.
 // --shot dir: opens the garage and writes dir/<bike>-side.png (wheel close-up from the side) and dir/<bike>-3q.png (3/4 view).
 // Used to compare model changes: run before and after, diff the table. Counts are exact; the screenshots are for eyes.
+import { wxRoute } from './lib/wxroute.mjs';
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
 import { serve } from './serve.mjs';
@@ -15,6 +16,7 @@ let pw; try { pw = createRequire(import.meta.url)(process.env.PW || 'playwright-
 const srv = await serve(0), url = `http://localhost:${srv.address().port}/`, errs = [], shot = opt('--shot');
 let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] }); } catch (e) { console.log('bikemesh: skipped (no chromium)'); srv.close(); process.exit(0); }
 const pg = await br.newPage({ viewport: { width: 1000, height: 600 }, deviceScaleFactor: 1 });
+await wxRoute(pg); // live weather answered locally (tools/lib/wxroute.mjs)
 pg.on('pageerror', e => errs.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 300)); });
 if (shot) mkdirSync(shot, { recursive: true });
 const rows = [];

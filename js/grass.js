@@ -12,9 +12,10 @@ import { scene } from './renderer.js';
 import { cfg, Q } from './config.js';
 
 export const GRASS = { on: false, mesh: null, n: 0 };
+export const GWIND = { get k() { return WIND; }, get d() { return WDIR; } }; // the weather's wind (wxfig.js): strength x and the direction it blows toward (x, z)
 // per preset: grid size (tufts per side) and the fade radius (m). spacing = 2 * HALF / G
 const LV = { low: { g: 128, r: 26 }, med: { g: 200, r: 40 }, high: { g: 256, r: 52 } };
-const C = uniform(new THREE.Vector2()), CAM = uniform(new THREE.Vector3()), P1 = uniform(new THREE.Vector3(0, 0, -1)), P2 = uniform(new THREE.Vector3(0, 0, -1)), WIND = uniform(1), NW = uniform(1); // C: the window's first cell, NW: cells per row (a float: three writes every uniform-buffer number as one)
+const C = uniform(new THREE.Vector2()), CAM = uniform(new THREE.Vector3()), P1 = uniform(new THREE.Vector3(0, 0, -1)), P2 = uniform(new THREE.Vector3(0, 0, -1)), WIND = uniform(1), WDIR = uniform(new THREE.Vector2(.8, .45)), NW = uniform(1); // C: the window's first cell, NW: cells per row (a float: three writes every uniform-buffer number as one)
 
 // one tuft: 3 tapered blades round the centre, 2 segments each (5 vertices, 3 triangles), y = 0..1 along the blade.
 // Normals point up: the tufts shade like the ground they stand on instead of flickering as their faces turn.
@@ -76,7 +77,7 @@ export function buildGrass(T) {
     const a = h1.mul(6.283), c = cos(a), s = sin(a), lp = positionGeometry.xz.mul(mix(float(.8), float(1.3), h2));
     const rx = lp.x.mul(c).sub(lp.y.mul(s)), rz = lp.x.mul(s).add(lp.y.mul(c));
     const gust = sin(time.mul(1.7).add(dot(base, vec2(.11, .07))).add(h3.mul(2))).mul(.5).add(.5), sway = sin(time.mul(3.1).add(h4.mul(6.283))).mul(.25);
-    const bend = vec2(.8, .45).mul(gust.mul(.7).add(sway)).mul(WIND).mul(.22).add(push).mul(y.mul(y)).mul(ht0.max(.35));
+    const bend = WDIR.mul(gust.mul(.7).add(sway)).mul(WIND).mul(.22).add(push).mul(y.mul(y)).mul(ht0.max(.35));
     tint = gcol.mul(gcol).mul(mix(float(.92), float(1.12), h2));
     const wk = scl.mul(4).min(1).mul(scl.min(.6).add(.4)); // blade width: 0 when the tuft is gone, so all its vertices collapse
     posN = vec3(base.x.add(rx.mul(wk)).add(bend.x.mul(keep)), y0.add(y.mul(scl)).sub(.04), base.y.add(rz.mul(wk)).add(bend.y.mul(keep)));

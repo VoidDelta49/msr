@@ -11,6 +11,7 @@ import { setLamps, beamMeshes, HEAD, BEAM } from './lights.js';
 import { H } from './world.js';
 import { UGDAY } from './underfig.js';
 import { F, at } from './foot.js';
+import { WX, wxSky } from './weather.js';
 
 const LAT = 12.88 * Math.PI / 180, LON = 121.77, R = Math.PI / 180;
 
@@ -82,7 +83,8 @@ function beam(px, py, pz, fx, fz) {
 }
 sun.shadow.autoUpdate = false; const LEAD = 10, REBASE = 8, UP = new THREE.Vector3(0, 1, 0);
 const SHL = { x: NaN, z: NaN, y: NaN, d: new THREE.Vector3(0, -1, 0), r: new THREE.Vector3(), u: new THREE.Vector3(), c: new THREE.Vector3() }; // shadow window: the point it was centred for + latched light direction
-let last = -1e9, gate = 0, bakeEl = 1e9, bakeT = 0;
+let last = -1e9, gate = 0, bakeEl = 1e9, bakeT = 0, bakeC = -1;
+const cG = new THREE.Color();
 const FOGN = scene.fog.near, FOGF = scene.fog.far;
 export function dayNight() {
   const ms = gameMs();
@@ -91,12 +93,24 @@ export function dayNight() {
   key(el, 1, SKYU.zen.value); key(el, 2, SKYU.hor.value); key(el, 3, SKYU.cloud.value); key(el, 4, SKYU.glow.value);
   SKYU.sun.value.copy(SUN); SKYU.moon.value.copy(MOON); SKYU.sunVis.value = sstep(-1.5, .5, el); SKYU.night.value = night * (1 - .7 * SKY.phase * sstep(0, .2, MOON.y));
   SKYU.moonVis.value = (.35 + .65 * SKY.phase) * sstep(-1, 1, Math.asin(MOON.y) / R) * (1 - sstep(-4, 6, el) * .85);
+  // Weather (12.00, weather.js): cloud cover greys the sky and the horizon (= the fog), rain clouds darken, the cloud mask grows
+  // (SKYU.ovc), the sunset glow and the moon go behind the deck, lightning lights it all for a moment. K also dims the sun and
+  // the sky light below and sets the fog range from the visibility. A clear day leaves every number as it was.
+  const K = wxSky(FOGF, FOGN), flz = WX.flash;
+  if (K.grey > 0) {
+    const z = SKYU.zen.value, h = SKYU.hor.value, lum = (.2126 * h.r + .7152 * h.g + .0722 * h.b) * (1 - .45 * K.dark);
+    cG.setRGB(lum * .93, lum * .97, lum * 1.04); z.lerp(cG, K.grey * .92); h.lerp(cG, K.grey * .8);
+    SKYU.cloud.value.lerp(cG, K.grey * .6).multiplyScalar(1 - .35 * K.dark); SKYU.glow.value.multiplyScalar(1 - .9 * K.grey);
+    SKYU.moonVis.value *= 1 - K.grey; SKYU.night.value *= 1 - .8 * K.grey;
+  }
+  SKYU.ovc.value = K.ovc; SKYU.flash.value = flz;
+  if (flz > 0) { SKYU.zen.value.addScalar(flz * .22); SKYU.hor.value.addScalar(flz * .3); }
   scene.fog.color.copy(SKYU.hor.value); scene.background.copy(SKYU.hor.value);
-  key(el, 7, hemi.color); key(el, 8, hemi.groundColor); hemi.intensity = key(el, 9); grade(el); if (GRADE.night) GRADE.night.value = night;
+  key(el, 7, hemi.color); key(el, 8, hemi.groundColor); hemi.intensity = key(el, 9) * K.hemiK + flz * 1.6; grade(el); if (GRADE.night) GRADE.night.value = night;
   if (IBL) { // the sky now lights the scene through scene.environment: the hemisphere light stays as a weaker fill
     hemi.intensity *= .6; scene.environmentIntensity = .62;
     ENVG.c.value.copy(hemi.groundColor).multiplyScalar(.55 + .45 * key(el, 9));
-    if (Math.abs(el - bakeEl) > .5 || ms - bakeT > 6e4 || ms < bakeT) { bakeEl = el; bakeT = ms; bakeEnv(); } // the sky moved enough (or a minute passed: moon, Options hour change)
+    if (Math.abs(el - bakeEl) > .5 || ms - bakeT > 6e4 || ms < bakeT || Math.abs(K.grey - bakeC) > .06) { bakeEl = el; bakeT = ms; bakeC = K.grey; bakeEnv(); } // the sky moved enough (or a minute passed: moon, Options hour change)
   }
   // dark places (11.98): deep in the cave hall the sky light is mostly blocked (under.js shelter: 0 outside .. 1 deep under the roof),
   // and below in Ilalim there is none at all (see the end). The sun is already kept out by the roof's shadow.
@@ -104,8 +118,8 @@ export function dayNight() {
   if (sh > 0) { hemi.intensity *= 1 - .72 * sh; if (IBL) scene.environmentIntensity *= 1 - .8 * sh; }
   // one directional light: the sun by day, the moon (scaled by its phase) after dusk, so shadows keep working
   const moonUp = sstep(0, .15, MOON.y), useMoon = el < -4;
-  if (useMoon) { tv.copy(MOON.y > .05 ? MOON : tv.set(.3, 1, .2).normalize()); sun.color.setHex(0x9fb2ff); sun.intensity = .55 * (.15 + .85 * SKY.phase) * moonUp * sstep(-6, -10, el); }
-  else { tv.copy(SUN); key(el, 5, sun.color); sun.intensity = key(el, 6) * sstep(-1, 2, el); }
+  if (useMoon) { tv.copy(MOON.y > .05 ? MOON : tv.set(.3, 1, .2).normalize()); sun.color.setHex(0x9fb2ff); sun.intensity = .55 * (.15 + .85 * SKY.phase) * moonUp * sstep(-6, -10, el) * K.sunK; }
+  else { tv.copy(SUN); key(el, 5, sun.color); sun.intensity = key(el, 6) * sstep(-1, 2, el) * K.sunK; }
   if (tv.y < .3) { tv.y = 0; tv.normalize().multiplyScalar(.954); tv.y = .3; } // light never below ~17°: grazing light gives shadow acne over the whole ground
   // Shadow map on demand (cached): nothing moving casts into it (bikes and riders use contact blobs, model.js), so it only has to
   // be redrawn when its window or the light moves. The ±28 m window sits LEAD m ahead of the camera and is re-centred only once
@@ -122,10 +136,10 @@ export function dayNight() {
     c.copy(r).multiplyScalar(a).addScaledVector(u, b).addScaledVector(d, w); L.x = ix; L.z = iz; L.y = cy; sun.userData.shDirty = false; sun.shadow.needsUpdate = true;
     sun.target.position.copy(c); sun.position.copy(c).addScaledVector(d, 90);
   }
-  setLamps(sstep(3, -3, el)); // street lamps, lit windows and signs come on around sunset (el 3° .. −3°)
+  setLamps(Math.max(sstep(3, -3, el), sstep(.4, .22, K.sunK))); // street lamps, lit windows and signs come on around sunset (el 3° .. −3°)
   renderer.toneMappingExposure = 1 + .5 * night;                                     // a bit of "eye adaptation" so night stays playable
   // headlight: on with the engine from dusk to dawn (real bikes have it always on, but in daylight it adds nothing)
-  const dark = under || sh > .5; // underground / deep in the hall the lamp is needed at any hour
+  const dark = under || sh > .5 || K.sunK < .4; // underground / deep in the hall / under a storm sky the lamp is needed at any hour
   gate += ((S.running && (el < 4 || dark) && !S.crashed ? 1 : 0) - gate) * .2;
   const f = -Math.sin(S.psi), g = -Math.cos(S.psi), sd = Math.sin(S.delta || 0) * .6;
   head.position.set(S.x + f * .9, S.zH + .95, S.z + g * .9);
@@ -145,11 +159,11 @@ export function dayNight() {
     head.target.position.set(F.x + fx * 12, F.y - .2, F.z + fz * 12); head.intensity = 420;
   }
   // fog glow toward the sun and ground mist (renderer.js FOGU): mist lies in the low ground from late night to just after sunrise
-  FOGU.glow.value = 1; FOGU.mist.value = .32 * (ctx.dawn || 0) + .1 * night;
+  FOGU.glow.value = 1 - .9 * K.grey; FOGU.mist.value = Math.min(.6, .32 * (ctx.dawn || 0) + .1 * night + .22 * WX.rain);
   // sun glare (renderer.js GLARE): where the sun is on screen, stronger as it gets low, off once it has set
   if (GLARE.k) {
     tv.copy(SUN).multiplyScalar(500).add(camera.position).project(camera); const on = tv.z < 1 && Math.abs(tv.x) < 1.15 && Math.abs(tv.y) < 1.15 && SUN.y > -.02;
-    GLARE.k.value = on && !under && !ctx.inside && sh < .5 ? sstep(-1.5, 1, el) * (.55 + .45 * (1 - sstep(8, 40, el))) * (1 - sh) : 0;
+    GLARE.k.value = on && !under && !ctx.inside && sh < .5 ? sstep(-1.5, 1, el) * (.55 + .45 * (1 - sstep(8, 40, el))) * (1 - sh) * (1 - K.grey) : 0;
     GLARE.p.value.set(tv.x * .5 + .5, .5 - tv.y * .5); key(el, 5, GLARE.c.value);
   }
   UGDAY.value = sstep(-6, 8, el); // daylight at Ilalim's way out and down its shaft
@@ -158,7 +172,7 @@ export function dayNight() {
     if (IBL) scene.environmentIntensity = .04; renderer.toneMappingExposure = 1.15; if (GRADE.night) GRADE.night.value = .5;
     scene.fog.color.setHex(0x030405); scene.background.copy(scene.fog.color); scene.fog.near = 6; scene.fog.far = 150;
     if (BLOOM.k) { BLOOM.k.value = .55; BLOOM.th.value = 1.15; } FOGU.glow.value = 0; FOGU.mist.value = 0;
-  } else if (scene.fog.far !== FOGF) { scene.fog.near = FOGN; scene.fog.far = FOGF; }
+  } else { scene.fog.near = K.near; scene.fog.far = K.far; } // weather: haze and rain pull the fog in (clear: the preset's draw distance)
   // inside a building (interior.js): its own warm lamplight whatever the hour (same lights, new colours: nothing recompiles)
   if (ctx.inside) {
     hemi.color.setHex(0xffe6c4); hemi.groundColor.setHex(0x8a6a50); hemi.intensity = IBL ? 1.6 : 2.2; sun.color.setHex(0xffd9a8); sun.intensity = 1.6;

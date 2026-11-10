@@ -53,7 +53,7 @@ self.addEventListener('activate', e => e.waitUntil((async () => {
 self.addEventListener('fetch', e => {
   const q = e.request;
   const qu = new URL(q.url);
-  if (q.method !== 'GET' || qu.origin !== self.location.origin || qu.searchParams.has('chk')) return; // ?chk = the update check: always straight to the network
+  if (q.method !== 'GET' || qu.origin !== self.location.origin || qu.searchParams.has('chk') || qu.pathname.endsWith('/wx')) return; // /wx = live weather (wxnet.js): never from a cache, even if the relay is ever served from this origin // ?chk = the update check: always straight to the network
   e.respondWith((async () => {
     const c = await caches.open(CACHE);
     if (q.mode === 'navigate') { // page: newest when online (4 s), the cached copy when not

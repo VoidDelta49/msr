@@ -9,6 +9,7 @@
 //    tapping their tag on foot opens the social panel, WAVE / CHEERS / CALL send soc messages, TREAT pays and sends the item, incoming
 //    treat / call / cheers do what they say (bag, waypoint, CHEERS back), our walker packets carry the drunk byte, and a friend walking in
 //    the bar's pocket is drawn only while we are in the same room (outside, their tag says they're inside).
+import { wxRoute } from './lib/wxroute.mjs';
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
@@ -20,6 +21,7 @@ const srv = await serve(0), url = `http://localhost:${srv.address().port}/`, err
 const GPU = a.includes('--webgpu'); // WebGPU on swiftshader's Vulkan (as tools/smoke.mjs --webgpu); default WebGL 2
 let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', ...(GPU ? ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-vulkan=swiftshader'] : [])] }); } catch (e) { console.log('places: skipped (no chromium)'); srv.close(); process.exit(0); }
 const pg = await br.newPage({ viewport: { width: 1000, height: 600 }, deviceScaleFactor: 1 });
+await wxRoute(pg); // live weather answered locally (tools/lib/wxroute.mjs)
 pg.on('pageerror', e => errs.push('pageerror: ' + e.message)); pg.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 300)); });
 if (shot) mkdirSync(shot, { recursive: true });
 const snap = async n => { if (shot) await pg.screenshot({ path: path.join(shot, n + '.png') }); };

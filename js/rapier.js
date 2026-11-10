@@ -14,7 +14,7 @@ import { blip } from './audio.js';
 import { say } from './hud.js';
 import * as THREE from 'three';
 import { step, bumpStop } from './physics.js';
-import { surfaceMu } from './tyre.js';
+import { surfaceMu, slickAt } from './tyre.js';
 import { cfg } from './config.js';
 import { B, blobAdd } from './model.js';
 import { scene } from './renderer.js';
@@ -117,7 +117,10 @@ export function tickR() {
   // springs measure from static sag, so add the static load; a wheel can push but never pull
   const cF = hF + sp.yf - (S.zH + lf * S.th), cR = hR + sp.yr - (S.zH - lr * S.th), vF = dhF - (vy + lf * w), vR = dhR - (vy - lr * w);
   const mF = sp.ms * lr / sp.wb, mR = sp.ms * lf / sp.wb; // sprung load on the bike's wheels (a sidecar carries its own share)
-  const Ff = Math.max(0, mF * g + sp.kf * (cF + sp.pf) + sp.damp * 2 * Math.sqrt(sp.kf * mF) * vF), Fr = Math.max(0, mR * g + sp.kr * (cR + sp.pr) + sp.damp * 2 * Math.sqrt(sp.kr * mR) * vR);
+  // rising rate (prog: fork air gap, dual-rate springs, a linkage) and dampers that hold more on the way out than on the way in
+  // (reb = rebound / compression; the mean stays the Damping slider's ratio x the end's own dz)
+  const sf = (k, c, p, m, v, i) => { const kk = k * (1 + sp.prog[i] * clamp(c / sp.travel[i], 0, 1)), cc = sp.damp * sp.dz[i] * 2 * Math.sqrt(k * m) * 2 / (1 + sp.reb[i]); return Math.max(0, m * g + kk * (c + p) + cc * (v > 0 ? 1 : sp.reb[i]) * v); };
+  const Ff = sf(sp.kf, cF, sp.pf, mF, vF, 0), Fr = sf(sp.kr, cR, sp.pr, mR, vR, 1);
   S.cF = cF; S.cR = cR; S.Ff = Ff; S.Fr = Fr; S.air = Ff <= 0 && Fr <= 0;
   // how hard the springs press the tyres on the road, against the bike's weight (1 on smooth ground): the tyres' grip follows it
   // (physics.js). Eased over ~60 ms, about what the tyre's own carcass does, so one sharp edge is a blip and not a lock-up
@@ -125,7 +128,7 @@ export function tickR() {
   // drivetrain + steering. In the air the wheel is unloaded: engine free-revs, speed and heading carry on.
   // grip of what is under the tyres, eased. The lookup (road search + zone blend) is the dearest thing here besides Rapier, and the
   // easing (~0.17 s) hides sampling it at 20 Hz
-  if (surfT-- <= 0) { surfT = 5; surfTgt = surfaceMu(S.x, S.z); if (sp.offr) surfTgt = 1 - (1 - surfTgt) * (1 - sp.offr); } // knobby tyres bite on dirt and grass
+  if (surfT-- <= 0) { surfT = 5; surfTgt = surfaceMu(S.x, S.z); if (sp.offr) surfTgt = 1 - (1 - surfTgt) * (1 - sp.offr); S.slick = ctx.wet > 0 ? slickAt(S.x, S.z) : 0; } // knobby tyres bite on dirt and grass
   S.surf = (S.surf || 1) + (surfTgt - (S.surf || 1)) * Math.min(1, TICK * 6);
   const v0 = S.v, p0 = S.psi, stand = ctx.stand; if (S.air) ctx.stand = true;
   for (let i = 0; i < 3; i++) step(TICK / 3);

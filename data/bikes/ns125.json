@@ -24,7 +24,7 @@
     "travel": [
       0.12,
       0.1
-    ],
+    ], "susp": {"fork": "tele", "rear": "twin", "reb": [1.8, 2], "dz": [1, 0.95], "prog": [0.25, 0.3]},
     "pil": {"dz": 0.3, "dy": 0.07, "x": 0.04, "h": 1.34}
   },
   "engine": {
@@ -203,7 +203,7 @@
         }
       ]
     },
-    "tires": {"l": "Tires", "o": [{"n": "Stock", "note": "80/100-17 · 100/90-17", "mu": 0.85}, {"n": "Sport", "note": "90/80-17 · 110/80-17", "mu": 1, "tyT": 0.9, "tyW": 1.12, "dm": 0.3}, {"n": "Racing soft", "note": "Wider, red band · wears fast", "mu": 1.2, "tyT": 0.86, "tyW": 1.22, "tyS": "#d42a2a", "rollx": 1.06, "dm": 0.5}, {"n": "Thai concept skinny", "note": "60/80-17 · 70/80-17", "mu": 0.7, "tyT": 0.62, "tyW": 0.6, "rollx": 0.78, "dragx": 0.985, "dm": -1.8}, {"n": "Wide fat", "note": "100/80-17 · 130/70-17", "mu": 0.93, "tyT": 1.14, "tyW": 1.34, "rollx": 1.14, "dragx": 1.01, "dm": 1.5}, {"n": "Dual-sport knobby", "note": "80/100-17 · 110/90-17", "mu": 0.78, "tyT": 1.1, "tyW": 1.1, "tyK": 1, "offr": 0.65, "rollx": 1.16, "dm": 0.9}, {"n": "Whitewall classic", "note": "80/100-17 · 100/90-17", "mu": 0.85, "tyT": 1.04, "tyS": "#f1f1ec"}]},
+    "tires": {"l": "Tires", "o": [{"n": "Stock", "note": "80/100-17 · 100/90-17", "mu": 0.85}, {"n": "Sport", "note": "90/80-17 · 110/80-17", "mu": 1, "tyT": 0.9, "tyW": 1.12, "dm": 0.3, "wetg": 0.95, "aqua": 0.93}, {"n": "Racing soft", "note": "Wider, red band · wears fast", "mu": 1.2, "tyT": 0.86, "tyW": 1.22, "tyS": "#d42a2a", "rollx": 1.06, "dm": 0.5, "wetg": 0.7, "aqua": 0.82}, {"n": "Thai concept skinny", "note": "60/80-17 · 70/80-17", "mu": 0.7, "tyT": 0.62, "tyW": 0.6, "rollx": 0.78, "dragx": 0.985, "dm": -1.8, "wetg": 1.12, "aqua": 1.3}, {"n": "Wide fat", "note": "100/80-17 · 130/70-17", "mu": 0.93, "tyT": 1.14, "tyW": 1.34, "rollx": 1.14, "dragx": 1.01, "dm": 1.5, "wetg": 0.95, "aqua": 0.75}, {"n": "Dual-sport knobby", "note": "80/100-17 · 110/90-17", "mu": 0.78, "tyT": 1.1, "tyW": 1.1, "tyK": 1, "offr": 0.65, "rollx": 1.16, "dm": 0.9, "wetg": 0.95, "aqua": 1.2}, {"n": "Whitewall classic", "note": "80/100-17 · 100/90-17", "mu": 0.85, "tyT": 1.04, "tyS": "#f1f1ec"}, {"n": "Drag skinny", "note": "45/90-17 · 50/100-17", "mu": 0.6, "tyT": 0.5, "tyW": 0.47, "rollx": 0.7, "dragx": 0.978, "dm": -2.5, "wetg": 1.15, "aqua": 1.4}]},
     "paint": {
       "l": "Paint",
       "o": [
@@ -508,7 +508,7 @@
         }
       ]
     },
-    "rims": {"l": "Rim design", "o": [{"n": "Stock", "rimD": 0}, {"n": "6-spoke cast", "rimD": 1, "dm": 0}, {"n": "Twin 5-spoke", "rimD": 2, "dm": -0.4}, {"n": "10-spoke forged", "note": "Lightest", "rimD": 3, "dm": -1.2}, {"n": "3-spoke", "rimD": 4, "dm": 0.3}, {"n": "7 Y-spoke", "rimD": 5, "dm": -0.6}, {"n": "Wire spokes", "note": "Classic laced rim", "rimD": 6, "dm": 0.8}]},
+    "rims": {"l": "Mags / rims", "o": [{"n": "Stock", "rimD": 0}, {"n": "6-spoke cast", "rimD": 1, "dm": 0}, {"n": "Twin 5-spoke", "rimD": 2, "dm": -0.4}, {"n": "10-spoke forged", "note": "Lightest", "rimD": 3, "dm": -1.2}, {"n": "3-spoke", "rimD": 4, "dm": 0.3}, {"n": "7 Y-spoke", "rimD": 5, "dm": -0.6}, {"n": "Wire spokes", "note": "Classic laced rim", "rimD": 6, "dm": 0.8}, {"n": "Racing 8-spoke", "note": "Thin forged spokes", "rimD": 7, "dm": -1.5}, {"n": "Turbine", "note": "Swept blades", "rimD": 8, "dm": -0.3}]},
     "disc": {"l": "Brake disc", "o": [{"n": "Stock"}, {"n": "Floating wave disc", "dscK": 1, "brake": 1.03}, {"n": "Oversize wave kit", "note": "Bigger disc + bracket", "dscK": 2, "brake": 1.08, "dm": 0.4}]},
     "caliper": {"l": "Caliper colour", "o": [{"n": "Stock"}, {"n": "Gold", "calC": "#c9a24a"}, {"n": "Red", "calC": "#c21d1d"}, {"n": "Blue", "calC": "#1f4fbf"}, {"n": "Lime", "calC": "#7bd11f"}, {"n": "Titanium", "calC": "#8d8f94"}]},
     "mirrors": {"l": "Mirrors", "o": [{"n": "Stock"}, {"n": "Bar-end round", "mirK": 1}, {"n": "Short sport", "mirK": 2, "dm": -0.2}, {"n": "Removed", "note": "Track look", "mirK": 3, "dm": -0.6}]},
@@ -519,7 +519,8 @@
     "hl": {"l": "Headlight bulb", "o": [{"n": "Stock halogen"}, {"n": "LED white 6000K", "hlC": "#eef4ff"}, {"n": "Yellow 3000K", "hlC": "#ffd23a"}, {"n": "Ice blue 8000K", "hlC": "#8fc4ff"}]},
     "aux": {"l": "Auxiliary lights", "o": [{"n": "None"}, {"n": "Mini driving lights", "note": "More light on the road", "auxK": 1, "dm": 0.5}, {"n": "Yellow fog pair", "note": "More light on the road", "auxK": 1, "auxC": "#ffd23a", "dm": 0.5}]},
     "glow": {"l": "Underglow", "o": [{"n": "Off"}, {"n": "Red", "glowC": "#ff0a0a"}, {"n": "Amber", "glowC": "#ff7a00"}, {"n": "Green", "glowC": "#10ff30"}, {"n": "Cyan", "glowC": "#00d8ff"}, {"n": "Blue", "glowC": "#1440ff"}, {"n": "Purple", "glowC": "#9a1cff"}, {"n": "Pink", "glowC": "#ff1ea0"}, {"n": "White", "glowC": "#ffffff"}, {"n": "RGB cycle", "note": "Runs through every colour", "glowC": "rgb"}]},
-    "wled": {"l": "Wheel LEDs", "o": [{"n": "Off"}, {"n": "Red", "wledC": "#ff0a0a"}, {"n": "Amber", "wledC": "#ff7a00"}, {"n": "Green", "wledC": "#10ff30"}, {"n": "Cyan", "wledC": "#00d8ff"}, {"n": "Blue", "wledC": "#1440ff"}, {"n": "Purple", "wledC": "#9a1cff"}, {"n": "Pink", "wledC": "#ff1ea0"}, {"n": "White", "wledC": "#ffffff"}, {"n": "RGB cycle", "note": "Runs through every colour", "wledC": "rgb"}]}
+    "wled": {"l": "Wheel LEDs", "o": [{"n": "Off"}, {"n": "Red", "wledC": "#ff0a0a"}, {"n": "Amber", "wledC": "#ff7a00"}, {"n": "Green", "wledC": "#10ff30"}, {"n": "Cyan", "wledC": "#00d8ff"}, {"n": "Blue", "wledC": "#1440ff"}, {"n": "Purple", "wledC": "#9a1cff"}, {"n": "Pink", "wledC": "#ff1ea0"}, {"n": "White", "wledC": "#ffffff"}, {"n": "RGB cycle", "note": "Runs through every colour", "wledC": "rgb"}]},
+    "swarm": {"l": "Swing-arm", "o": [{"n": "Stock"}, {"n": "Extended 2 in", "note": "50 mm longer", "swl": 0.05, "krx": 0.84, "dm": 0.4}, {"n": "Thai stretch 4 in", "note": "100 mm longer · softer rear", "swl": 0.1, "krx": 0.71, "dm": 0.8}, {"n": "Drag stretch 6 in", "note": "150 mm longer · hard to wheelie, wide turns", "swl": 0.15, "krx": 0.61, "dm": 1.2}]}
   },
   "sliders": [
     {
@@ -659,7 +660,8 @@
     "hl": 0,
     "aux": 0,
     "glow": 0,
-    "wled": 0
+    "wled": 0,
+    "swarm": 0
   },
   "hint": "KEY on, hold START in neutral, pull CLUTCH, shift ▼ into 1st (1-N-2-3-4-5) and ease it out"
 }

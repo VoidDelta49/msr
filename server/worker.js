@@ -1,4 +1,4 @@
-// CPM: Motor Edition multiplayer relay (Cloudflare Worker + one Durable Object per room code).
+// ISLA multiplayer relay (Cloudflare Worker + one Durable Object per room code).
 // The relay doesn't simulate anything: every phone runs its own physics and sends its bike state; the room just
 // forwards it. Binary messages (bike state, 44 bytes) are broadcast with the sender's id byte in front. Text messages
 // are JSON control messages (only 'ping', 'look' and 'race' are accepted, and only known fields are forwarded):
@@ -11,7 +11,13 @@
 // origin checked here in the Worker before the room is touched, max 3 connections per IP per room, resume-by-id (&id=N), per-connection
 // token buckets (state 25/s, control 4/s, look 1 per 2 s) and a disconnect for clients that keep flooding (a dropped
 // message has still been counted against the quota; closing the socket is what stops it), packet sanity checks.
+//
+// Weather (12.00, wx.js): one live snapshot for the whole game from Open-Meteo, for a fixed point in the Philippines. Fetched
+// through Cloudflare's edge cache (15 minutes), so all rooms and all solo riders share about one upstream call per quarter hour
+// per data centre. Rooms get it as a server -> client `wx` message right after `hi` and again every 15 minutes while somebody
+// is in the room (a Durable Object alarm that is not renewed once the room is empty). Solo riders GET /wx. Clients send nothing.
 import { DurableObject } from 'cloudflare:workers';
+import { WX_URL, wxFromOpenMeteo, wxNext } from './wx.js';
 
 const PROTO = 3; // bump together with PROTO in js/net.js when the message format or rules change
 const MAX = 8;   // players per room (ids are one byte: up to 255 once interest management exists)
@@ -28,6 +34,15 @@ function originOk(o, env) {
   if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(o)) return true; // local testing
   return String(env.ORIGINS || DEF_ORIGINS).split(',').map(s => s.trim().replace(/\/+$/, '')).includes(o);
 }
+// the current weather snapshot, or the last good one (up to 2 hours old) when Open-Meteo cannot be reached, or null
+let wxLast = null;
+async function getWx() {
+  try {
+    const r = await fetch(WX_URL, { cf: { cacheTtl: 900, cacheEverything: true }, signal: AbortSignal.timeout(6000) });
+    if (r.ok) { const w = wxFromOpenMeteo(await r.json()); if (w) return wxLast = w; }
+  } catch (e) { }
+  return wxLast && Date.now() / 1000 - wxLast.t < 7200 ? wxLast : null;
+}
 // refuse a websocket with a message the game can show (a plain HTTP error only shows up as "can't reach the server")
 function refuse(code, why, msg) {
   const [client, server] = Object.values(new WebSocketPair());
@@ -39,6 +54,14 @@ export default {
   async fetch(req, env) {
     const u = new URL(req.url);
     if (u.pathname === '/') return new Response(`cpm relay ok · proto ${PROTO} · max ${MAX}`, { headers: HDR });
+    if (u.pathname === '/wx') { // solo riders: the same snapshot the rooms get. Only the game's page may read it (ORIGINS).
+      const o = req.headers.get('Origin'), h = { 'access-control-allow-origin': o || '*', vary: 'Origin', 'content-type': 'application/json' };
+      if (req.method !== 'GET') return new Response('GET only', { status: 405, headers: HDR });
+      if (!originOk(o, env)) return new Response('{"err":"origin"}', { status: 403, headers: h });
+      const w = await getWx(); if (!w) return new Response('{"err":"no weather"}', { status: 503, headers: { ...h, 'cache-control': 'max-age=60' } });
+      const left = Math.max(30, Math.min(900, Math.round((wxNext(Date.now()) - Date.now()) / 1000))); // fresh until the next step is out
+      return new Response(JSON.stringify(w), { headers: { ...h, 'cache-control': 'public, max-age=' + left } });
+    }
     const m = u.pathname.match(ROOM);
     if (!m) return new Response('not found', { status: 404, headers: HDR });
     if (req.headers.get('Upgrade') !== 'websocket') return new Response('expected a websocket', { status: 426, headers: HDR });
@@ -125,7 +148,18 @@ export class Room extends DurableObject {
     server.serializeAttachment(me);
     server.send(JSON.stringify({ t: 'hi', id, max: MAX, now: Date.now(), peers: peers.map(([, a]) => ({ id: a.id, name: a.name, look: a.look })) }));
     this.bcast(JSON.stringify({ t: 'join', id, name: me.name, back: !!keep }), server);
+    // weather: to the newcomer now (not inside `hi`: joining never waits on Open-Meteo), then to the room every 15 minutes
+    this.ctx.waitUntil((async () => {
+      try { if (!(await this.ctx.storage.getAlarm())) await this.ctx.storage.setAlarm(wxNext(Date.now())); } catch (e) { }
+      const w = await getWx(); if (w) try { server.send(JSON.stringify({ t: 'wx', wx: w })); } catch (e) { }
+    })());
     return new Response(null, { status: 101, webSocket: client });
+  }
+  // every 15 minutes while the room has players: the new snapshot to everyone. An empty room sets no new alarm.
+  async alarm() {
+    if (!this.list().length) return;
+    const w = await getWx(); if (w) this.bcast(JSON.stringify({ t: 'wx', wx: w }));
+    await this.ctx.storage.setAlarm(wxNext(Date.now()));
   }
   bcast(data, except) { for (const [w] of this.list(except)) try { w.send(data); } catch (e) { } }
   // token bucket per socket and kind; false = drop. Too many drops in a 10 s window closes the socket.

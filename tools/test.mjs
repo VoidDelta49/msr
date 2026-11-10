@@ -17,6 +17,7 @@ import { footTests } from './foot.mjs';
 import { npcTests } from './npc.mjs';
 import { interiorTests } from './interior.mjs';
 import { underTests } from './under.mjs';
+import { weatherTests } from './weather.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url)), BASE = path.join(dir, 'baseline.json');
 const update = process.argv.includes('--update'), problems = [];
@@ -61,6 +62,11 @@ for (const b of bikeIds) {
     if (Q.wcOn > 20 || Q.stoppie > 15) bad(b, 'pillion', `loaded bike lifts its nose ${Q.wcOn} deg (wheelie control on) / stands on its nose ${Q.stoppie} deg`);
     if (!Q.idem) bad(b, 'pillion', 'adding then removing the passenger does not give the bike back exactly');
   }
+  const V = R.wet; if (V) { // rain: longer stops the wetter it gets, never absurd; paint is worse; hydroplaning only takes grip away
+    if (!(V.dampM > V.dryM * .97 && V.wetM > V.dampM * 1.02 && V.wetM > V.dryM * 1.12 && V.wetM < V.dryM * 2.2)) bad(b, 'wet', `stops ${V.dryM} m dry, ${V.dampM} m damp, ${V.wetM} m soaked`);
+    if (!(V.paintM > V.wetM)) bad(b, 'wet', `wet paint stops in ${V.paintM} m, wet asphalt in ${V.wetM} m`);
+    if (!(V.g60 < 1 && V.g60 > .4 && V.g130 < V.g60 && V.g130 > .2 && V.leanWet <= V.leanDry + .5 && V.t60 >= R.launch.t60 - .05)) bad(b, 'wet', `implausible wet grip (${JSON.stringify(V)})`);
+  }
   const Z = R.iss; if (Z && !Z.na && !(Z.offAt > 2.5 && Z.offAt < 4 && Z.restarted)) bad(b, 'iss', `idling stop misbehaves (${JSON.stringify(Z)})`);
 }
 
@@ -72,6 +78,7 @@ for (const p of footTests()) problems.push(p);
 for (const p of npcTests()) problems.push(p);
 for (const p of interiorTests()) problems.push(p);
 for (const p of underTests().problems) problems.push(p); // Ilalim, the caves (data/cave.json, js/under.js)
+for (const p of weatherTests().problems) problems.push(p); // weather: relay snapshot, modes, wet road, lightning, wet grip (js/weather.js, server/wx.js)
 // fuzz: random inputs and garage setups on every bike (finite state, sane speed/rpm/lean/gear/fuel, no exceptions)
 for (const b of bikeIds) for (const seed of [1, 2]) { const r = fuzzOne(b, seed, 25); if (r.fail) problems.push(`FUZZ ${b} seed ${seed} t=${r.t}s: ${r.fail}  (node tools/fuzz.mjs ${b} --seed ${seed} --secs 25)`); }
 if (process.argv.includes('--full')) { // real-browser layout check (skips itself when there is no playwright / chromium)

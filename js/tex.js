@@ -180,13 +180,15 @@ export function jeep() { // jeepney side: window band, chrome strip, painted str
 
 /* ---------- sky ---------- */
 // Equirect sky for a camera-following dome: zenith blue to a hazy horizon (= fog colour), puffy clouds near the horizon.
-// cloud mask for the day/night sky dome (256×64, horizon at the middle; same noise call the old sky texture used): R = cloud cover, G = top brightness
+// cloud mask for the day/night sky dome (256×64, horizon at the middle; same noise call the old sky texture used): R = cloud cover, G = top brightness,
+// B = the raw noise over the whole upper dome: the weather's cloud cover (renderer.js SKYU.ovc) thresholds it, so clouds grow out of
+// the same field from a few puffs to full overcast
 export function clouds() {
   const W = 256, H = 64, n = noise(W, H, 8, 4);
   return paint(W, H, (x, y) => {
-    const v = y / (H - 1); if (v >= .5) return [0, 0, 0];
+    const v = y / (H - 1); if (v >= .5) return [0, 0, Math.round(n[Math.round(.49 * (H - 1)) * W + x] * 255)]; // below the horizon: the horizon row's value (no seam when filtered)
     const band = Math.exp(-(((v - .36) / .1) ** 2)), k = Math.min(1, Math.max(0, (n[y * W + x] * band - .3) / .14)), w = k * k * (3 - 2 * k);
-    return [Math.round(w * 255), Math.round(Math.min(1, w * 1.6) * 255), 0];
+    return [Math.round(w * 255), Math.round(Math.min(1, w * 1.6) * 255), Math.round(Math.min(1, n[y * W + x]) * 255)];
   });
 }
 

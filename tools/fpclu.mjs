@@ -6,6 +6,7 @@
 // Rays only test the parked, straight-ahead pose; steering lock and lean are not covered.
 //   PW=/opt/npm-tools/node_modules/playwright-core PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tools/fpclu.mjs [--bike id] [--min 0.9] [--shot dir] [--json]
 // --shot dir: one first-person screenshot per bike (dir/<bike>.png). ~25 s per bike on swiftshader. Skips (exit 0) without a browser.
+import { wxRoute } from './lib/wxroute.mjs';
 import { createRequire } from 'node:module';
 import { serve } from './serve.mjs';
 
@@ -15,6 +16,7 @@ let pw; try { pw = createRequire(import.meta.url)(process.env.PW || 'playwright-
 const srv = await serve(0), url = `http://localhost:${srv.address().port}/`, errs = [];
 let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] }); } catch (e) { console.log('fpclu: skipped (no chromium)'); srv.close(); process.exit(0); }
 const pg = await br.newPage({ viewport: { width: 900, height: 420 } });
+await wxRoute(pg); // live weather answered locally (tools/lib/wxroute.mjs)
 pg.on('pageerror', e => errs.push('pageerror: ' + e.message));
 await pg.addInitScript(() => { sessionStorage.setItem('cpmGL', '1'); localStorage.setItem('cpmme', JSON.stringify({ tod: 12 })); });
 await pg.goto(url); await pg.click('#mPlay');
