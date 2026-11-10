@@ -18,7 +18,7 @@ Release steps at the end: bump `BUILD` in `js/config.js` and `?v=` in `index.htm
 
 ## 1. Rename the game to ISLA
 
-- Was "CPM: Motor Edition". Update `<title>` and the `<h1>` in `index.html`, README, `maker/index.html`, and the service worker / manifest if they carry the name. Keep or drop the "Motor Edition" subtitle: open question.
+- **Decided: just "ISLA"** (drop "Motor Edition" everywhere). Was "CPM: Motor Edition". Update `<title>` and the `<h1>` in `index.html`, README, `maker/index.html`, and the service worker / manifest if they carry the name.
 - Check `CLAUDE.md`, `server/worker.js` header comments, and `tools/README.md` for the old name.
 
 ## 2. Weather and dynamic sky
@@ -41,7 +41,7 @@ Decisions made: live data, client-side blending, wet physics included, typhoons 
 - Headless logic (snapshot in, sky and rain values out) with `tools/weather.mjs`.
 - Visuals: cloud layer by cover, duller sky and sun, fog / haze from visibility (tie into `FOGU` in `renderer.js` / `daynight.js`), rain particles, wet-road sheen and puddles, rain audio, lightning and delayed thunder, wind on the grass (`js/grass.js`) and rain slant.
 - Options > Weather: Live (default), Clear, Light rain, Storm.
-- Menu background: the live sky and weather (does it also change per update? open question).
+- **Decided:** menu background is the live sky and weather (no per-update image).
 - NPCs with umbrellas (payong) / raincoats (kapote) go with item 4.
 - `sw.js` must not cache `/wx`. Add Open-Meteo attribution to `THIRD_PARTY.md`. Free tier is non-commercial: check if the game is ever sold.
 
@@ -63,13 +63,13 @@ Decisions made: live data, client-side blending, wet physics included, typhoons 
 ## 4. Filipino character looks
 
 - Skin tones, hair and clothes more accurate to Filipino culture, for the rider and the NPCs. Code: `js/figlook.js` (roles, defaults), `js/figure.js`, `data/npc.json`.
-- Needs reference photos or a list from the owner.
+- **Decided:** Claude proposes a set of changes from general knowledge and the owner reviews and corrects it.
 
 ## 5. Swing-arm and Engine Support (ES)
 
 - Adjustable swing-arm length for big bikes, underbones and "Pantras". ES for automatic-transmission scooters (adjusts the unit-swing).
 - The swing mesh already stretches pivot to axle every frame, so the visual is cheap. The physics change is a different wheelbase (wheelie, squat, stability), so `tools/test.mjs --update` is needed.
-- Open: which bikes count as "Pantras"; ES as slider, presets or both; look, handling or both.
+- **Decided:** "Pantras" covers both modified Philippine-style underbones and Thai-style / racing underbones (long swing-arm, low builds). ES is a slider plus presets (e.g. Stock, Lowered, Extended). Both swing-arm and ES change the look AND the handling.
 
 ## 6. More accurate suspension
 
@@ -78,15 +78,10 @@ Decisions made: live data, client-side blending, wet physics included, typhoons 
 
 ## 7. New bike: Rusi Surf (LAST, NOT STARTED, BLOCKED)
 
-- **Do not start until the owner supplies specs and photos and says go.** It goes last so it launches with the new wheel, swing-arm and suspension options.
-- Needed from the owner: engine, wheel sizes, brakes, paints, body type, photos.
+- **Do not start until the owner says go.** Specs plan: the owner sends initial photos, then Claude gathers more photos and the actual bike specs (owner checks them). It goes last so it launches with the new wheel, swing-arm and suspension options.
+- Needed: engine, wheel sizes, brakes, paints, body type, photos.
 - When it starts, follow `CLAUDE.md`: `node tools/new-bike.mjs <id> --from <bike>`, `sound.parts`, `engine.geo`, `engine.tune`, a row in `maker/parts-gen.mjs`, sidecar fields and `class`, index.json, model / cluster, garage data. Then `check`, `sweep`, `fuzz`, `test --update`.
 
 ## Open questions
 
-1. Keep or drop "Motor Edition" in the title?
-2. Should the menu background also change per update, or only show the live sky and weather?
-3. What does "Pantras" cover?
-4. ES: slider, presets or both, and look or handling?
-5. Character looks: reference photos or a list of changes?
-6. Rusi Surf: specs and photos (blocks item 7 only).
+None left. All six were answered (title, menu background, Pantras, ES, swing-arm effect, character-look references, Rusi Surf specs). The Rusi Surf still waits for the owner's go and first photos.
