@@ -109,6 +109,8 @@ People walk the sidewalks of every road on the island and do everyday things: **
 
 The sky is the real weather over the Philippines right now (Options > Game > Weather: Live PH, or a fixed Clear / Light rain / Storm). Cloud cover, rain, wind, visibility and thunderstorms come from [Open-Meteo](https://open-meteo.com/) for one fixed point, through the multiplayer relay, so everyone in a room rides under the same sky (and sees the same lightning); solo riders get the same snapshot. Never your location. Rain wets the road: about 30 % less grip on asphalt with a road tyre, more on mud, painted centre lines and bridge decks, and hydroplaning at speed on a soaked road. Tyres differ in the wet (the skinny one cuts through water, wide and racing ones give up sooner). The road dries in 10-40 minutes after the rain. The dyno always runs dry.
 
+The radio (the button at the top, N / B, or Options > Audio) has four generated stations and then **live Philippine public radio**: Radyo Pilipinas and the other state stations, plus state university radio, streamed straight from each station's own public webcast while you are online. Public service broadcasters only; nothing is recorded, re-hosted or sent through this project's servers, and no stream address is kept in the repo (they come from the [Radio Browser](https://www.radio-browser.info/) directory at play time). Details and the rules in `THIRD_PARTY.md`.
+
 ## Multiplayer (Build 9.0)
 
 Main menu > MULTIPLAYER: type a name, then JOIN a room code or make a NEW ROOM and share its code (up to 8 riders per room). Everyone rides their own bike with their own physics; other riders appear as ghost bikes (no collisions) with their real bike and paint, a name tag and a cyan dot on the minimap.

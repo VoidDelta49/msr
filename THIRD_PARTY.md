@@ -24,10 +24,33 @@ The live weather (Options > Game > Weather > Live PH) is [Open-Meteo](https://op
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Their free API is for **non-commercial** use (under 10,000 calls a day; the
 relay makes about 100): if the game is ever sold or carries ads, move to their paid plan or another source first.
 
+## Live radio
+
+After its four generated stations the in-game radio can tune to real Philippine **public service** radio (`js/radiolive.js`, played by
+`js/radio.js`). What it does and does not do:
+
+- **Which stations:** only public broadcasters, matched by name / website in `PUBLIC` (`js/radiolive.js`): the state network
+  (Philippine Broadcasting Service: Radyo Pilipinas, Republika FM1, Capital FM2) and state university stations (DZUP, DZLB). Commercial
+  stations are never listed, whatever the directory returns (`node tools/radio.mjs` checks this).
+- **How it plays:** the player's browser connects to the station's own public webcast, the same address any internet radio app or the
+  station's website player uses. The game does not record, cache, re-host, relay, edit or mix the programme, sells nothing around it
+  and puts no ads on it; the station's name is shown while it plays. The stream never passes through this project's servers.
+- **Where the addresses come from:** none are stored in this repository. They are looked up at play time in the
+  [Radio Browser](https://www.radio-browser.info/) community directory (free public API, no key; its data is public domain), kept for a
+  day in the player's browser, and a tune-in is reported back to the directory as its API asks.
+- **Rights:** the programmes, music and names belong to the stations and their licensors. This project claims no rights in them and is
+  not affiliated with or endorsed by any station. A station that wants to be left out: remove its rule from `PUBLIC` (or open an issue)
+  and it is gone in the next release.
+- **If the game is ever sold or carries ads:** take the live stations out or get each station's permission first; tuning in for free is
+  what a radio does, building a paid product on someone's broadcast is not.
+- **Privacy:** using a live station makes the player's browser contact the directory and the station's stream host (they see an IP
+  address, like any website). With the radio off nothing is contacted; switching it on (any station) asks the directory once which
+  live stations are on the air.
+
 ## Not third-party
 
 - **Textures** are generated in code (`js/tex.js`); no image files are in the repository.
-- **Sound** is fully synthesized WebAudio (`js/audio.js`, `js/engine-worklet.js`); no audio samples are used.
+- **Sound** is fully synthesized WebAudio (`js/audio.js`, `js/engine-worklet.js`); no audio samples are used. The only audio not made by the game is the optional live radio above, which is streamed, never stored.
 - **Fonts** are the viewer's system fonts (`system-ui`, `ui-monospace`, `Georgia`); none are bundled.
 - **Bike specifications** (power, weight, gearing, geometry) are factual figures from manufacturers' published specifications. No text, tables or images were copied from them.
 

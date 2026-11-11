@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Radio checks. Part 1 (Node only, ~1 s, part of test.mjs): the song generator (js/radiogen.js) for every station x many seeds: notes in
+// Radio checks. Part 1 (Node only, ~1 s, part of test.mjs): the live-station picker (js/radiolive.js: only public broadcasters, https,
+// playable, safe names, on a synthetic directory answer in tools/fixtures/radio-browser.json) and the song generator (js/radiogen.js) for every station x many seeds: notes in
 // range and in key, melody leaps sane, chord/bass/drum layers where the plan says, same seed = same song, different seeds = different
 // songs, fade-out on the last section, event density bounded. Part 2 (needs Chrome, skips without it; --render): renders each station
 // offline in headless Chrome from the real radiogen.js + radiosynth.js and checks levels (no NaN, no clipping, no silence, loudness equal
@@ -7,7 +8,7 @@
 //   node tools/radio.mjs [--render] [--detail] [--wav dir] [--seeds N]
 import { STATIONS, SCALES, makeSong, stepEvents, songSeconds } from '../js/radiogen.js';
 import { spawn } from 'node:child_process';
-import { existsSync, mkdtempSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -18,7 +19,7 @@ const INSTR = new Set(['kick', 'snare', 'clap', 'brush', 'hat', 'ohat', 'bass', 
 const LAYER = { c: ['pad', 'rhodes'], b: ['bass'], g: ['skank', 'organ'], d: ['kick', 'snare', 'clap', 'brush', 'hat', 'ohat'], a: ['arp'], l: ['lead'] };
 
 /* ---------- part 1: the generator ---------- */
-let songs = 0, events = 0;
+let songs = 0, events = 0, liveN = 0;
 for (let si = 0; si < STATIONS.length; si++) {
   const st = STATIONS[si], titles = new Set(), sigs = new Set();
   for (let k = 0; k < SEEDS; k++) {
@@ -53,6 +54,30 @@ for (let si = 0; si < STATIONS.length; si++) {
   }
   if (sigs.size < SEEDS * .9) bad(`${st.id}: only ${sigs.size} different songs from ${SEEDS} seeds`);
   if (titles.size < SEEDS * .5) bad(`${st.id}: only ${titles.size} different titles from ${SEEDS} seeds`);
+}
+
+/* ---------- part 1b: live stations (js/radiolive.js) on a synthetic directory answer ---------- */
+{
+  const { pickLive, validList, ruleOf, PUBLIC, MAXLIVE, API, QUERY } = await import('../js/radiolive.js');
+  const rows = JSON.parse(readFileSync(new URL('./fixtures/radio-browser.json', import.meta.url), 'utf8')).rows, live = pickLive(rows), urls = live.map(s => s.url);
+  if (!validList(live) || !live.length) bad('live: pickLive made a list validList rejects');
+  if (live.length > MAXLIVE) bad(`live: ${live.length} stations (max ${MAXLIVE})`);
+  for (const s of live) {
+    if (!/^https:\/\//.test(s.url)) bad(`live: ${s.name} is not https (${s.url})`);
+    if (/[<>&"']/.test(s.name) || s.name.length > 30) bad(`live: unsafe / long name "${s.name}"`);
+    if (!PUBLIC.some(r => r.tag === s.tag)) bad(`live: ${s.name} has no public-broadcaster rule`);
+  }
+  if (new Set(urls).size !== urls.length || new Set(live.map(s => s.id)).size !== live.length) bad('live: duplicate station');
+  for (const u of ['hits', 'wish', 'hls.m3u8', 'broken', '/us', 'flac', 'plain.example.org', 'javascript']) if (urls.some(x => x.includes(u))) bad(`live: a station that must be left out got through (${u})`);
+  if (urls[0] !== 'https://stream.example.org/rp1') bad(`live: first station is ${urls[0]} (want the most voted RP1)`);
+  for (const u of ['rp2', 'rp3', 'fm1', 'fm2', 'rpw']) if (!urls.includes('https://stream.example.org/' + u)) bad(`live: ${u} missing`);
+  if (urls.filter(u => /davao|cebu|laoag/.test(u)).length > 2) bad('live: more than 2 regional stations');
+  for (const n of ['Love Radio 90.7', 'Barangay LS 97.1', 'Wish 107.5', 'Monster RX 93.1', 'Easy Rock', 'DZMM Radyo Patrol', 'DZBB Super Radyo', 'Energy FM 106.7', 'FM2 Dance Party', 'Radyo5 True FM', 'iFM 93.9', 'Brigada News FM']) if (ruleOf({ name: n })) bad(`live: commercial name "${n}" matches a public rule`);
+  if (pickLive(null).length || pickLive([]).length || pickLive('x').length) bad('live: junk input gave stations');
+  if (JSON.stringify(pickLive(rows)) !== JSON.stringify(pickLive([...rows].reverse()))) bad('live: the list depends on the directory order');
+  if (validList([{ id: 'a', name: 'b', tag: 'c', url: 'http://x.y/z' }]) || validList({}) || validList([null])) bad('live: validList accepts a bad saved list');
+  if (!API.every(h => /^https:\/\/[a-z0-9.]+\.radio-browser\.info$/.test(h)) || !/countrycode=PH/.test(QUERY) || !/is_https=true/.test(QUERY)) bad('live: directory address / query');
+  liveN = live.length;
 }
 
 /* ---------- part 2: offline render in headless Chrome ---------- */
@@ -91,5 +116,5 @@ if (has('--render') || has('--detail') || has('--wav') || has('--engine')) {
 
 if (rendered) console.log(rendered.replace(/ · /g, '\n  ')); // levels are printed even when a check fails, they are what TRIM is tuned from
 if (fails.length) { for (const f of fails) console.log('FAIL ' + f); console.log(`radio: ${fails.length} problem(s)`); process.exit(1); }
-console.log(`radio: ok (${songs} songs, ${events} note events, ${STATIONS.length} stations)` + '');
+console.log(`radio: ok (${songs} songs, ${events} note events, ${STATIONS.length} stations; live picker ok, ${liveN} from the fixture)`);
 process.exit(0);

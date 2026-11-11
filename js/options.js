@@ -134,7 +134,7 @@ const tAud = () => sec('SOUND') +
   sw('amb', 'Ambient sounds', 'Surf, wind, wildlife and town noise by location.', !cfg.sound) +
   slider('vol', 'Volume', '', !cfg.sound) +
   sec('RADIO') +
-  seg('radio', 'Station', 'Four made-up stations, played live by the game (no recordings). N / B on a keyboard, or the radio button at the top.', [[0, 'Off'], ...STATIONS.map((s, i) => [i + 1, s.name])], cfg.radio | 0, !cfg.sound) +
+  seg('radio', 'Station', 'Four made-up stations, played live by the game (no recordings), then Live PH: real Philippine public radio (Radyo Pilipinas and other state / campus stations), streamed straight from the station when you are online. N / B on a keyboard, or the radio button at the top, step through every station.', [[0, 'Off'], ...STATIONS.map((s, i) => [i + 1, s.name]), [STATIONS.length + 1, 'Live PH']], Math.min(cfg.radio | 0, STATIONS.length + 1), !cfg.sound) +
   slider('rvol', 'Radio volume', 'Fades down a little at speed so the engine stays on top.', !cfg.sound || !cfg.radio);
 const tGame = () => sec('WORLD') +
   seg('tod', 'Time of day', 'Live follows the clock in the Philippines.', TOD, cfg.tod ?? 'live') +
