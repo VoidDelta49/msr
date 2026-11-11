@@ -8,6 +8,7 @@ import { ctx } from './state.js';
 import { cfg, save, BUILD, GLOBAL_DEF, AA_MODES, QUALITY } from './config.js';
 import { WX, WX_MODES, wxText } from './weather.js';
 import { STATIONS } from './radiogen.js';
+import { RLOG } from './radiolive.js';
 
 export const O = { onPerf: null, setDPR: null, api: '', live: false, gpu: false, aa: null, snap };
 
@@ -135,7 +136,11 @@ const tAud = () => sec('SOUND') +
   slider('vol', 'Volume', '', !cfg.sound) +
   sec('RADIO') +
   seg('radio', 'Station', 'Four made-up stations, played live by the game (no recordings), then Live PH: real Philippine public radio (Radyo Pilipinas and other state / campus stations), streamed straight from the station when you are online. N / B on a keyboard, or the radio button at the top, step through every station.', [[0, 'Off'], ...STATIONS.map((s, i) => [i + 1, s.name]), [STATIONS.length + 1, 'Live PH']], Math.min(cfg.radio | 0, STATIONS.length + 1), !cfg.sound) +
-  slider('rvol', 'Radio volume', 'Fades down a little at speed so the engine stays on top.', !cfg.sound || !cfg.radio);
+  slider('rvol', 'Radio volume', 'Fades down a little at speed so the engine stays on top.', !cfg.sound || !cfg.radio) +
+  sec('RADIO LOG') + `<p class=onote>What the live station search and each stream did. Copy it and paste it where it can be read.</p><pre id=oRlog>${esc(rlogText())}</pre>` +
+  `<div class=obtns><button class=b data-act=rcopy>Copy radio log</button><button class=b data-act=rscan>Search again</button></div>`;
+const rlogText = () => RLOG.length ? RLOG.join('\n') : 'Nothing yet: turn the radio on (or tap Search again)';
+RLOG.on = () => { const p = $('oRlog'); if (!p) return; const end = p.scrollTop + p.clientHeight >= p.scrollHeight - 4; p.textContent = rlogText(); if (end) p.scrollTop = p.scrollHeight; };
 const tGame = () => sec('WORLD') +
   seg('tod', 'Time of day', 'Live follows the clock in the Philippines.', TOD, cfg.tod ?? 'live') +
   seg('wx', 'Weather', (cfg.wx ?? 'live') !== 'live' ? 'A fixed weather. Rain makes the road slippery: brake earlier, lean less.' : WX.src === 'live' ? 'The real weather over the Philippines right now: ' + wxText() + '.' : 'Live: the real weather over the Philippines. No data right now (offline?), so the sky is clear.', WX_MODES, cfg.wx ?? 'live') +
@@ -211,6 +216,8 @@ $('opts').onclick = e => {
   if (d.sg) return set(d.sg, parse(d.sg, d.v));
   if (d.act === 'reset') return resetAll();
   if (d.act === 'copy') { const t = LOG.join('\n') || 'No errors logged'; const done = ok => { b.textContent = ok ? 'Copied' : 'Copy failed'; }; try { navigator.clipboard.writeText(t).then(() => done(true), () => done(false)); } catch (x) { done(false); } return; }
+  if (d.act === 'rcopy') { const t = 'ISLA ' + BUILD + ' radio log · ' + navigator.userAgent + '\n' + (RLOG.join('\n') || 'empty'); const done = ok => { b.textContent = ok ? 'Copied' : 'Copy failed: select the text instead'; }; try { navigator.clipboard.writeText(t).then(() => done(true), () => done(false)); } catch (x) { done(false); } return; }
+  if (d.act === 'rscan') { if (RLOG.rescan) RLOG.rescan(); else b.textContent = 'Radio not loaded'; return; }
   if (d.act === 'bench') { try { sessionStorage.setItem('cpmBench', String(Date.now())); } catch (x) { } return location.reload(); }
   if (d.act === 'benchcopy') { const l = lastBench(), done = ok => { b.textContent = ok ? 'Copied' : 'Copy failed'; }; if (!l) return; try { navigator.clipboard.writeText(l.text + '\n\n' + JSON.stringify(l.data)).then(() => done(true), () => done(false)); } catch (x) { done(false); } return; }
   if (b.id === 'oReload') location.reload();

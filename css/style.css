@@ -87,6 +87,7 @@ input[type=range]{flex:1 1 200px;accent-color:var(--hot)}
 .obtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 #oApply{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);font:600 12px/1.3 system-ui}
 #oApply .b{flex:none;background:var(--hot);color:#1a1000;border-color:var(--hot);font-weight:800}
+#oRlog{margin:0;white-space:pre-wrap;word-break:break-word;font:11px/1.4 ui-monospace,monospace;max-height:40vh;overflow:auto;opacity:.85;user-select:text;-webkit-user-select:text}
 #oLog{margin:0;white-space:pre-wrap;word-break:break-all;font:11px ui-monospace,monospace;max-height:30vh;overflow:auto;opacity:.85;user-select:text}
 /* landscape with room: the tabs become a rail down the left, so a phone held sideways gives the settings the full height */
 @media (orientation:landscape) and (min-width:640px){

@@ -19,6 +19,15 @@ export const QUERY = QUERIES[0];
 export const clickUrl = (host, id) => host + '/json/url/' + encodeURIComponent(id); // the directory asks players to count a tune-in
 export const MAXLIVE = 12;
 
+// the radio log (Options > Audio > Radio log): what the directory answered and what each stream did, readable on a phone with no
+// console. RLOG.on = a listener the Options panel sets to redraw, RLOG.rescan = js/radio.js's "search again".
+export const RLOG = [];
+export function rlog(m) {
+  const d = new Date(), t = [d.getHours(), d.getMinutes(), d.getSeconds()].map(x => String(x).padStart(2, '0')).join(':');
+  RLOG.push(t + ' ' + m); if (RLOG.length > 120) RLOG.splice(0, RLOG.length - 120);
+  try { if (RLOG.on) RLOG.on(); } catch (e) { }
+}
+
 // The public broadcasters, by the name (n) or website (h) a directory entry carries. First rule that matches wins; `max` entries per rule.
 export const PUBLIC = [
   { id: 'rp1', tag: 'PBS · news & public affairs', n: /\b(rp ?1|dzrb|radyo ng bayan)\b|radyo publiko|radyo pilipinas (1|uno|one)\b/ },
@@ -33,24 +42,32 @@ export const PUBLIC = [
 ];
 const NOPLAY = /\.(m3u8|m3u|pls|asx|xspf)(\?|$)/i; // playlists the <audio> element can't open; codec is not checked (the directory often says UNKNOWN), a stream that won't play just shows No signal
 const host = u => { try { return new URL(u).hostname.toLowerCase(); } catch (e) { return ''; } };
+// the most-voted Philippine listings by name, for the log (shows how the directory really names the stations)
+export const topPH = (rows, n = 25) => Array.isArray(rows) ? [...new Map(rows.filter(r => r && String(r.countrycode || '').toUpperCase() === 'PH').map(r => [r.stationuuid, r])).values()].sort((a, b) => (+b.votes || 0) - (+a.votes || 0)).slice(0, n).map(r => clean(r.name).slice(0, 32)) : [];
 export const PHcount = rows => Array.isArray(rows) ? new Set(rows.filter(r => r && String(r.countrycode || '').toUpperCase() === 'PH').map(r => r.stationuuid)).size : 0;
 const clean = s => String(s ?? '').replace(/[\u0000-\u001f<>&"'`\\]/g, ' ').replace(/\s+/g, ' ').trim();
 export const ruleOf = row => { const n = clean(row.name).toLowerCase(), h = host(row.homepage); return PUBLIC.find(r => r.n.test(n) || (r.h && h && r.h.test(h))) || null; };
 
 // directory rows -> the stations the radio offers: [{ id, name, tag, url, home }], in PUBLIC order. Anything odd is dropped, never repaired.
-export function pickLive(rows) {
+// why (optional array): a line for every listing a PUBLIC rule matches that was still left out, and why
+export function pickLive(rows, why) {
   if (!Array.isArray(rows)) return [];
+  const no = (row, m) => { if (why && why.length < 40 && row && ruleOf(row)) why.push(clean(row.name).slice(0, 40) + ': ' + m); };
   const by = new Map();
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue;
     const cc = String(row.countrycode || '').toUpperCase();
-    if ((cc !== 'PH' && cc !== '') || +row.lastcheckok !== 1 || +row.hls === 1 || /FLAC|HLS/i.test(String(row.codec || ''))) continue;
+    if (cc !== 'PH' && cc !== '') { no(row, 'country ' + cc); continue; }
+    if (+row.lastcheckok !== 1) { no(row, 'directory says the stream is down'); continue; }
+    if (+row.hls === 1 || /FLAC|HLS/i.test(String(row.codec || ''))) { no(row, 'format ' + (row.codec || 'HLS') + ' does not play'); continue; }
     // https first; an http-only stream is kept too (js/radio.js asks for it over https on an https page, as the browser would anyway)
     const ok = u => typeof u === 'string' && /^https?:\/\/[^\s/]+\.[^\s/]+/.test(u) && u.length < 400 && host(u) && !NOPLAY.test(u);
     const url = [row.url_resolved, row.url].filter(ok).sort((a, b) => (b.startsWith('https:') ? 1 : 0) - (a.startsWith('https:') ? 1 : 0))[0];
-    if (url && url.startsWith('https:') && +row.ssl_error === 1) continue;
+    if (url && url.startsWith('https:') && +row.ssl_error === 1) { no(row, 'broken https certificate'); continue; }
     const id = clean(row.stationuuid), name = clean(row.name).slice(0, 30).trim(), rule = ruleOf(row);
-    if (!url || !/^[\w-]{8,64}$/.test(id) || name.length < 2 || !rule) continue;
+    if (!rule) continue;
+    if (!url) { no(row, 'no playable address (' + clean(row.url_resolved || row.url).slice(0, 60) + ')'); continue; }
+    if (!/^[\w-]{8,64}$/.test(id) || name.length < 2) { no(row, 'bad listing'); continue; }
     const home = typeof row.homepage === 'string' && /^https?:\/\//.test(row.homepage) && host(row.homepage) ? row.homepage.slice(0, 200) : '';
     if (!by.has(rule.id)) by.set(rule.id, []);
     if (by.get(rule.id).some(s => s.id === id)) continue; // the same listing from two searches
@@ -60,6 +77,7 @@ export function pickLive(rows) {
   for (const r of PUBLIC) for (const s of (by.get(r.id) || []).sort((a, b) => (b.url.startsWith('https:') - a.url.startsWith('https:')) || b.votes - a.votes || (a.id < b.id ? -1 : 1)).slice(0, r.max || 1)) {
     if (seen.has(s.url) || out.length >= MAXLIVE) continue; seen.add(s.url); delete s.votes; out.push(s);
   }
+  if (why) for (const r of PUBLIC) { const n = (by.get(r.id) || []).length - (r.max || 1); if (n > 0) why.push(`${r.tag}: ${n} more listing(s), only the best ${r.max || 1} kept`); }
   return out;
 }
 // a saved list (localStorage) is only trusted if every entry still has the shape pickLive makes

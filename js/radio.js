@@ -10,7 +10,7 @@ import { $, sstep } from './util.js';
 import { bus, initAudio } from './audio.js';
 import { STATIONS, makeSong, stepEvents, stationLabel } from './radiogen.js';
 import { noiseBuffer, buildStation, createPlayer, tuneStatic } from './radiosynth.js';
-import { API, QUERIES, clickUrl, pickLive, validList, PHcount } from './radiolive.js';
+import { API, QUERIES, clickUrl, pickLive, validList, PHcount, topPH, RLOG, rlog } from './radiolive.js';
 
 export const RAD = { say: null, cur: 0, title: '' }; // say: main.js hands in hud.js's say()
 const LOOK = .6;      // seconds of music scheduled ahead of the audio clock
@@ -34,21 +34,28 @@ function gotLive(list, host) {
 }
 function loadLive() {
   if (LS || performance.now() - failAt < 60000) return; LS = 1;
-  try { const c = JSON.parse(localStorage.getItem('cpm.radio2') || 'null'), age = c ? Date.now() - c.at : -1; if (age >= 0 && age < 864e5 && validList(c.list) && c.list.length) return gotLive(c.list, API.includes(c.host) ? c.host : ''); } catch (e) { }
+  try { const c = JSON.parse(localStorage.getItem('cpm.radio2') || 'null'), age = c ? Date.now() - c.at : -1; if (age >= 0 && age < 864e5 && validList(c.list) && c.list.length) { rlog(`saved list from ${Math.round(age / 6e4)} min ago: ${c.list.length} station(s): ${c.list.map(s => s.name).join(', ')} (Search again to refresh)`); return gotLive(c.list, API.includes(c.host) ? c.host : ''); } } catch (e) { }
+  rlog('looking for live stations · page ' + location.protocol + ' · ' + (navigator.onLine === false ? 'browser says offline' : 'online'));
   (async () => {
     for (const h of API) {
-      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 9000);
+      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 9000), t0 = performance.now();
       try {
-        const got = await Promise.all(QUERIES.map(q => fetch(h + q, { signal: ctl.signal }).then(r => r.ok ? r.json() : null).catch(() => null)));
-        if (!got[0]) continue; // the main search failed on this mirror: the next one
-        const rows = got.filter(Array.isArray).flat(), list = pickLive(rows);
+        const got = await Promise.all(QUERIES.map(q => fetch(h + q, { signal: ctl.signal }).then(r => r.ok ? r.json() : 'HTTP ' + r.status).catch(e => e.name === 'AbortError' ? 'timed out (9 s)' : (e.message || e.name))));
+        const ms = Math.round(performance.now() - t0), errs = got.filter(g => !Array.isArray(g));
+        if (!Array.isArray(got[0])) { rlog(`${h.replace('https://', '')}: ${got[0]} (${ms} ms), next mirror`); continue; } // the main search failed on this mirror: the next one
+        const rows = got.filter(Array.isArray).flat(), why = [], list = pickLive(rows, why);
+        rlog(`${h.replace('https://', '')}: ${rows.length} listings in ${ms} ms, ${PHcount(rows)} Philippine` + (errs.length ? ` (${errs.length} of ${QUERIES.length} searches failed: ${errs[0]})` : ''));
+        rlog('top Philippine listings: ' + (topPH(rows).join(' · ') || 'none'));
+        for (const w of why) rlog('left out · ' + w);
+        rlog(list.length ? `live stations (${list.length}): ` + list.map(s => s.name).join(', ') : 'no public station found');
         WHY = list.length ? '' : 'no public station streaming right now (' + PHcount(rows) + ' Philippine listings checked)';
         console.info('radio: live directory ' + h + ': ' + rows.length + ' listings, ' + PHcount(rows) + ' Philippine, public:', list.map(s => s.name + ' ' + s.url));
         if (list.length) try { localStorage.setItem('cpm.radio2', JSON.stringify({ at: Date.now(), host: h, list })); } catch (e) { }
         gotLive(list, h); if (!list.length) { failAt = performance.now(); LS = 0; } // ask again in a minute
         return;
-      } catch (e) { } finally { clearTimeout(tm); }
+      } catch (e) { rlog(`${h.replace('https://', '')}: ${e.message || e.name}`); } finally { clearTimeout(tm); }
     }
+    rlog('every directory mirror failed: the radio-browser.info servers may be down or blocked on this network (ad / DNS blocker, school or office Wi-Fi)');
     WHY = navigator.onLine === false ? 'offline' : "can't reach the station directory (radio-browser.info)";
     console.warn('radio: live directory unreachable on every mirror', API);
     failAt = performance.now(); gotLive([], ''); LS = 0; // offline or the directory is down: ask again in a minute
@@ -64,29 +71,32 @@ function el(i) {
   if (EL[i]) return EL[i];
   const a = EL[i] = new Audio(); a.preload = 'none';
   if (!i) { a.crossOrigin = 'anonymous'; LG = AC.createGain(); LG.gain.value = 0; AC.createMediaElementSource(a).connect(LG); LG.connect(OUT); }
-  a.addEventListener('playing', () => { if (LV && LV.a === a) { LV.st = 'on'; if (APIH && !counted.has(LV.s.id)) { counted.add(LV.s.id); fetch(clickUrl(APIH, LV.s.id), { mode: 'no-cors' }).catch(() => { }); } } });
-  a.addEventListener('waiting', () => { if (LV && LV.a === a && LV.st === 'on') { LV.st = 'tune'; LV.t = performance.now(); } });
-  a.addEventListener('error', () => { if (LV && LV.a === a) liveFail(); });
+  a.addEventListener('playing', () => { if (LV && LV.a === a) { rlog(`playing ${LV.s.name} after ${((performance.now() - LV.t) / 1000).toFixed(1)} s` + (i ? ' (plain player, volume set by hand)' : ' (through the game mixer)')); LV.st = 'on'; if (APIH && !counted.has(LV.s.id)) { counted.add(LV.s.id); fetch(clickUrl(APIH, LV.s.id), { mode: 'no-cors' }).catch(() => { }); } } });
+  a.addEventListener('waiting', () => { if (LV && LV.a === a && LV.st === 'on') { rlog('buffering ' + LV.s.name); LV.st = 'tune'; LV.t = performance.now(); } });
+  a.addEventListener('error', () => { if (LV && LV.a === a) { const er = a.error; rlog(`stream error ${LV.s.name}` + (i ? '' : ' (with CORS)') + ': ' + (er ? ['', 'aborted', 'network', 'decode', 'format not supported or blocked'][er.code] + (er.message ? ' · ' + er.message.slice(0, 120) : '') : '?')); liveFail(); } });
   return a;
 }
 const quiet = a => { if (!a) return; try { a.pause(); a.removeAttribute('src'); a.load(); } catch (e) { } }; // drops the connection, so a stopped radio uses no data
 function livePlay(i) {
   const a = el(i), s = LV.s; LV.a = a; LV.st = 'tune'; LV.t = performance.now(); a.src = https(s.url); a.volume = i ? 0 : 1;
+  rlog(`tuning ${s.name} · ${a.src.slice(0, 90)}` + (i ? ' · plain player' : ' · CORS player'));
   const p = a.play(); if (p) p.catch(e => {
     if (!LV || LV.s !== s || LV.a !== a || e.name !== 'NotAllowedError') return; // the browser wants a tap first (a saved station at start-up)
-    LV.st = 'tap'; const again = () => { removeEventListener('pointerdown', again, true); removeEventListener('keydown', again, true); if (LV && LV.s === s && LV.st === 'tap') livePlay(i); };
+    LV.st = 'tap'; rlog('the browser blocked autoplay: waiting for a tap'); const again = () => { removeEventListener('pointerdown', again, true); removeEventListener('keydown', again, true); if (LV && LV.s === s && LV.st === 'tap') livePlay(i); };
     addEventListener('pointerdown', again, true); addEventListener('keydown', again, true);
   });
 }
 function liveFail() {
   const a = LV.a; LV.a = null; quiet(a);
   if (a === EL[0]) { LV.s.pl = 1; return livePlay(1); }
-  LV.st = 'dead'; if (RAD.say) RAD.say('No signal · ' + LV.s.name, 1800);
+  LV.st = 'dead'; rlog(LV.s.name + ': no signal (both players failed)'); if (RAD.say) RAD.say('No signal · ' + LV.s.name, 1800);
 }
 function liveStart(s) { LV = { s, a: null, st: 'tune', t: 0 }; cfg.rlive = s.id; livePlay(s.pl ? 1 : 0); }
+// Options > Audio > Radio log > Search again: forget the saved list and ask the directory now
+RLOG.rescan = () => { try { localStorage.removeItem('cpm.radio2'); } catch (e) { } if (LS === 1) return rlog('already searching'); LS = 0; failAt = -1e9; WHY = ''; rlog('search again (asked from Options)'); loadLive(); };
 function liveStop() { if (!LV) return; const a = LV.a; LV = null; quiet(a); if (LG) { LG.gain.cancelScheduledValues(AC.currentTime); LG.gain.value = 0; LG._v = 0; } }
 function liveTick(lvl) {
-  if (LV.st === 'tune' && performance.now() - LV.t > 15000) return liveFail(); // nothing in 15 s
+  if (LV.st === 'tune' && performance.now() - LV.t > 15000) { rlog('no sound from ' + LV.s.name + ' in 15 s'); return liveFail(); } // nothing in 15 s
   const a = LV.a; if (!a) return;
   if (a === EL[0]) { const x = lvl * LIVEGAIN; if (Math.abs((LG._v ?? -1) - x) > 5e-4) { LG._v = x; LG.gain.setTargetAtTime(x, AC.currentTime, .12); } }
   else { const x = Math.min(1, lvl * LIVEGAIN * (cfg.vol ?? .8)); if (Math.abs(a.volume - x) > .004) a.volume = x; }
