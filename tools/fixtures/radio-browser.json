@@ -285,6 +285,62 @@
   "junk",
   {
    "name": 5
+  },
+  {
+   "stationuuid": "96000005a-0000-11e9-a000-52543be04c81",
+   "name": "DZUP no country",
+   "url": "https://stream.example.org/dzup-nocc",
+   "url_resolved": "https://stream.example.org/dzup-nocc",
+   "homepage": "",
+   "countrycode": "",
+   "codec": "UNKNOWN",
+   "bitrate": 64,
+   "hls": 0,
+   "lastcheckok": 1,
+   "ssl_error": 0,
+   "votes": 900
+  },
+  {
+   "stationuuid": "96000005b-0000-11e9-a000-52543be04c81",
+   "name": "Radyo Pilipinas Iloilo http",
+   "url": "http://plain.example.org/iloilo",
+   "url_resolved": "http://plain.example.org/iloilo",
+   "homepage": "",
+   "countrycode": "PH",
+   "codec": "MP3",
+   "bitrate": 64,
+   "hls": 0,
+   "lastcheckok": 1,
+   "ssl_error": 0,
+   "votes": 600
+  },
+  {
+   "stationuuid": "96000005c-0000-11e9-a000-52543be04c81",
+   "name": "Radyo Pilipinas playlist",
+   "url": "https://stream.example.org/rp.pls",
+   "url_resolved": "https://stream.example.org/rp.pls",
+   "homepage": "",
+   "countrycode": "PH",
+   "codec": "MP3",
+   "bitrate": 64,
+   "hls": 0,
+   "lastcheckok": 1,
+   "ssl_error": 0,
+   "votes": 700
+  },
+  {
+   "stationuuid": "960000001-0000-11e9-a000-52543be04c81",
+   "name": "Radyo Pilipinas 1 (RP1 News)",
+   "url": "https://stream.example.org/rp1",
+   "url_resolved": "https://stream.example.org/rp1",
+   "homepage": "https://radyopilipinas.ph/rp-one",
+   "countrycode": "PH",
+   "codec": "AAC",
+   "bitrate": 64,
+   "hls": 0,
+   "lastcheckok": 1,
+   "ssl_error": 0,
+   "votes": 120
   }
  ]
 }

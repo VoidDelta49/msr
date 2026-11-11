@@ -58,7 +58,7 @@ for (let si = 0; si < STATIONS.length; si++) {
 
 /* ---------- part 1b: live stations (js/radiolive.js) on a synthetic directory answer ---------- */
 {
-  const { pickLive, validList, ruleOf, PUBLIC, MAXLIVE, API, QUERY } = await import('../js/radiolive.js');
+  const { pickLive, validList, ruleOf, PUBLIC, MAXLIVE, API, QUERY, QUERIES } = await import('../js/radiolive.js');
   const rows = JSON.parse(readFileSync(new URL('./fixtures/radio-browser.json', import.meta.url), 'utf8')).rows, live = pickLive(rows), urls = live.map(s => s.url);
   if (!validList(live) || !live.length) bad('live: pickLive made a list validList rejects');
   if (live.length > MAXLIVE) bad(`live: ${live.length} stations (max ${MAXLIVE})`);
@@ -73,10 +73,14 @@ for (let si = 0; si < STATIONS.length; si++) {
   for (const u of ['rp2', 'rp3', 'fm1', 'fm2', 'rpw']) if (!urls.includes('https://stream.example.org/' + u)) bad(`live: ${u} missing`);
   if (urls.filter(u => /davao|cebu|laoag/.test(u)).length > 2) bad('live: more than 2 regional stations');
   for (const n of ['Love Radio 90.7', 'Barangay LS 97.1', 'Wish 107.5', 'Monster RX 93.1', 'Easy Rock', 'DZMM Radyo Patrol', 'DZBB Super Radyo', 'Energy FM 106.7', 'FM2 Dance Party', 'Radyo5 True FM', 'iFM 93.9', 'Brigada News FM']) if (ruleOf({ name: n })) bad(`live: commercial name "${n}" matches a public rule`);
+  if (!urls.includes('https://stream.example.org/dzup-nocc')) bad('live: a public listing with no country code / UNKNOWN codec was dropped');
+  if (urls.some(u => u.endsWith('.pls'))) bad('live: a playlist got through');
+  const rg = live.filter(s => s.tag === 'PBS · regional').map(s => s.url); if (rg[0] !== 'https://stream.example.org/davao') bad(`live: regional order ${rg} (https before http, then votes)`);
+  if (live.filter(s => s.url === 'https://stream.example.org/rp1').length !== 1) bad('live: duplicate listing from two searches');
   if (pickLive(null).length || pickLive([]).length || pickLive('x').length) bad('live: junk input gave stations');
   if (JSON.stringify(pickLive(rows)) !== JSON.stringify(pickLive([...rows].reverse()))) bad('live: the list depends on the directory order');
-  if (validList([{ id: 'a', name: 'b', tag: 'c', url: 'http://x.y/z' }]) || validList({}) || validList([null])) bad('live: validList accepts a bad saved list');
-  if (!API.every(h => /^https:\/\/[a-z0-9.]+\.radio-browser\.info$/.test(h)) || !/countrycode=PH/.test(QUERY) || !/is_https=true/.test(QUERY)) bad('live: directory address / query');
+  if (validList([{ id: 'a', name: 'b', tag: 'c', url: 'ftp://x.y/z' }]) || validList({}) || validList([null])) bad('live: validList accepts a bad saved list');
+  if (!API.every(h => /^https:\/\/[a-z0-9.]+\.radio-browser\.info$/.test(h)) || !/countrycode=PH/.test(QUERY) || !QUERIES.every(q => /^\/json\/stations\/search\?hidebroken=true&/.test(q)) || QUERIES.length > 10) bad('live: directory address / query');
   liveN = live.length;
 }
 

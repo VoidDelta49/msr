@@ -10,7 +10,7 @@ import { $, sstep } from './util.js';
 import { bus, initAudio } from './audio.js';
 import { STATIONS, makeSong, stepEvents, stationLabel } from './radiogen.js';
 import { noiseBuffer, buildStation, createPlayer, tuneStatic } from './radiosynth.js';
-import { API, QUERY, clickUrl, pickLive, validList } from './radiolive.js';
+import { API, QUERIES, clickUrl, pickLive, validList, PHcount } from './radiolive.js';
 
 export const RAD = { say: null, cur: 0, title: '' }; // say: main.js hands in hud.js's say()
 const LOOK = .6;      // seconds of music scheduled ahead of the audio clock
@@ -20,30 +20,37 @@ const NG = STATIONS.length; // stations 1..NG are generated, NG+1.. are live
 export const LIVE1 = NG + 1;
 
 // ---- live stations: the list (asked for the first time the radio is used, kept a day) ----
-let L = [], LS = 0, APIH = '', failAt = -1e9; // LS: 0 not asked, 1 asking, 2 have the answer
+let L = [], LS = 0, APIH = '', failAt = -1e9, WHY = ''; // WHY: what to tell the player when there is no live station // LS: 0 not asked, 1 asking, 2 have the answer
 const live = c => c > NG ? L[c - NG - 1] : null;
+const https = u => location.protocol === 'https:' ? u.replace(/^http:/, 'https:') : u; // an http stream on an https page: the https address (the browser would upgrade it anyway)
 const label = c => c > NG ? live(c).name : stationLabel(c - 1), tagOf = c => c > NG ? live(c).tag : STATIONS[c - 1].tag;
 function gotLive(list, host) {
   L = list; APIH = host; LS = 2; ui = '';
   if ((cfg.radio | 0) > NG) { // the saved live station, wherever it is in today's list; the first one if it is gone
     const i = L.findIndex(s => s.id === cfg.rlive); cfg.radio = i >= 0 ? NG + 1 + i : L.length ? NG + 1 : 0;
-    if (!L.length && RAD.say) RAD.say('No live station on the air right now', 2200);
+    if (!L.length && RAD.say) RAD.say('Live PH: ' + WHY, 2600);
     save();
   }
 }
 function loadLive() {
   if (LS || performance.now() - failAt < 60000) return; LS = 1;
-  try { const c = JSON.parse(localStorage.getItem('cpm.radio') || 'null'), age = c ? Date.now() - c.at : -1; if (age >= 0 && age < 864e5 && validList(c.list) && c.list.length) return gotLive(c.list, API.includes(c.host) ? c.host : ''); } catch (e) { }
+  try { const c = JSON.parse(localStorage.getItem('cpm.radio2') || 'null'), age = c ? Date.now() - c.at : -1; if (age >= 0 && age < 864e5 && validList(c.list) && c.list.length) return gotLive(c.list, API.includes(c.host) ? c.host : ''); } catch (e) { }
   (async () => {
     for (const h of API) {
-      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 7000);
+      const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 9000);
       try {
-        const r = await fetch(h + QUERY, { signal: ctl.signal }); if (!r.ok) continue;
-        const list = pickLive(await r.json());
-        try { localStorage.setItem('cpm.radio', JSON.stringify({ at: Date.now(), host: h, list })); } catch (e) { }
-        return gotLive(list, h);
+        const got = await Promise.all(QUERIES.map(q => fetch(h + q, { signal: ctl.signal }).then(r => r.ok ? r.json() : null).catch(() => null)));
+        if (!got[0]) continue; // the main search failed on this mirror: the next one
+        const rows = got.filter(Array.isArray).flat(), list = pickLive(rows);
+        WHY = list.length ? '' : 'no public station streaming right now (' + PHcount(rows) + ' Philippine listings checked)';
+        console.info('radio: live directory ' + h + ': ' + rows.length + ' listings, ' + PHcount(rows) + ' Philippine, public:', list.map(s => s.name + ' ' + s.url));
+        if (list.length) try { localStorage.setItem('cpm.radio2', JSON.stringify({ at: Date.now(), host: h, list })); } catch (e) { }
+        gotLive(list, h); if (!list.length) { failAt = performance.now(); LS = 0; } // ask again in a minute
+        return;
       } catch (e) { } finally { clearTimeout(tm); }
     }
+    WHY = navigator.onLine === false ? 'offline' : "can't reach the station directory (radio-browser.info)";
+    console.warn('radio: live directory unreachable on every mirror', API);
     failAt = performance.now(); gotLive([], ''); LS = 0; // offline or the directory is down: ask again in a minute
   })();
 }
@@ -64,7 +71,7 @@ function el(i) {
 }
 const quiet = a => { if (!a) return; try { a.pause(); a.removeAttribute('src'); a.load(); } catch (e) { } }; // drops the connection, so a stopped radio uses no data
 function livePlay(i) {
-  const a = el(i), s = LV.s; LV.a = a; LV.st = 'tune'; LV.t = performance.now(); a.src = s.url; a.volume = i ? 0 : 1;
+  const a = el(i), s = LV.s; LV.a = a; LV.st = 'tune'; LV.t = performance.now(); a.src = https(s.url); a.volume = i ? 0 : 1;
   const p = a.play(); if (p) p.catch(e => {
     if (!LV || LV.s !== s || LV.a !== a || e.name !== 'NotAllowedError') return; // the browser wants a tap first (a saved station at start-up)
     LV.st = 'tap'; const again = () => { removeEventListener('pointerdown', again, true); removeEventListener('keydown', again, true); if (LV && LV.s === s && LV.st === 'tap') livePlay(i); };
@@ -98,6 +105,7 @@ function setStation(n) {
 // next / previous station; wraps through Off (N: Off -> Isla -> Takbo -> Lo-Fi -> Radyo -> the live stations -> Off)
 export function radioStep(d) {
   initAudio(); loadLive(); const n = NG + L.length + 1, c = (Math.min(cfg.radio | 0, n - 1) + d + n) % n; cfg.radio = c; if (c > NG) cfg.rlive = live(c).id; save();
+  if (!c && !L.length && d > 0 && RAD.say) return RAD.say('Radio off · Live PH: ' + (LS === 1 ? 'still looking for stations…' : WHY || 'looking for stations…'), 2600); // stepped past the last generated station
   if (RAD.say) RAD.say(c ? (c > NG ? 'LIVE · ' : 'RADIO · ') + label(c) + ' · ' + tagOf(c) : 'Radio off', 1800);
 }
 function radioSet(c) { initAudio(); loadLive(); cfg.radio = c; if (c > NG) cfg.rlive = live(c).id; save(); if (RAD.say) RAD.say(c ? (c > NG ? 'LIVE · ' : 'RADIO · ') + label(c) : 'Radio off', 1500); }

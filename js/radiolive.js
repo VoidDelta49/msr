@@ -12,13 +12,16 @@
 
 // Radio Browser mirrors, tried in order. The API is free and needs no key.
 export const API = ['https://all.api.radio-browser.info', 'https://de1.api.radio-browser.info', 'https://de2.api.radio-browser.info'];
-export const QUERY = '/json/stations/search?countrycode=PH&hidebroken=true&is_https=true&order=votes&reverse=true&limit=1000';
+// every Philippine listing, plus name searches for the public stations (a listing with a missing country code is still found)
+const SQ = '/json/stations/search?hidebroken=true&order=votes&reverse=true&limit=';
+export const QUERIES = [SQ + '1000&countrycode=PH', ...['radyo pilipinas', 'radyo publiko', 'dzrb', 'republika fm', 'capital fm', 'dzup', 'dzlb'].map(n => SQ + '50&name=' + encodeURIComponent(n))];
+export const QUERY = QUERIES[0];
 export const clickUrl = (host, id) => host + '/json/url/' + encodeURIComponent(id); // the directory asks players to count a tune-in
-export const MAXLIVE = 8;
+export const MAXLIVE = 12;
 
 // The public broadcasters, by the name (n) or website (h) a directory entry carries. First rule that matches wins; `max` entries per rule.
 export const PUBLIC = [
-  { id: 'rp1', tag: 'PBS · news & public affairs', n: /\b(rp ?1|dzrb|radyo ng bayan)\b|radyo pilipinas (1|uno|one)\b/ },
+  { id: 'rp1', tag: 'PBS · news & public affairs', n: /\b(rp ?1|dzrb|radyo ng bayan)\b|radyo publiko|radyo pilipinas (1|uno|one)\b/ },
   { id: 'rp2', tag: 'PBS · sports', n: /\b(rp ?2|dzsr)\b|radyo pilipinas (2|dos|two)\b/ },
   { id: 'rp3', tag: 'PBS · public service', n: /\b(rp ?3|dzrm)\b|radyo magasin|radyo pilipinas (3|tres|three)\b/ },
   { id: 'fm1', tag: 'PBS · hit music', n: /republika fm|\bfm ?1\b.*87\.5|87\.5.*\bfm ?1\b/ },
@@ -28,8 +31,9 @@ export const PUBLIC = [
   { id: 'dzup', tag: 'UP Diliman · campus radio', n: /\bdzup\b/, h: /(^|\.)dzup\.org$/ },
   { id: 'dzlb', tag: 'UP Los Baños · campus radio', n: /\bdzlb\b/ },
 ];
-const CODEC = new Set(['MP3', 'AAC', 'AAC+', 'OGG']); // what an <audio> element plays everywhere; HLS playlists are left out (Chrome can't)
+const NOPLAY = /\.(m3u8|m3u|pls|asx|xspf)(\?|$)/i; // playlists the <audio> element can't open; codec is not checked (the directory often says UNKNOWN), a stream that won't play just shows No signal
 const host = u => { try { return new URL(u).hostname.toLowerCase(); } catch (e) { return ''; } };
+export const PHcount = rows => Array.isArray(rows) ? new Set(rows.filter(r => r && String(r.countrycode || '').toUpperCase() === 'PH').map(r => r.stationuuid)).size : 0;
 const clean = s => String(s ?? '').replace(/[\u0000-\u001f<>&"'`\\]/g, ' ').replace(/\s+/g, ' ').trim();
 export const ruleOf = row => { const n = clean(row.name).toLowerCase(), h = host(row.homepage); return PUBLIC.find(r => r.n.test(n) || (r.h && h && r.h.test(h))) || null; };
 
@@ -39,20 +43,24 @@ export function pickLive(rows) {
   const by = new Map();
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue;
-    if (String(row.countrycode || '').toUpperCase() !== 'PH' || +row.lastcheckok !== 1 || +row.hls === 1 || +row.ssl_error === 1) continue;
-    if (!CODEC.has(String(row.codec || '').toUpperCase())) continue;
-    const url = [row.url_resolved, row.url].find(u => typeof u === 'string' && /^https:\/\/[^\s/]+\.[^\s/]+/.test(u) && u.length < 400 && host(u));
+    const cc = String(row.countrycode || '').toUpperCase();
+    if ((cc !== 'PH' && cc !== '') || +row.lastcheckok !== 1 || +row.hls === 1 || /FLAC|HLS/i.test(String(row.codec || ''))) continue;
+    // https first; an http-only stream is kept too (js/radio.js asks for it over https on an https page, as the browser would anyway)
+    const ok = u => typeof u === 'string' && /^https?:\/\/[^\s/]+\.[^\s/]+/.test(u) && u.length < 400 && host(u) && !NOPLAY.test(u);
+    const url = [row.url_resolved, row.url].filter(ok).sort((a, b) => (b.startsWith('https:') ? 1 : 0) - (a.startsWith('https:') ? 1 : 0))[0];
+    if (url && url.startsWith('https:') && +row.ssl_error === 1) continue;
     const id = clean(row.stationuuid), name = clean(row.name).slice(0, 30).trim(), rule = ruleOf(row);
     if (!url || !/^[\w-]{8,64}$/.test(id) || name.length < 2 || !rule) continue;
     const home = typeof row.homepage === 'string' && /^https?:\/\//.test(row.homepage) && host(row.homepage) ? row.homepage.slice(0, 200) : '';
     if (!by.has(rule.id)) by.set(rule.id, []);
+    if (by.get(rule.id).some(s => s.id === id)) continue; // the same listing from two searches
     by.get(rule.id).push({ id, name, tag: rule.tag, url, home, votes: +row.votes || 0 });
   }
   const out = [], seen = new Set();
-  for (const r of PUBLIC) for (const s of (by.get(r.id) || []).sort((a, b) => b.votes - a.votes || (a.id < b.id ? -1 : 1)).slice(0, r.max || 1)) {
+  for (const r of PUBLIC) for (const s of (by.get(r.id) || []).sort((a, b) => (b.url.startsWith('https:') - a.url.startsWith('https:')) || b.votes - a.votes || (a.id < b.id ? -1 : 1)).slice(0, r.max || 1)) {
     if (seen.has(s.url) || out.length >= MAXLIVE) continue; seen.add(s.url); delete s.votes; out.push(s);
   }
   return out;
 }
 // a saved list (localStorage) is only trusted if every entry still has the shape pickLive makes
-export const validList = l => Array.isArray(l) && l.length <= MAXLIVE && l.every(s => s && typeof s.id === 'string' && typeof s.name === 'string' && typeof s.tag === 'string' && /^https:\/\//.test(s.url || ''));
+export const validList = l => Array.isArray(l) && l.length <= MAXLIVE && l.every(s => s && typeof s.id === 'string' && typeof s.name === 'string' && typeof s.tag === 'string' && /^https?:\/\//.test(s.url || ''));
