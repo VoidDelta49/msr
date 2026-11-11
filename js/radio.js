@@ -22,7 +22,8 @@ export const LIVE1 = NG + 1;
 // ---- live stations: the list (asked for the first time the radio is used, kept a day) ----
 let L = [], LS = 0, APIH = '', failAt = -1e9, WHY = ''; // WHY: what to tell the player when there is no live station // LS: 0 not asked, 1 asking, 2 have the answer
 const live = c => c > NG ? L[c - NG - 1] : null;
-const https = u => location.protocol === 'https:' ? u.replace(/^http:/, 'https:') : u; // an http stream on an https page: the https address (the browser would upgrade it anyway)
+let ENV = null; // where the stations will play (pickLive's env): this page's protocol and whether <audio> plays HLS by itself
+const env = () => ENV || (ENV = { page: location.protocol, hls: !!(document.createElement('audio').canPlayType('application/vnd.apple.mpegurl')) });
 const label = c => c > NG ? live(c).name : stationLabel(c - 1), tagOf = c => c > NG ? live(c).tag : STATIONS[c - 1].tag;
 function gotLive(list, host) {
   L = list; APIH = host; LS = 2; ui = '';
@@ -34,8 +35,8 @@ function gotLive(list, host) {
 }
 function loadLive() {
   if (LS || performance.now() - failAt < 60000) return; LS = 1;
-  try { const c = JSON.parse(localStorage.getItem('cpm.radio2') || 'null'), age = c ? Date.now() - c.at : -1; if (age >= 0 && age < 864e5 && validList(c.list) && c.list.length) { rlog(`saved list from ${Math.round(age / 6e4)} min ago: ${c.list.length} station(s): ${c.list.map(s => s.name).join(', ')} (Search again to refresh)`); return gotLive(c.list, API.includes(c.host) ? c.host : ''); } } catch (e) { }
-  rlog('looking for live stations · page ' + location.protocol + ' · ' + (navigator.onLine === false ? 'browser says offline' : 'online'));
+  try { const c = JSON.parse(localStorage.getItem('cpm.radio3') || 'null'), age = c ? Date.now() - c.at : -1; if (age >= 0 && age < 864e5 && validList(c.list) && c.list.length) { rlog(`saved list from ${Math.round(age / 6e4)} min ago: ${c.list.length} station(s): ${c.list.map(s => s.name).join(', ')} (Search again to refresh)`); return gotLive(c.list, API.includes(c.host) ? c.host : ''); } } catch (e) { }
+  rlog('looking for live stations · page ' + location.protocol + (env().page === 'https:' ? ' (https streams only)' : '') + ' · HLS ' + (env().hls ? 'yes' : 'no') + ' · ' + (navigator.onLine === false ? 'browser says offline' : 'online'));
   (async () => {
     for (const h of API) {
       const ctl = new AbortController(), tm = setTimeout(() => ctl.abort(), 9000), t0 = performance.now();
@@ -43,14 +44,15 @@ function loadLive() {
         const got = await Promise.all(QUERIES.map(q => fetch(h + q, { signal: ctl.signal }).then(r => r.ok ? r.json() : 'HTTP ' + r.status).catch(e => e.name === 'AbortError' ? 'timed out (9 s)' : (e.message || e.name))));
         const ms = Math.round(performance.now() - t0), errs = got.filter(g => !Array.isArray(g));
         if (!Array.isArray(got[0])) { rlog(`${h.replace('https://', '')}: ${got[0]} (${ms} ms), next mirror`); continue; } // the main search failed on this mirror: the next one
-        const rows = got.filter(Array.isArray).flat(), why = [], list = pickLive(rows, why);
+        const rows = got.filter(Array.isArray).flat(), why = [], list = pickLive(rows, why, env()), any = pickLive(rows, null, { page: 'http:', hls: true }).length;
         rlog(`${h.replace('https://', '')}: ${rows.length} listings in ${ms} ms, ${PHcount(rows)} Philippine` + (errs.length ? ` (${errs.length} of ${QUERIES.length} searches failed: ${errs[0]})` : ''));
         rlog('top Philippine listings: ' + (topPH(rows).join(' · ') || 'none'));
         for (const w of why) rlog('left out · ' + w);
         rlog(list.length ? `live stations (${list.length}): ` + list.map(s => s.name).join(', ') : 'no public station found');
-        WHY = list.length ? '' : 'no public station streaming right now (' + PHcount(rows) + ' Philippine listings checked)';
+        WHY = list.length ? '' : any ? `the ${any} public station(s) found only stream over plain http, which browsers block on an https page` : 'no public station streaming right now (' + PHcount(rows) + ' Philippine listings checked)';
+        if (!list.length && any) rlog(WHY);
         console.info('radio: live directory ' + h + ': ' + rows.length + ' listings, ' + PHcount(rows) + ' Philippine, public:', list.map(s => s.name + ' ' + s.url));
-        if (list.length) try { localStorage.setItem('cpm.radio2', JSON.stringify({ at: Date.now(), host: h, list })); } catch (e) { }
+        if (list.length) try { localStorage.setItem('cpm.radio3', JSON.stringify({ at: Date.now(), host: h, list })); } catch (e) { }
         gotLive(list, h); if (!list.length) { failAt = performance.now(); LS = 0; } // ask again in a minute
         return;
       } catch (e) { rlog(`${h.replace('https://', '')}: ${e.message || e.name}`); } finally { clearTimeout(tm); }
@@ -78,7 +80,7 @@ function el(i) {
 }
 const quiet = a => { if (!a) return; try { a.pause(); a.removeAttribute('src'); a.load(); } catch (e) { } }; // drops the connection, so a stopped radio uses no data
 function livePlay(i) {
-  const a = el(i), s = LV.s; LV.a = a; LV.st = 'tune'; LV.t = performance.now(); a.src = https(s.url); a.volume = i ? 0 : 1;
+  const a = el(i), s = LV.s; LV.a = a; LV.st = 'tune'; LV.t = performance.now(); a.src = s.url; a.volume = i ? 0 : 1;
   rlog(`tuning ${s.name} · ${a.src.slice(0, 90)}` + (i ? ' · plain player' : ' · CORS player'));
   const p = a.play(); if (p) p.catch(e => {
     if (!LV || LV.s !== s || LV.a !== a || e.name !== 'NotAllowedError') return; // the browser wants a tap first (a saved station at start-up)
@@ -93,7 +95,7 @@ function liveFail() {
 }
 function liveStart(s) { LV = { s, a: null, st: 'tune', t: 0 }; cfg.rlive = s.id; livePlay(s.pl ? 1 : 0); }
 // Options > Audio > Radio log > Search again: forget the saved list and ask the directory now
-RLOG.rescan = () => { try { localStorage.removeItem('cpm.radio2'); } catch (e) { } if (LS === 1) return rlog('already searching'); LS = 0; failAt = -1e9; WHY = ''; rlog('search again (asked from Options)'); loadLive(); };
+RLOG.rescan = () => { try { localStorage.removeItem('cpm.radio3'); localStorage.removeItem('cpm.radio2'); } catch (e) { } if (LS === 1) return rlog('already searching'); LS = 0; failAt = -1e9; WHY = ''; rlog('search again (asked from Options)'); loadLive(); };
 function liveStop() { if (!LV) return; const a = LV.a; LV = null; quiet(a); if (LG) { LG.gain.cancelScheduledValues(AC.currentTime); LG.gain.value = 0; LG._v = 0; } }
 function liveTick(lvl) {
   if (LV.st === 'tune' && performance.now() - LV.t > 15000) { rlog('no sound from ' + LV.s.name + ' in 15 s'); return liveFail(); } // nothing in 15 s

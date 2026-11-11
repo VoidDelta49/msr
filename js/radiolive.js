@@ -40,7 +40,8 @@ export const PUBLIC = [
   { id: 'dzup', tag: 'UP Diliman · campus radio', n: /\bdzup\b/, h: /(^|\.)dzup\.org$/ },
   { id: 'dzlb', tag: 'UP Los Baños · campus radio', n: /\bdzlb\b/ },
 ];
-const NOPLAY = /\.(m3u8|m3u|pls|asx|xspf)(\?|$)/i; // playlists the <audio> element can't open; codec is not checked (the directory often says UNKNOWN), a stream that won't play just shows No signal
+const NOPLAY = /\.(m3u|pls|asx|xspf)(\?|$)/i, HLSU = /\.m3u8(\?|$)/i; // playlists the <audio> element can't open; HLS (.m3u8) only where the browser plays it itself (env.hls). Codec is not checked (the directory often says UNKNOWN)
+const IPH = /^(\d{1,3}\.){3}\d{1,3}$|^\[/; // a bare IP address: no https certificate is ever issued for one, so it only works over http
 const host = u => { try { return new URL(u).hostname.toLowerCase(); } catch (e) { return ''; } };
 // the most-voted Philippine listings by name, for the log (shows how the directory really names the stations)
 export const topPH = (rows, n = 25) => Array.isArray(rows) ? [...new Map(rows.filter(r => r && String(r.countrycode || '').toUpperCase() === 'PH').map(r => [r.stationuuid, r])).values()].sort((a, b) => (+b.votes || 0) - (+a.votes || 0)).slice(0, n).map(r => clean(r.name).slice(0, 32)) : [];
@@ -50,7 +51,11 @@ export const ruleOf = row => { const n = clean(row.name).toLowerCase(), h = host
 
 // directory rows -> the stations the radio offers: [{ id, name, tag, url, home }], in PUBLIC order. Anything odd is dropped, never repaired.
 // why (optional array): a line for every listing a PUBLIC rule matches that was still left out, and why
-export function pickLive(rows, why) {
+// env: where it will play. page 'https:' (the published game) can only open https streams on a real host name: browsers block
+// http audio on an https page (mixed content) and the bare-IP servers many stations use have no certificate. hls: the browser
+// plays HLS in <audio> by itself (Safari, Chrome on Android). The default is the strict case, the published game without HLS.
+export function pickLive(rows, why, env = { page: 'https:', hls: false }) {
+  const sec = env.page === 'https:';
   if (!Array.isArray(rows)) return [];
   const no = (row, m) => { if (why && why.length < 40 && row && ruleOf(row)) why.push(clean(row.name).slice(0, 40) + ': ' + m); };
   const by = new Map();
@@ -59,14 +64,17 @@ export function pickLive(rows, why) {
     const cc = String(row.countrycode || '').toUpperCase();
     if (cc !== 'PH' && cc !== '') { no(row, 'country ' + cc); continue; }
     if (+row.lastcheckok !== 1) { no(row, 'directory says the stream is down'); continue; }
-    if (+row.hls === 1 || /FLAC|HLS/i.test(String(row.codec || ''))) { no(row, 'format ' + (row.codec || 'HLS') + ' does not play'); continue; }
+    if (/FLAC/i.test(String(row.codec || '')) || (!env.hls && (+row.hls === 1 || /HLS/i.test(String(row.codec || ''))))) { no(row, 'format ' + (row.codec || 'HLS') + ' does not play in this browser'); continue; }
     // https first; an http-only stream is kept too (js/radio.js asks for it over https on an https page, as the browser would anyway)
-    const ok = u => typeof u === 'string' && /^https?:\/\/[^\s/]+\.[^\s/]+/.test(u) && u.length < 400 && host(u) && !NOPLAY.test(u);
+    const ok = u => typeof u === 'string' && /^https?:\/\/[^\s/]+\.[^\s/]+/.test(u) && u.length < 400 && host(u) && !NOPLAY.test(u) && (env.hls || !HLSU.test(u)) && (!sec || (u.startsWith('https:') && !IPH.test(host(u))));
     const url = [row.url_resolved, row.url].filter(ok).sort((a, b) => (b.startsWith('https:') ? 1 : 0) - (a.startsWith('https:') ? 1 : 0))[0];
     if (url && url.startsWith('https:') && +row.ssl_error === 1) { no(row, 'broken https certificate'); continue; }
     const id = clean(row.stationuuid), name = clean(row.name).slice(0, 30).trim(), rule = ruleOf(row);
     if (!rule) continue;
-    if (!url) { no(row, 'no playable address (' + clean(row.url_resolved || row.url).slice(0, 60) + ')'); continue; }
+    if (!url) {
+      const u = clean(row.url_resolved || row.url).slice(0, 60), hs = host(row.url_resolved || row.url);
+      no(row, (sec && /^http:/.test(u) ? 'http-only stream, browsers block http audio on an https page' : sec && IPH.test(hs) ? 'https on a bare IP address (no certificate)' : HLSU.test(u) ? 'HLS stream, this browser does not play it' : 'no playable address') + ' (' + u + ')'); continue;
+    }
     if (!/^[\w-]{8,64}$/.test(id) || name.length < 2) { no(row, 'bad listing'); continue; }
     const home = typeof row.homepage === 'string' && /^https?:\/\//.test(row.homepage) && host(row.homepage) ? row.homepage.slice(0, 200) : '';
     if (!by.has(rule.id)) by.set(rule.id, []);

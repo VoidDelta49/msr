@@ -341,6 +341,34 @@
    "lastcheckok": 1,
    "ssl_error": 0,
    "votes": 120
+  },
+  {
+   "stationuuid": "96000005d-0000-11e9-a000-52543be04c81",
+   "name": "Radyo Pilipinas Baguio IP",
+   "url": "https://203.0.113.5:8000/stream",
+   "url_resolved": "https://203.0.113.5:8000/stream",
+   "homepage": "",
+   "countrycode": "PH",
+   "codec": "MP3",
+   "bitrate": 64,
+   "hls": 0,
+   "lastcheckok": 1,
+   "ssl_error": 0,
+   "votes": 950
+  },
+  {
+   "stationuuid": "96000005e-0000-11e9-a000-52543be04c81",
+   "name": "Radyo Pilipinas Legazpi",
+   "url": "http://203.0.113.6:9000/stream",
+   "url_resolved": "http://203.0.113.6:9000/stream",
+   "homepage": "",
+   "countrycode": "PH",
+   "codec": "MP3",
+   "bitrate": 64,
+   "hls": 0,
+   "lastcheckok": 1,
+   "ssl_error": 0,
+   "votes": 940
   }
  ]
 }

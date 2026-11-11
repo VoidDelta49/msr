@@ -77,6 +77,13 @@ for (let si = 0; si < STATIONS.length; si++) {
   if (urls.some(u => u.endsWith('.pls'))) bad('live: a playlist got through');
   const rg = live.filter(s => s.tag === 'PBS · regional').map(s => s.url); if (rg[0] !== 'https://stream.example.org/davao') bad(`live: regional order ${rg} (https before http, then votes)`);
   if (live.filter(s => s.url === 'https://stream.example.org/rp1').length !== 1) bad('live: duplicate listing from two searches');
+  if (urls.some(u => /203\.0\.113/.test(u))) bad('live: a bare-IP stream got through on an https page');
+  { const w = []; pickLive(rows, w); if (!w.some(x => /Legazpi.*http-only/.test(x)) || !w.some(x => /Baguio.*bare IP/.test(x))) bad('live: the log does not say why http / bare-IP streams were left out: ' + w.join(' | ')); }
+  const loose = pickLive(rows, null, { page: 'http:', hls: true }).map(s => s.url);
+  for (const u of ['https://203.0.113.5:8000/stream', 'https://stream.example.org/hls.m3u8']) if (!loose.includes(u)) bad(`live: on an http page with HLS ${u} should be offered`);
+  if (!pickLive(rows.filter(r => r && /Legazpi/.test(r.name)), null, { page: 'http:', hls: false }).length) bad('live: an http stream is not offered on an http page');
+  if (loose.some(u => /\.pls$|flac/.test(u))) bad('live: playlist / flac offered on an http page');
+  if (pickLive(rows, null, { page: 'https:', hls: true }).some(u => /^http:/.test(u.url))) bad('live: http offered on an https page');
   if (pickLive(null).length || pickLive([]).length || pickLive('x').length) bad('live: junk input gave stations');
   if (JSON.stringify(pickLive(rows)) !== JSON.stringify(pickLive([...rows].reverse()))) bad('live: the list depends on the directory order');
   if (validList([{ id: 'a', name: 'b', tag: 'c', url: 'ftp://x.y/z' }]) || validList({}) || validList([null])) bad('live: validList accepts a bad saved list');
