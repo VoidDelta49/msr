@@ -2,8 +2,9 @@
 // in here, so tools/radio.mjs can test it in Node; js/radio.js plays the result.
 //
 // The rules the game keeps (see THIRD_PARTY.md, "Live radio"):
-//  - Only public service broadcasters: the state network (Philippine Broadcasting Service: Radyo Pilipinas, Republika FM1, Capital
-//    FM2) and state university stations. No commercial station is ever listed, whatever the directory holds.
+//  - Only public service and non-commercial broadcasters: the state network (Philippine Broadcasting Service: Radyo Pilipinas,
+//    Republika FM1, Capital FM2), state university stations, and non-profit listener-supported / ministry radio (Radio Maria, FEBC,
+//    Hope Radio). No commercial, ad-funded station is ever listed, whatever the directory holds.
 //  - Only the station's own public webcast, played straight from the station's server by the player's browser, exactly as any
 //    internet radio does. The game never records, stores, re-hosts, relays, edits or mixes the programme, and puts nothing over it.
 //  - No stream address is kept in the repository: they are looked up when the player turns the radio on, in the Radio Browser
@@ -14,10 +15,10 @@
 export const API = ['https://all.api.radio-browser.info', 'https://de1.api.radio-browser.info', 'https://de2.api.radio-browser.info'];
 // every Philippine listing, plus name searches for the public stations (a listing with a missing country code is still found)
 const SQ = '/json/stations/search?hidebroken=true&order=votes&reverse=true&limit=';
-export const QUERIES = [SQ + '1000&countrycode=PH', ...['radyo pilipinas', 'radyo publiko', 'dzrb', 'republika fm', 'capital fm', 'dzup', 'dzlb'].map(n => SQ + '50&name=' + encodeURIComponent(n))];
+export const QUERIES = [SQ + '1000&countrycode=PH', ...['radyo pilipinas', 'radyo publiko', 'dzrb', 'republika fm', 'capital fm', 'dzup', 'dzlb', 'radio maria', 'febc', 'dzfe', 'dzas', 'hope radio'].map(n => SQ + '50&name=' + encodeURIComponent(n))];
 export const QUERY = QUERIES[0];
 export const clickUrl = (host, id) => host + '/json/url/' + encodeURIComponent(id); // the directory asks players to count a tune-in
-export const MAXLIVE = 12;
+export const MAXLIVE = 16;
 
 // the radio log (Options > Audio > Radio log): what the directory answered and what each stream did, readable on a phone with no
 // console. RLOG.on = a listener the Options panel sets to redraw, RLOG.rescan = js/radio.js's "search again".
@@ -39,6 +40,11 @@ export const PUBLIC = [
   { id: 'rp', tag: 'PBS · regional', n: /radyo pilipinas/, h: /(^|\.)(pbs\.gov\.ph|radyopilipinas\.ph)$/, max: 2 },
   { id: 'dzup', tag: 'UP Diliman · campus radio', n: /\bdzup\b/, h: /(^|\.)dzup\.org$/ },
   { id: 'dzlb', tag: 'UP Los Baños · campus radio', n: /\bdzlb\b/ },
+  // non-commercial, non-profit stations (owner's choice in 12.13, as PBS only streams over plain http): listener-supported or
+  // ministry radio with no paid advertising. Still never a commercial, ad-funded station.
+  { id: 'maria', tag: 'Radio Maria · non-profit, listener-supported', n: /\bradio maria\b/ },
+  { id: 'febc', tag: 'FEBC · non-profit radio', n: /\bfebc\b|\bdz(as|fe)\b|far east broadcasting/, h: /(^|\.)febc\.ph$/, max: 2 },
+  { id: 'hope', tag: 'Hope Radio · non-profit', n: /\bhope (radio|channel) (philippines|ph|pilipinas)\b/ },
 ];
 const NOPLAY = /\.(m3u|pls|asx|xspf)(\?|$)/i, HLSU = /\.m3u8(\?|$)/i; // playlists the <audio> element can't open; HLS (.m3u8) only where the browser plays it itself (env.hls). Codec is not checked (the directory often says UNKNOWN)
 const IPH = /^(\d{1,3}\.){3}\d{1,3}$|^\[/; // a bare IP address: no https certificate is ever issued for one, so it only works over http
@@ -57,7 +63,7 @@ export const ruleOf = row => { const n = clean(row.name).toLowerCase(), h = host
 export function pickLive(rows, why, env = { page: 'https:', hls: false }) {
   const sec = env.page === 'https:';
   if (!Array.isArray(rows)) return [];
-  const no = (row, m) => { if (why && why.length < 40 && row && ruleOf(row)) why.push(clean(row.name).slice(0, 40) + ': ' + m); };
+  const no = (row, m) => { const l = row && ruleOf(row) ? clean(row.name).slice(0, 40) + ': ' + m : ''; if (why && l && why.length < 40 && !why.includes(l)) why.push(l); }; // once per listing (two searches can return the same one)
   const by = new Map();
   for (const row of rows) {
     if (!row || typeof row !== 'object') continue;

@@ -40,7 +40,7 @@ Not an issue as far as the repo shows: jeepneys, tricycles, palms, the island an
 
 (Also: the live weather uses Open-Meteo's free API, which is non-commercial only. See `THIRD_PARTY.md`.)
 
-(Also: the radio's Live PH stations are real public broadcasters' own webcasts, streamed by the player's browser and never recorded or re-hosted; public service stations only, no commercial ones. Take them out, or get permission, before any sale or ads. See `THIRD_PARTY.md`, "Live radio".)
+(Also: the radio's Live PH stations are real public broadcasters' own webcasts, streamed by the player's browser and never recorded or re-hosted; public service and non-profit stations only (state network, state universities, Radio Maria / FEBC / Hope Radio), no commercial ones. Take them out, or get permission, before any sale or ads. See `THIRD_PARTY.md`, "Live radio".)
 
 
 | Situation | Risk | Notes |

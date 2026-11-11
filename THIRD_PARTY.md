@@ -26,12 +26,16 @@ relay makes about 100): if the game is ever sold or carries ads, move to their p
 
 ## Live radio
 
-After its four generated stations the in-game radio can tune to real Philippine **public service** radio (`js/radiolive.js`, played by
+After its four generated stations the in-game radio can tune to real Philippine **public service and non-commercial** radio (`js/radiolive.js`, played by
 `js/radio.js`). What it does and does not do:
 
 - **Which stations:** only public broadcasters, matched by name / website in `PUBLIC` (`js/radiolive.js`): the state network
-  (Philippine Broadcasting Service: Radyo Pilipinas, Republika FM1, Capital FM2) and state university stations (DZUP, DZLB). Commercial
-  stations are never listed, whatever the directory returns (`node tools/radio.mjs` checks this).
+  (Philippine Broadcasting Service: Radyo Pilipinas, Republika FM1, Capital FM2), state university stations (DZUP, DZLB), and
+  non-profit, listener-supported or ministry stations with no paid advertising (Radio Maria Philippines, FEBC Philippines, Hope Radio
+  Philippines; added in 12.13 because the PBS streams are plain http on bare IP addresses, which browsers will not play on the https
+  game page). Commercial, ad-funded stations are never listed, whatever the directory returns (`node tools/radio.mjs` checks this).
+- **Only streams the page can play:** https on a real host name (or HLS where the browser plays it). Nothing is ever relayed through
+  this project's servers to get around that, since that would be retransmitting the broadcast.
 - **How it plays:** the player's browser connects to the station's own public webcast, the same address any internet radio app or the
   station's website player uses. The game does not record, cache, re-host, relay, edit or mix the programme, sells nothing around it
   and puts no ads on it; the station's name is shown while it plays. The stream never passes through this project's servers.

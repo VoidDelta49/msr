@@ -369,6 +369,48 @@
    "lastcheckok": 1,
    "ssl_error": 0,
    "votes": 940
+  },
+  {
+   "stationuuid": "96000005f-0000-11e9-a000-52543be04c81",
+   "name": "RADIO MARIA PHILIPPINES",
+   "url": "https://stream.example.org/maria",
+   "url_resolved": "https://stream.example.org/maria",
+   "homepage": "",
+   "countrycode": "PH",
+   "codec": "MP3",
+   "bitrate": 64,
+   "hls": 0,
+   "lastcheckok": 1,
+   "ssl_error": 0,
+   "votes": 300
+  },
+  {
+   "stationuuid": "960000060-0000-11e9-a000-52543be04c81",
+   "name": "DZFE 98.7 The Master's Touch",
+   "url": "https://stream.example.org/dzfe",
+   "url_resolved": "https://stream.example.org/dzfe",
+   "homepage": "",
+   "countrycode": "PH",
+   "codec": "MP3",
+   "bitrate": 64,
+   "hls": 0,
+   "lastcheckok": 1,
+   "ssl_error": 0,
+   "votes": 50
+  },
+  {
+   "stationuuid": "960000061-0000-11e9-a000-52543be04c81",
+   "name": "Hope Radio Philippines",
+   "url": "https://stream.example.org/hope",
+   "url_resolved": "https://stream.example.org/hope",
+   "homepage": "",
+   "countrycode": "PH",
+   "codec": "MP3",
+   "bitrate": 64,
+   "hls": 0,
+   "lastcheckok": 1,
+   "ssl_error": 0,
+   "votes": 20
   }
  ]
 }
