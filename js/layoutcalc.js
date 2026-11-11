@@ -76,8 +76,11 @@ function build(W, H, ins, o, f, mode, tier) {
     else { r.clu = { x: px, y: B - th, w: cw, h: th }; r.shift = { x: px, y: B - th - V - sh, w: cw, h: sh }; }
   }
   if (o.lefty) for (const k of ['wheel', 'lb', 'thr', 'brk', 'clu', 'shift']) if (r[k]) r[k] = { ...r[k], x: L + R - r[k].x - r[k].w };
-  // GET OFF / GET ON: under the minimap, beside it (portrait), above the engine buttons, bottom centre between the thumb clusters, top centre
-  placeFoot([{ x: mx, y: my + mini + 4 }, { x: mx + mini + T, y: my }, { x: r.top.x - T - fb.w, y: my }, { x: o.lefty ? R - fb.w : L, y: r.lb.y - V - fb.h }, { x: (W - fb.w) / 2, y: B - fb.h }, { x: (W - fb.w) / 2, y: bot }]);
+  // GET OFF / GET ON: under the minimap, beside it (portrait), above the engine buttons, bottom centre between the thumb clusters, top centre, top right
+  placeFoot([{ x: mx, y: my + mini + 4 }, { x: mx + mini + T, y: my }, { x: r.top.x - T - fb.w, y: my }, { x: o.lefty ? R - fb.w : L, y: r.lb.y - V - fb.h }, { x: (W - fb.w) / 2, y: B - fb.h }, { x: (W - fb.w) / 2, y: bot },
+    // last resorts (small landscape phone at the biggest touch size): the right edge under the top bar / readout, above the shifter or the brake pad
+    { x: r.top.x + r.top.w - fb.w, y: Math.max(r.top.y + r.top.h, r.perf ? r.perf.y + r.perf.h : 0) + 4 },
+    ...[r.shift, r.brk].filter(Boolean).flatMap(p => [{ x: p.x + p.w - fb.w, y: p.y - V - fb.h }, { x: p.x, y: p.y - V - fb.h }])]);
   // ---- gauge (3rd person only): first spot that is free, widest first ----
   if (o.cam3) {
     const gwMax = por ? Math.min(200, .44 * W) : Math.min(210, .24 * W), dir = o.lefty ? -1 : 1, gh = gw => gw * 224 / 512;

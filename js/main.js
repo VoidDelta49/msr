@@ -205,7 +205,7 @@ function visuals(dt, now) {
 GARAGE.onChange = recompute;
 GARAGE.onBike = () => { setBike(); say(ctx.bike.name, 1200); };
 function openGarage() { if (ctx.GAR || ctx.OPT) return; if (F.on) return say('Get back on the bike first'); if (ctx.ride) return say('Get off the tricycle first'); buildGarage(); $('garage').hidden = false; ctx.GAR = true; document.body.classList.add('gar'); scene.add(camera); B.rider.forEach(m => m.visible = false); studioIn(); }
-$('gClose').onclick = () => { studioOut(); $('garage').hidden = true; ctx.GAR = false; TC.rev = 0; document.body.classList.remove('gar'); ctx.camMode ^= 1; toggleCam(); syncBody(); };
+$('gClose').onclick = () => { studioOut(); $('garage').hidden = true; ctx.GAR = false; TC.rev = 0; $('revB').classList.remove('on'); document.body.classList.remove('gar'); ctx.camMode ^= 1; toggleCam(); syncBody(); };
 ptr($('revB'), () => { TC.rev = 1; $('revB').classList.add('on'); }, null, () => { TC.rev = 0; $('revB').classList.remove('on'); });
 $('bounceB').onclick = () => { if (RP.ok) bounce(); };
 

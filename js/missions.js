@@ -161,7 +161,7 @@ function start(h) {
   }
   if (ARC.includes(id)) return startArcade(q, h);
   if (id === 'radar') { // a runway to build speed on, then the trap
-    const d = q.dest = pickDest(h, 250, 650), gy = d.h ?? H(d.x, d.z); q.t = 0; q.rec = +(localStorage.getItem('cpm.radar.' + ctx.bike.id) || 0);
+    const d = q.dest = pickDest(h, 250, 650), gy = d.h ?? H(d.x, d.z); q.t = 0; q.rec = 0; try { q.rec = +(localStorage.getItem('cpm.radar.' + ctx.bike.id) || 0) || 0; } catch (e) { }
     destB.position.set(d.x, gy, d.z); destB.visible = true; arrow.position.set(d.x, gy + 2.2, d.z); MI.ay = gy; arrow.material.color.set(TYPE.radar.c); arrow.visible = true; marker.visible = false;
     destB.children.forEach(m => m.material.color.set(TYPE.radar.c)); pins([{ x: d.x, z: d.z, c: TYPE.radar.css, g: '' }]);
     say('Speed trap! Hit the orange halo flat out' + (q.rec ? ' · record ' + q.rec + ' km/h' : ''), 2800); return;

@@ -103,7 +103,7 @@ function quit() { if (R.st !== 'idle') send({ t: 'race', op: 'quit', to: R.opp, 
 function end(msg, win) { R.st = 'res'; ctx.racing = false; finB.visible = false; pins(null); cd.classList.remove('on'); if (win) blip('ok'); panel(msg, null, reset); bX.textContent = 'OK'; }
 function result() {
   const a = R.myT, b = R.oppT, f = t => t === Infinity ? 'DNF' : t.toFixed(1) + ' s';
-  if (a < b) end('YOU WIN! ' + f(a) + ' vs ' + f(b), true); else end(name(R.opp) + ' wins. ' + f(b) + ' vs ' + f(a), false);
+  if (a === b) end("It's a tie! " + f(a), false); else if (a < b) end('YOU WIN! ' + f(a) + ' vs ' + f(b), true); else end(name(R.opp) + ' wins. ' + f(b) + ' vs ' + f(a), false);
 }
 
 // every frame (also while paused, so timeouts and the countdown keep running)

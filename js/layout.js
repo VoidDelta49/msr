@@ -47,7 +47,7 @@ export function relayout() {
     bn.bw.forEach((w, i) => s.setProperty('--bw' + i, w + 'px'));
   }
   // GET OFF / GET ON (foot.js): the solver's free spot, or the CSS spot when none is free
-  const fo = $('bFoot'), fr = r.foot; if (fr) { put(fo, fr, H, false); fo.style.fontSize = tr.top.fs + 'px'; } else { fo.style.cssText = ''; }
+  const fo = $('bFoot'), fr = r.foot; if (fr) { put(fo, fr, H, false); fo.style.fontSize = tr.top.fs + 'px'; fo.style.minHeight = '0'; } else { fo.style.cssText = ''; } // min-height: the compact tier's 36 px must beat body.touch .b's 44
   // on foot (foot.js): the joystick takes the wheel's place and the JUMP button the gas pad's (a round button in its lower part); both only show on foot
   if (r.wheel) put($('joy'), r.wheel, H, true);
   if (r.thr) { const d = Math.min(r.thr.w, r.thr.h); put($('jumpB'), { x: r.thr.x + (r.thr.w - d) / 2, y: r.thr.y + r.thr.h - d, w: d, h: d }, H, true); }

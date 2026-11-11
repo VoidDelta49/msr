@@ -87,7 +87,7 @@ function text(m) {
     const ids = new Set(m.peers.map(p => p.id));
     for (const P of [...NET.peers.values()]) if (!ids.has(P.id)) { if (NET.on.leave) NET.on.leave(P); delPeer(P); }
     for (const p of m.peers) { const P = NET.peers.get(p.id); if (P && P.name === p.name) { if (P.lv) { clearTimeout(P.lv); P.lv = 0; } if (p.look) { P.look = p.look; P.lk = JSON.stringify(p.look); } } else addPeer(p); }
-    say(again ? 'Reconnected · ' : 'Joined room ' + NET.room + ' · ' + (m.peers.length + 1) + '/' + m.max, 2500); hbT = 0; ping(); changed();
+    say((again ? 'Reconnected · ' : 'Joined room ' + NET.room + ' · ') + (m.peers.length + 1) + '/' + m.max, 2500); hbT = 0; ping(); changed();
     if (NET.on.resume) NET.on.resume();
   } else if (m.t === 'join') {
     wake = true; const P = NET.peers.get(m.id);
@@ -266,7 +266,7 @@ function tag(P, now) {
   v3.copy((w || P.inst.o).position); v3.y += w ? 2.05 : 1.95; v3.project(camera); if (v3.z > 1) { e.hidden = true; return; }
   const x = Math.round((v3.x * .5 + .5) * W), y = Math.round((.5 - v3.y * .5) * Hh); e.hidden = false;
   if (x !== P.tx || y !== P.ty) { P.tx = x; P.ty = y; e.style.transform = `translate(${x}px,${y}px) translate(-50%,-100%)`; }
-  const emo = P.emoT > now ? P.emo + ' ' : '', inn = P.pk && !(ctx.inside && ctx.inside.key === P.pk) ? ' · 🎱 inside' : ''; // social.js emotes, a friend in a building
+  const emo = P.emoT > now && P.emo ? P.emo + ' ' : '', inn = P.pk && !(ctx.inside && ctx.inside.key === P.pk) ? ' · 🎱 inside' : ''; // social.js emotes, a friend in a building
   const away = now - P.seen > 8000, info = emo + (away ? 'away' : P.d < 90 ? Math.round(P.d) + ' m · ' + ((F.on || P.fl & 64 ? '👋' : ctx.rideIcon && ctx.rideIcon(P)) || '🏁') : Math.round(P.d / 10) * 10 + ' m') + inn;
   if (info !== P.ti) { P.ti = info; e.lastChild.textContent = info; }
 }
