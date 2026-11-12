@@ -1,0 +1,29 @@
+{
+  "id": "hiace",
+  "name": "Toyota HiAce Commuter 3.0",
+  "short": "HiAce Commuter",
+  "class": "VAN",
+  "tag": "5-speed manual · rear-wheel drive · diesel",
+  "blurb": "The Philippines' people mover (H200, KDH200 body). 3.0 L 1KD-FTV common-rail turbodiesel under the front seats, 5-speed manual, rear-wheel drive, torsion bars in front and a leaf-sprung live axle behind.",
+  "hint": "Shift = gear up (1st), Ctrl = down · W gas · S brake · A / D steer · F get out",
+  "model": "hiace",
+  "paint": "#f4f5f3",
+  "body": { "m": 1915, "size": [1.695, 1.8, 4.695], "off": -0.1125, "cg": [0, 0.78, 0.154], "clear": 0.18, "drag": 0.74 },
+  "engine": {
+    "Ie": 0.26, "idle": 750, "red": 4400, "peakPS": 136, "cyl": 4, "tachMax": 6000,
+    "geo": { "bore": 96, "stroke": 103, "cr": 17.9, "peak": 3400 },
+    "torque": [[0, 150], [800, 225], [1000, 270], [1200, 300], [2400, 300], [3000, 291], [3400, 281], [3800, 246], [4200, 204], [4600, 140]],
+    "fric": [18, 0.012]
+  },
+  "gearbox": { "type": "manual", "gears": [4.313, 2.33, 1.436, 1.0, 0.838], "rev": 4.22, "final": 4.1, "eta": 0.9, "clutchCap": 430, "shiftT": 0.4 },
+  "steer": { "lock": 36, "rate": 110, "v": 14 },
+  "axles": [
+    { "z": 1.285, "track": 1.47, "r": 0.336, "Iw": 1.6, "steer": 1, "brake": 2100,
+      "susp": { "hz": 1.4, "zeta": 0.38, "travel": [0.09, 0.09], "arb": 14000 }, "tyre": { "mu": 0.9, "ap": 8, "crr": 0.012 } },
+    { "z": -1.285, "track": 1.465, "r": 0.336, "Iw": 1.8, "drive": 1, "brake": 1150, "hb": 1400,
+      "susp": { "hz": 1.6, "zeta": 0.32, "travel": [0.1, 0.11] }, "tyre": { "mu": 0.9, "ap": 8, "crr": 0.012 } }
+  ],
+  "fuel": { "cap": 70, "bsfc": 235, "idle": 0.9 },
+  "cab": { "eye": [0.4, 1.62, 0.98], "door": [1.35, 1.1], "vmax": 180 },
+  "sound": { "cyl": 4, "gain": 0.95, "pq": 1.1, "bq": 1.6, "punch": 1.5, "rough": 0.16, "crackle": 0, "mech": 1.3, "intake": 0.5, "bright": 0.55, "drive": 1.1, "muf": 1.4, "hdr": 0.85, "lp": 0.8 }
+}

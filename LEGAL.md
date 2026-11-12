@@ -1,6 +1,6 @@
 # Legal notes
 
-ISLA (formerly "CPM: Motor Edition") is an **unofficial, non-commercial fan project**. It is not affiliated with, authorized by, sponsored by or endorsed by Honda, Suzuki, or any other company named in it. All product names, brands and trademarks belong to their owners and are used only to say which real motorcycle a model represents.
+ISLA (formerly "CPM: Motor Edition") is an **unofficial, non-commercial fan project**. It is not affiliated with, authorized by, sponsored by or endorsed by Honda, Suzuki, Toyota, or any other company named in it. All product names, brands and trademarks belong to their owners and are used only to say which real motorcycle (or, from 12.14, van: "Toyota HiAce Commuter", `data/cars/hiace.json`, `js/carfig/hiace.js`; modelled by hand from published dimensions and photos, no Toyota drawings, logos or badge art: the emblem is a plain chrome oval) a model represents.
 
 This is a working risk note for the maintainer, not legal advice. It records what the game borrows from the real world, how risky each thing is, and the rules to keep it that way. If the project ever becomes public-facing or earns money, talk to a lawyer (preferably one who knows Philippine IP law) before launch.
 

@@ -59,6 +59,14 @@ TMX Supremo, Aerox 155, Rouser NS125 and Macho 125 use the figures quoted in eac
 - **Variator:** the rollers push the drive pulley closed with about m·ω². The center spring and torque cam push back, harder as the belt climbs and harder under load. The ratio moves until those balance, so at full throttle the engine holds roughly 6,700–7,200 rpm while speed rises. Lighter rollers raise that rpm, and a stiffer center spring raises it further.
 - **Idling Stop:** the engine shuts off after 3 s stopped at idle and restarts when you open the throttle.
 
+## Cars (12.14)
+
+The first four-wheeler is a **Toyota HiAce Commuter 3.0** (H200), parked at the lot next to where you start. Get off the bike (F), walk up to it and press F again (**DRIVE**); F gets you out. It runs on its own vehicle code (`js/ecs`, `js/car`: every wheel is simulated with its own spring, tyre and brake), not the bike solver.
+
+HiAce figures are Toyota Motor Philippines' published specs for the Commuter 3.0 M/T as listed by PH dealers (2,982 cc 1KD-FTV common-rail turbodiesel, 96 x 103 mm, 136 PS @ 3,400 rpm, 300 Nm @ 1,200-2,400 rpm, 5-speed manual, rear-wheel drive, 4,695 x 1,695 x 1,980 mm, 2,570 mm wheelbase, 70 L, 195R15C, double wishbones with torsion bars in front, leaf-sprung rigid axle behind, ventilated discs / drums). Not published and so estimated: curb weight (1,845 kg, in the range Toyota gives for the H200 body), track (1,470 / 1,465 mm), the gear ratios (the R351 gearbox family's 4.313 / 2.330 / 1.436 / 1.000 / 0.838, reverse 4.220, final 4.100), compression (17.9:1), the torque curve between the published points, the 4,400 rpm limiter, centre of gravity, spring and damper rates, and fuel use (235 g/kWh). Headless (flat road, driver only): 0-100 km/h about 15 s, top about 154 km/h (4th), 100-0 km/h in about 51 m.
+
+Not there yet: friends in multiplayer see you as a walker instead of the van, pedestrians do not react to it, it has no garage parts, wind / tyre noise, or crash damage, and it stops at building walls with a simple push-out (no Rapier body).
+
 ## Quests (Build 9.5)
 
 The hub layout is seeded by the date (Philippine day, UTC+8): everyone gets the same hubs, types and bike locks on the same day, and it all reshuffles at midnight (reload to pick it up).
@@ -142,6 +150,18 @@ Keyboard:
 - `X` (hold): walk the bike backwards
 - On foot: `WASD` walk, `Shift` run, `Space` jump, `F` / `E` = the context button (GET ON, ENTER, EXIT, ORDER, BUY, SHOOT, DRINK)
 - `K`: ignition key, `T`: kill switch, `R` (hold): starter, `C`: camera, `G`: garage (bike picker is at the top), `O`: options (`Esc` closes), `Esc`: pause menu (also ☰ in the top bar)
+
+### Driving a car
+
+| | Keyboard | Touch |
+|---|---|---|
+| Get in / out | F (or E) next to the car | DRIVE / GET OUT button |
+| Gas / brake | W / S (or ↑ / ↓) | GAS / BRAKE pedals |
+| Steer | A / D (or ← / →) | ◀ ▶ |
+| Gear up / down (R - N - 1..5) | Shift or X / Ctrl or Z | ▲ ▼ |
+| Handbrake | Space (hold) | P (toggle) |
+| Automatic shifting on / off | M | AUTO |
+| Camera (chase / driver's seat) | C, drag to look | CAM, drag |
 
 ## Project layout
 

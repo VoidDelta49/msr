@@ -26,6 +26,11 @@ export function carProblems(c) {
     need(Array.isArray(u.travel) && u.travel.length === 2 && u.travel.every(v => num(v, .01, .6)), A + '.susp.travel [bump, droop] m');
     need(num(t.mu, .3, 2.5) && num(t.ap, 2, 20) && num(t.crr, 0, .1), A + '.tyre {mu, ap deg, crr}');
   });
+  if (c.model) { // in the game (js/carfig): what the driver, the dash and the sound need
+    need(c.fuel && num(c.fuel.cap, 5, 400) && num(c.fuel.bsfc, 150, 400) && num(c.fuel.idle, .1, 5), 'fuel {cap L, bsfc g/kWh, idle L/h}'); need(num(e.tachMax, 2000, 20000), 'engine.tachMax');
+    need(c.sound && num(c.sound.cyl, 1, 16) && ['gain', 'pq', 'bq', 'punch', 'rough', 'crackle', 'mech', 'intake', 'bright', 'drive', 'muf', 'hdr'].every(k => num(c.sound[k], 0, 5)), 'sound {cyl, gain, pq, bq, punch, rough, crackle, mech, intake, bright, drive, muf, hdr}');
+    need(c.cab && ['eye', 'door'].every(k => Array.isArray(c.cab[k]) && c.cab[k].every(v => num(v, -10, 10))) && num(c.cab.vmax, 60, 400), 'cab {eye [x, y, z], door [x, z], vmax km/h on the dial}'); need(typeof c.hint === 'string', 'hint');
+  }
   need(ax.some(a => a.drive > 0), 'no driven axle'); need(ax.some(a => a.steer), 'no steered axle'); need(new Set(ax.map(a => a.z)).size === ax.length, 'two axles at the same z');
   return P;
 }
@@ -48,13 +53,14 @@ export function carSpec(c) {
     });
   });
   const y0 = b.clear - cy, y1 = y0 + bh, box = [];
-  for (const x of [-bw / 2 - cx, bw / 2 - cx]) for (const y of [y0, y1]) for (const z of [-bl / 2 - cz, bl / 2 - cz]) box.push([x, y, z]);
+  for (const x of [-bw / 2 - cx, bw / 2 - cx]) for (const y of [y0, y1]) for (const z of [-bl / 2 + (b.off || 0) - cz, bl / 2 + (b.off || 0) - cz]) box.push([x, y, z]); // body.off: the shell's middle ahead of the wheelbase's (overhangs)
   const e = c.engine, g = c.gearbox;
   return {
     id: c.id, m, cgY: cy, drag: b.drag, wheels, box,
     I: b.I || [m * (bh * bh + bl * bl) / 12, m * (bw * bw + bl * bl) / 12, m * (bw * bw + bh * bh) / 12], // about x (pitch), y (yaw), z (roll)
     peakPS: e.peakPS, ie: e.Ie, idle: e.idle, red: e.red, TQ: e.torque, fric: e.fric, geo: e.geo, cyl: e.cyl,
     auto: g.type === 'auto', gears: g.gears, rev: g.rev, final: g.final, eta: g.eta, cap: g.clutchCap, shiftT: g.shiftT ?? .3, upRpm: g.upRpm || e.geo.peak,
+    fuel: c.fuel || null, sound: c.sound || null, tachMax: e.tachMax || e.red,
     lock: c.steer.lock * d2r, rate: c.steer.rate * d2r, steerV: c.steer.v,
   };
 }

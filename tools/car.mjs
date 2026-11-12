@@ -75,7 +75,7 @@ export function carTests() {
     info.push(`${id}: 0-60 ${r1(M.t60)} s, 0-100 ${r1(M.t100)} s, top ${r1(M.top)} km/h, 100-0 ${r1(M.brakeM)} m (soaked ${r1(W.brakeM)} m), front ${Math.round(M.front * 100)} %, circle ${M.circG.toFixed(2)} g r ${r1(M.circR)} m, hill creep ${(M.hillM * 100).toFixed(1)} cm, reverse ${r1(M.rev)} km/h`);
   }
   // any number of wheels is data: the sample as a tricycle (one rear wheel) and with a third axle; then dropped on its roof
-  const base = carIds[0] && rdj(`data/cars/${carIds[0]}.json`);
+  const base = carIds.includes('hatch10') && rdj('data/cars/hatch10.json'); // the fixture
   if (base && !carProblems(base).length) {
     const rear = base.axles[base.axles.length - 1], kinds = { '3-wheel': { ...base, axles: [base.axles[0], { ...rear, track: 0 }] }, '6-wheel': { ...base, axles: [...base.axles, { ...rear, z: rear.z - .9 }] } };
     for (const [k, def] of Object.entries(kinds)) {

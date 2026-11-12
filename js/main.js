@@ -43,6 +43,7 @@ import { placesFrame } from './places.js';
 import { underFrame, underFit } from './undergo.js';
 import { EF } from './effects.js';
 import './social.js';
+import { carsInit, carTick, carFrame, carDriving, CAR } from './carfig/drive.js';
 
 /* ---------- data ---------- */
 // loaded by menu.js on PLAY; stage() moves its loading bar (fractions continue after the download's 0–70%)
@@ -54,6 +55,7 @@ for (const d of await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=$
 const SPAWN = (F => ({ ...F.W(62, 30), psi: Math.PI / 2 - F.ry }))(LMF.lot[0]); // in the parking lot, wherever the map puts it
 function reset() {
   if (ctx.ugReset) ctx.ugReset(); // back up from Ilalim (undergo.js)
+  if (ctx.carExit) ctx.carExit(); // driving a car (carfig/drive.js): out first
   if (F.on) footOff(); // reset / bike swap while walking: back on the bike
   Object.assign(S, {
     x: SPAWN.x, z: SPAWN.z, psi: SPAWN.psi, v: 0, rpm: 0, running: false, key: false, kill: false, tip: false, cr: 0, cranking: false, cT: 0, keyT: 0, stT: 0, fi: 0, warm: S.warm || 0, gear: 0, cl: 0, thr: 0, thrEff: 0, brake: 0, steer: 0, delta: 0, lean: 0, leanV: 0, yaw: 0, zH: 0, zV: 0, th: 0, thV: 0, cF: 0, cR: 0, hF: 0, hR: 0, a: 0, c: 0,
@@ -99,7 +101,7 @@ function setBike(keepPos) {
 // physics engine first: everything below positions the Rapier body
 stage('Starting physics', .8);
 if (!await initRapier()) throw new Error("Couldn't load the physics engine (" + RP.err + '). Check your connection and try again.');
-stage('Preparing the bike', .85); setBike(); save(); rideInit();
+stage('Preparing the bike', .85); setBike(); save(); rideInit(); await carsInit(); // cars parked at the lot (js/carfig)
 // build every shader now, behind the title screen (see renderer.js warm())
 stage('Compiling shaders', .9); initStudio(); bundleStatic(); cull(camera); /* bundle.js: the static island into render bundles (WebGPU) */ ctx.warmMs = await warm(); stage('Ready', 1);
 
@@ -185,6 +187,7 @@ function visuals(dt, now) {
   if (!ctx.GAR && Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); } // pinch / wheel / Options FOV, speed widening, and leaving the garage's 40°
   if (LK.id === null && av > 1.5) { const k = Math.exp(-dt * 3); LK.y *= k; LK.p *= k; if (Math.abs(LK.y) < .002) LK.y = 0; if (Math.abs(LK.p) < .002) LK.p = 0; }
   if (ctx.GAR) studioFrame(dt, now);
+  else if (carDriving()) { /* carFrame (loop) places the camera */ }
   else if (F.on) { figPose(); footCam(camera, dt, H, underFit() || ctx.camFit); }
   else if (ctx.camMode === 0) {
     LK.yr += (clamp(S.yaw * .12, -.25, .25) - LK.yr) * (1 - Math.exp(-dt * 8)); B.cam.rotation.set(-(S.th + (S.wp || 0)) * .4, LK.yr, S.lean * .35); camera.rotation.set(-.3 + LK.p, LK.y, 0);
@@ -275,15 +278,15 @@ function loop(t) {
   if (t - fT > 1000) { const fps = Math.round(fN * 1000 / (t - fT)); setFps(fps); setPhys('Physics ' + pms.toFixed(2) + ' ms'); autoRes(fps, !ctx.paused && !ctx.GAR && !ctx.OPT && !BN.on); setGfx(renderer.info.render.drawCalls, resScale()); setJank(jankText()); updPerf(API); fN = 0; fT = t; }
   raceTick(dt);
   if (ctx.GAR) { ctx.stand = true; S.thr = TC.rev ? 1 : 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; if (!S.running && TC.rev && !S.issOff) startEngine(); if (RP.ok) tickRapier(dt); garageFrame(); }
-  else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; if (F.on) footTick(dt); else input(dt); if (RP.ok) tickRapier(dt); missions(dt); wpTick(); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
+  else if (!ctx.paused && !ctx.OPT && !ctx.ride) { ctx.stand = false; if (carDriving()) { S.thr = 0; S.brake = 1; S.steer = 0; S.cl = ctx.spec.type === 'cvt' ? 0 : 1; } else if (F.on) footTick(dt); else input(dt); carTick(dt); if (RP.ok) tickRapier(dt); missions(dt); wpTick(); water(); } // riding in a friend's sidecar (ride.js): no physics of our own
   if (!ctx.paused && !ctx.OPT && !ctx.GAR) { placesFrame(dt, t / 1000); underFrame(dt); } // Ilalim: the dark passage down and the way back up (undergo.js) // drinks wearing off, the room you're in (places.js)
   if (BN.on) benchDrive(dt); const P1 = performance.now(); // benchmark: this frame's scripted pose (bench.js); P1..P3, C1 = stage stamps for it
   // crashed: chase camera so you see the tumble, back to your camera once the bike is up
   if ((S.crashed || ctx.rideFly) && ctx.camMode === 0) { toggleCam(); crashCam = true; } else if (!S.crashed && !ctx.rideFly && crashCam) { crashCam = false; if (ctx.camMode === 1) toggleCam(); }
-  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); npcFrame(dt, t); blobTick(H); bikeFx(dt); const P2 = performance.now(); updAudio(); radioTick(); const P3 = performance.now(); const fp = ctx.camMode === 0 || ctx.GAR; if (t - lastDraw > (fp ? 100 : 50)) { const hold = fp && sun.shadow.needsUpdate; if (!hold) lastDraw = t; hudUp = drawCluster(fp, hold); drawMini(MAP, MAPV); } /* never upload the dash in the frame that redraws the shadow map (two GPU bursts in one frame): it goes next frame */ const D0 = performance.now(); if (MB) mbState(); renderer.info.reset(); let shRef = sun.shadow.needsUpdate; if (BX.noShadow) { shRef = false; sun.shadow.needsUpdate = false; } let C1 = D0; /* benchmark: no shadow-map pass */ if (!ctx.mapCover) { cull(camera); grassFrame(camera, F.on ? [GPB, (GPF.x = F.x, GPF.z = F.z, GPF)] : [GPB], !ctx.inside && !(ctx.ug && ctx.ug.on)); fxTick(camera); C1 = performance.now(); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0); if (BN.on) benchFrame(t, J0, P1, P2, P3, D0, C1, J1, hudUp, shRef);
+  const ri = RP.ok && !ctx.GAR && !ctx.paused && !ctx.OPT && !ctx.ride, keep = interp(ri); carFrame(dt); visuals(dt, t / 1000); if (keep) Object.assign(S, keep); crashVisual(); netFrame(dt, t); rideFrame(dt, t); npcFrame(dt, t); blobTick(H); bikeFx(dt); const P2 = performance.now(); updAudio(); radioTick(); const P3 = performance.now(); const fp = ctx.camMode === 0 || ctx.GAR; if (t - lastDraw > (fp ? 100 : 50)) { const hold = fp && sun.shadow.needsUpdate; if (!hold) lastDraw = t; hudUp = drawCluster(fp, hold); drawMini(MAP, MAPV); } /* never upload the dash in the frame that redraws the shadow map (two GPU bursts in one frame): it goes next frame */ const D0 = performance.now(); if (MB) mbState(); renderer.info.reset(); let shRef = sun.shadow.needsUpdate; if (BX.noShadow) { shRef = false; sun.shadow.needsUpdate = false; } let C1 = D0; /* benchmark: no shadow-map pass */ if (!ctx.mapCover) { cull(camera); grassFrame(camera, F.on ? [GPB, (GPF.x = F.x, GPF.z = F.z, GPF)] : [GPB], !ctx.inside && !(ctx.ug && ctx.ug.on)); fxTick(camera); C1 = performance.now(); draw(); } /* full-screen map open: the 3D view is hidden behind it, so skip the frame (map.js) */ const J1 = performance.now(); jankEnd(t, J1 - J0, hudUp, J1 - D0); if (BN.on) benchFrame(t, J0, P1, P2, P3, D0, C1, J1, hudUp, shRef);
 }
 renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFrame(loop);
 O.setDPR = setDPR; O.gpu = GPU; O.aa = AA; O.live = true; O.snap(); // options.js: what the loaded game was built with, to tell which changes still need a reload
 if (ctx.mpWant) { const w = ctx.mpWant; ctx.mpWant = null; netJoin(w.room, w.name, w.url); } // MULTIPLAYER > JOIN before the game had loaded
 O.api = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { RAD, BUNDLE, NPC, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };
+window.__cpm = { CAR, RAD, BUNDLE, NPC, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };

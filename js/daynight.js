@@ -140,15 +140,16 @@ export function dayNight() {
   renderer.toneMappingExposure = 1 + .5 * night;                                     // a bit of "eye adaptation" so night stays playable
   // headlight: on with the engine from dusk to dawn (real bikes have it always on, but in daylight it adds nothing)
   const dark = under || sh > .5 || K.sunK < .4; // underground / deep in the hall / under a storm sky the lamp is needed at any hour
-  gate += ((S.running && (el < 4 || dark) && !S.crashed ? 1 : 0) - gate) * .2;
-  const f = -Math.sin(S.psi), g = -Math.cos(S.psi), sd = Math.sin(S.delta || 0) * .6;
-  head.position.set(S.x + f * .9, S.zH + .95, S.z + g * .9);
-  head.target.position.set(S.x + (f * Math.cos(sd) - g * Math.sin(sd)) * 22, S.zH - 1.5, S.z + (g * Math.cos(sd) + f * Math.sin(sd)) * 22);
+  const cv = ctx.car; // driving a car (carfig/drive.js): the one headlight is its
+  gate += (((cv ? cv.lit : S.running && !S.crashed) && (el < 4 || dark) ? 1 : 0) - gate) * .2;
+  const f = cv ? cv.fx : -Math.sin(S.psi), g = cv ? cv.fz : -Math.cos(S.psi), sd = cv ? 0 : Math.sin(S.delta || 0) * .6, hx = cv ? cv.x + f * 1.4 : S.x, hy = cv ? cv.y : S.zH, hz = cv ? cv.z + g * 1.4 : S.z;
+  head.position.set(hx + f * .9, hy + .95, hz + g * .9);
+  head.target.position.set(hx + (f * Math.cos(sd) - g * Math.sin(sd)) * 22, hy - 1.5, hz + (g * Math.cos(sd) + f * Math.sin(sd)) * 22);
   head.intensity = 900 * (ctx.beamK || 1) * gate * (dark ? 1 : 1 - sstep(-4, 4, el) * .7);
-  const hb = ctx.inside || F.on ? 0 : gate * (dark ? 1 : 1 - sstep(-6, 2, el)); HEAD.value = hb; BM.pool.visible = BM.cone.visible = hb > .005;
+  const hb = ctx.inside || (F.on && !cv) ? 0 : gate * (dark ? 1 : 1 - sstep(-6, 2, el)); HEAD.value = hb; BM.pool.visible = BM.cone.visible = hb > .005;
   if (hb > .005) {
     const hp = head.position, ht = head.target.position, dx = ht.x - hp.x, dz = ht.z - hp.z, dl = Math.hypot(dx, dz) || 1;
-    beam(hp.x, S.zH || 0, hp.z, dx / dl, dz / dl); BM.cone.position.copy(hp); BM.cone.lookAt(ht);
+    beam(hp.x, cv ? cv.y : S.zH || 0, hp.z, dx / dl, dz / dl); BM.cone.position.copy(hp); BM.cone.lookAt(ht);
   }
   if (BLOOM.k) { // bloom: subtle in daylight (sun disc, chrome glints), stronger as the lamps come on
     BLOOM.k.value = ctx.inside ? .3 : .25 + .15 * sstep(10, -2, el) + .2 * night; BLOOM.th.value = ctx.inside ? 1.4 : 1.6 - .1 * night;

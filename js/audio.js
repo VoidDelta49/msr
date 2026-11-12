@@ -135,13 +135,14 @@ export function updAudio() {
   const fp = ctx.camMode === 0 && !ctx.GAR, live = !ctx.paused && !ctx.OPT && !ctx.GAR, v = Math.abs(S.v) || 0;
   // ---- engine ----
   if (CR && (!S.cranking || ctx.paused)) crank(false);
-  const run = S.running, cut = S.lim || S.cutT > 0, dt = Math.min(.1, t - lastT); lastT = t;
-  offR = run ? (S.rpm || 0) : Math.max(0, offR - dt * 3500); // switched off: the crank spins down, S.rpm may sit at idle
-  st(A.eng.gain, (fp ? 1 : .85) * sd.gain * EXH.gain[x] * 1.35, .05);
+  const cs = ctx.car && ctx.car.snd, esp = cs ? cs.sp : sp, eload = cs ? cs.load : S.thrEff || 0; // driving a car (carfig/drive.js): the engine voice is the car's
+  const run = cs ? !!cs.run : S.running, cut = cs ? !!cs.cut : S.lim || S.cutT > 0, dt = Math.min(.1, t - lastT); lastT = t;
+  offR = run ? ((cs ? cs.rpm : S.rpm) || 0) : Math.max(0, offR - dt * 3500); // switched off: the crank spins down, S.rpm may sit at idle
+  st(A.eng.gain, cs ? esp.sound.gain * 1.35 : (fp ? 1 : .85) * sd.gain * EXH.gain[x] * 1.35, .05);
   if (E) {
-    if (sp !== lastSpec) { lastSpec = sp; engineCfg(sp); }
+    if (esp !== lastSpec) { lastSpec = esp; engineCfg(esp); }
     const P = E.P || (E.P = ['rpm', 'load', 'on', 'cut', 'vol'].map(k => E.parameters.get(k)));
-    kv(P[0], offR); kv(P[1], S.thrEff || 0); kv(P[2], run ? 1 : 0); kv(P[3], cut ? 1 : 0); kv(P[4], on ? 1 : 0);
+    kv(P[0], offR); kv(P[1], eload); kv(P[2], run ? 1 : 0); kv(P[3], cut ? 1 : 0); kv(P[4], on ? 1 : 0);
   } else if (A.o) {
     const f = Math.max(1, offR / 120); st(A.o.frequency, f, .015); st(A.o2.frequency, f / 2, .015);
     st(A.lp.frequency, (250 + S.rpm * .11 + S.thrEff * 1200) * [1, 1.35, 1.8][x] * sd.lp, .03); st(A.lp.Q, [3, 5, 8][x], .1);

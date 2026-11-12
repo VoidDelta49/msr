@@ -64,7 +64,7 @@ const subFiles = readdirSync(path.join(ROOT, 'js'), { withFileTypes: true }).fil
     const dep = {}, live = new Set();
     for (const f of subFiles) {
       dep[f] = []; const src = rd('js/' + f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-      for (const m of src.matchAll(re)) { const s = m[1] || m[2] || m[3]; if (!s.startsWith('.')) { err('modules', `js/${f}: bare import '${s}' (folders under js/ stay dependency-free)`); continue; }
+      for (const m of src.matchAll(re)) { const s = m[1] || m[2] || m[3]; if (!s.startsWith('.')) { if (/^(ecs|car)\//.test(f)) err('modules', `js/${f}: bare import '${s}' (js/ecs and js/car stay headless)`); else if (!map[s] && !Object.keys(map).some(k => k.endsWith('/') && s.startsWith(k))) err('modules', `js/${f}: bare import '${s}' is not in the import map`); continue; }
         const t = path.posix.join('js', path.posix.dirname(f), s.split('?')[0]); if (!existsSync(path.join(ROOT, t))) err('modules', `js/${f}: import '${s}' -> missing file`); else dep[f].push(t.slice(3)); }
     }
     const reach = f => { if (live.has(f) || !dep[f]) return; live.add(f); dep[f].forEach(reach); };
