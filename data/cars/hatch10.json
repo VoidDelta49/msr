@@ -1,0 +1,23 @@
+{
+  "id": "hatch10",
+  "name": "Sample 1.0 Hatchback",
+  "short": "Hatch 1.0",
+  "class": "HATCH",
+  "tag": "5-speed manual · front-wheel drive",
+  "blurb": "Generic 1.0 L three-cylinder city hatchback. Not a real model: the fixture the four-wheel foundation is tested on (tools/car.mjs).",
+  "body": { "m": 930, "size": [1.6, 1.25, 3.66], "cg": [0, 0.54, 0.245], "clear": 0.16, "drag": 0.4 },
+  "engine": {
+    "Ie": 0.09, "idle": 800, "red": 6500, "peakPS": 66, "cyl": 3,
+    "geo": { "bore": 71, "stroke": 84, "cr": 11.5, "peak": 6000 },
+    "torque": [[0, 40], [1000, 62], [2000, 76], [3000, 84], [4400, 89], [5200, 85], [6000, 77], [6500, 68], [7000, 55]],
+    "fric": [7, 0.0025]
+  },
+  "gearbox": { "type": "manual", "gears": [3.417, 1.947, 1.25, 0.865, 0.707], "rev": 3.143, "final": 4.267, "eta": 0.92, "clutchCap": 150 },
+  "steer": { "lock": 35, "rate": 140, "v": 16 },
+  "axles": [
+    { "z": 1.2275, "track": 1.41, "r": 0.2915, "Iw": 0.7, "steer": 1, "drive": 1, "brake": 1150,
+      "susp": { "hz": 1.35, "zeta": 0.4, "travel": [0.08, 0.09], "arb": 9000 }, "tyre": { "mu": 1.0, "ap": 7, "crr": 0.013 } },
+    { "z": -1.2275, "track": 1.4, "r": 0.2915, "Iw": 0.7, "brake": 480, "hb": 600,
+      "susp": { "hz": 1.55, "zeta": 0.4, "travel": [0.08, 0.1], "arb": 3000 }, "tyre": { "mu": 1.0, "ap": 7, "crr": 0.013 } }
+  ]
+}

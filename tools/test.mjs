@@ -17,6 +17,7 @@ import { footTests } from './foot.mjs';
 import { npcTests } from './npc.mjs';
 import { interiorTests } from './interior.mjs';
 import { underTests } from './under.mjs';
+import { carTests } from './car.mjs';
 import { weatherTests } from './weather.mjs';
 
 const dir = path.dirname(fileURLToPath(import.meta.url)), BASE = path.join(dir, 'baseline.json');
@@ -78,6 +79,7 @@ for (const p of footTests()) problems.push(p);
 for (const p of npcTests()) problems.push(p);
 for (const p of interiorTests()) problems.push(p);
 for (const p of underTests().problems) problems.push(p); // Ilalim, the caves (data/cave.json, js/under.js)
+for (const p of carTests().problems) problems.push(p); // four-wheel foundation (data/cars, js/ecs, js/car)
 for (const p of weatherTests().problems) problems.push(p); // weather: relay snapshot, modes, wet road, lightning, wet grip (js/weather.js, server/wx.js)
 // fuzz: random inputs and garage setups on every bike (finite state, sane speed/rpm/lean/gear/fuel, no exceptions)
 for (const b of bikeIds) for (const seed of [1, 2]) { const r = fuzzOne(b, seed, 25); if (r.fail) problems.push(`FUZZ ${b} seed ${seed} t=${r.t}s: ${r.fail}  (node tools/fuzz.mjs ${b} --seed ${seed} --secs 25)`); }

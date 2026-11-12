@@ -42,6 +42,8 @@ const isNum = v => typeof v === 'number' && Number.isFinite(v);
 
 /* ---------- modules ---------- */
 const jsFiles = readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.js'));
+// js/<folder>/*.js (js/ecs, js/car): syntax + relative imports always; once a game file imports one, everything it reaches must be in the import map
+const subFiles = readdirSync(path.join(ROOT, 'js'), { withFileTypes: true }).filter(d => d.isDirectory()).flatMap(d => readdirSync(path.join(ROOT, 'js', d.name)).filter(f => f.endsWith('.js')).map(f => d.name + '/' + f));
 {
   const html = rd('index.html'), map = JSON.parse(/<script type="importmap">([\s\S]*?)<\/script>/.exec(html)[1]).imports;
   for (const [k, v] of Object.entries(map)) if (!k.endsWith('/') && !existsSync(path.join(ROOT, v.split('?')[0]))) err('modules', `import map ${k} -> ${v} does not exist`);
@@ -53,19 +55,30 @@ const jsFiles = readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.js')
       const s = m[1] || m[2] || m[3];
       if (s.startsWith('.')) {
         const t = path.join('js', s.split('?')[0]);
-        if (!existsSync(path.join(ROOT, t))) err('modules', `js/${f}: import '${s}' -> missing file`); else used.add('./js/' + path.basename(t));
+        if (!existsSync(path.join(ROOT, t))) err('modules', `js/${f}: import '${s}' -> missing file`); else if (path.dirname(t) === 'js') used.add('./js/' + path.basename(t));
       } else if (map[s]) { /* mapped exactly */ }
       else { const pre = Object.keys(map).find(k => k.endsWith('/') && s.startsWith(k)); if (!pre) err('modules', `js/${f}: bare import '${s}' is not in the import map`); else if (!existsSync(path.join(ROOT, map[pre] + s.slice(pre.length)))) err('modules', `js/${f}: '${s}' -> ${map[pre] + s.slice(pre.length)} missing in vendor/`); }
     }
   }
+  {
+    const dep = {}, live = new Set();
+    for (const f of subFiles) {
+      dep[f] = []; const src = rd('js/' + f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+      for (const m of src.matchAll(re)) { const s = m[1] || m[2] || m[3]; if (!s.startsWith('.')) { err('modules', `js/${f}: bare import '${s}' (folders under js/ stay dependency-free)`); continue; }
+        const t = path.posix.join('js', path.posix.dirname(f), s.split('?')[0]); if (!existsSync(path.join(ROOT, t))) err('modules', `js/${f}: import '${s}' -> missing file`); else dep[f].push(t.slice(3)); }
+    }
+    const reach = f => { if (live.has(f) || !dep[f]) return; live.add(f); dep[f].forEach(reach); };
+    for (const f of jsFiles) for (const m of rd('js/' + f).matchAll(re)) { const s = (m[1] || m[2] || m[3]).split('?')[0]; if (/^\.\/[\w-]+\//.test(s)) reach(s.slice(2)); }
+    for (const f of live) { if (!map['./js/' + f]) err('modules', `./js/${f} is used by the game but missing from index.html's import map`); for (const d of dep[f]) if (!d.includes('/') && !map['./js/' + d]) err('modules', `./js/${d} (imported by js/${f}) is missing from the import map`); }
+  }
   for (const u of used) if (!map[u]) err('modules', `${u} is imported but missing from index.html's import map (no cache busting, not precached offline)`);
-  for (const k of Object.keys(map)) if (k.startsWith('./js/') && !jsFiles.includes(path.basename(k))) err('modules', `import map lists ${k} but the file does not exist`);
+  for (const k of Object.keys(map)) if (k.startsWith('./js/') && !jsFiles.includes(k.slice(5)) && !subFiles.includes(k.slice(5))) err('modules', `import map lists ${k} but the file does not exist`);
   for (const f of jsFiles) if (!used.has('./js/' + f) && f !== 'engine-worklet.js' && f !== 'menu.js') warn('modules', `js/${f} is never imported (dead file?)`);
   ok('modules');
 }
 
 /* ---------- syntax ---------- */
-for (const f of jsFiles) {
+for (const f of [...jsFiles, ...subFiles]) {
   const r = spawnSync(process.execPath, ['--input-type=module', '--check'], { input: rd('js/' + f), encoding: 'utf8' });
   if (r.status !== 0) err('syntax', `js/${f}: ${(r.stderr || '').split('\n').filter(l => l.trim()).slice(0, 4).join(' | ')}`);
 }
