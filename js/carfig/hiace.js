@@ -78,7 +78,7 @@ export function build(def, cluTex) {
   const tails = add(join([1, -1].map(s => wf(box(.09, .62, .04, s * (hx - .075), 1.25, RR + .03)))), M.tail), revs = add(join([1, -1].map(s => wf(box(.09, .1, .045, s * (hx - .075), .99, RR + .02)))), M.rev);
   add(box(.34, .12, .01, 0, .6, RR - .012), M.plate); add(box(.34, .12, .01, 0, .53, FR + .025), M.plate);
   add(join([box(1.2, .14, 3.2, 0, .3, 0), box(.5, .26, .7, 0, .34, 1.25), box(.26, .3, .5, 0, WR, RZ), new THREE.CylinderGeometry(.045, .045, W - .3, 8).rotateZ(Math.PI / 2).translate(0, WR, RZ), new THREE.CylinderGeometry(.035, .035, .5, 8).rotateX(Math.PI / 2).translate(-.5, .3, -2.1)]), M.dark); // chassis, sump, diff + axle, tailpipe
-  // ---- cabin: floor, engine box under the front seats, dash with the three-dial meter, wheel, seats in 2 + 3-3-3-4 ----
+  // ---- cabin: floor, engine box under the front seats, dash with the three-dial meter, wheel, the two front seats ----
   const cab = [box(W - .14, .03, 4.3, 0, .6, -.1), box(W - .16, .34, .95, 0, .78, 1.15)];
   add(join(cab), M.floor, root, false);
   const dsh = [box(W - .2, .34, .42, 0, 1.06, 1.86), box(W - .2, .06, .52, 0, 1.25, 1.84), box(.46, .13, .12, .4, 1.3, 1.7), box(.3, .34, .16, 0, .92, 1.66), box(.05, .05, .32, .4, 1.03, 1.58, -.6)];
@@ -89,7 +89,7 @@ export function build(def, cluTex) {
   const sw2 = new THREE.Group(); wheelG.add(sw2);
   add(join([new THREE.TorusGeometry(.19, .017, 8, 24), box(.34, .05, .02, 0, 0, 0), box(.045, .19, .02, 0, -.09, 0), new THREE.CylinderGeometry(.065, .065, .04, 12).rotateX(Math.PI / 2)]), M.dash, sw2, false);
   const seats = [], seat = (x, z, w) => seats.push(box(w, .1, .44, x, .99 - (z < .8 ? .26 : 0), z), box(w, .52, .09, x, 1.29 - (z < .8 ? .26 : 0), z - .24, -.12), box(w * .5, .14, .07, x, 1.62 - (z < .8 ? .26 : 0), z - .29));
-  seat(.4, 1.12, .46); seat(-.36, 1.12, .82); for (const z of [.3, -.45, -1.2]) seat(.2, z, 1.1); seat(0, -1.95, 1.4);
+  seat(.4, 1.12, .46); seat(-.36, 1.12, .82); // the rear rows are the fit-out (data cabin.slots, fitout.js): drive.js puts them in
   add(join(seats), M.seat, root, false);
   // ---- wheels: one group per wheel (suspension travel, steering); the spinning part inside ----
   const WG = wheelGeo(), wheels = def.axles.flatMap((ax, i) => (ax.track > 0 ? [1, -1] : [0]).map(s => {

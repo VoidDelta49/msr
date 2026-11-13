@@ -57,7 +57,8 @@ export function bikeBoxes(b, sc) {
   if (sc) out.push({ cx: b.x + lx * sc * (ctx.spec?.scX ?? .95), cz: b.z + lz * sc * (ctx.spec?.scX ?? .95), hx: .5, hz: 1, c, s });
   return out;
 }
-const bikeNow = () => env && env.noBike ? [] : bikeBoxes(S, ctx.spec && ctx.spec.sc);
+// + env.xb(): extra boxes that move (a van's walls and seats, carfig/drive.js); the bike's gone while it rides in a van (ctx.bikeIn)
+const bikeNow = () => { const L = env && (env.noBike || ctx.bikeIn) ? [] : bikeBoxes(S, ctx.spec && ctx.spec.sc); if (env && env.xb && !env.noBike) L.push(...env.xb()); return L; };
 
 // push the circle (P.x, P.z, r) out of box b; false if it didn't touch. Removes the velocity going into the surface.
 function resolve(P, b, r) {
@@ -105,7 +106,7 @@ export function dismount() {
   }
   return 'No room to get off here';
 }
-export const nearBike = () => !(env && env.noBike) && Math.hypot(F.x - S.x, F.z - S.z) < FC.REACH && !(Math.abs(F.y - (S.zH ?? F.y)) > 3) && F.gnd;
+export const nearBike = () => !(env && env.noBike) && !ctx.bikeIn && Math.hypot(F.x - S.x, F.z - S.z) < FC.REACH && !(Math.abs(F.y - (S.zH ?? F.y)) > 3) && F.gnd;
 // Get back on if close enough; the bike is exactly where it was parked.
 export function mount() { if (!F.on) return ''; if (!nearBike()) return 'Walk up to the bike first'; F.on = false; return ''; }
 

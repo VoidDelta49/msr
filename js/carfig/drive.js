@@ -4,8 +4,8 @@
 // along hidden, so the minimap, friends, weather and doors all still know where you are. main.js calls carTick / carFrame.
 import * as THREE from 'three';
 import { scene, camera } from '../renderer.js';
-import { H, SEA, OBBS, LMF, atGas } from '../world.js';
-import { ctx } from '../state.js';
+import { H, roadH, SEA, OBBS, LMF, atGas } from '../world.js';
+import { ctx, S } from '../state.js';
 import { BUILD } from '../config.js';
 import { F, nearBoxes } from '../foot.js';
 import { K } from '../controls.js';
@@ -13,12 +13,15 @@ import { figShow } from '../footfig.js';
 import { addAct } from '../act.js';
 import { say } from '../hud.js';
 import { blip } from '../audio.js';
-import { blobAdd } from '../model.js';
+import { blobAdd, snapshot, B, BLOB_ME } from '../model.js';
+import { syncBody } from '../rapier.js';
 import { surfaceMu, slickAt } from '../tyre.js';
-import { clamp, lerpTable, angd } from '../util.js';
+import { clamp, appr, lerpTable, angd } from '../util.js';
 import { carWorld, spawnCar, STEP } from '../car/car.js';
 import { build as hiace } from './hiace.js';
-import { PAD, hudShow, hudDraw, cluTex } from './hud.js';
+import { PAD, WH, WMAX, hudShow, hudDraw, hudWheel, cluTex } from './hud.js';
+import { fitOf, cabBoxes, cabFloor, inCab, slotNear, cargoWhy, slotFree } from '../car/cabin.js';
+import { fitout, fitDispose } from './fitout.js';
 
 const MODELS = { hiace }; // data `model` -> builder(def, cluTex) -> { root, wheels: [{ g, sp, y0 }], steer, M, size }
 const GR = { h: H, mu: surfaceMu, slick: slickAt, wet: 0, n(x, z, o) { const e = .35, h = H(x, z), dx = (H(x + e, z) - h) / e, dz = (H(x, z + e) - h) / e, l = Math.hypot(dx, 1, dz); o[0] = -dx / l; o[1] = 1 / l; o[2] = -dz / l; } };
@@ -35,6 +38,7 @@ export async function carsInit() {
     const c = { def, id, m, at, B: W.get(id, 'Body'), I: W.get(id, 'Input'), K: W.get(id, 'Car'), E: W.get(id, 'Engine'), X: W.get(id, 'Gearbox'), wh: W.get(id, 'Car').wheels.map(w => ({ W: W.get(w, 'Wheel'), S: W.get(w, 'Susp') })),
       pp: [0, 0, 0], pq: [0, 0, 0, 1], fuel: def.fuel.cap * .8, odo: 0, auto: 0, st: 0, lit: 0, x: at.x, y: 0, z: at.z, h: at.h, snd: null };
     c.E.on = 0; c.I.hb = 1; c.pp = [...c.B.p]; c.pq = [...c.B.q];
+    if (def.cabin) { c.fit = fitOf(def.cabin, FITS[def.id]); refit(c); }
     // the engine voice (audio.js engineCfg / acoustics): the car's geometry + levels in the shape a bike spec has
     const sp = c.K.sp, s = def.sound; c.snd = { run: 0, rpm: 0, load: 0, cut: 0, sp: { sound: s, geo: sp.geo, snd: 0, evo: 0, crd: 0, ccx: 1, muf: s.muf, hdr: s.hdr, ie: sp.ie, ie0: sp.ie, red: sp.red, idle: sp.idle, sPun: 0, sRgh: 0, sMech: 0, sIn: 0, sBri: 0, sCrk: 0 } };
     CARS.push(c);
@@ -42,6 +46,68 @@ export async function carsInit() {
   // the on-foot context button: DRIVE next to a car, GET OUT inside one
   addAct(() => { if (!F.on || ctx.inside) return null; if (cur) return { label: 'GET OUT', pri: -1, d: 0, run: () => carExit() }; const c = near(); return c ? { label: 'DRIVE', pri: 2, d: Math.hypot(F.x - c.x, F.z - c.z), run: () => enter(c) } : null; }, 'car');
   ctx.carExit = () => { if (cur) carExit(true); };
+  // inside a van: take a seat row out / put it back (cycles the slot's options: data cabin.slots[].fit)
+  addAct(() => {
+    if (!F.on || cur || ctx.inside) return null; const v = inVan(); if (!v) return null; const { c, lz } = v, cab = c.def.cabin, s = slotNear(cab, lz); if (!s) return null;
+    const nx = s.fit[(s.fit.indexOf(c.fit[s.id]) + 1) % s.fit.length], it = cab.items[nx];
+    return { label: nx ? 'FIT ' + it.name.toUpperCase() : 'REMOVE SEAT', pri: 1, d: Math.abs(lz - s.z), run: () => {
+      if (!slotFree(cab, s, nx, c.bike && c.bike.span)) return say('The bike is in the way', 1500);
+      c.fit[s.id] = nx; FITS[c.def.id] = c.fit; saveFits(); refit(c); blip('thud', .4);
+    } };
+  }, 'carfit');
+  // at the tailgate (or inside, by the cargo floor): load your parked bike, as it is set up, or roll it back out
+  addAct(() => {
+    if (!F.on || cur || ctx.inside) return null; const c = atTail(); if (!c) return null;
+    if (c.bike) return { label: 'UNLOAD BIKE', pri: 1, d: 1, run: () => unload(c) };
+    if (ctx.bikeIn || ctx.ride || Math.hypot(S.x - c.x, S.z - c.z) > 14) return null;
+    return { label: 'LOAD BIKE', pri: 1, d: 1, run: () => load(c) };
+  }, 'carbike');
+  ctx.vanReset = () => { for (const c of CARS) if (c.bike) dropBike(c); };
+}
+
+// ---- walking around a van: its floor, walls and fitted seats join the walker's world (foot.js env: H + extra boxes) ----
+const FITS = (() => { try { return JSON.parse(localStorage.getItem('isla.carfit')) || {}; } catch (e) { return {}; } })();
+const saveFits = () => { try { localStorage.setItem('isla.carfit', JSON.stringify(FITS)); } catch (e) { } };
+function refit(c) { if (c.m.fit) { c.m.root.remove(c.m.fit); fitDispose(c.m.fit); } c.m.fit = fitout(c.def.cabin, c.fit, c.m.M); c.m.root.add(c.m.fit); c.box = cabBoxes(c.def.cabin, c.fit); }
+const toL = (c, x, z) => { const dx = x - c.x, dz = z - c.z, k = Math.cos(c.h), s = Math.sin(c.h); return [dx * k - dz * s, dx * s + dz * k]; };
+const base = c => c.y - c.def.body.cg[1]; // the ground under the van, at ride height (the cabin frame's y = 0)
+const inVan = () => { for (const c of CARS) { const cab = c.def.cabin; if (!cab) continue; const [lx, lz] = toL(c, F.x, F.z); if (inCab(cab, lx, lz) && F.y > base(c) + cab.floor - .2) return { c, lx, lz }; } return null; };
+const atTail = () => { for (const c of CARS) { const cab = c.def.cabin; if (!cab) continue; const [lx, lz] = toL(c, F.x, F.z); if (Math.abs(lx) < cab.x + .4 && lz > cab.tail - 2 && lz < cab.z[0] + (c.bike ? c.bike.L + .6 : 1.2)) return c; } return null; };
+const XB = [];
+// main.js: footEnv(carEnv({ H, SEA, OBBS }))
+export function carEnv(e) {
+  const H0 = e.H; return { ...e, xb: () => XB, H(x, z) {
+    for (const c of CARS) { const cab = c.def.cabin; if (!cab || Math.abs(x - c.x) > 4 || Math.abs(z - c.z) > 4) continue; const [lx, lz] = toL(c, x, z), f = cabFloor(cab, lx, lz); if (f != null) return Math.max(H0(x, z), base(c) + f); }
+    return H0(x, z);
+  } };
+}
+// the third-person camera stays inside the van while the walker is (footfig.js fit: 0..1 along target -> camera)
+export function vanFit() {
+  const v = F.on && !cur && inVan(); if (!v) return null; const { c } = v, cab = c.def.cabin, y0 = base(c);
+  return (tx, ty, tz, cx, cy, cz) => {
+    const [ax, az] = toL(c, tx, tz), [bx, bz] = toL(c, cx, cz); let t = 1;
+    const clip = (p0, p1, lo, hi) => { const d = p1 - p0; if (p1 > hi && d > 0) t = Math.min(t, (hi - p0) / d); if (p1 < lo && d < 0) t = Math.min(t, (lo - p0) / d); };
+    clip(ax, bx, -cab.x + .1, cab.x - .1); clip(az, bz, cab.z[0] + .1, cab.nose - .5); clip(ty, cy, y0 + cab.floor + .2, y0 + cab.roof - .08); return Math.max(0, t);
+  };
+}
+
+// ---- your bike in the cargo bay: a snapshot of the model as it is set up (parts, paint, tune), the real one hidden and parked ----
+function load(c) {
+  const cab = c.def.cabin; if (ctx.spec && ctx.spec.sc) return say('Take the sidecar off first', 1800);
+  const snap = snapshot(), o = snap.o; snap.h.rider.forEach(r => r.visible = false); o.position.set(0, 0, 0); o.rotation.set(0, 0, 0); o.updateMatrixWorld(true);
+  const bb = new THREE.Box3(), tb = new THREE.Box3(); o.traverseVisible(m => { if (m.isMesh && m.geometry) { if (!m.geometry.boundingBox) m.geometry.computeBoundingBox(); bb.union(tb.copy(m.geometry.boundingBox).applyMatrix4(m.matrixWorld)); } });
+  const L = bb.max.z - bb.min.z, why = cargoWhy(cab, c.fit, L, bb.max.y - bb.min.y); if (why) { snap.dispose(); return say(why, 1800); }
+  const g = new THREE.Group(), z0 = cab.z[0] + .04; g.add(o); g.rotation.y = Math.PI; g.position.set(cab.cargo.x + (bb.min.x + bb.max.x) / 2, cab.floor - bb.min.y, z0 + bb.max.z); c.m.root.add(g);
+  c.bike = { g, snap, L, span: [z0, z0 + L] }; ctx.bikeIn = c; B.root.visible = false; BLOB_ME.off = true; blip('thud', .8); say('Bike loaded. Strap it down and drive', 1800);
+}
+function dropBike(c) { c.m.root.remove(c.bike.g); c.bike.snap.dispose(); c.bike = null; ctx.bikeIn = null; if (!ctx.ride) B.root.visible = true; BLOB_ME.off = false; }
+function unload(c) {
+  const cab = c.def.cabin, d = cab.tail - 1.35, sn = Math.sin(c.h), cs = Math.cos(c.h), x = c.x + d * sn, z = c.z + d * cs;
+  for (const b of nearBoxes(OBBS, x, z)) { const ax = x - b.cx, az = z - b.cz, lx = ax * b.c + az * b.s, lz = -ax * b.s + az * b.c; if (Math.abs(lx) < b.hx + .4 && Math.abs(lz) < b.hz + 1.1) return say('No room behind the van', 1500); }
+  if (H(x, z) < SEA + .15) return say('Not into the sea', 1500);
+  dropBike(c); const sp = ctx.spec;
+  Object.assign(S, { x, z, psi: c.h, v: 0, lean: 0, leanV: 0, th: 0, thV: 0, yaw: 0, steer: 0, delta: 0, zV: 0 }); S.hF = S.hR = roadH(x, z); S.zH = S.hF + (sp.yf + sp.yr + sp.pf + sp.pr) / 2; syncBody();
+  blip('thud', .6); say('Bike unloaded', 1200);
 }
 const near = () => { let b = null, bd = REACH; for (const c of CARS) { const d = Math.hypot(F.x - c.x, F.z - c.z); if (d < bd && Math.abs(F.y - (c.y - c.def.body.cg[1])) < 2) { bd = d; b = c; } } return b; };
 export const carDriving = () => !!cur;
@@ -61,8 +127,9 @@ export function carExit(force) {
 
 const GEARS = c => c.X.gear < 0 ? 'R' : c.X.gear === 0 ? 'N' : String(c.X.gear);
 function drive(c, dt) {
-  const I = c.I, v = c.K.v, kb = (K.KeyA || K.ArrowLeft ? 1 : 0) - (K.KeyD || K.ArrowRight ? 1 : 0), tg = clamp(kb + PAD.st, -1, 1);
-  c.st += clamp(tg - c.st, -(tg === 0 || tg * c.st < 0 ? 4.5 : 2.6) * dt, (tg === 0 || tg * c.st < 0 ? 4.5 : 2.6) * dt); I.steer = c.st;
+  const I = c.I, v = c.K.v, kb = (K.KeyA || K.ArrowLeft ? 1 : 0) - (K.KeyD || K.ArrowRight ? 1 : 0);
+  if (WH.id === null) WH.a = appr(WH.a, 0, (2.5 + Math.min(4, Math.abs(v) * .25)) * dt); // let go: the wheel unwinds, faster when rolling (caster)
+  const wt = WH.id !== null || WH.a !== 0; c.st = wt ? -WH.a / WMAX() : appr(c.st, kb, (kb ? 2.2 : 4) * dt); I.steer = c.st;
   I.thr = K.KeyW || K.ArrowUp ? 1 : PAD.gas; I.brk = K.KeyS || K.ArrowDown ? 1 : PAD.brk; I.hb = K.Space || PAD.hb ? 1 : 0;
   if (PAD.auto) { c.auto ^= 1; I.auto = c.auto; say(c.auto ? 'Automatic shifting' : 'Manual shifting', 1200); }
   if (PAD.up) { if (I.sel < 0) I.sel = 0; else if (I.sel === 0) { if (v > -2) I.sel = 1; else say('Stop first'); } else I.up = 1; }
@@ -118,7 +185,12 @@ export function carFrame(dt) {
     const on = c === cur && (c.E.on || c.E.rpm > 200), night = ctx.night ?? 0; c.lit = on ? 1 : 0;
     m.M.lamp.emissiveIntensity = on ? .6 + 2.4 * night : 0; m.M.tail.emissiveIntensity = on ? (c.I.brk > .05 ? 2.6 : .35 + .5 * night) : 0; m.M.rev.emissiveIntensity = on && c.X.gear < 0 ? 2 : 0;
   }
+  // the walker's world: walls + fitted items of vans nearby; first person ducks under the roof inside
+  XB.length = 0;
+  if (F.on && !cur) for (const c of CARS) { if (!c.box || Math.abs(F.x - c.x) > 12 || Math.abs(F.z - c.z) > 12) continue; const k = Math.cos(c.h), s = Math.sin(c.h); for (const b of c.box) XB.push({ cx: c.x + b.x * k + b.z * s, cz: c.z - b.x * s + b.z * k, hx: b.hx, hz: b.hz, c: k, s: -s }); }
+  const iv = F.on && !cur && inVan(); if (iv && F.eye0 == null) { F.eye0 = F.eye; F.eye = Math.min(F.eye, iv.c.def.cabin.roof - iv.c.def.cabin.floor - .2); } else if (!iv && F.eye0 != null) { F.eye = F.eye0; F.eye0 = null; }
   const c = cur; if (!c) return;
+  hudWheel(-c.st * WMAX());
   const sp = c.K.sp, cs = Math.cos(c.h), sn = Math.sin(c.h);
   hudDraw({ kmh: Math.abs(c.K.v) * 3.6, rpm: c.E.rpm, vmax: c.def.cab.vmax, rmax: sp.tachMax, red: sp.red, fuel: c.fuel / c.def.fuel.cap, gear: GEARS(c), hb: c.I.hb, auto: c.auto, lit: c.lit, odo: c.odo });
   c.snd.run = c.E.on ? 1 : 0; c.snd.rpm = c.E.rpm; c.snd.load = c.E.thr; c.snd.cut = c.E.rpm > sp.red ? 1 : 0;

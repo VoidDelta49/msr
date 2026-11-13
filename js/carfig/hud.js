@@ -1,6 +1,7 @@
 // The driver's UI for cars (js/carfig/drive.js): the dash meter (one canvas: on screen and on the model's dash), touch pedals /
-// steering / gear buttons, and the keyboard's one-shot keys. Its DOM and CSS are made here, shown only while body.car is set.
+// steering wheel / gear buttons, and the keyboard's one-shot keys. Its DOM and CSS are made here, shown only while body.car is set.
 import * as THREE from 'three';
+import { cfg } from '../config.js';
 
 const el = (tag, id, html, par = document.body) => { const e = document.createElement(tag); e.id = id; if (html) e.innerHTML = html; par.appendChild(e); return e; };
 const css = document.createElement('style'); css.textContent = `
@@ -10,7 +11,8 @@ body.car #joy,body.car #jumpB{display:none!important}
 #carClu{position:absolute;left:50%;bottom:calc(8px + env(safe-area-inset-bottom));width:min(330px,44vw);transform:translateX(-50%);border-radius:14px;box-shadow:0 2px 14px #0008;opacity:var(--hud-op,1)}
 #carUI .cp{position:absolute;pointer-events:auto;touch-action:none;display:none;align-items:center;justify-content:center;color:#fff;background:#0007;border:2px solid #fff5;border-radius:16px;backdrop-filter:blur(3px)}
 body.touch #carUI .cp{display:flex} #carUI .cp.on{background:#fff4;border-color:#fff}
-#cpL,#cpR{bottom:calc(18px + env(safe-area-inset-bottom));width:84px;height:84px;font-size:34px} #cpL{left:calc(16px + env(safe-area-inset-left))} #cpR{left:calc(110px + env(safe-area-inset-left))}
+#cpWh{position:absolute;pointer-events:auto;touch-action:none;display:none;left:calc(12px + env(safe-area-inset-left));bottom:calc(12px + env(safe-area-inset-bottom));width:min(168px,40vw);height:min(168px,40vw)}
+body.touch #cpWh{display:block} #cpWh svg{width:100%;height:100%;overflow:visible} #cpWh.on #cwRim{stroke:#fff}
 #cpGas,#cpBrk{bottom:calc(18px + env(safe-area-inset-bottom));width:76px;border-radius:12px} #cpGas{right:calc(16px + env(safe-area-inset-right));height:128px} #cpBrk{right:calc(102px + env(safe-area-inset-right));height:96px}
 #cpUp,#cpDn,#cpHb,#cpAuto{width:60px;height:48px;right:calc(16px + env(safe-area-inset-right))} #cpUp{bottom:calc(216px + env(safe-area-inset-bottom))} #cpDn{bottom:calc(160px + env(safe-area-inset-bottom))}
 #cpHb,#cpAuto{right:calc(86px + env(safe-area-inset-right))} #cpHb{bottom:calc(160px + env(safe-area-inset-bottom))} #cpAuto{bottom:calc(216px + env(safe-area-inset-bottom));font-size:11px}`;
@@ -18,14 +20,27 @@ document.head.appendChild(css);
 const UI = el('div', 'carUI'), cv = el('canvas', 'carClu', '', UI); cv.width = 420; cv.height = 150; const g = cv.getContext('2d');
 export const cluTex = new THREE.CanvasTexture(cv); cluTex.colorSpace = THREE.SRGBColorSpace; cluTex.generateMipmaps = false; cluTex.minFilter = THREE.LinearFilter;
 // what the driver's hands and feet ask for: analog 0..1 pads + one-shot presses (up / dn / auto), read and cleared by drive.js
-export const PAD = { st: 0, gas: 0, brk: 0, hb: 0, up: 0, dn: 0, auto: 0, live: false };
+export const PAD = { gas: 0, brk: 0, hb: 0, up: 0, dn: 0, auto: 0, live: false };
 const pad = (id, txt, down, up) => {
   const e = el('div', id, txt, UI); e.className = 'cp';
   e.addEventListener('pointerdown', ev => { ev.preventDefault(); e.setPointerCapture(ev.pointerId); e.classList.add('on'); down(); });
   const off = () => { e.classList.remove('on'); if (up) up(); }; e.addEventListener('pointerup', off); e.addEventListener('pointercancel', off); return e;
 };
-let stL = 0, stR = 0; const st = () => { PAD.st = stL - stR; };
-pad('cpL', '◀', () => { stL = 1; st(); }, () => { stL = 0; st(); }); pad('cpR', '▶', () => { stR = 1; st(); }, () => { stR = 0; st(); });
+// the steering wheel: grab it anywhere and turn it round its centre, like the bikes' bar (controls.js #wheel). WA = the wheel's angle
+// (rad, + = clockwise = right), WMAX its lock (Options > sensitivity, as on the bikes); let go and it self-centres (drive.js).
+export const WH = { a: 0, id: null }; export const WMAX = () => 2.3 * 10 / (cfg.sens || 10);
+const wh = el('div', 'cpWh', `<svg viewBox="-62 -62 124 124"><circle r="58" fill="#0005"/><g id="cwG" fill="none" stroke-linecap="round">
+<circle id="cwRim" r="50" stroke="#fffb" stroke-width="9"/><circle r="50" stroke="#0006" stroke-width="2" stroke-dasharray="3 9"/>
+<path d="M-46 6 L-14 8 M46 6 L14 8 M0 16 L0 46" stroke="#fff9" stroke-width="8"/><circle r="15" fill="#1a1c20" stroke="#fffa" stroke-width="2"/>
+<path d="M0 -55 L0 -45" stroke="#ff7a1a" stroke-width="7"/></g></svg>`, UI), wg = wh.querySelector('#cwG');
+let pa = 0, wcx = 0, wcy = 0;
+wh.addEventListener('pointerdown', e => { e.preventDefault(); wh.setPointerCapture(e.pointerId); const r = wh.getBoundingClientRect(); wcx = r.left + r.width / 2; wcy = r.top + r.height / 2; WH.id = e.pointerId; pa = Math.atan2(e.clientY - wcy, e.clientX - wcx); wh.classList.add('on'); });
+wh.addEventListener('pointermove', e => {
+  if (WH.id !== e.pointerId) return; const dx = e.clientX - wcx, dy = e.clientY - wcy; if (dx * dx + dy * dy < 200) return; // near the hub the angle is noise
+  const a = Math.atan2(dy, dx); let d = a - pa; if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; pa = a; WH.a = Math.max(-WMAX(), Math.min(WMAX(), WH.a + d));
+});
+const wup = e => { if (WH.id === e.pointerId) { WH.id = null; wh.classList.remove('on'); } }; wh.addEventListener('pointerup', wup); wh.addEventListener('pointercancel', wup);
+let wLast = ''; export function hudWheel(a) { const t = 'rotate(' + (a * 57.3).toFixed(1) + ')'; if (t !== wLast) { wLast = t; wg.setAttribute('transform', t); } }
 pad('cpGas', 'GAS', () => { PAD.gas = 1; }, () => { PAD.gas = 0; }); pad('cpBrk', 'BRAKE', () => { PAD.brk = 1; }, () => { PAD.brk = 0; });
 pad('cpUp', '▲', () => { PAD.up = 1; }); pad('cpDn', '▼', () => { PAD.dn = 1; });
 const hbE = pad('cpHb', 'P', () => { PAD.hb = PAD.hb ? 0 : 1; }, () => hbE.classList.toggle('on', !!PAD.hb)), auE = pad('cpAuto', 'AUTO', () => { PAD.auto = 1; });
@@ -33,7 +48,7 @@ addEventListener('keydown', e => {
   if (!PAD.live || e.repeat || e.target.type === 'text') return;
   if (e.code === 'ShiftLeft' || e.code === 'ShiftRight' || e.code === 'KeyX') PAD.up = 1; else if (e.code === 'ControlLeft' || e.code === 'KeyZ') PAD.dn = 1; else if (e.code === 'KeyM') PAD.auto = 1;
 });
-export function hudShow(on) { PAD.live = on; document.body.classList.toggle('car', on); if (!on) { PAD.st = PAD.gas = PAD.brk = PAD.hb = PAD.up = PAD.dn = PAD.auto = stL = stR = 0; hbE.classList.remove('on'); } }
+export function hudShow(on) { PAD.live = on; document.body.classList.toggle('car', on); if (!on) { PAD.gas = PAD.brk = PAD.hb = PAD.up = PAD.dn = PAD.auto = 0; WH.a = 0; WH.id = null; wh.classList.remove('on'); hbE.classList.remove('on'); } }
 
 // three round dials like the real meter: tachometer, speedometer in the middle, fuel; orange needles on black
 const dial = (x, y, r, a0, a1, v, n, lab, red) => {

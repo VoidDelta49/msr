@@ -5,7 +5,7 @@
   "class": "VAN",
   "tag": "5-speed manual · rear-wheel drive · diesel",
   "blurb": "The Philippines' people mover (H200, KDH200 body). 3.0 L 1KD-FTV common-rail turbodiesel under the front seats, 5-speed manual, rear-wheel drive, torsion bars in front and a leaf-sprung live axle behind.",
-  "hint": "Shift = gear up (1st), Ctrl = down · W gas · S brake · A / D steer · F get out",
+  "hint": "Shift = gear up (1st), Ctrl = down · W gas · S brake · A / D steer · F get out. On foot: walk in through the sliding door, E takes seats out / loads your bike at the back",
   "model": "hiace",
   "paint": "#f4f5f3",
   "body": { "m": 1915, "size": [1.695, 1.8, 4.695], "off": -0.1125, "cg": [0, 0.78, 0.154], "clear": 0.18, "drag": 0.74 },
@@ -25,5 +25,20 @@
   ],
   "fuel": { "cap": 70, "bsfc": 235, "idle": 0.9 },
   "cab": { "eye": [0.4, 1.62, 0.98], "door": [1.35, 1.1], "vmax": 180 },
+  "cabin": {
+    "floor": 0.615, "roof": 1.86, "x": 0.77, "t": 0.08, "tail": -2.46, "nose": 2.235, "z": [-2.38, 0.66],
+    "door": { "side": -1, "z": [-0.7, 0.76], "step": 0.33 },
+    "cargo": { "x": 0, "w": 0.72 },
+    "items": {
+      "bench3": { "name": "3-seat bench", "kind": "bench", "x": 0.2, "w": 1.1 },
+      "bench4": { "name": "4-seat bench", "kind": "bench", "x": 0, "w": 1.4, "soft": 0 }
+    },
+    "slots": [
+      { "id": "r2", "z": 0.3, "fit": ["bench3", ""] },
+      { "id": "r3", "z": -0.45, "fit": ["bench3", ""] },
+      { "id": "r4", "z": -1.2, "fit": ["bench3", ""] },
+      { "id": "r5", "z": -1.95, "fit": ["bench4", ""] }
+    ]
+  },
   "sound": { "cyl": 4, "gain": 0.95, "pq": 1.1, "bq": 1.6, "punch": 1.5, "rough": 0.16, "crackle": 0, "mech": 1.3, "intake": 0.5, "bright": 0.55, "drive": 1.1, "muf": 1.4, "hdr": 0.85, "lp": 0.8 }
 }

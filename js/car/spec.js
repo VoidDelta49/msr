@@ -1,6 +1,7 @@
 // data/cars/<id>.json -> the numbers the systems run on (the car twin of spec.js computeSpec). Headless.
 // Vehicle frame: origin on the ground under the middle of the wheelbase at ride height, +z forward, +x LEFT, +y up, metres.
 // A vehicle is a list of AXLES, so 3 wheels (track 0 = one centre wheel), 4, or a 6-wheel truck are all just data.
+import { cabProblems } from './cabin.js';
 const G = 9.81, d2r = Math.PI / 180;
 export const GEARBOXES = ['manual', 'auto'];
 
@@ -32,6 +33,7 @@ export function carProblems(c) {
     need(c.cab && ['eye', 'door'].every(k => Array.isArray(c.cab[k]) && c.cab[k].every(v => num(v, -10, 10))) && num(c.cab.vmax, 60, 400), 'cab {eye [x, y, z], door [x, z], vmax km/h on the dial}'); need(typeof c.hint === 'string', 'hint');
   }
   need(ax.some(a => a.drive > 0), 'no driven axle'); need(ax.some(a => a.steer), 'no steered axle'); need(new Set(ax.map(a => a.z)).size === ax.length, 'two axles at the same z');
+  P.push(...cabProblems(c.cabin)); // optional walk-in cabin + fit-out slots (cabin.js)
   return P;
 }
 
