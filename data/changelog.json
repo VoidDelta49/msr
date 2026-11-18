@@ -1,4 +1,5 @@
 [
+{"v": "12.23", "d": "2026-11-18", "t": ["New bike: Honda PCX160 (PH model, ABS): 157 cc eSP+ liquid-cooled single, 16 PS, 14.7 Nm, V-Matic CVT, Idling Stop, 14\" / 13\" wheels. The first bike built entirely in the Model Maker."]},
 {"v": "12.22", "d": "2026-11-18", "t": ["Model Maker (maker/model.html): build bike, car and prop models from parts, trace over a side photo, save them into the game."]},
 {"v": "12.21", "d": "2026-11-18", "t": ["Gear shifts clunk in the hand and the rev limiter stutters (Vibration).", "Options > Controls: Test vibration button that says what your browser does with it."]},
 {"v": "12.20", "d": "2026-11-18", "t": ["Engine vibration: the phone pulses with the engine, slow thumps at idle and a faster, stronger buzz on the throttle (Options > Controls, Android)."]},

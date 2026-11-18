@@ -1514,27 +1514,28 @@ function xmax(ct) {
 // the whole body on the bare running gear below. Parts are drawn in bike (ct) coordinates and then hung on the handle their group names,
 // keeping where they are: steer turns with the bars, slider rides with the fork lowers, rear with the rear hub.
 let MESH = null;
-const MATK = { paint: MP, black: MK, matte: MB, chrome: MC, alu: MAlu, metal: ME, rubber: MR, seat: MS, glass: MVisG, gold: MGold, light: MHead, tail: MTail, amber: MAmb };
+const MATK = { paint: MP, black: MK, matte: MB, chrome: MC, alu: MAlu, metal: ME, cal: MCal, rubber: MR, seat: MS, glass: MVisG, gold: MGold, light: MHead, tail: MTail, amber: MAmb };
 function addMesh(M, ct, exh) {
   const { g } = buildMdl(THREE, M, k => MATK[k] || xstd(parseInt(k.slice(1), 16), .5, .1)), to = { ct, steer: B.steer, slider: B.slider, rear: B.rearH, exh: exh || ct };
   ct.updateMatrixWorld(true);
   for (const [k, grp] of Object.entries(g)) for (const o of [...grp.children]) { ct.add(o); if (to[k] !== ct) to[k].attach(o); }
 }
 // bare running gear for "model": "custom", placed from the model's frame (the maker's blue guides): wheels, fork, swing arm, bars, rider
+// optional frame keys: disc [front, rear] disc radius m, rider [torso, head, arms, legs] = rider() arguments (a scooter's feet-forward pose)
 function custom(ct) {
   const f = MESH.frame, rw = f.rw, R = rw - .04, fz = f.rearZ - f.wb, [hz, hy] = f.head, dy = f.seat[1] - .85, dz = f.seat[0] - .35, sh = (a, i, j) => a.map((v, n) => v + (n === i ? dy : n === j ? dz : 0));
   T0 = [hz, hy]; RK = f.rake * PI / 180; const [az, ay] = toSt(fz, rw);
   B.G = { rw, rearZ: f.rearZ, fork: -ay, rake: RK, pivotY: f.pivot[1], pivotZ: f.pivot[0], swingX: 0 }; B.wheelCol = 0x16171a; B.cargo = { y: f.seat[1] + .05, z: f.seat[0] + .12 };
-  B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, f.rearZ); ct.add(B.rearH); B.rearW = wheelG(R, .04, R - .038, 5, .02, true, .095); B.rearH.add(B.rearW);
+  B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, f.rearZ); ct.add(B.rearH); const [dF, dR] = f.disc || [.13, .095]; B.rearW = wheelG(R, .04, R - .038, 5, .02, true, dR); B.rearH.add(B.rearW);
   B.swing = mk(mergeGeometries([box(.03, .065, 1).translate(.1, 0, 0), box(.03, .065, 1).translate(-.1, 0, 0), box(.2, .04, .05).translate(0, 0, -.46)]), MK, ct, 0, f.pivot[1], f.pivot[0]);
   const tilt = new THREE.Group(); tilt.position.set(0, hy, hz); tilt.rotation.x = RK; ct.add(tilt);
   const st = B.steer = new THREE.Group(); tilt.add(st);
   for (const s of [-1, 1]) tube([s * .08, .05, az], [s * .08, ay + .12, az], .021, MC, st);
   mk(box(.22, .03, .08), MB, st, 0, .04, az / 2); mk(box(.2, .025, .07), MB, st, 0, -.13, az / 2);                // yokes
   B.slider = new THREE.Group(); B.slider.position.set(0, ay, az); st.add(B.slider);
-  B.frontW = wheelG(R, .04, R - .038, 5, .02, true, .13); B.slider.add(B.frontW);
+  B.frontW = wheelG(R, .04, R - .038, 5, .02, true, dF); B.slider.add(B.frontW);
   clusterPlane(st, 0, .2, -.08, -.9); controls(st, .16, .07, .29, .2, [.3, .17, -.06]);
-  rider(ct, sh([1.12, .3, -.35], 0, 1), sh([1.48, .14], 0, 1), sh([.22, 1.18, 0, .6, .45], 1, 2), [sh([.15, .9, .2, .2, .45, .14], 1, 2), sh([.18, .58, .02, -.2, .42, .11], 1, 2)]);
+  if (f.rider) rider(ct, ...f.rider); else rider(ct, sh([1.12, .3, -.35], 0, 1), sh([1.48, .14], 0, 1), sh([.22, 1.18, 0, .6, .45], 1, 2), [sh([.15, .9, .2, .2, .45, .14], 1, 2), sh([.18, .58, .02, -.2, .42, .11], 1, 2)]);
   B.cam = new THREE.Group(); B.cam.position.set(0, 1.36 + dy, .1 + dz); ct.add(B.cam);
   B.exh = new THREE.Group(); ct.add(B.exh); const M = MESH;
   addMesh({ ...M, parts: M.parts.filter(q => q.g !== 'exh') }, ct);

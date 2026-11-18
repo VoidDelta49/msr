@@ -7,7 +7,7 @@ export const TYPES = { box: ['w', 'h', 'd'], cyl: ['r top', 'r bottom', 'h', 'si
 export const DEF = { box: [.2, .1, .3], cyl: [.05, .05, .2, 12], sph: [.08, 1], prof: [.2, .01], tube: [.015], torus: [.25, .04] };
 // colour, roughness, metalness, emissive: the bike's own materials carry the same names (model.js MATK)
 export const MATS = { paint: [0xd23b2a, .36, .2], black: [0x15161a, .34, .3], matte: [0x141518, .6, .2], chrome: [0xd5dae0, .22, 1], alu: [0xb9bec4, .32, .75], metal: [0x2a2c30, .45, .6],
-  rubber: [0x0d0d0d, .95, 0], seat: [0x1b1b1b, .85, 0], glass: [0x2c3036, .15, .5], gold: [0xc39a45, .3, .85], light: [0xfff8e0, .2, 0, 0xfff4d0], tail: [0x330000, .4, 0, 0xff1a1a], amber: [0x3a2400, .4, 0, 0xff9a1a] };
+  rubber: [0x0d0d0d, .95, 0], seat: [0x1b1b1b, .85, 0], glass: [0x2c3036, .15, .5], gold: [0xc39a45, .3, .85], cal: [0x15161a, .34, .3], light: [0xfff8e0, .2, 0, 0xfff4d0], tail: [0x330000, .4, 0, 0xff1a1a], amber: [0x3a2400, .4, 0, 0xff9a1a] };
 // where a part hangs. bike: ct = frame/body, steer = turns with the bars (built straight, in the same bike coordinates), slider = fork
 // lowers (move with the front wheel), rear = rear hub (moves with the rear wheel), exh = exhaust. car: body, wheel (one wheel at the
 // origin, copied to every axle), steer = steering wheel. prop: one piece.
