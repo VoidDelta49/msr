@@ -16,6 +16,7 @@ import { radioTick, RAD } from './radio.js';
 import { say, drawCluster, drawMini, updPerf, setFps, setPhys, setGfx, setJank } from './hud.js';
 import { RP, TICK, initRapier, tickR, syncBody, crashVisual, bounce } from './rapier.js';
 import { actions, input, footInput, ptr, TC, WMAX } from './controls.js';
+import { GP } from './pad.js';
 import { F, footEnv, footStep, dismount, mount, nearBike, offBlock } from './foot.js';
 import { figBuild, figShow, figBody, figPose, footCam } from './footfig.js';
 import { missions, animMarker } from './missions.js';
@@ -221,7 +222,7 @@ Object.assign(actions, {
 });
 O.onPerf = () => updPerf(API);
 benchInit({ reset, toggleCam, startEngine, sync: syncBody, say, done: () => showOpts('sys') }); // bench.js (Options > System > BENCHMARK)
-RAD.say = say; // radio.js shows the station name through the HUD message
+RAD.say = say; GP.say = say; // radio.js shows the station name through the HUD message
 $('bGar').onclick = openGarage; $('bCam').onclick = () => F.on ? footCamToggle() : toggleCam(); $('bFoot').onclick = () => actions.foot(); $('bReset').onclick = () => { if (ctx.rideExit) ctx.rideExit(); reset(); say('Back at the lot'); };
 function goFS() { const d = document.documentElement; if (!document.fullscreenElement && d.requestFullscreen) d.requestFullscreen({ navigationUI: 'hide' }).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => { })).catch(() => { }); }
 addEventListener('pointerdown', () => { if (!ctx.paused && !ctx.GAR && !ctx.OPT) goFS(); });

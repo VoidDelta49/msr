@@ -8,8 +8,10 @@ import { EF, drunkK, drunkRide } from './effects.js';
 import { hudToggle, hudStep } from './options.js';
 import { radioStep } from './radio.js';
 import { buzz } from './haptic.js';
+import { GP } from './pad.js';
 
 export const actions = {};
+GP.F = F; // pad.js: foot or bike button map
 export const K = {}, TC = { back: 0, st: 0, stId: null, thr: 0, thrId: null, brk: 0, brkId: null, clu: 0, wa: 0, cluId: null, rev: 0, jump: 0 };
 addEventListener('keydown', e => {
   if (e.repeat || (e.target.type === 'text')) return; K[e.code] = true; const A = actions; if (ctx.MENU) return; // pause menu open (menu.js)
@@ -60,17 +62,17 @@ addEventListener('touchend', () => { const D = window.DeviceOrientationEvent; if
 const HND = { thr: 0, brake: 0, steer: 0 }, DR = {};
 export function input(dt) {
   const kT = K.KeyW || K.ArrowUp, kB = K.KeyS || K.ArrowDown, kS = ((K.KeyD || K.ArrowRight) ? 1 : 0) - ((K.KeyA || K.ArrowLeft) ? 1 : 0);
-  HND.thr = TC.thrId !== null ? TC.thr : appr(HND.thr, kT ? 1 : 0, (kT ? 3.5 : 9) * dt);
+  HND.thr = TC.thrId !== null ? TC.thr : GP.on && !kT ? GP.thr : appr(HND.thr, kT ? 1 : 0, (kT ? 3.5 : 9) * dt);
   // scooter / rotary semi-auto: no clutch lever, so Space is the rear brake instead
   const cvt = ctx.spec.type !== 'manual', kBr = kB || (cvt && K.Space);
   // analog lever: touch sets the pull directly, keys squeeze it on progressively (hold longer = harder)
-  HND.brake = TC.brkId !== null ? TC.brk : appr(HND.brake, kBr ? 1 : 0, (kBr && cfg.analogBrk !== false ? 2.5 : 12) * dt);
+  HND.brake = TC.brkId !== null ? TC.brk : GP.on && !kBr ? (cvt ? Math.max(GP.brk, GP.clu) : GP.brk) : appr(HND.brake, kBr ? 1 : 0, (kBr && cfg.analogBrk !== false ? 2.5 : 12) * dt);
   if (TC.stId === null) TC.wa = appr(TC.wa, 0, 5 * dt); const wt = TC.stId !== null || TC.wa !== 0, tgt = wt ? TC.wa / WMAX() : kS;
-  HND.steer = wt ? tgt : cfg.tilt && TL.ok && !kS ? HND.steer + (TL.s - HND.steer) * Math.min(1, 12 * dt) : appr(HND.steer, tgt, (kS ? 2.2 : 4) * dt); // touch wheel / keys win over tilt
+  HND.steer = wt ? tgt : GP.on && !kS ? HND.steer + (GP.steer - HND.steer) * Math.min(1, 16 * dt) : cfg.tilt && TL.ok && !kS ? HND.steer + (TL.s - HND.steer) * Math.min(1, 12 * dt) : appr(HND.steer, tgt, (kS ? 2.2 : 4) * dt); // touch wheel / keys win over tilt
   // drunk: steering, throttle and brake are mostly not yours any more (effects.js); sober this passes them straight through
   const o = drunkRide(HND.steer, HND.thr, HND.brake, drunkK(), EF.t, DR); S.steer = o.steer; S.thr = o.thr; S.brake = o.brake;
   if (cvt) S.cl = 0;
-  else { if (TC.cluId === null) TC.clu = appr(TC.clu, 0, 5 * dt); S.cl = K.Space ? appr(S.cl, 1, 8 * dt) : TC.cluId !== null ? TC.clu : appr(S.cl, TC.clu, 2.5 * dt); }
+  else { if (TC.cluId === null) TC.clu = appr(TC.clu, 0, 5 * dt); S.cl = K.Space ? appr(S.cl, 1, 8 * dt) : TC.cluId !== null ? TC.clu : GP.on ? Math.max(GP.clu, TC.clu) : appr(S.cl, TC.clu, 2.5 * dt); }
   S.back = !!(TC.back || K.KeyX);
   S.shCD -= dt; S.cutT -= dt; S.act -= dt; S.qbT -= dt;
 }
@@ -87,5 +89,5 @@ export function footInput(dt) {
   const kf = (K.KeyW || K.ArrowUp ? 1 : 0) - (K.KeyS || K.ArrowDown ? 1 : 0), kr = (K.KeyD || K.ArrowRight ? 1 : 0) - (K.KeyA || K.ArrowLeft ? 1 : 0);
   const jm = Math.hypot(TC.jx, TC.jy), live = jm > .15; jrun = jm > (jrun ? .8 : .92); // small dead zone so a resting thumb doesn't creep
   const held = !!(K.Space || TC.jumpH), jump = held || !!TC.jump; TC.jump = 0; // jump: pressed since last frame or still held; held alone lets a tap be a short hop
-  return { mx: clamp(kr + (live ? TC.jx : 0), -1, 1), mz: clamp(kf - (live ? TC.jy : 0), -1, 1), run: !!(K.ShiftLeft || K.ShiftRight) || jrun, jump, held };
+  return { mx: clamp(kr + (live ? TC.jx : 0) + GP.mx, -1, 1), mz: clamp(kf - (live ? TC.jy : 0) + GP.mz, -1, 1), run: !!(K.ShiftLeft || K.ShiftRight) || jrun || GP.run, jump, held };
 }

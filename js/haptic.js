@@ -3,6 +3,7 @@
 // (iOS 18+) plays a Taptic tick when a switch checkbox is toggled, which it only allows inside a tap, so there a pulse is one tick and
 // only button presses (and whatever lands in the same tap) are felt.
 import { cfg } from './config.js';
+import { padFeel, padEngine } from './pad.js'; // controllers rumble too
 
 const N = typeof navigator !== 'undefined' ? navigator : {};
 function tick() {
@@ -26,6 +27,7 @@ export function buzz(p) {
 // On the rev limiter (cut) it is a hard, choppy stutter instead.
 let eT = 0, eOn = false;
 export function engineFeel(run, rpm, load, cyl, cut) {
+  padEngine(run, rpm, load, cyl, cut);
   if (!N.vibrate) return; const now = performance.now();
   if (!run || cfg.haptic === false || cfg.hEng === false) { if (eOn && now > hold) { try { N.vibrate(0); } catch (e) { } } eOn = false; return; }
   if (now < eT || now < hold) return;
@@ -50,4 +52,4 @@ export function vibeTest() {
   let r = false; try { r = N.vibrate([200, 100, 200]); } catch (e) { } hold = performance.now() + 500;
   return r ? 'Sent. Felt nothing? This browser or the phone is muting it' : 'This browser refused it';
 }
-export function feel(type, amt) { const f = FEEL[type], p = f && f(amt); if (p) buzz(p); }
+export function feel(type, amt) { padFeel(type, amt); const f = FEEL[type], p = f && f(amt); if (p) buzz(p); }

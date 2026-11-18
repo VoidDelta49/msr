@@ -9,6 +9,7 @@ import { ctx, S } from '../state.js';
 import { BUILD } from '../config.js';
 import { F, nearBoxes } from '../foot.js';
 import { K } from '../controls.js';
+import { GP } from '../pad.js';
 import { figShow } from '../footfig.js';
 import { addAct } from '../act.js';
 import { say } from '../hud.js';
@@ -143,8 +144,8 @@ const GEARS = c => c.X.gear < 0 ? 'R' : c.X.gear === 0 ? 'N' : String(c.X.gear);
 function drive(c, dt) {
   const I = c.I, v = c.K.v, kb = (K.KeyA || K.ArrowLeft ? 1 : 0) - (K.KeyD || K.ArrowRight ? 1 : 0);
   if (WH.id === null) WH.a = appr(WH.a, 0, (2.5 + Math.min(4, Math.abs(v) * .25)) * dt); // let go: the wheel unwinds, faster when rolling (caster)
-  const wt = WH.id !== null || WH.a !== 0; c.st = wt ? -WH.a / WMAX() : appr(c.st, kb, (kb ? 2.2 : 4) * dt); I.steer = c.st;
-  I.thr = K.KeyW || K.ArrowUp ? 1 : PAD.gas; I.brk = K.KeyS || K.ArrowDown ? 1 : PAD.brk; I.hb = K.Space || PAD.hb ? 1 : 0;
+  const wt = WH.id !== null || WH.a !== 0; c.st = wt ? -WH.a / WMAX() : appr(c.st, kb || (GP.on ? -GP.steer : 0), (kb ? 2.2 : 4) * dt); I.steer = c.st;
+  I.thr = K.KeyW || K.ArrowUp ? 1 : Math.max(PAD.gas, GP.thr); I.brk = K.KeyS || K.ArrowDown ? 1 : Math.max(PAD.brk, GP.brk); I.hb = K.Space || PAD.hb || GP.clu > .5 ? 1 : 0;
   if (PAD.auto) { c.auto ^= 1; I.auto = c.auto; say(c.auto ? 'Automatic shifting' : 'Manual shifting', 1200); }
   if (PAD.up) { if (I.sel < 0) I.sel = 0; else if (I.sel === 0) { if (v > -2) I.sel = 1; else say('Stop first'); } else I.up = 1; }
   if (PAD.dn) { if (I.sel > 0 && c.X.gear > 1) I.dn = 1; else if (I.sel > 0) I.sel = 0; else if (I.sel === 0) { if (v < 2) I.sel = -1; else say('Stop first'); } }

@@ -11,6 +11,7 @@ import { WX, WX_MODES, wxText } from './weather.js';
 import { STATIONS } from './radiogen.js';
 import { RLOG } from './radiolive.js';
 import { buzz, vibeTest } from './haptic.js';
+import { jcConnect, padFeel } from './pad.js';
 
 export const O = { onPerf: null, setDPR: null, api: '', live: false, gpu: false, aa: null, snap };
 
@@ -126,7 +127,10 @@ function tGfx() {
     sw('bundles', 'Render bundles', gpuOff ? 'WebGPU only (this session runs WebGL 2).' : 'Records the static town once and replays it every frame: much less CPU work per frame. WebGPU only.', gpuOff) +
     sw('forceGL', 'Force WebGL', 'Use WebGL 2 even where WebGPU works. Try it if the game glitches or crashes.');
 }
-const tCtl = () => sec('TOUCH') +
+const tCtl = () => sec('CONTROLLER') +
+  sw('padRumble', 'Controller rumble', 'Engine pulses, bumps, landings, gear clicks and crashes in the controller. Joy-Cons play the engine\'s real firing frequency.') +
+  `<div class=obtns><button class=b data-act=jc>Connect Joy-Cons</button></div><p class=onote>Any controller: RT throttle, LT brake, LB (or right stick down) clutch, left stick steers, A / X shift up / down, B look back, Y camera, L3 start, R3 get off, Start menu. Joy-Cons (Chrome / Edge on a computer, paired over Bluetooth): connect each one here, then hold them like the grips. Twist the right one back for throttle, ZR front brake, ZL clutch (scooters: rear brake), left stick steers, R-stick click re-zeros the grip. The touch controls hide while a controller is connected.</p>` +
+  sec('TOUCH') +
   slider('sens', 'Steering sensitivity', 'How far the handlebar turns for a drag of the thumb.') +
   slider('ui', 'Control size', 'Scales the on-screen buttons and grips.') +
   sw('lefty', 'Left-handed layout', 'Mirrors the touch controls.') +
@@ -204,6 +208,7 @@ function set(k, v) {
   if (k === 'lefty') applyUi();
   if (k === 'tilt' && v && window.DeviceOrientationEvent?.requestPermission) DeviceOrientationEvent.requestPermission().catch(() => { }); // iOS: must be asked inside this tap
   if (k === 'haptic' && v) buzz(20);
+  if (k === 'padRumble' && v) padFeel('crunch');
   if (k === 'hudHide') applyHud();
   if (k === 'retro' && O.setDPR) O.setDPR();
   if (!(k in RELOAD) && O.onPerf) O.onPerf();
@@ -230,6 +235,7 @@ $('opts').onclick = e => {
   if (d.sg === 'preset') { Object.assign(cfg, PRESETS.find(p => p[0] === d.v)[2]); save(); build(true); return pop('preset'); }
   if (d.sg) return set(d.sg, parse(d.sg, d.v));
   if (d.act === 'reset') return resetAll();
+  if (d.act === 'jc') { b.textContent = 'Pick a Joy-Con...'; jcConnect().then(t => { b.textContent = t; }); return; }
   if (d.act === 'vtest') { b.textContent = vibeTest(); return; }
   if (d.act === 'tlay') { closeOpts(); return editTlay(); }
   if (d.act === 'copy') { const t = LOG.join('\n') || 'No errors logged'; const done = ok => { b.textContent = ok ? 'Copied' : 'Copy failed'; }; try { navigator.clipboard.writeText(t).then(() => done(true), () => done(false)); } catch (x) { done(false); } return; }
