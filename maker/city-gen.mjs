@@ -8,7 +8,7 @@ let sd = 93; const rnd = () => (sd = (Math.imul(sd, 1103515245) + 12345) >>> 0) 
 const G = 'g93'; // mark on everything generated
 M.features = M.features.filter(f => !f[G]); M.roads = M.roads.filter(r => !r[G]); M.islands = M.islands.filter(i => !i[G]);
 M.buildings = M.buildings.filter(b => b[7] !== G);
-const feat = f => M.features.push({ ...f, [G]: 1 }), road = r => M.roads.push({ w: 7, ...r, [G]: 1 }), isl = i => M.islands.push({ ...i, [G]: 1 });
+const feat = f => M.features.push({ ...f, [G]: 1 }), road = r => M.roads.push({ w: 6.7, ...r, [G]: 1 }), isl = i => M.islands.push({ ...i, [G]: 1 });
 const B = (t, x, z, ry = 0, w, d, fl) => { const b = [t, R1(x), R1(z), Math.round(ry * 1e4) / 1e4]; if (w !== undefined) b.push(R1(w), R1(d)); if (fl !== undefined) b.push(fl); while (b.length < 7) b.push(b.length === 4 ? 0 : b.length === 5 ? 0 : 0); b.length = 7; b.push(G); M.buildings.push(b); };
 // (buildings carry the mark in slot 7; world.js reads slots 0..6. Types without w/d get 0 there -> replaced below by the type default)
 const DEF = { shop: [8, 9.5], house: [7, 7], house2: [8, 9], bahay: [8.5, 8.5], bunga: [9, 7.5], sari: [4.4, 5], warehouse: [13, 26], bar: [12, 11], stall: [4.4, 3.4], cottage: [5.6, 5.6], tower: [20, 20], chapel: [6.4, 12], resort: [24, 12], lighthouse: [7, 7], lookout: [7, 7], rest: [11, 6], park: [60, 40], balete: [18, 18] };
@@ -39,7 +39,7 @@ for (const x of XS) runs(ZS.map(z => [x, z])).forEach((p, k) => road({ id: `ca${
 for (const z of ZS) runs(XS.map(x => [x, z])).forEach((p, k) => road({ id: `cs${z}_${k}`, pts: p, w: z === 1420 || z === 1150 ? 10 : 7 }));
 // Altavista: a loop round the hill, a spur up from Silangan, one down to San Roque, the malecon along the beach
 const A = []; for (let k = 0; k < 12; k++) { const a = k / 12 * 2 * Math.PI, r = 175 + 18 * Math.sin(k * 2.3); A.push([R1(880 + Math.cos(a) * r), R1(1580 + Math.sin(a) * r)]) }
-road({ id: 'altavista', pts: A, closed: true, w: 7 });
+road({ id: 'altavista', pts: A, closed: true, w: 6.7 });
 road({ id: 'altavista_n', pts: [[780, 1240], [690, 1300], [700, 1380], [790, 1425], [A[9][0], A[9][1]]] }); // switchbacks: the climb is 31 m
 road({ id: 'altavista_w', pts: [[A[6][0], A[6][1]], [560, 1600], [420, 1600]] });
 road({ id: 'malecon_e', pts: [[420, 1870], [600, 1880], [800, 1890], [1000, 1870]], w: 10 });
