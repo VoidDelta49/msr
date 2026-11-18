@@ -8,6 +8,7 @@ import { ctx } from './state.js';
 import { at } from './foot.js';
 import { say } from './hud.js';
 import { blip } from './audio.js';
+import { buzz } from './haptic.js';
 import { beacon } from './missions.js';
 import { H, SEA, ROADS, MAPV, MAPT, mapHi } from './world.js';
 import * as THREE from 'three';
@@ -20,7 +21,6 @@ const mapAt = () => { const P = at(), U = ctx.ug; return U && U.on && U.portal ?
 export const WP = ctx.WP = { on: false, x: 0, z: 0, n: '', path: null };
 ctx.wpK = ''; // changes with the waypoint so the minimap redraws
 const wpB = beacon(0xa78bfa, 8);
-const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { } };
 let RT = null, chk = 0, tagT = '', gap = 0; // gap: how far the route's first road point was when it was worked out (off-road starts)
 const tagC = document.createElement('canvas'); tagC.width = 256; tagC.height = 128;
 const tagX = new THREE.CanvasTexture(tagC); tagX.colorSpace = THREE.SRGBColorSpace;

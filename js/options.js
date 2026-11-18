@@ -10,6 +10,7 @@ import { cfg, save, BUILD, GLOBAL_DEF, AA_MODES, QUALITY } from './config.js';
 import { WX, WX_MODES, wxText } from './weather.js';
 import { STATIONS } from './radiogen.js';
 import { RLOG } from './radiolive.js';
+import { buzz } from './haptic.js';
 
 export const O = { onPerf: null, setDPR: null, api: '', live: false, gpu: false, aa: null, snap };
 
@@ -131,6 +132,8 @@ const tCtl = () => sec('TOUCH') +
   sw('lefty', 'Left-handed layout', 'Mirrors the touch controls.') +
   `<div class=obtns><button class=b data-act=tlay>Edit control layout</button></div><p class=onote>Drag the steering, pads and buttons where your thumbs want them; - / + resizes the one you picked. Saved separately for portrait and landscape.</p>` +
   sw('analogBrk', 'Analog brake', 'A light press is a soft squeeze; drag down for more.') +
+  sw('tilt', 'Tilt steering', 'Turn the phone like a handlebar to steer. Steering sensitivity sets how far. Dragging the steering still works and takes over.') +
+  sw('haptic', 'Vibration', 'Buttons, bumps, landings and crashes buzz the phone. iPhone: a Taptic tick on button presses only (iOS 18+).') +
   sec('CAMERA') +
   slider('fov', 'Field of view', 'Wider shows more road but feels faster and stretches the edges.');
 const tAud = () => sec('SOUND') +
@@ -197,6 +200,8 @@ function pop(k) { const el = $('oBody').querySelector(`[data-sw="${k}"],[data-sg
 function set(k, v) {
   cfg[k] = v; save();
   if (k === 'lefty') applyUi();
+  if (k === 'tilt' && v && window.DeviceOrientationEvent?.requestPermission) DeviceOrientationEvent.requestPermission().catch(() => { }); // iOS: must be asked inside this tap
+  if (k === 'haptic' && v) buzz(20);
   if (k === 'hudHide') applyHud();
   if (k === 'retro' && O.setDPR) O.setDPR();
   if (!(k in RELOAD) && O.onPerf) O.onPerf();

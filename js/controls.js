@@ -7,6 +7,7 @@ import { F } from './foot.js';
 import { EF, drunkK, drunkRide } from './effects.js';
 import { hudToggle, hudStep } from './options.js';
 import { radioStep } from './radio.js';
+import { buzz } from './haptic.js';
 
 export const actions = {};
 export const K = {}, TC = { back: 0, st: 0, stId: null, thr: 0, thrId: null, brk: 0, brkId: null, clu: 0, wa: 0, cluId: null, rev: 0, jump: 0 };
@@ -39,9 +40,21 @@ ptr($('thr'), e => { TC.thrId = e.pointerId; TC.ty = e.clientY; TC.thr = 0; $('t
 ptr($('brk'), e => { TC.brkId = e.pointerId; TC.by = e.clientY; TC.brk = cfg.analogBrk !== false ? .35 : 1; $('brk').classList.add('on'); }, e => { if (cfg.analogBrk !== false) TC.brk = clamp(.35 + (e.clientY - TC.by) / 80, 0, 1); /* press = light squeeze, drag down = harder */ }, () => { TC.brkId = null; TC.brk = 0; $('brk').classList.remove('on'); });
 ptr($('clu'), e => { TC.cluId = e.pointerId; TC.cy0 = e.clientY; TC.cl0 = TC.clu; }, e => { TC.clu = clamp(TC.cl0 + (e.clientY - TC.cy0) / 90, 0, 1); }, () => { TC.cluId = null; });
 ptr($('bBack'), () => { TC.back = 1; $('bBack').classList.add('on'); }, null, () => { TC.back = 0; $('bBack').classList.remove('on'); });
-const buzz = ms => { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { } }; // tactile feedback where supported (Android)
 $('bUp').onpointerdown = () => { buzz(10); actions.shift(1); }; $('bDn').onpointerdown = () => { buzz(10); actions.shift(-1); }; $('bKey').onpointerdown = () => { buzz(12); actions.key(); }; $('bKill').onpointerdown = () => { buzz(12); actions.kill(); };
 ptr($('bStart'), () => { buzz(15); $('bStart').classList.add('on'); actions.start(1); }, null, () => { $('bStart').classList.remove('on'); actions.start(0); }); // hold to crank
+
+// Tilt steering (Options > Controls): turn the phone like a handlebar. World "up" in device axes from beta / gamma (W3C Z-X'-Y''), turned
+// into screen axes, gives the roll in the screen plane, so it reads the same however far the phone is tipped back. ~35° = full lock at 1.0x.
+const TL = { s: 0, ok: false };
+addEventListener('deviceorientation', e => {
+  if (e.beta === null || e.gamma === null) return;
+  const b = e.beta * PI / 180, g = e.gamma * PI / 180, ux = -Math.sin(g) * Math.cos(b), uy = Math.sin(b);
+  const a = ((screen.orientation ? screen.orientation.angle : window.orientation) || 0) * PI / 180;
+  const sx = ux * Math.cos(a) - uy * Math.sin(a), sy = ux * Math.sin(a) + uy * Math.cos(a), r = Math.atan2(-sx, Math.abs(sy));
+  TL.s = clamp(Math.sign(r) * Math.max(0, Math.abs(r) - .03) / (.6 * 10 / cfg.sens), -1, 1); TL.ok = true;
+});
+// iOS only sends orientation after a permission asked inside a tap: Options asks when the switch is turned on, this covers a reload
+addEventListener('touchend', () => { const D = window.DeviceOrientationEvent; if (cfg.tilt && D && D.requestPermission) D.requestPermission().catch(() => { }); }, { once: true });
 
 // what the rider's hands are doing (before the gin gets a say: effects.js drunkRide)
 const HND = { thr: 0, brake: 0, steer: 0 }, DR = {};
@@ -52,7 +65,8 @@ export function input(dt) {
   const cvt = ctx.spec.type !== 'manual', kBr = kB || (cvt && K.Space);
   // analog lever: touch sets the pull directly, keys squeeze it on progressively (hold longer = harder)
   HND.brake = TC.brkId !== null ? TC.brk : appr(HND.brake, kBr ? 1 : 0, (kBr && cfg.analogBrk !== false ? 2.5 : 12) * dt);
-  if (TC.stId === null) TC.wa = appr(TC.wa, 0, 5 * dt); const wt = TC.stId !== null || TC.wa !== 0, tgt = wt ? TC.wa / WMAX() : kS; HND.steer = wt ? tgt : appr(HND.steer, tgt, (kS ? 2.2 : 4) * dt);
+  if (TC.stId === null) TC.wa = appr(TC.wa, 0, 5 * dt); const wt = TC.stId !== null || TC.wa !== 0, tgt = wt ? TC.wa / WMAX() : kS;
+  HND.steer = wt ? tgt : cfg.tilt && TL.ok && !kS ? HND.steer + (TL.s - HND.steer) * Math.min(1, 12 * dt) : appr(HND.steer, tgt, (kS ? 2.2 : 4) * dt); // touch wheel / keys win over tilt
   // drunk: steering, throttle and brake are mostly not yours any more (effects.js); sober this passes them straight through
   const o = drunkRide(HND.steer, HND.thr, HND.brake, drunkK(), EF.t, DR); S.steer = o.steer; S.thr = o.thr; S.brake = o.brake;
   if (cvt) S.cl = 0;

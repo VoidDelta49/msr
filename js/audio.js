@@ -1,6 +1,7 @@
 // WebAudio. Engine = AudioWorklet voice (engine-worklet.js) with an oscillator fallback; speed-driven wind and
 // tyre layers; crash/wall scrape; one-shots (starter, gear clunk, thud); island ambience from ctx.zones(x, z).
 // Buses: eng / road / sfx → master; amb → ambLP → master; master → mLP → limiter → out.
+import { feel } from './haptic.js';
 import { cfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { clamp, sstep, vnoise } from './util.js';
@@ -339,6 +340,7 @@ export function crank(on) {
   }
 }
 export function blip(type, amt = 1) {
+  feel(type, amt); // haptic.js: felt even with the sound off
   if (!AC || !cfg.sound) return; if (SFX[type]) return SFX[type](AC.currentTime, amt);
   const t = AC.currentTime, g = node('gain'); g.connect(A.sfx);
   if (type === 'start') { // starter motor whirr, then the engine voice catches
