@@ -134,6 +134,7 @@ const tCtl = () => sec('TOUCH') +
   sw('analogBrk', 'Analog brake', 'A light press is a soft squeeze; drag down for more.') +
   sw('tilt', 'Tilt steering', 'Turn the phone like a handlebar to steer. Steering sensitivity sets how far. Dragging the steering still works and takes over.') +
   sw('haptic', 'Vibration', 'Buttons, bumps, landings and crashes buzz the phone. iPhone: a Taptic tick on button presses only (iOS 18+).') +
+  sw('hEng', 'Engine vibration', 'A pulse with the engine firing: slow thumps at idle, a faster, stronger buzz on the throttle. Android only; uses more battery.', cfg.haptic === false) +
   sec('CAMERA') +
   slider('fov', 'Field of view', 'Wider shows more road but feels faster and stretches the edges.');
 const tAud = () => sec('SOUND') +

@@ -1,7 +1,7 @@
 // WebAudio. Engine = AudioWorklet voice (engine-worklet.js) with an oscillator fallback; speed-driven wind and
 // tyre layers; crash/wall scrape; one-shots (starter, gear clunk, thud); island ambience from ctx.zones(x, z).
 // Buses: eng / road / sfx → master; amb → ambLP → master; master → mLP → limiter → out.
-import { feel } from './haptic.js';
+import { feel, engineFeel } from './haptic.js';
 import { cfg, BUILD } from './config.js';
 import { S, ctx } from './state.js';
 import { clamp, sstep, vnoise } from './util.js';
@@ -142,6 +142,7 @@ export function updAudio() {
   const cs = ctx.car && ctx.car.snd, esp = cs ? cs.sp : sp, eload = cs ? cs.load : S.thrEff || 0; // driving a car (carfig/drive.js): the engine voice is the car's
   const run = cs ? !!cs.run : S.running, cut = cs ? !!cs.cut : S.lim || S.cutT > 0, dt = Math.min(.1, t - lastT); lastT = t;
   offR = run ? ((cs ? cs.rpm : S.rpm) || 0) : Math.max(0, offR - dt * 3500); // switched off: the crank spins down, S.rpm may sit at idle
+  engineFeel(run && live, offR, eload, esp.sound?.cyl || 1); // haptic.js: the engine in the hand
   st(A.eng.gain, cs ? esp.sound.gain * 1.35 : (fp ? 1 : .85) * sd.gain * EXH.gain[x] * 1.35, .05);
   if (E) {
     if (esp !== lastSpec) { lastSpec = esp; engineCfg(esp); }

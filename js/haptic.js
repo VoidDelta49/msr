@@ -11,10 +11,26 @@ function tick() {
   i.type = 'checkbox'; i.setAttribute('switch', ''); l.append(i); l.style.display = 'none'; l.ariaHidden = 'true';
   document.head.append(l); l.click(); l.remove();
 }
+let hold = 0; // a buzz plays out before the engine rumble takes the motor back
 // p = ms or a [on, off, on, ...] pattern
 export function buzz(p) {
   if (cfg.haptic === false) return;
-  try { if (N.vibrate) N.vibrate(p); else if (typeof document !== 'undefined') tick(); } catch (e) { }
+  try {
+    if (N.vibrate) { N.vibrate(p); hold = performance.now() + (Array.isArray(p) ? p.reduce((s, x) => s + x, 0) : p); }
+    else if (typeof document !== 'undefined') tick();
+  } catch (e) { }
+}
+// Engine rumble (Android only: iPhone ticks need a tap). The API is on/off timing only, so the engine is a pulse train re-sent every
+// 0.25 s (a new call replaces the old one, and each runs a little longer so there is no gap). Pulse rate = firing rate (4-stroke:
+// rpm / 120 per cylinder per second) slowed to what a phone motor can follow (25 Hz max, 10 Hz min); pulse length grows with load.
+let eT = 0, eOn = false;
+export function engineFeel(run, rpm, load, cyl) {
+  if (!N.vibrate) return; const now = performance.now();
+  if (!run || cfg.haptic === false || cfg.hEng === false) { if (eOn && now > hold) { try { N.vibrate(0); } catch (e) { } } eOn = false; return; }
+  if (now < eT || now < hold) return;
+  const per = Math.min(100, Math.max(40, 120000 / Math.max(1, rpm * cyl))), on = Math.round(per * (.12 + .38 * Math.min(1, load))), p = [];
+  for (let t = 0; t < 320; t += per) p.push(on, Math.round(per - on));
+  try { N.vibrate(p); } catch (e) { } eT = now + 250; eOn = true;
 }
 // what a sound one-shot (audio.js blip) feels like in the hand; amt is the blip's own strength
 const FEEL = {
