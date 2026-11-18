@@ -445,3 +445,8 @@ body.gar #bRad,body.gar #radQ,body.opt #bRad,body.opt #radQ,body.menu #bRad,body
 @keyframes oPop{from{opacity:0;transform:translateY(10px)}}
 #oApply:not([hidden]){animation:mPane .35s cubic-bezier(.2,.9,.2,1)}
 }
+/* custom touch layout editor (js/tlay.js) */
+#tbar { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 99; display: flex; gap: 6px; align-items: center; padding: 6px 8px; background: rgba(0,0,0,.75); border-radius: 10px; color: #fff; font-size: 12px; }
+#tbar[hidden] { display: none; }
+body.tedit #wheel, body.tedit #lb, body.tedit #thr, body.tedit #brk, body.tedit #clu, body.tedit #shift, body.tedit #bFoot { outline: 2px dashed rgba(255,255,255,.5); outline-offset: 2px; }
+body.tedit .tsel { outline: 2px solid #ffcc33 !important; }

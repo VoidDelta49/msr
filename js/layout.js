@@ -6,6 +6,7 @@
 import { $ } from './util.js';
 import { cfg } from './config.js';
 import { solve } from './layoutcalc.js';
+import { applyTlay } from './tlay.js';
 
 // LAYOUT.last = the latest solver result, LAYOUT.ins = optional safe-area override (tools/layout-dom.mjs simulates notches with it)
 export const LAYOUT = { last: null, ins: null, key: '' };
@@ -24,7 +25,8 @@ const bottomGroup = { wheel: 1, lb: 1, thr: 1, brk: 1, clu: 1, shift: 1, gauge: 
 const ELS = { mini: 'mini', top: 'top', perf: 'perf', wheel: 'wheel', lb: 'lb', thr: 'thr', brk: 'brk', clu: 'clu', shift: 'shift', gauge: 'gauge' };
 const BANNERS = ['mis', 'race', 'ride'];
 
-export function relayout() {
+export function relayout() { const r = relayout0(); applyTlay(); return r; }
+function relayout0() {
   const W = innerWidth, H = innerHeight, ins = insets();
   const o = { k: (cfg.ui ?? 10) / 10, touch: body.classList.contains('touch'), cvt: body.classList.contains('cvt'), nocl: body.classList.contains('nocl'), ysh: body.classList.contains('cvt') && body.classList.contains('ysh'), lefty: !!cfg.lefty, cam3: body.classList.contains('cam3'), perf: !$('perf').hidden };
   const key = [W, H, ins.t, ins.r, ins.b, ins.l, o.k, o.touch, o.cvt, o.nocl, o.ysh, o.lefty, o.cam3, o.perf].join();

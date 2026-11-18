@@ -4,6 +4,7 @@
 // applies live. Usable from the main menu before the game loads: no renderer import (main.js sets O.setDPR, O.api, O.gpu,
 // O.aa and calls O.snap() once the game is built); reload-only settings just save while nothing is loaded yet.
 import { $, LOG } from './util.js';
+import { editTlay } from './tlay.js';
 import { ctx } from './state.js';
 import { cfg, save, BUILD, GLOBAL_DEF, AA_MODES, QUALITY } from './config.js';
 import { WX, WX_MODES, wxText } from './weather.js';
@@ -127,6 +128,7 @@ const tCtl = () => sec('TOUCH') +
   slider('sens', 'Steering sensitivity', 'How far the handlebar turns for a drag of the thumb.') +
   slider('ui', 'Control size', 'Scales the on-screen buttons and grips.') +
   sw('lefty', 'Left-handed layout', 'Mirrors the touch controls.') +
+  `<div class=obtns><button class=b data-act=tlay>Edit control layout</button></div><p class=onote>Drag the steering, pads and buttons where your thumbs want them; - / + resizes the one you picked. Saved separately for portrait and landscape.</p>` +
   sw('analogBrk', 'Analog brake', 'A light press is a soft squeeze; drag down for more.') +
   sec('CAMERA') +
   slider('fov', 'Field of view', 'Wider shows more road but feels faster and stretches the edges.');
@@ -215,6 +217,7 @@ $('opts').onclick = e => {
   if (d.sg === 'preset') { Object.assign(cfg, PRESETS.find(p => p[0] === d.v)[2]); save(); build(true); return pop('preset'); }
   if (d.sg) return set(d.sg, parse(d.sg, d.v));
   if (d.act === 'reset') return resetAll();
+  if (d.act === 'tlay') { closeOpts(); return editTlay(); }
   if (d.act === 'copy') { const t = LOG.join('\n') || 'No errors logged'; const done = ok => { b.textContent = ok ? 'Copied' : 'Copy failed'; }; try { navigator.clipboard.writeText(t).then(() => done(true), () => done(false)); } catch (x) { done(false); } return; }
   if (d.act === 'rcopy') { const t = 'ISLA ' + BUILD + ' radio log · ' + navigator.userAgent + '\n' + (RLOG.join('\n') || 'empty'); const done = ok => { b.textContent = ok ? 'Copied' : 'Copy failed: select the text instead'; }; try { navigator.clipboard.writeText(t).then(() => done(true), () => done(false)); } catch (x) { done(false); } return; }
   if (d.act === 'rscan') { if (RLOG.rescan) RLOG.rescan(); else b.textContent = 'Radio not loaded'; return; }
