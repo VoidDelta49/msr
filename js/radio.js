@@ -132,7 +132,7 @@ export function radioTick() {
   if (!R && !LV) return panel();
   const now = AC.currentTime;
   // loudness: the volume knob, quieter at speed and on the throttle (the bike has to stay on top), low while a menu is up
-  const v = Math.abs(S.v) || 0, duck = (1 - .25 * sstep(10, 40, v)) * (1 - .15 * (S.thrEff || 0)) * (ctx.paused ? .25 : ctx.GAR ? .6 : 1);
+  const v = cfg.rduck === false ? 0 : Math.abs(S.v) || 0, duck = (1 - .25 * sstep(10, 40, v)) * (1 - .15 * (cfg.rduck === false ? 0 : S.thrEff || 0)) * (ctx.paused ? .25 : ctx.GAR ? .6 : 1);
   if (LV) { liveTick((cfg.rvol ?? .6) * duck); return panel(); }
   const g = R.st.out.gain, lvl = (cfg.rvol ?? .6) * LEVEL * duck;
   if (g._v === undefined || Math.abs(g._v - lvl) > 5e-4) { g._v = lvl; g.setTargetAtTime(lvl, now, .12); }

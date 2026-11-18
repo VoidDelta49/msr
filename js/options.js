@@ -79,6 +79,7 @@ const SL = {
   fov: { min: 50, max: 110, get: () => cfg.fov ?? 72, set: v => cfg.fov = v, fmt: v => v + '°' },
   mbAmt: { min: 1, max: 10, get: () => cfg.mbAmt ?? 5, set: v => cfg.mbAmt = v, fmt: v => v * 10 + '%' },
   vol: { min: 0, max: 100, get: () => Math.round((cfg.vol ?? .8) * 100), set: v => cfg.vol = v / 100, fmt: v => v + '%' },
+  ...Object.fromEntries(['vEng', 'vSfx', 'vRoad', 'vAmb'].map(k => [k, { min: 0, max: 150, get: () => Math.round((cfg[k] ?? 1) * 100), set: v => cfg[k] = v / 100, fmt: v => v + '%' }])),
   rvol: { min: 0, max: 100, get: () => Math.round((cfg.rvol ?? .6) * 100), set: v => cfg.rvol = v / 100, fmt: v => v + '%' },
 };
 const NUM = new Set(['retro', 'fpsCap', 'radio']);
@@ -136,9 +137,14 @@ const tAud = () => sec('SOUND') +
   sw('sound', 'Sound', 'Engine, effects and ambience.') +
   sw('amb', 'Ambient sounds', 'Surf, wind, wildlife and town noise by location.', !cfg.sound) +
   slider('vol', 'Volume', '', !cfg.sound) +
+  slider('vEng', 'Engine', 'Engine, intake and exhaust.', !cfg.sound) +
+  slider('vSfx', 'Effects', 'Brakes, chain, clicks, crashes and other mechanical sounds.', !cfg.sound) +
+  slider('vRoad', 'Road and wind', 'Tyre roll and wind rush at speed.', !cfg.sound) +
+  slider('vAmb', 'Ambience', 'Surf, wildlife, town noise and rain.', !cfg.sound || !cfg.amb) +
   sec('RADIO') +
   seg('radio', 'Station', 'Four made-up stations, played live by the game (no recordings), then Live PH: real Philippine public and non-profit radio (Radyo Pilipinas, campus stations, Radio Maria, FEBC), streamed straight from the station when you are online. N / B on a keyboard, or the radio button at the top, step through every station.', [[0, 'Off'], ...STATIONS.map((s, i) => [i + 1, s.name]), [STATIONS.length + 1, 'Live PH']], Math.min(cfg.radio | 0, STATIONS.length + 1), !cfg.sound) +
-  slider('rvol', 'Radio volume', 'Fades down a little at speed so the engine stays on top.', !cfg.sound || !cfg.radio) +
+  slider('rvol', 'Radio volume', cfg.rduck === false ? 'Stays at this level while riding.' : 'Fades down a little at speed so the engine stays on top.', !cfg.sound || !cfg.radio) +
+  sw('rduck', 'Quieter while riding', 'Turns the radio down at speed and on the throttle. Off = same volume whether you are parked or riding.', !cfg.sound) +
   sec('RADIO LOG') + `<p class=onote>What the live station search and each stream did. Copy it and paste it where it can be read.</p><pre id=oRlog>${esc(rlogText())}</pre>` +
   `<div class=obtns><button class=b data-act=rcopy>Copy radio log</button><button class=b data-act=rscan>Search again</button></div>`;
 const rlogText = () => RLOG.length ? RLOG.join('\n') : 'Nothing yet: turn the radio on (or tap Search again)';

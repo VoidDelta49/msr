@@ -55,10 +55,12 @@ export function initAudio() {
   const lim = AC.createDynamicsCompressor(); lim.threshold.value = -6; lim.knee.value = 8; lim.ratio.value = 8; lim.attack.value = .004; lim.release.value = .15;
   chain(A.master, A.mLP, lim, AC.destination);
   A.wn = noiseBuf(false); A.br = noiseBuf(true); const w1 = loop(A.wn), w2 = loop(A.wn), b1 = loop(A.br), b2 = loop(A.br);
-  A.eng = node('gain', 0, 0, 0); A.eng.connect(A.master);
-  A.sfx = node('gain', 0, 0, 1); A.sfx.connect(A.master);
+  // per-group volume trims (Options > SOUND, cfg.vEng / vSfx / vRoad / vAmb), set every frame in updAudio()
+  A.trim = {}; const trim = k => { const g = A.trim[k] = node('gain', 0, 0, cfg[k] ?? 1); g.connect(A.master); return g; };
+  A.eng = node('gain', 0, 0, 0); A.eng.connect(trim('vEng'));
+  A.sfx = node('gain', 0, 0, 1); A.sfx.connect(trim('vSfx'));
   // ---- road layers ----
-  A.road = node('gain', 0, 0, 1); A.road.connect(A.master);
+  A.road = node('gain', 0, 0, 1); A.road.connect(trim('vRoad'));
   A.wPan = pan(0); A.wPan.connect(A.road);
   A.wLoF = node('lowpass', 200, .7); A.wLo = feed(node('gain'), [b1, A.wLoF]); chain(b1, A.wLoF, A.wLo, A.wPan);          // wind rumble / buffeting
   A.wHiF = node('bandpass', 900, .7); A.wHi = feed(node('gain'), [w1, A.wHiF]); chain(w1, A.wHiF, A.wHi, A.wPan);         // wind rush past the helmet
@@ -83,7 +85,7 @@ export function initAudio() {
   // supercharger (sound.blower = impeller speed / crank speed): impeller tone + its 2nd harmonic, rising with the revs
   A.scw = node('gain'); A.scw.connect(A.eng); const sw = []; A.scO = [0, 1].map(i => { const o = AC.createOscillator(), g = node('gain', 0, 0, i ? .35 : 1); o.type = i ? 'triangle' : 'sine'; chain(o, g, A.scw); o.start(); sw.push([o, g]); return o; }); feed(A.scw, ...sw);
   // ---- ambience ----
-  A.amb = node('gain', 0, 0, 0); A.ambLP = node('lowpass', 20000, .5); chain(A.amb, A.ambLP, A.master);
+  A.amb = node('gain', 0, 0, 0); A.ambLP = node('lowpass', 20000, .5); chain(A.amb, A.ambLP, trim('vAmb'));
   A.surfP = pan(0); A.surfP.connect(A.amb); const suF = node('lowpass', 650, .5); A.surf = feed(node('gain'), [b1, suF]); chain(b1, suF, A.surf, A.surfP);
   A.rivP = pan(0); A.rivP.connect(A.amb); const rvF = node('bandpass', 1400, .5); A.riv = feed(node('gain'), [w2, rvF]); chain(w2, rvF, node('peaking', 600, 1), A.riv, A.rivP);
   // cicadas: narrow high band, chopped ~45 Hz by an oscillator on the gain
@@ -132,6 +134,7 @@ function engineCfg(sp) {
 export function updAudio() {
   if (!AC) return; const sp = ctx.spec; if (!sp) return; const sd = sp.sound, t = AC.currentTime, on = cfg.sound, x = sp.snd || 0;
   st(A.master.gain, on ? (cfg.vol ?? .8) : 0, .05);
+  for (const k in A.trim) st(A.trim[k].gain, cfg[k] ?? 1, .05);
   const fp = ctx.camMode === 0 && !ctx.GAR, live = !ctx.paused && !ctx.OPT && !ctx.GAR, v = Math.abs(S.v) || 0;
   // ---- engine ----
   if (CR && (!S.cranking || ctx.paused)) crank(false);
