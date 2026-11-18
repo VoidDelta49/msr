@@ -1,4 +1,5 @@
 [
+{"v": "12.22", "d": "2026-11-18", "t": ["Model Maker (maker/model.html): build bike, car and prop models from parts, trace over a side photo, save them into the game."]},
 {"v": "12.21", "d": "2026-11-18", "t": ["Gear shifts clunk in the hand and the rev limiter stutters (Vibration).", "Options > Controls: Test vibration button that says what your browser does with it."]},
 {"v": "12.20", "d": "2026-11-18", "t": ["Engine vibration: the phone pulses with the engine, slow thumps at idle and a faster, stronger buzz on the throttle (Options > Controls, Android)."]},
 {"v": "12.19", "d": "2026-11-18", "t": ["Options > Controls: Tilt steering. Turn the phone like a handlebar to steer (iPhone asks for motion access first).", "Vibration: bumps, landings, crashes and buttons buzz the phone (switch in Options > Controls). iPhone gets a Taptic tick on button presses (iOS 18+)."]},

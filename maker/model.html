@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Model Maker · ISLA</title>
+<style>
+:root{--bg:#11161c;--pn:#1a222b;--pn2:#222c37;--ln:#2e3a47;--tx:#e6ecf2;--mu:#8b9aab;--ac:#ffb02e;--mono:ui-monospace,Menlo,Consolas,monospace}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:var(--bg);color:var(--tx);font:13px/1.35 system-ui,sans-serif;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+#cv{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.bar{position:fixed;left:0;right:0;top:0;height:46px;padding:0 10px;display:flex;align-items:center;gap:6px;background:#11161cee;border-bottom:1px solid var(--ln);z-index:5;overflow-x:auto}
+.logo{font-weight:800;white-space:nowrap}.logo b{color:var(--ac)}
+.btn{height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--ln);background:var(--pn2);cursor:pointer;display:inline-flex;align-items:center;white-space:nowrap}
+.btn:hover{border-color:#4a5a6b}.btn.pri{background:var(--ac);color:#1b1305;border-color:var(--ac);font-weight:700}.btn.on{border-color:var(--ac);color:var(--ac)}
+input,select,textarea{height:28px;padding:0 6px;border-radius:6px;border:1px solid var(--ln);background:var(--bg);min-width:0}
+textarea{height:70px;width:100%;font:11px var(--mono);padding:4px}
+#msg{color:var(--mu);white-space:nowrap}
+.rail{position:fixed;left:10px;top:56px;display:flex;flex-direction:column;gap:4px;padding:6px;background:var(--pn);border:1px solid var(--ln);border-radius:10px;z-index:4}
+.rail .btn{width:74px;justify-content:center}.rail hr{border:0;border-top:1px solid var(--ln);margin:3px 0}
+.side{position:fixed;right:10px;top:56px;bottom:10px;width:300px;overflow:auto;background:var(--pn);border:1px solid var(--ln);border-radius:10px;z-index:4;padding:4px 10px 12px}
+h2{font-size:11px;color:var(--mu);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 6px}
+#list{max-height:28vh;overflow:auto;border:1px solid var(--ln);border-radius:7px}
+#list div{padding:4px 8px;cursor:pointer;display:flex;gap:6px}#list div:hover{background:var(--pn2)}#list div.on{background:#ffb02e33}#list small{color:var(--mu);margin-left:auto}
+.f{display:grid;grid-template-columns:70px 1fr;gap:6px;align-items:center;margin:4px 0}.f label{color:#c3cfdb}
+.v{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));gap:4px}.v input{width:100%;font-family:var(--mono)}
+details{margin-top:12px;color:#c3cfdb}summary{cursor:pointer;color:var(--mu)}details p{margin:6px 0}kbd{font:11px var(--mono);background:var(--pn2);border:1px solid var(--ln);border-radius:4px;padding:0 4px}
+body.shot .bar,body.shot .rail,body.shot .side{display:none}
+@media (max-width:700px){.side{top:auto;height:42vh;left:10px;width:auto}.rail{flex-direction:row;flex-wrap:wrap;right:10px}.rail .btn{width:auto}.rail hr{display:none}}
+</style>
+<script type="importmap">{"imports":{"three":"../vendor/three/build/three.webgpu.js","three/tsl":"../vendor/three/build/three.tsl.js"}}</script>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<header class="bar">
+  <span class="logo"><b>ISLA</b> Model Maker</span>
+  <input id="mid" size="12" title="Model id = file name: data/models/&lt;id&gt;.json">
+  <select id="kind" title="What it is for: sets the groups and the guides"><option>bike</option><option>car</option><option>prop</option></select>
+  <button class="btn" id="bNew">New</button>
+  <select id="open"><option value="">Open…</option></select>
+  <button class="btn pri" id="bSave" title="Ctrl+S">Save</button>
+  <button class="btn" id="bDl">Download</button>
+  <label class="btn">Import<input type="file" id="fIn" accept=".json" hidden></label>
+  <button class="btn" id="bUndo" title="Ctrl+Z">Undo</button><button class="btn" id="bRedo" title="Ctrl+Y">Redo</button>
+  <span id="msg"></span>
+</header>
+<nav class="rail">
+  <button class="btn" data-v="side">1 Side</button><button class="btn" data-v="front">2 Front</button><button class="btn" data-v="top">3 Top</button><button class="btn" data-v="3d">4 3D</button>
+  <hr><button class="btn" data-t="box">+ Box</button><button class="btn" data-t="cyl">+ Cylinder</button><button class="btn" data-t="sph">+ Sphere</button>
+  <button class="btn" data-t="prof" title="A panel from a side outline: drag its points in the Side view">+ Panel</button><button class="btn" data-t="tube">+ Tube</button><button class="btn" data-t="torus">+ Ring</button>
+  <hr><button class="btn" id="bFit" title="F">Fit</button>
+</nav>
+<aside class="side">
+  <h2>Parts</h2><div id="list"></div>
+  <h2>Selected</h2><div id="props"><p style="color:var(--mu)">Click a part, or add one on the left.</p></div>
+  <h2>Frame guides</h2><div id="frame"></div>
+  <h2>Side photo</h2>
+  <div class="f"><label>Image</label><input type="file" id="fRef" accept="image/*"></div>
+  <div class="f"><label>Width m</label><div class="v"><input id="rw" type="number" step=".01" title="real width the photo covers"><input id="ro" type="number" step=".1" min="0" max="1" title="opacity"></div></div>
+  <div class="f"><label>Centre z y</label><div class="v"><input id="rz" type="number" step=".01"><input id="ry" type="number" step=".01"></div></div>
+  <div class="f"><label>Mirror</label><input id="rf" type="checkbox" style="justify-self:start"></div>
+  <details><summary>Help</summary>
+    <p><b>Side / Front / Top</b>: drag a part to move it (snaps to 5 mm, hold <kbd>Shift</kbd> for free), drag empty space to pan, wheel to zoom. <b>3D</b>: drag to orbit, right-drag to pan.</p>
+    <p><b>Panel</b> = a side outline made solid: select it in the Side view and drag its yellow points. Double-click near an edge adds a point, right-click a point removes it.</p>
+    <p><b>Mirror</b> (<kbd>M</kbd>) draws a copy on the other side (x negated): build one side of the bike, get both.</p>
+    <p><b>Group</b>: what the part moves with in the game (bike: steer = turns with the bars, slider = fork lowers, rear = rear wheel hub).</p>
+    <p><b>Paint</b> follows the player's paint colour in the game; light / tail / amber glow with the lamps.</p>
+    <p>Keys: <kbd>Del</kbd> delete, <kbd>Ctrl+D</kbd> duplicate, arrows nudge 1 cm, <kbd>Ctrl+Z</kbd>/<kbd>Ctrl+Y</kbd>, <kbd>F</kbd> fit, <kbd>Esc</kbd> deselect, <kbd>1-4</kbd> views.</p>
+    <p><b>Save</b> writes data/models/&lt;id&gt;.json when the page runs on <code>node tools/serve.mjs</code>, otherwise it downloads the file. The bike side: README "Model Maker".</p>
+  </details>
+</aside>
+<script type="module">
+import * as THREE from 'three';
+import { TYPES, DEF, MATS, GROUPS, FRAME, blank, buildMdl, mdlProblems, fmt } from '../js/mdl.js';
+
+const $ = id => document.getElementById(id), Q = new URLSearchParams(location.search), D = Math.PI / 180, SNAP = .005;
+const cv = $('cv'), R = new THREE.WebGPURenderer({ canvas: cv, antialias: true, forceWebGL: true }); await R.init();
+R.setPixelRatio(Math.min(2, devicePixelRatio));
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x2a3038);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 1.6)); const sun = new THREE.DirectionalLight(0xffffff, 2.2); sun.position.set(3, 5, 2); scene.add(sun);
+const grid = new THREE.GridHelper(8, 80, 0x5a6878, 0x3a4450); scene.add(grid);
+const pc = new THREE.PerspectiveCamera(35, 1, .01, 100), oc = new THREE.OrthographicCamera(-1, 1, 1, -1, -50, 50);
+// ortho views: screen right / up as world axis [index, sign]; the camera looks along `dir`
+const VIEWS = { side: { h: [2, -1], v: [1, 1], dir: [-1, 0, 0], up: [0, 1, 0] }, front: { h: [0, -1], v: [1, 1], dir: [0, 0, 1], up: [0, 1, 0] }, top: { h: [0, 1], v: [2, -1], dir: [0, -1, 0], up: [0, 0, -1] } };
+const O = { az: .9, el: .3, d: 4, t: new THREE.Vector3(0, .5, 0) }, V = { cx: 0, cy: .5, zh: 1 };
+let view = 'side', M, sel = -1, hist = [], hi = -1, mdl = null, guides = new THREE.Group(), helpers = new THREE.Group(), handles = [];
+scene.add(guides, helpers);
+
+/* ---------- materials ---------- */
+const MC = {}, mat = k => MC[k] ||= (() => { const m = MATS[k] || [parseInt((k || '#888888').slice(1), 16), .5, .1]; return new THREE.MeshStandardMaterial({ color: m[0], roughness: m[1], metalness: m[2], emissive: m[3] || 0, emissiveIntensity: m[3] ? 1.2 : 0 }); })();
+const lineM = c => new THREE.LineBasicMaterial({ color: c, depthTest: false, transparent: true });
+
+/* ---------- model state, history ---------- */
+const say = (t, err) => { $('msg').textContent = t; $('msg').style.color = err ? '#ff5d6c' : ''; };
+function commit() { hist = hist.slice(0, hi + 1); hist.push(JSON.stringify(M)); hi = hist.length - 1; try { localStorage.mmDraft = hist[hi]; } catch {} }
+function load(m, keepView) { M = m; M.frame = { ...FRAME[M.kind], ...M.frame }; sel = -1; hist = []; hi = -1; commit(); $('mid').value = M.id; $('kind').value = M.kind; refRestore(); rebuild(); panels(); if (!keepView) fit(); }
+function undo(d) { const n = hi + d; if (n < 0 || n >= hist.length) return; hi = n; M = JSON.parse(hist[hi]); if (sel >= M.parts.length) sel = -1; rebuild(); panels(); }
+const P = () => M.parts[sel];
+
+/* ---------- drawing ---------- */
+function rebuild() {
+  if (mdl) { scene.remove(mdl.root); mdl.root.traverse(o => o.geometry?.dispose()); }
+  mdl = buildMdl(THREE, M, mat); scene.add(mdl.root);
+  helpers.clear(); handles = [];
+  if (sel >= 0) mdl.root.traverse(o => { if (o.isMesh && o.userData.part === P()) { const h = new THREE.BoxHelper(o, 0xffb02e); h.material.depthTest = false; h.renderOrder = 9; helpers.add(h); } });
+  const q = P(); if (q?.t === 'prof' && view === 'side') q.pts.forEach((pt, i) => { const h = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshBasicMaterial({ color: 0xffd23a, depthTest: false })); h.renderOrder = 10; h.userData.pt = i; h.position.set((q.p?.[0] || 0) + 1, pt[1] + (q.p?.[1] || 0), pt[0] + (q.p?.[2] || 0)); helpers.add(h); handles.push(h); });
+  drawGuides(); if (!Q.has('shot')) list();
+}
+function circle(r, n = 40) { const a = []; for (let i = 0; i <= n; i++) a.push(new THREE.Vector3(0, Math.sin(i / n * 2 * Math.PI) * r, Math.cos(i / n * 2 * Math.PI) * r)); return new THREE.BufferGeometry().setFromPoints(a); }
+function line(pts, c) { const l = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts.map(p => new THREE.Vector3(...p))), lineM(c)); l.renderOrder = 5; guides.add(l); return l; }
+function drawGuides() {
+  guides.traverse(o => o.geometry?.dispose()); guides.clear(); const f = M.frame, G = 0x35c8ff;
+  const ring = (x, y, z, r) => { const l = new THREE.Line(circle(r), lineM(G)); l.position.set(x, y, z); guides.add(l); line([[x, y - .03, z], [x, y + .03, z]], G); line([[x, y, z - .03], [x, y, z + .03]], G); };
+  if (M.kind === 'bike') {
+    ring(0, f.rw, f.rearZ, f.rw); ring(0, f.rw, f.rearZ - f.wb, f.rw);
+    const [hz, hy] = f.head, s = Math.sin(f.rake * D), c = Math.cos(f.rake * D); line([[0, hy + .15 * c, hz + .15 * s], [0, 0, hz - hy * s / c]], G); // steering axis down to the ground
+    line([[0, f.pivot[1], f.pivot[0]], [0, f.rw, f.rearZ]], 0x5fd38d); line([[0, f.seat[1], f.seat[0] - .1], [0, f.seat[1], f.seat[0] + .1]], 0xff7a45); // swing arm, seat
+  } else if (M.kind === 'car') for (const sx of [1, -1]) for (const sz of [1, -1]) ring(sx * f.track / 2, f.r, sz * f.wb / 2, f.r);
+}
+
+/* ---------- side photo (only the settings go in the file; the picture stays in this browser) ---------- */
+const refTex = new THREE.Texture(), ref = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: refTex, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+ref.rotation.y = Math.PI / 2; ref.position.x = -3; ref.visible = false; refTex.colorSpace = THREE.SRGBColorSpace; scene.add(ref);
+const img = new Image(); img.onload = () => { refTex.image = img; refTex.needsUpdate = true; refFit(); };
+const ref0 = () => ({ w: 2.2, z: (M.frame.rearZ || 0) - (M.frame.wb || 0) / 2, y: .6, o: .5, f: 0 });
+function refFit() { const r = M.ref || ref0(); for (const k of ['w', 'z', 'y', 'o']) $('r' + k).value = r[k]; $('rf').checked = !!r.f; ref.visible = !!refTex.image && view === 'side'; if (!refTex.image) return; ref.scale.set(r.w * (r.f ? -1 : 1), r.w * img.height / img.width, 1); ref.position.set(-3, r.y, r.z); ref.material.opacity = r.o; }
+function refRestore() { refTex.image = null; ref.visible = false; let s = null; try { s = localStorage['mmRef-' + M.id]; } catch {} if (s) img.src = s; else if (M.ref) refFit(); }
+$('fRef').onchange = e => { const fr = new FileReader(); fr.onload = () => { try { localStorage['mmRef-' + M.id] = fr.result; } catch { say('photo too big to remember after a reload'); } img.src = fr.result; }; fr.readAsDataURL(e.target.files[0]); };
+for (const k of ['w', 'z', 'y', 'o', 'f']) $('r' + k).oninput = e => { M.ref ||= ref0(); M.ref[k] = k === 'f' ? +e.target.checked : +e.target.value; refFit(); };
+for (const k of ['w', 'z', 'y', 'o', 'f']) $('r' + k).onchange = commit;
+
+/* ---------- panels ---------- */
+function list() { $('list').innerHTML = M.parts.map((q, i) => `<div data-i="${i}" class="${i === sel ? 'on' : ''}">${q.n || q.t}${q.x ? ' ⇋' : ''}<small>${q.g || GROUPS[M.kind][0]} · ${q.m}</small></div>`).join('') || '<div style="color:var(--mu)">empty</div>'; $('list').querySelector('.on')?.scrollIntoView({ block: 'nearest' }); }
+$('list').onclick = e => { const d = e.target.closest('[data-i]'); if (d) pick(+d.dataset.i); };
+const vec = (k, a, lab, step = .005) => `<div class="f"><label>${lab}</label><div class="v">${a.map((v, i) => `<input type="number" step="${step}" data-k="${k}" data-i="${i}" value="${+(+v).toFixed(4)}">`).join('')}</div></div>`;
+function panels() {
+  list(); const q = P(), f = M.frame;
+  $('frame').innerHTML = Object.keys(FRAME[M.kind]).map(k => vec('frame.' + k, [].concat(f[k]), k, k === 'rake' ? 1 : .005)).join('') || '<p style="color:var(--mu)">none for props</p>';
+  if (!q) { $('props').innerHTML = '<p style="color:var(--mu)">Click a part, or add one on the left.</p>'; return; }
+  const opt = (a, v) => a.map(x => `<option${x === v ? ' selected' : ''}>${x}</option>`).join(''), custom = !MATS[q.m];
+  $('props').innerHTML = `<div class="f"><label>Name</label><input data-k="n" value="${q.n || ''}" placeholder="${q.t}"></div>
+    <div class="f"><label>Group</label><select data-k="g">${opt(GROUPS[M.kind], q.g || GROUPS[M.kind][0])}</select></div>
+    <div class="f"><label>Material</label><div class="v"><select data-k="m">${opt([...Object.keys(MATS), 'colour…'], custom ? 'colour…' : q.m)}</select><input type="color" data-k="mc" value="${custom ? q.m : '#888888'}" ${custom ? '' : 'hidden'}></div></div>
+    <div class="f"><label>Mirror</label><input type="checkbox" data-k="x" ${q.x ? 'checked' : ''} style="justify-self:start"></div>
+    ${vec('p', q.p || [0, 0, 0], q.t === 'tube' ? 'from x y z' : 'pos x y z')}${q.t === 'tube' ? vec('b', q.b, 'to x y z') : vec('r', q.r || [0, 0, 0], 'rot ° x y z', 5)}
+    ${vec('s', TYPES[q.t].map((_, i) => q.s?.[i] ?? DEF[q.t][i]), TYPES[q.t].join(' / '))}
+    ${q.t === 'prof' ? `<div class="f" style="display:block"><label>Outline [z, y] points</label><textarea data-k="pts">${JSON.stringify(q.pts)}</textarea></div>` : ''}
+    <div style="display:flex;gap:6px;margin-top:6px"><button class="btn" id="bDup">Duplicate</button><button class="btn" id="bDel">Delete</button></div>`;
+  $('bDup').onclick = dup; $('bDel').onclick = del;
+}
+// one handler for every field: data-k = where the value goes
+function setField(t, live) {
+  const k = t.dataset.k; if (!k) return; const q = P(), i = +t.dataset.i;
+  if (k.startsWith('frame.')) { const n = k.slice(6); if (Array.isArray(M.frame[n])) M.frame[n][i] = +t.value; else M.frame[n] = +t.value; }
+  else if (k === 'n') q.n = t.value.trim() || undefined;
+  else if (k === 'g') q.g = t.value; else if (k === 'x') q.x = t.checked ? 1 : 0;
+  else if (k === 'm') { q.m = t.value === 'colour…' ? '#888888' : t.value; if (!live) panels(); }
+  else if (k === 'mc') q.m = t.value;
+  else if (k === 'pts') { try { const v = JSON.parse(t.value); if (v.length >= 3) q.pts = v; } catch { return; } }
+  else { (q[k] ||= k === 's' ? [...DEF[q.t]] : [0, 0, 0])[i] = +t.value; }
+  rebuild(); if (!live) { commit(); list(); }
+}
+for (const id of ['props', 'frame']) { $(id).addEventListener('input', e => setField(e.target, true)); $(id).addEventListener('change', e => setField(e.target, false)); }
+
+/* ---------- part operations ---------- */
+function pick(i) { sel = i; rebuild(); panels(); }
+function add(t) {
+  const f = M.frame, c = M.kind === 'bike' ? [0, .6, f.rearZ - f.wb / 2] : [0, .5, 0], q = { t, s: [...DEF[t]], p: c, m: t === 'torus' ? 'rubber' : M.kind === 'prop' ? 'metal' : 'paint' };
+  if (t === 'prof') { q.p = [0, 0, 0]; q.pts = [[c[2] - .2, c[1] - .1], [c[2] + .2, c[1] - .1], [c[2] + .15, c[1] + .1], [c[2] - .15, c[1] + .1]]; }
+  if (t === 'tube') { q.b = [c[0], c[1] + .1, c[2] + .3]; q.m = 'chrome'; }
+  M.parts.push(q); sel = M.parts.length - 1; commit(); rebuild(); panels();
+}
+function dup() { const q = P(); if (!q) return; const c = JSON.parse(JSON.stringify(q)); c.n &&= c.n + ' 2'; M.parts.splice(sel + 1, 0, c); sel++; commit(); rebuild(); panels(); }
+function del() { if (sel < 0) return; M.parts.splice(sel, 1); sel = Math.min(sel, M.parts.length - 1); commit(); rebuild(); panels(); }
+function move(q, d) { for (const k of ['p', 'b']) if (q[k] || k === 'p') { const a = q[k] ||= [0, 0, 0]; for (let i = 0; i < 3; i++) a[i] += d[i]; } }
+document.querySelectorAll('[data-t]').forEach(b => b.onclick = () => add(b.dataset.t));
+document.querySelectorAll('[data-v]').forEach(b => b.onclick = () => setView(b.dataset.v));
+
+/* ---------- camera ---------- */
+function setView(v) { view = v; document.querySelectorAll('[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === v)); rebuild(); refFit(); }
+let sz = '';
+function cam() {
+  const w = innerWidth, h = innerHeight; if (sz !== w + 'x' + h) { sz = w + 'x' + h; R.setSize(w, h, false); }
+  if (view === '3d') { pc.aspect = w / h; pc.updateProjectionMatrix(); pc.position.set(Math.sin(O.az) * Math.cos(O.el), Math.sin(O.el), Math.cos(O.az) * Math.cos(O.el)).multiplyScalar(O.d).add(O.t); pc.lookAt(O.t); return pc; }
+  const W = VIEWS[view], c = new THREE.Vector3(); c.setComponent(W.h[0], V.cx * W.h[1]); c.setComponent(W.v[0], V.cy * W.v[1]);
+  oc.left = -V.zh * w / h; oc.right = -oc.left; oc.top = V.zh; oc.bottom = -V.zh; oc.updateProjectionMatrix();
+  oc.up.set(...W.up); oc.position.copy(c).addScaledVector(new THREE.Vector3(...W.dir), -10); oc.lookAt(c); return oc;
+}
+function fit() {
+  const b = new THREE.Box3().setFromObject(mdl.root).union(new THREE.Box3().setFromObject(guides)); if (b.isEmpty()) b.set(new THREE.Vector3(-1, 0, -1), new THREE.Vector3(1, 1, 1));
+  const c = b.getCenter(new THREE.Vector3()), s = b.getSize(new THREE.Vector3()); O.t.copy(c); O.d = Math.max(s.x, s.y, s.z) * 2.4 + .3;
+  if (view !== '3d') { const W = VIEWS[view], a = innerWidth / innerHeight; V.cx = c.getComponent(W.h[0]) * W.h[1]; V.cy = c.getComponent(W.v[0]) * W.v[1]; V.zh = Math.max(s.getComponent(W.v[0]) * .6, s.getComponent(W.h[0]) * .6 / a, .2) + .05; }
+}
+$('bFit').onclick = fit;
+// screen pixel -> view-plane metres [h, v]
+const toV = (x, y) => [V.cx + (x - innerWidth / 2) * 2 * V.zh / innerHeight, V.cy - (y - innerHeight / 2) * 2 * V.zh / innerHeight];
+
+/* ---------- mouse ---------- */
+const ray = new THREE.Raycaster(); let drag = null;
+function hit(e, objs) { ray.setFromCamera(new THREE.Vector2(e.clientX / innerWidth * 2 - 1, 1 - e.clientY / innerHeight * 2), cam()); return ray.intersectObjects(objs, false)[0]; }
+const meshes = () => { const a = []; mdl.root.traverse(o => o.isMesh && a.push(o)); return a; };
+cv.addEventListener('contextmenu', e => { e.preventDefault(); const h = handles.length && hit(e, handles); if (h && P().pts.length > 3) { P().pts.splice(h.object.userData.pt, 1); commit(); rebuild(); panels(); } });
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId); const o = view !== '3d', st = { x: e.clientX, y: e.clientY, v: o && toV(e.clientX, e.clientY), moved: false };
+  const h = o && e.button === 0 && handles.length && hit(e, handles);
+  if (h) { drag = { ...st, pt: h.object.userData.pt, p0: [...P().pts[h.object.userData.pt]] }; return; }
+  const m = e.button === 0 && hit(e, meshes());
+  if (m) { const i = M.parts.indexOf(m.object.userData.part); if (i !== sel) pick(i); if (o) { drag = { ...st, part: JSON.stringify(P()), mir: m.object.userData.mir }; return; } }
+  drag = { ...st, cam: e.button === 0 && !e.shiftKey && !o ? 'orbit' : 'pan', O: { ...O, t: O.t.clone() }, V: { ...V }, click: !m };
+});
+cv.addEventListener('pointermove', e => {
+  if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true; if (!drag.moved) return;
+  if (drag.cam === 'orbit') { O.az = drag.O.az - dx * .008; O.el = Math.max(-1.4, Math.min(1.4, drag.O.el + dy * .008)); return; }
+  if (drag.cam === 'pan') {
+    if (view !== '3d') { V.cx = drag.V.cx - dx * 2 * V.zh / innerHeight; V.cy = drag.V.cy + dy * 2 * V.zh / innerHeight; return; }
+    const k = O.d / innerHeight, r = new THREE.Vector3().setFromMatrixColumn(pc.matrixWorld, 0), u = new THREE.Vector3().setFromMatrixColumn(pc.matrixWorld, 1);
+    O.t.copy(drag.O.t).addScaledVector(r, -dx * k).addScaledVector(u, dy * k); return;
+  }
+  const W = VIEWS[view], v = toV(e.clientX, e.clientY), sn = x => e.shiftKey ? x : Math.round(x / SNAP) * SNAP, dh = sn(v[0] - drag.v[0]), dv = sn(v[1] - drag.v[1]);
+  if (drag.pt !== undefined) { P().pts[drag.pt] = [drag.p0[0] + dh * W.h[1], drag.p0[1] + dv]; rebuild(); return; } // side view only: h = -z
+  const q = P(), d = [0, 0, 0]; Object.assign(q, JSON.parse(drag.part)); d[W.h[0]] = dh * W.h[1]; d[W.v[0]] = dv * W.v[1]; if (drag.mir) d[0] = -d[0];
+  if (q.t === 'prof') { d[0] && move(q, [d[0], 0, 0]); q.pts = q.pts.map(([z, y]) => [z + d[2], y + d[1]]); } else move(q, d); rebuild();
+});
+cv.addEventListener('pointerup', () => { if (drag && (drag.pt !== undefined || drag.part) && drag.moved) { commit(); panels(); } else if (drag?.click && !drag.moved && sel >= 0) pick(-1); drag = null; });
+cv.addEventListener('wheel', e => { e.preventDefault(); const k = Math.exp(e.deltaY * .0012); if (view === '3d') O.d = Math.max(.2, O.d * k); else V.zh = Math.max(.03, V.zh * k); }, { passive: false });
+cv.addEventListener('dblclick', e => {
+  const q = P(); if (q?.t !== 'prof' || view !== 'side') return; const [h, v] = toV(e.clientX, e.clientY), z = -h - (q.p?.[2] || 0), y = v - (q.p?.[1] || 0);
+  let best = 0, bd = 1e9; q.pts.forEach((a, i) => { const b = q.pts[(i + 1) % q.pts.length], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2], dd = (m[0] - z) ** 2 + (m[1] - y) ** 2; if (dd < bd) { bd = dd; best = i; } });
+  q.pts.splice(best + 1, 0, [+z.toFixed(3), +y.toFixed(3)]); commit(); rebuild(); panels();
+});
+addEventListener('keydown', e => {
+  if (e.target.matches('input,textarea,select')) return; const c = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+  if (c && k === 'z') { e.preventDefault(); undo(e.shiftKey ? 1 : -1); } else if (c && k === 'y') { e.preventDefault(); undo(1); }
+  else if (c && k === 's') { e.preventDefault(); save(); } else if (c && k === 'd') { e.preventDefault(); dup(); }
+  else if (k === 'delete' || k === 'backspace') del(); else if (k === 'escape') pick(-1); else if (k === 'f') fit();
+  else if ('1234'.includes(k) && k) setView(['side', 'front', 'top', '3d'][+k - 1]);
+  else if (k === 'm' && P()) { P().x = P().x ? 0 : 1; commit(); rebuild(); panels(); }
+  else if (k.startsWith('arrow') && P() && view !== '3d') {
+    e.preventDefault(); const W = VIEWS[view], s = e.shiftKey ? .001 : .01, d = [0, 0, 0], hv = { arrowleft: [-s, 0], arrowright: [s, 0], arrowup: [0, s], arrowdown: [0, -s] }[k];
+    d[W.h[0]] = hv[0] * W.h[1]; d[W.v[0]] = hv[1] * W.v[1]; const q = P(); if (q.t === 'prof') { move(q, [d[0], 0, 0]); q.pts = q.pts.map(([z, y]) => [z + d[2], y + d[1]]); } else move(q, d); commit(); rebuild(); panels();
+  }
+});
+
+/* ---------- files ---------- */
+async function index() { try { const ids = await (await fetch('../data/models/index.json', { cache: 'no-store' })).json(); $('open').innerHTML = '<option value="">Open…</option>' + ids.map(i => `<option>${i}</option>`).join(''); } catch {} }
+async function openId(id) { try { const r = await fetch(`../data/models/${id}.json`, { cache: 'no-store' }); if (!r.ok) throw 0; load(await r.json()); say('opened ' + id); } catch { say('could not open ' + id, 1); } }
+function download() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([fmt(M)], { type: 'application/json' })); a.download = M.id + '.json'; a.click(); }
+async function save() {
+  M.id = $('mid').value.trim().toLowerCase(); const bad = mdlProblems(M); if (bad.length) return say(bad[0], 1);
+  try { const r = await fetch(`../data/models/${M.id}.json`, { method: 'PUT', body: fmt(M) }); if (!r.ok) throw 0; say(`saved data/models/${M.id}.json`); index(); }
+  catch { download(); say('no save server (node tools/serve.mjs): downloaded instead'); }
+}
+$('bSave').onclick = save; $('bDl').onclick = download; $('bUndo').onclick = () => undo(-1); $('bRedo').onclick = () => undo(1);
+$('open').onchange = e => { if (e.target.value) openId(e.target.value); e.target.value = ''; };
+$('bNew').onclick = () => { if (!M.parts.length || confirm('Start a new empty model? (unsaved changes are lost)')) load(blank($('mid').value.trim().toLowerCase() || 'new', $('kind').value)); };
+$('kind').onchange = e => { M.kind = e.target.value; M.frame = { ...FRAME[M.kind], ...M.frame }; const g = GROUPS[M.kind]; for (const q of M.parts) if (!g.includes(q.g)) delete q.g; commit(); rebuild(); panels(); fit(); };
+$('mid').onchange = e => { M.id = e.target.value.trim().toLowerCase(); commit(); };
+$('fIn').onchange = async e => { try { load(JSON.parse(await e.target.files[0].text())); } catch { say('not a model file', 1); } };
+
+/* ---------- start ---------- */
+let draft = null; try { draft = JSON.parse(localStorage.mmDraft || 'null'); } catch {}
+if (Q.has('m')) await openId(Q.get('m')); else load(draft?.parts ? draft : blank('new'));
+if (!M) load(blank('new'));
+index(); setView(Q.get('shot') === 'q' ? '3d' : Q.get('shot') || Q.get('view') || 'side');
+if (Q.has('shot')) { // tools/mdl.mjs: just the model from one side, then report
+  document.body.classList.add('shot'); grid.visible = Q.has('grid'); guides.visible = Q.has('guides'); O.az = .75; O.el = .3; fit(); const b = new THREE.Box3().setFromObject(mdl.root), s = b.getSize(new THREE.Vector3()); let tris = 0; mdl.root.traverse(o => { if (o.isMesh) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+  R.render(scene, cam()); await new Promise(r => requestAnimationFrame(r)); R.render(scene, cam()); window.READY = { tris, size: [s.z, s.x, s.y].map(v => +v.toFixed(3)), parts: M.parts.length };
+} else R.setAnimationLoop(() => { for (const h of handles) h.scale.setScalar((view === '3d' ? O.d * .4 : V.zh) * .018); R.render(scene, cam()); });
+</script>
+</body>
+</html>

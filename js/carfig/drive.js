@@ -3,7 +3,7 @@
 // ground, keeps cars out of walls and the sea, draws them, and moves the camera. While driving, the walker (foot.js F) rides
 // along hidden, so the minimap, friends, weather and doors all still know where you are. main.js calls carTick / carFrame.
 import * as THREE from 'three';
-import { scene, camera } from '../renderer.js';
+import { scene, camera, std } from '../renderer.js';
 import { H, roadH, SEA, OBBS, LMF, atGas } from '../world.js';
 import { ctx, S } from '../state.js';
 import { BUILD } from '../config.js';
@@ -19,11 +19,24 @@ import { surfaceMu, slickAt } from '../tyre.js';
 import { clamp, appr, lerpTable, angd } from '../util.js';
 import { carWorld, spawnCar, STEP } from '../car/car.js';
 import { build as hiace } from './hiace.js';
+import { buildMdl, MATS } from '../mdl.js';
 import { PAD, WH, WMAX, hudShow, hudDraw, hudWheel, cluTex } from './hud.js';
 import { fitOf, cabBoxes, cabFloor, inCab, slotNear, cargoWhy, slotFree } from '../car/cabin.js';
 import { fitout, fitDispose } from './fitout.js';
 
-const MODELS = { hiace }; // data `model` -> builder(def, cluTex) -> { root, wheels: [{ g, sp, y0 }], steer, M, size }
+const MODELS = { hiace, mesh: mdlCar }; // data `model` -> builder(def, cluTex) -> { root, wheels: [{ g, sp, y0 }], steer, M, size }
+// "model": "mesh": a car made in the Model Maker (data/models/<def.mesh>.json, kind car): the body, its one wheel copied onto every axle
+// (scaled to the axle's radius, turned round on the right), steer = the steering wheel; light / tail parts are its lamps
+function mdlCar(def) {
+  const D = def.meshData, M = { lamp: std(0xfff8e0, .2, 0, 0xfff4d0), tail: std(0x330000, .4, 0, 0xff1a1a), rev: std(0xffffff, .2, 0, 0xffffff) }, C = {};
+  const { root, g } = buildMdl(THREE, D, k => k === 'light' ? M.lamp : k === 'tail' ? M.tail : C[k] ||= std(...(MATS[k] || [parseInt(k.slice(1), 16), .5, .1])));
+  const wheel = g.wheel || new THREE.Group(); root.remove(wheel); const steer = g.steer || new THREE.Group();
+  const wheels = def.axles.flatMap(ax => (ax.track > 0 ? [1, -1] : [0]).map(s => {
+    const w = new THREE.Group(), sp = new THREE.Group(), o = wheel.clone(); w.position.set(s * ax.track / 2, ax.r, ax.z); sp.scale.setScalar(ax.r / D.frame.r); o.rotation.y = s < 0 ? Math.PI : 0; sp.add(o); w.add(sp); root.add(w);
+    return { g: w, sp, y0: ax.r };
+  }));
+  const sz = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()); return { root, wheels, steer, M, size: [sz.x, sz.y, sz.z] };
+}
 const GR = { h: H, mu: surfaceMu, slick: slickAt, wet: 0, n(x, z, o) { const e = .35, h = H(x, z), dx = (H(x + e, z) - h) / e, dz = (H(x, z + e) - h) / e, l = Math.hypot(dx, 1, dz); o[0] = -dx / l; o[1] = 1 / l; o[2] = -dz / l; } };
 const W = carWorld(GR), CARS = [], REACH = 3.2, q = new THREE.Quaternion(), q2 = new THREE.Quaternion(), v3 = new THREE.Vector3(), e3 = new THREE.Euler(0, 0, 0, 'YXZ');
 let cur = null, acc = 0, awake = 2, camSnap = true;
@@ -31,6 +44,7 @@ export const CAR = { list: CARS, get cur() { return cur; }, W };
 
 export async function carsInit() {
   const ids = await (await fetch('data/cars/index.json?v=' + BUILD)).json(), defs = (await Promise.all(ids.map(id => fetch(`data/cars/${id}.json?v=${BUILD}`).then(r => r.json())))).filter(d => MODELS[d.model]);
+  await Promise.all(defs.filter(d => d.mesh).map(async d => { d.meshData = await (await fetch(`data/models/${d.mesh}.json?v=${BUILD}`)).json(); }));
   const lot = LMF.lot[0];
   defs.forEach((def, i) => {
     const a = lot.W(66, 40 + i * 4), b = lot.W(66, 39 + i * 4), at = { x: a.x, z: a.z, h: Math.atan2(b.x - a.x, b.z - a.z) }, id = spawnCar(W, def, at);

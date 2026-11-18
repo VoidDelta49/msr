@@ -67,6 +67,22 @@ HiAce figures are Toyota Motor Philippines' published specs for the Commuter 3.0
 
 Not there yet: friends in multiplayer see you as a walker instead of the van, pedestrians do not react to it, it has no garage parts, wind / tyre noise, or crash damage, and it stops at building walls with a simple push-out (no Rapier body).
 
+## Model Maker (12.22)
+
+`maker/model.html` builds 3D models out of simple parts, no code: boxes, cylinders, spheres, rings, tubes and **panels** (a side outline you draw point by point, made solid; that is how the bikes' bodywork is made). Run `node tools/serve.mjs`, open `http://localhost:8080/maker/model.html`.
+
+- **Side / Front / Top** views: drag a part to move it (5 mm snap, Shift = free), drag empty space to pan, wheel to zoom. **3D**: drag to orbit. A selected panel shows yellow points in the Side view: drag them, double-click near an edge to add one, right-click one to remove it.
+- **Mirror** (M) draws a copy on the other side, so you build one side of a bike and get both. **Side photo**: load a side picture of the real thing, set how many metres wide it is, and trace over it.
+- Materials are the game's own (paint follows the player's paint colour, light / tail / amber glow with the lamps) or any colour. **Group** says what the part moves with in the game (bike: steer, slider = fork lowers, rear = rear hub, exh).
+- **Save** writes `data/models/<id>.json` (and `index.json`); on a plain web host it downloads the file instead. Ctrl+Z / Ctrl+Y, Ctrl+D duplicate, Del, arrows nudge, F fit; Help in the side panel.
+
+Using a model in the game:
+- **Bike**, on an existing bike: `"mesh": "<id>"` in `data/bikes/<id>.json` adds the parts to its model (accessories, a body kit). With `"model": "custom"` the parts ARE the body, on bare wheels, fork, swing arm, bars and rider placed from the model's frame guides (the blue wheel circles, steering axis, green swing arm, orange seat mark): set those to the real bike's numbers first. `data/models/sample-bike.json` is a starting point.
+- **Car**: `"model": "mesh", "mesh": "<id>"` in `data/cars/<id>.json`; the model's `wheel` group is one wheel at the origin, copied to every axle; `steer` is the steering wheel.
+- **Prop**: `buildMdl(THREE, json, mat)` in `js/mdl.js` gives a THREE.Group for anything else.
+
+`node tools/mdl.mjs` checks every model file (part of `test.mjs`); `node tools/mdl.mjs --shot dir [--id x] [--guides]` takes side / front / top / 3/4 pictures and prints the size.
+
 ## Quests (Build 9.5)
 
 The hub layout is seeded by the date (Philippine day, UTC+8): everyone gets the same hubs, types and bike locks on the same day, and it all reshuffles at midnight (reload to pick it up).

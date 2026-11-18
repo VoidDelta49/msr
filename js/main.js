@@ -51,6 +51,7 @@ const stage = window.__cpmLoad || (() => { });
 stage('Loading bikes', .78);
 const ids = await (await fetch('data/bikes/index.json?v=' + BUILD)).json();
 for (const d of await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=${BUILD}`).then(r => r.json())))) ctx.bikes[d.id] = d;
+await Promise.all(Object.values(ctx.bikes).filter(d => d.mesh).map(async d => { d.meshData = await (await fetch(`data/models/${d.mesh}.json?v=${BUILD}`)).json(); })); // Model Maker parts (model.js addMesh)
 
 const SPAWN = (F => ({ ...F.W(62, 30), psi: Math.PI / 2 - F.ry }))(LMF.lot[0]); // in the parking lot, wherever the map puts it
 function reset() {

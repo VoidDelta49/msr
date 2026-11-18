@@ -11,6 +11,7 @@ import { Q } from './config.js';
 import * as T from './tex.js';
 import { mkTex } from './tex.js';
 import { cluTex } from './hud.js';
+import { buildMdl } from './mdl.js';
 import { prof, JACKET, JEAN, HELM, VISOR, SHOE, GLOVE, TORSO_PTS, humanGeo, bakeFigure, riderPal, optMask } from './figure.js';
 
 // MP = painted panels (white in the paint colour + the livery texture), MK = glossy black panels (the real bikes are two-tone)
@@ -1508,7 +1509,38 @@ function xmax(ct) {
   };
 }
 
-const MODELS = { sport, sniper, winner, scooter, supersport, underbone, tmx, aerox, rouser, h2, nmax, xmax, macho: (ct, v) => tmx(ct, v, 1), barako: (ct, v) => tmx(ct, v, 2), surf: (ct) => underbone(ct, 2, 1) };
+/* ---------- Model Maker parts (data/models/<id>.json, maker/model.html, js/mdl.js) ---------- */
+// A bike's "mesh": its parts are added to whatever its builder made (accessories, a new body kit), or, with "model": "custom", they are
+// the whole body on the bare running gear below. Parts are drawn in bike (ct) coordinates and then hung on the handle their group names,
+// keeping where they are: steer turns with the bars, slider rides with the fork lowers, rear with the rear hub.
+let MESH = null;
+const MATK = { paint: MP, black: MK, matte: MB, chrome: MC, alu: MAlu, metal: ME, rubber: MR, seat: MS, glass: MVisG, gold: MGold, light: MHead, tail: MTail, amber: MAmb };
+function addMesh(M, ct, exh) {
+  const { g } = buildMdl(THREE, M, k => MATK[k] || xstd(parseInt(k.slice(1), 16), .5, .1)), to = { ct, steer: B.steer, slider: B.slider, rear: B.rearH, exh: exh || ct };
+  ct.updateMatrixWorld(true);
+  for (const [k, grp] of Object.entries(g)) for (const o of [...grp.children]) { ct.add(o); if (to[k] !== ct) to[k].attach(o); }
+}
+// bare running gear for "model": "custom", placed from the model's frame (the maker's blue guides): wheels, fork, swing arm, bars, rider
+function custom(ct) {
+  const f = MESH.frame, rw = f.rw, R = rw - .04, fz = f.rearZ - f.wb, [hz, hy] = f.head, dy = f.seat[1] - .85, dz = f.seat[0] - .35, sh = (a, i, j) => a.map((v, n) => v + (n === i ? dy : n === j ? dz : 0));
+  T0 = [hz, hy]; RK = f.rake * PI / 180; const [az, ay] = toSt(fz, rw);
+  B.G = { rw, rearZ: f.rearZ, fork: -ay, rake: RK, pivotY: f.pivot[1], pivotZ: f.pivot[0], swingX: 0 }; B.wheelCol = 0x16171a; B.cargo = { y: f.seat[1] + .05, z: f.seat[0] + .12 };
+  B.rearH = new THREE.Group(); B.rearH.position.set(0, rw, f.rearZ); ct.add(B.rearH); B.rearW = wheelG(R, .04, R - .038, 5, .02, true, .095); B.rearH.add(B.rearW);
+  B.swing = mk(mergeGeometries([box(.03, .065, 1).translate(.1, 0, 0), box(.03, .065, 1).translate(-.1, 0, 0), box(.2, .04, .05).translate(0, 0, -.46)]), MK, ct, 0, f.pivot[1], f.pivot[0]);
+  const tilt = new THREE.Group(); tilt.position.set(0, hy, hz); tilt.rotation.x = RK; ct.add(tilt);
+  const st = B.steer = new THREE.Group(); tilt.add(st);
+  for (const s of [-1, 1]) tube([s * .08, .05, az], [s * .08, ay + .12, az], .021, MC, st);
+  mk(box(.22, .03, .08), MB, st, 0, .04, az / 2); mk(box(.2, .025, .07), MB, st, 0, -.13, az / 2);                // yokes
+  B.slider = new THREE.Group(); B.slider.position.set(0, ay, az); st.add(B.slider);
+  B.frontW = wheelG(R, .04, R - .038, 5, .02, true, .13); B.slider.add(B.frontW);
+  clusterPlane(st, 0, .2, -.08, -.9); controls(st, .16, .07, .29, .2, [.3, .17, -.06]);
+  rider(ct, sh([1.12, .3, -.35], 0, 1), sh([1.48, .14], 0, 1), sh([.22, 1.18, 0, .6, .45], 1, 2), [sh([.15, .9, .2, .2, .45, .14], 1, 2), sh([.18, .58, .02, -.2, .42, .11], 1, 2)]);
+  B.cam = new THREE.Group(); B.cam.position.set(0, 1.36 + dy, .1 + dz); ct.add(B.cam);
+  B.exh = new THREE.Group(); ct.add(B.exh); const M = MESH;
+  addMesh({ ...M, parts: M.parts.filter(q => q.g !== 'exh') }, ct);
+  B.buildExh = () => { B.exh.clear(); addMesh({ ...M, parts: M.parts.filter(q => q.g === 'exh') }, ct, B.exh); batchExh(); };
+}
+const MODELS = { custom, sport, sniper, winner, scooter, supersport, underbone, tmx, aerox, rouser, h2, nmax, xmax, macho: (ct, v) => tmx(ct, v, 1), barako: (ct, v) => tmx(ct, v, 2), surf: (ct) => underbone(ct, 2, 1) };
 // Lamps (11.99). Colour: LED units are cool white, the halogen bikes (B.halo: Smash, TMX, Macho, Rouser) warm; the beam on the
 // road (renderer's `head`) follows. lamps(on, brake): headlamp and tail lamp burn with the ignition on, the tail lamp
 // brightens under braking. A fresh build is lit, so the frozen copies of other players' bikes (snapshot) keep their lights.
@@ -1560,7 +1592,7 @@ export function buildModel(bike, spec) {
   Object.assign(TY, { t: sp.tyT || 1, w: sp.tyW || 1, k: sp.tyK | 0, s: sp.tyS ? 1 : 0, rd: sp.rimD | 0, dk: sp.dscK | 0, led: sp.wledC ? 1 : 0, mir: sp.mirK | 0 });
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;
-  B.ct.clear(); B.halo = false; B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.calCol = null; B.bar = null; B.sc = 0; B.scDz = 0; B.shk = null; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MODELS[bike.model](B.ct, B.var); B.kind = bike.model;
+  B.ct.clear(); B.halo = false; B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.calCol = null; B.bar = null; B.sc = 0; B.scDz = 0; B.shk = null; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MESH = bike.meshData || null; MODELS[bike.model](B.ct, B.var); B.kind = bike.model; if (MESH && bike.model !== 'custom') addMesh(MESH, B.ct);
   fit(B.ct, sp, bike.chassis.wb); lampKind(sp.hlC, sp.auxC); LED.d = 1;
   if (spec?.sc && bike.sidecar) { B.sc = 1; sidecar(B.ct, bike.sidecar, bike.chassis.wb); } SC_BLOB.p.z = B.scDz; // any bike with sidecar mount data
   // swing-arm length / Engine Support (sp.swl, parts-gen swarm): the rear wheel sits further back. A chain bike's arm stretches to it
