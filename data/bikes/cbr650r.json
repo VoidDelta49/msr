@@ -389,7 +389,9 @@
     "aux": {"l": "Auxiliary lights", "o": [{"n": "None"}, {"n": "Mini driving lights", "note": "More light on the road", "auxK": 1, "dm": 0.5}, {"n": "Yellow fog pair", "note": "More light on the road", "auxK": 1, "auxC": "#ffd23a", "dm": 0.5}]},
     "glow": {"l": "Underglow", "o": [{"n": "Off"}, {"n": "Red", "glowC": "#ff0a0a"}, {"n": "Amber", "glowC": "#ff7a00"}, {"n": "Green", "glowC": "#10ff30"}, {"n": "Cyan", "glowC": "#00d8ff"}, {"n": "Blue", "glowC": "#1440ff"}, {"n": "Purple", "glowC": "#9a1cff"}, {"n": "Pink", "glowC": "#ff1ea0"}, {"n": "White", "glowC": "#ffffff"}, {"n": "RGB cycle", "note": "Runs through every colour", "glowC": "rgb"}]},
     "wled": {"l": "Wheel LEDs", "o": [{"n": "Off"}, {"n": "Red", "wledC": "#ff0a0a"}, {"n": "Amber", "wledC": "#ff7a00"}, {"n": "Green", "wledC": "#10ff30"}, {"n": "Cyan", "wledC": "#00d8ff"}, {"n": "Blue", "wledC": "#1440ff"}, {"n": "Purple", "wledC": "#9a1cff"}, {"n": "Pink", "wledC": "#ff1ea0"}, {"n": "White", "wledC": "#ffffff"}, {"n": "RGB cycle", "note": "Runs through every colour", "wledC": "rgb"}]},
-    "swarm": {"l": "Swing-arm", "o": [{"n": "Stock"}, {"n": "Extended 2 in", "note": "50 mm longer", "swl": 0.05, "krx": 0.85, "dm": 0.4}, {"n": "Extended 4 in", "note": "100 mm longer · softer rear", "swl": 0.1, "krx": 0.73, "dm": 0.8}, {"n": "Drag stretch 6 in", "note": "150 mm longer · hard to wheelie, wide turns", "swl": 0.15, "krx": 0.63, "dm": 1.2}]}
+    "swarm": {"l": "Swing-arm", "o": [{"n": "Stock"}, {"n": "Extended 2 in", "note": "50 mm longer", "swl": 0.05, "krx": 0.85, "dm": 0.4}, {"n": "Extended 4 in", "note": "100 mm longer · softer rear", "swl": 0.1, "krx": 0.73, "dm": 0.8}, {"n": "Drag stretch 6 in", "note": "150 mm longer · hard to wheelie, wide turns", "swl": 0.15, "krx": 0.63, "dm": 1.2}]},
+    "finish": {"l": "Paint finish", "o": [{"n": "Factory"}, {"n": "Matte", "note": "Flat, no clear coat", "pfR": 0.8, "pfM": 0.05, "pfC": 0}, {"n": "Satin", "note": "Soft sheen", "pfR": 0.52, "pfM": 0.15, "pfC": 0.25}, {"n": "Metallic flake", "note": "Sparkles in the sun", "pfR": 0.34, "pfM": 0.7, "pfC": 1}, {"n": "Candy gloss", "note": "Deep wet shine", "pfR": 0.12, "pfM": 0.4, "pfC": 1}, {"n": "Chrome", "note": "Mirror-coated", "pfR": 0.06, "pfM": 1, "pfC": 1}]},
+    "exhf": {"l": "Pipe finish", "o": [{"n": "Stock"}, {"n": "Black ceramic", "exC": "#1c1d21", "exR": 0.6, "exM": 0.3}, {"n": "Burnt titanium", "note": "Heat-blued", "exC": "#5a63a8", "exR": 0.22, "exM": 1}, {"n": "Polished chrome", "exC": "#eceef2", "exR": 0.06, "exM": 1}, {"n": "Gold", "exC": "#c9a24a", "exR": 0.2, "exM": 1}, {"n": "Copper", "exC": "#b8693a", "exR": 0.25, "exM": 1}]}
   },
   "sliders": [
     {
@@ -522,7 +524,9 @@
     "aux": 0,
     "glow": 0,
     "wled": 0,
-    "swarm": 0
+    "swarm": 0,
+    "finish": 0,
+    "exhf": 0
   },
   "hint": "KEY on, hold START. E-Clutch: shift ▼ into 1st and twist (lever optional, see garage)."
 }

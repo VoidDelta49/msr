@@ -67,7 +67,16 @@ function taper(g, zs, ys) {
 // cylinder from point a to point b ([x, y, z]), for pipes and rails
 const UP = new THREE.Vector3(0, 1, 0);
 // a rear shock's damper rod: hangs on the rear hub, so it rides up into the shock body (which stays on the chassis) as the wheel rises
-function rod(a, b, r, m) { const p = B.rearH.position, o = tube([a[0] - p.x, a[1] - p.y, a[2] - p.z], [b[0] - p.x, b[1] - p.y, b[2] - p.z], r, m, B.rearH); (B.shk ||= []).push(o); return o; }
+function rod(a, b, r, m) { const p = B.rearH.position, la = [a[0] - p.x, a[1] - p.y, a[2] - p.z], lb = [b[0] - p.x, b[1] - p.y, b[2] - p.z], o = tube(la, lb, r, m, B.rearH); (B.shk ||= []).push(o); (B.rods ||= []).push([la, lb]); return o; }
+// garage Shock springs (sp.sprC): a coil over each shock, hung on the hub with the rod (so it rides up with the wheel). la / lb = the rod's ends
+// in rear-hub space; the coil runs from just above the lower eye to under the top mount, around the shock body
+const MSpr = std(0xc21d1d, .35, .4);
+function coil(la, lb) {
+  const a = new THREE.Vector3(...la), d = new THREE.Vector3(...lb).sub(a), L = d.length(), R = .038, n = 7, pts = [];
+  for (let i = 0; i <= n * 10; i++) { const t = i / (n * 10), w = t * n * 2 * PI; pts.push(new THREE.Vector3(Math.cos(w) * R, L * (.08 + .62 * t), Math.sin(w) * R)); }
+  const o = mk(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), n * 10, .0065, 5, false), MSpr, B.rearH, a.x, a.y, a.z);
+  o.quaternion.setFromUnitVectors(UP, d.normalize()); B.shk.push(o);
+}
 function tube(a, b, r, m, par, seg = 6) {
   const A = new THREE.Vector3(...a), D = new THREE.Vector3(...b).sub(A), L = D.length(), o = mk(cyl(r, r, L, seg), m, par, 0, 0, 0);
   o.position.copy(A).addScaledVector(D, .5); o.quaternion.setFromUnitVectors(UP, D.normalize()); return o;
@@ -961,9 +970,11 @@ function palGeo(o, rel, bone) {
   return g;
 }
 // exhaust: rebuilt on garage changes, one plain palette mesh (casts its own shadow)
+let EXF = null; // garage Pipe finish [colour, roughness, metal] (applyLook), or null = each builder's own
 const XC = new Map(), xstd = (c, r, mt) => { const k = c + '/' + r + '/' + mt; let m = XC.get(k); if (!m) XC.set(k, m = std(c, r, mt)); return m; };
 function batchExh() {
   const L = B.exh.children.filter(o => o.isMesh); if (!L.length) return; B.exh.updateMatrixWorld(true);
+  if (EXF) for (const o of L) { const m = o.material; if (m !== MB && m !== MK && m !== MR && m !== MCF && m.isMeshStandardMaterial && !m.map && !m.emissive.getHex()) o.material = xstd(...EXF); } // the black header / brackets and carbon stay
   const inv = new THREE.Matrix4().copy(B.exh.matrixWorld).invert(), m = new THREE.Mesh(mergeGeometries(L.map(o => palGeo(o, inv))), MT);
   m.castShadow = !!B.castSh; for (const o of L) { B.exh.remove(o); o.geometry.dispose(); } B.exh.add(m);
 }
@@ -1567,7 +1578,7 @@ export function ledTick(t) {
   }
 }
 // what the garage can change about the model's shape: a different key = buildModel() again (main.js). Colours never rebuild.
-export const shapeOf = (sp, bike) => sp ? [sp.var | 0, sp.sc && bike.sidecar ? 1 : 0, sp.tyT || 1, sp.tyW || 1, sp.tyK | 0, sp.tyS ? 1 : 0, sp.rimD | 0, sp.dscK | 0, sp.wledC ? 1 : 0, sp.mirK | 0, sp.boxK | 0, sp.glowC ? 1 : 0, sp.auxK | 0, sp.swl || 0].join() : '';
+export const shapeOf = (sp, bike) => sp ? [sp.var | 0, sp.sc && bike.sidecar ? 1 : 0, sp.tyT || 1, sp.tyW || 1, sp.tyK | 0, sp.tyS ? 1 : 0, sp.rimD | 0, sp.dscK | 0, sp.wledC ? 1 : 0, sp.mirK | 0, sp.boxK | 0, sp.glowC ? 1 : 0, sp.auxK | 0, sp.swl || 0, sp.sprC ? 1 : 0].join() : '';
 // Bolt-ons that are the same on every bike, placed from what each builder leaves behind (B.G, B.cargo, B.bar): top box on a rack
 // over the tail, LED strips under the belly, a pair of aux lamps (on the bar by the switch pods; on the fork legs of the clip-on bikes).
 function fit(ct, sp, wb) {
@@ -1593,7 +1604,8 @@ export function buildModel(bike, spec) {
   Object.assign(TY, { t: sp.tyT || 1, w: sp.tyW || 1, k: sp.tyK | 0, s: sp.tyS ? 1 : 0, rd: sp.rimD | 0, dk: sp.dscK | 0, led: sp.wledC ? 1 : 0, mir: sp.mirK | 0 });
   if (B.skin) { B.skin.geometry.dispose(); B.skin.skeleton.dispose(); B.skin = null; }
   B.var = spec?.var | 0;
-  B.ct.clear(); B.halo = false; B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.calCol = null; B.bar = null; B.sc = 0; B.scDz = 0; B.shk = null; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MESH = bike.meshData || null; MODELS[bike.model](B.ct, B.var); B.kind = bike.model; if (MESH && bike.model !== 'custom') addMesh(MESH, B.ct);
+  B.ct.clear(); B.halo = false; B.fenderPaint = false; B.decal = null; B.look = null; B.rimCol = null; B.calCol = null; B.bar = null; B.sc = 0; B.scDz = 0; B.shk = null; B.rods = null; PAL.clear(); for (const m of [MW, MRS, MC, MWF]) palIdx(m); MESH = bike.meshData || null; MODELS[bike.model](B.ct, B.var); B.kind = bike.model; if (MESH && bike.model !== 'custom') addMesh(MESH, B.ct);
+  if (sp.sprC && B.rods) for (const [a, b] of B.rods) coil(a, b);
   fit(B.ct, sp, bike.chassis.wb); lampKind(sp.hlC, sp.auxC); LED.d = 1;
   if (spec?.sc && bike.sidecar) { B.sc = 1; sidecar(B.ct, bike.sidecar, bike.chassis.wb); } SC_BLOB.p.z = B.scDz; // any bike with sidecar mount data
   // swing-arm length / Engine Support (sp.swl, parts-gen swarm): the rear wheel sits further back. A chain bike's arm stretches to it
@@ -1682,7 +1694,8 @@ export function blobTick(H) {
 }
 // cfb: body 0 paint / 1 carbon / 2 paint-tinted carbon · cff fenders · cfw wheels · cfx muffler cover · B.rimCol: a builder's stock rim tape
 export function applyLook(spec) {
-  drawLivery(B.kind, '#' + new THREE.Color(spec.c).getHexString(), spec.lv || ''); MP.userData.r = spec.rough ?? .3; MP.userData.mt = spec.metal ?? .2; // matt paints: rougher; mirror-coated paints: metallic
+  drawLivery(B.kind, '#' + new THREE.Color(spec.c).getHexString(), spec.lv || ''); MP.userData.r = spec.pfR ?? spec.rough ?? .3; MP.userData.mt = spec.pfM ?? spec.metal ?? .2; // matt paints: rougher; mirror-coated paints: metallic
+  MP.userData.cc0 = spec.pfC ?? 1; EXF = spec.exC ? [spec.exC, spec.exR ?? .3, spec.exM ?? 1] : null; MSpr.color.set(spec.sprC || 0xc21d1d); // garage Paint finish (lacquer), Pipe finish, Shock springs
   carbon(MP, !!spec.cfb, spec.c, spec.cfb === 2); carbon(MF, !!spec.cff, B.fenderPaint ? spec.c : 0x15161a); const wc = spec.wc || B.wheelCol; carbon(MW, !!spec.cfw, wc); // wc: paint scheme's own wheel colour
   MRS.color.set(spec.rim || B.rimCol || wc); MCov.color.set(spec.ec || 0x60656d); MFrm.color.set(spec.fc || 0x3fae2a); if (B.decal) B.decal.color.set(spec.hd || '#f1f1ec');
   MCal.color.set(spec.calC || B.calCol || 0x15161a); MLev.color.set(spec.levC || 0xd5dae0); MGrip.color.set(spec.grpC || 0x0d0d0d); MS.color.set(spec.seatC || 0x1b1b1b);

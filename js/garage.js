@@ -25,7 +25,7 @@ const TABS = [
   ['stats', 'STATS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }], ['dyno', 'DYNO', { az: 1.5, el: .06, r: 2.7, ty: .4, tz: -.45 }], ['builds', 'BUILDS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }],
 ];
 const WHERE = { swarm: 'susp', exhaust: 'engine', ecu: 'engine', fuelsys: 'engine', tune: 'engine', trim: 'wheels', intake: 'engine', flywheel: 'engine', rollers: 'drive', cspring: 'drive', clspring: 'drive', pulley: 'drive', fs: 'drive', rs: 'drive', autoClutch: 'drive', iss: 'drive', qs: 'drive', tc: 'drive', ver: 'drive', ysp: 'drive', kit: 'engine', frame: 'look', decal: 'look', tb: 'engine', injector: 'engine', carb: 'engine', valves: 'engine', port: 'engine', cyl: 'engine', piston: 'engine', oil: 'engine', coil: 'engine', cdi: 'engine', plug: 'engine', cam: 'engine', battery: 'engine', clutch: 'drive', chain: 'drive', belt: 'drive', lines: 'wheels',
-  rims: 'wheels', disc: 'wheels', caliper: 'wheels', mirrors: 'style', levers: 'style', grips: 'style', seat: 'style', box: 'style', hl: 'lights', aux: 'lights', glow: 'lights', wled: 'lights',
+  rims: 'wheels', disc: 'wheels', caliper: 'wheels', mirrors: 'style', levers: 'style', grips: 'style', seat: 'style', box: 'style', hl: 'lights', aux: 'lights', glow: 'lights', wled: 'lights', exhf: 'engine', spring: 'susp',
   pf: 'susp', pr: 'susp', yf: 'susp', yr: 'susp', kf: 'susp', kr: 'susp', damp: 'susp', tires: 'wheels', brakes: 'wheels', wheelcol: 'wheels', rimstripe: 'wheels',
   fl: 'dyno', fm: 'dyno', fh: 'dyno', il: 'dyno', ih: 'dyno', ig: 'dyno', ct: 'dyno', idl: 'dyno', rl: 'dyno', mj: 'dyno', nc: 'dyno', ps: 'dyno' }; // fine tuning (tune.js)
 const where = k => WHERE[k] || (k.startsWith('cf') ? 'carbon' : 'look');
@@ -98,7 +98,7 @@ const SUBS = [['intake', 'INTAKE & FUEL', 'Air in and fuel in: filter, throttle 
 const WSUBS = [['tires', 'TIRES', 'Sizes that fit this bike\'s rims. Grip, weight and rolling drag change, and so does how the bike sits on its wheels.', { az: 1.05, el: .1, r: 2.7, ty: .4, tz: .1 }],
   ['rims', 'RIMS', 'Wheel design, colour and rim tape.', { az: 1.5, el: .05, r: 2.6, ty: .38, tz: .1 }], ['brakes', 'BRAKES', 'Discs, calipers, pads and lines.', { az: 1.3, el: .06, r: 1.9, ty: .32, tz: -.55 }]];
 const SUBL = { engine: SUBS, wheels: WSUBS }, SUBDEF = { engine: 'ecu', wheels: 'rims' };
-const SUBOF = { intake: 'intake', tb: 'intake', carb: 'intake', injector: 'intake', fuelsys: 'intake', cam: 'head', valves: 'head', port: 'head', cyl: 'bottom', piston: 'bottom', oil: 'bottom', flywheel: 'bottom', tune: 'bottom', plug: 'ign', coil: 'ign', cdi: 'ign', battery: 'ign', exhaust: 'exh', ecu: 'ecu', kit: 'ecu',
+const SUBOF = { intake: 'intake', tb: 'intake', carb: 'intake', injector: 'intake', fuelsys: 'intake', cam: 'head', valves: 'head', port: 'head', cyl: 'bottom', piston: 'bottom', oil: 'bottom', flywheel: 'bottom', tune: 'bottom', plug: 'ign', coil: 'ign', cdi: 'ign', battery: 'ign', exhaust: 'exh', exhf: 'exh', ecu: 'ecu', kit: 'ecu',
   tires: 'tires', rims: 'rims', wheelcol: 'rims', rimstripe: 'rims', brakes: 'brakes', lines: 'brakes', disc: 'brakes', caliper: 'brakes', trim: 'brakes' };
 const subOf = (k, t = 'engine') => SUBOF[k] || SUBDEF[t];
 const FIRST = new Set(['disc', 'caliper', 'rims']); // the parts you can see lead their group
@@ -109,7 +109,7 @@ function subHTML(bike, b, t) {
   return `<div class=gsub>${subs.map(([id, l]) => { const n = ks.filter(k => subOf(k, t) === id && b[k] !== bike.defaults[k]).length; return `<button class="gs${id === subSel[t] ? ' on' : ''}" data-sub=${id}>${l}${n ? `<i>${n}</i>` : ''}</button>`; }).join('')}</div><p class=gsubd>${SUBL[t].find(x => x[0] === subSel[t])[2]}</p>`;
 }
 // colour chip of an option (paint, wheels, tape, covers, calipers, levers, grips, seat, sidewall, bag, bulbs, LEDs; 'rgb' = the cycling controller)
-const swatch = o => { const c = o.c || o.wc || o.rim || o.ec || o.hd || o.calC || o.levC || o.grpC || o.seatC || o.boxC || o.tyS || o.hlC || o.auxC || o.glowC || o.wledC; return c === 'rgb' ? 'conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)' : c; };
+const swatch = o => { const c = o.c || o.wc || o.rim || o.ec || o.hd || o.calC || o.levC || o.grpC || o.seatC || o.boxC || o.tyS || o.hlC || o.auxC || o.glowC || o.wledC || o.exC || o.sprC; return c === 'rgb' ? 'conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)' : c; };
 // a slider's value as shown: signed offsets get their +, the main jet shows the jet's real size
 const sval = (s, v) => s.f === 'jet' ? '#' + jetOf(ctx.bike, ctx.spec, v - ctx.bike.defaults[s.k])[0] : (s.sg && v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v) + s.u;
 const sliderHTML = (s, b, def) => `<div class=pr><div class=pl>${s.l} <b id=v_${s.k}>${sval(s, b[s.k])}</b>${b[s.k] !== def[s.k] ? `<small> stock ${sval(s, def[s.k])}</small>` : ''}</div><input type=range min=${s.min} max=${s.max} step=${s.step || 1} value=${b[s.k]} data-s=${s.k}></div>`;

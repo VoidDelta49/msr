@@ -79,7 +79,7 @@ function cleanLook(l) {
   const parts = {};
   if (l.parts && typeof l.parts === 'object') {
     let n = 0;
-    for (const [k, v] of Object.entries(l.parts)) { if (++n > 24) break; if (/^[a-zA-Z0-9_]{1,16}$/.test(k) && Number.isInteger(v) && v >= 0 && v < 32) parts[k] = v; }
+    for (const [k, v] of Object.entries(l.parts)) { if (++n > 32) break; if (/^[a-zA-Z0-9_]{1,16}$/.test(k) && Number.isInteger(v) && v >= 0 && v < 32) parts[k] = v; }
   }
   return { bike: l.bike, parts };
 }
