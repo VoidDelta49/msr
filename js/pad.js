@@ -17,10 +17,10 @@ function sub(j, id, args) { const a = new Uint8Array(10 + args.length); a[0] = j
 async function jcOpen(d) {
   const side = d.productId === 0x2006 ? 'L' : d.productId === 0x2007 ? 'R' : null; if (!side) return;
   try { if (!d.opened) await d.open(); } catch (e) { return; }
-  const j = JC[side] = { d, side, n: 0, b: 0, sx: 0, sy: 0, c: null, g: null, g0: null, k: 0, tw: 0, busy: false };
+  const j = JC[side] = { d, side, n: 0, b: 0, sx: 0, sy: 0, c: null, g: null, g0: null, k: 0, tw: 0, ax: null, b1: null, b2: null, p0: 0, s0: 0, st: 0, sOk: false, busy: false };
   d.oninputreport = e => jcIn(j, e);
   try { await sub(j, 0x03, [0x30]); await sub(j, 0x40, [1]); await sub(j, 0x48, [1]); } catch (e) { }
-  GP.jc = true; tellPad(side === 'R' ? 'Right Joy-Con: twist it back for throttle, ZR brakes. R-stick click re-zeros the grip' : 'Left Joy-Con: stick steers, ZL is the clutch');
+  GP.jc = true; tellPad(side === 'R' ? 'Right Joy-Con: hold it like the grip, then twist it back once to set the throttle. ZR brakes, R-stick click re-zeros' : 'Left Joy-Con: stick steers, ZL is the clutch');
 }
 function jcIn(j, e) {
   if (e.reportId !== 0x30) return; const v = e.data;
@@ -30,12 +30,43 @@ function jcIn(j, e) {
   let ax = 0, ay = 0, az = 0; for (let i = 0; i < 3; i++) { ax += v.getInt16(12 + i * 12, true); ay += v.getInt16(14 + i * 12, true); az += v.getInt16(16 + i * 12, true); }
   const m = Math.hypot(ax, ay, az) || 1, a = [ax / m, ay / m, az / m];
   j.g = j.g ? j.g.map((q, i) => q + (a[i] - q) * .35) : a; j.k++;
-  if (!j.g0 && j.k > 12) j.g0 = j.g.slice();
-  if (j.g0) {
-    const gm = Math.hypot(...j.g), d = clamp((j.g[0] * j.g0[0] + j.g[1] * j.g0[1] + j.g[2] * j.g0[2]) / gm, -1, 1), ang = Math.acos(d);
-    j.tw = clamp((ang - .07) / .5, 0, 1); // 4 degrees of free play, wide open at ~33 degrees of twist
-    if (ang < .05) j.g0 = j.g0.map((q, i) => q + (j.g[i] / gm - q) * .004); // the resting hand drifts: follow it slowly while closed
+  if (!j.g0 && j.k > 12) zero(j);
+  if (!j.g0) return;
+  const g = j.g, gm = Math.hypot(...g), u = [g[0] / gm, g[1] / gm, g[2] / gm], ang = Math.acos(clamp(dot(u, j.g0), -1, 1));
+  j.mv = (j.mv || 0) * .9 + (j.u ? Math.acos(clamp(dot(u, j.u), -1, 1)) : 0) * .1; j.u = u; // how much it is moving
+  j.still = j.mv < .004 ? (j.still || 0) + 1 : 0;
+  if (j.cand && j.k > j.candK + 200) j.cand = null; // a 'twist' that never came back (it was a pick-up off the desk): forget it
+  if (!j.ax && !j.cand && j.still > 40 && ang > .04) { zero(j); return; } // not set yet: wherever it is held still (picked up off the desk) is rest
+  j.ang = ang;
+  if (j.side !== 'R') return;
+  if (!j.ax) {
+    // not calibrated yet: the first big twist that comes back to rest sets the grip's axis and its open direction (rest -> twisted
+    // gravity, crossed). A tilt of the bars moves the left Joy-Con too, so it does not count as a twist.
+    j.tw = j.still > 40 ? 0 : clamp((ang - .1) / .5, 0, 1);
+    if (ang > .45 && !j.cand && !(JC.L && JC.L.g0 && JC.L.ang > .2)) { j.cand = cross(j.g0, u); j.candK = j.k; }
+    if (j.cand && ang < .12) { setAxis(j, j.cand); j.cand = null; tellPad('Throttle set: twist back to open, roll forward to close' + (cfg.jcTilt !== false ? '. Tilt both grips like a wheel to steer' : '')); }
+    return;
   }
+  // throttle = the twist about the grip axis only (signed, open = +); tilting the bars or the wrist sideways does not count
+  const phi = Math.atan2(dot(u, j.b2), dot(u, j.b1)), DEAD = .1;
+  let r = phi - j.p0;
+  if (r < DEAD) j.p0 += (Math.max(phi, j.p0 - .3) - j.p0) * .003; // rolled forward = closed; the resting hand drifts, so follow it slowly
+  j.tw = clamp((r - DEAD) / .55, 0, 1); // ~6 degrees of free play past rest (and all of forward), wide open ~37 degrees back
+  // tilt steering: the grip axis dipping (right end down = right)
+  const sg = Math.asin(clamp(dot(u, j.ax), -1, 1)), sr = sg - j.s0;
+  if (Math.abs(sr) < .03 && j.tw === 0) j.s0 += sr * .002; // keep the centre honest
+  j.st = clamp(Math.sign(sr) * Math.max(0, Math.abs(sr) - .04) / (.5 * 10 / cfg.sens), -1, 1); j.sOk = true;
+}
+const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2], cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const unit = a => { const m = Math.hypot(...a) || 1; return a.map(q => q / m); };
+function setAxis(j, n) { j.ax = unit(n); zero(j, j.g0); j.tw = 0; } // rest stays the pose the twist started from
+// rest pose: gravity now; the twist angle is measured in the plane across the grip axis from here
+function zero(j, at) {
+  const g = unit(at || j.g); j.g0 = g; j.p0 = 0; j.s0 = 0; j.tw = 0;
+  if (!j.ax) return;
+  const n = j.ax, ug = dot(g, n);
+  j.s0 = Math.asin(clamp(ug, -1, 1));
+  j.b1 = unit([g[0] - ug * n[0], g[1] - ug * n[1], g[2] - ug * n[2]]); j.b2 = cross(n, j.b1);
 }
 export async function jcConnect() {
   if (!N.hid) return 'WebHID is not in this browser (Chrome or Edge on a computer)';
@@ -90,11 +121,12 @@ function poll() {
   sx = dz(sx); sy = dz(sy);
   for (const s of ['L', 'R']) { const j = JC[s]; if (!j) continue; for (const k in JCB) if (j.b >> JCB[k] & 1) btn[k] = 1; }
   const L = JC.L, R = JC.R;
-  if (R) { thr = Math.max(thr, R.tw); if (btn.zr) brk = 1; if (btn.rsr) btn.a = 1; if (btn.rsl) btn.x = 1; if (btn.key) btn.dl = 1; if (btn.kill) btn.dr = 1; if (btn.rs && R.g) { if (!R.rz) { R.g0 = R.g.slice(); tellPad('Throttle zeroed'); } btn.rs = 0; R.rz = 1; } else R.rz = 0; }
+  if (R) { thr = Math.max(thr, R.tw); if (btn.zr) brk = 1; if (btn.rsr) btn.a = 1; if (btn.rsl) btn.x = 1; if (btn.key) btn.dl = 1; if (btn.kill) btn.dr = 1; if (btn.rs && R.g) { if (!R.rz) { if (btn.zr) { R.ax = R.cand = null; zero(R); tellPad('Throttle reset: twist it back once to set it again'); } else { zero(R); tellPad('Grip zeroed'); } if (L && L.g) zero(L); } btn.rs = 0; btn.zr = 0; R.rz = 1; } else R.rz = 0; }
   if (L) { if (btn.zl) cl = true; if (btn.lsr) btn.a = 1; if (btn.lsl) btn.x = 1; if (!sx && !sy) { sx = -L.sy; sy = -L.sx; } } // held sideways: the stick's up points left
   else if (R && !sx && !sy) { sx = R.sy; sy = R.sx; }
   cluR = appr(cluR, cl ? 1 : 0, (cl ? 7 : 4) * dt); clu = Math.max(cluR, dz(rsy, .15));
   GP.thr = thr < .02 ? 0 : thr; GP.brk = brk; GP.clu = clu; GP.steer = Math.sign(sx) * Math.abs(sx) ** 1.5;
+  if (!sx && R && R.sOk && R.ax && cfg.jcTilt !== false) GP.steer = R.st; // Joy-Con tilt steering (the stick wins)
   GP.mx = sx; GP.mz = -sy; GP.run = !!(btn.lb || btn.zl) || Math.hypot(sx, sy) > .95;
   // edges -> key presses for the current state (menu / options / on foot / on the bike)
   const foot = GP.F && GP.F.on, M = foot ? FOOT : BIKE;
