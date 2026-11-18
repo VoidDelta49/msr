@@ -10,7 +10,7 @@ import { cfg, save, BUILD, GLOBAL_DEF, AA_MODES, QUALITY } from './config.js';
 import { WX, WX_MODES, wxText } from './weather.js';
 import { STATIONS } from './radiogen.js';
 import { RLOG } from './radiolive.js';
-import { buzz } from './haptic.js';
+import { buzz, vibeTest } from './haptic.js';
 
 export const O = { onPerf: null, setDPR: null, api: '', live: false, gpu: false, aa: null, snap };
 
@@ -135,6 +135,7 @@ const tCtl = () => sec('TOUCH') +
   sw('tilt', 'Tilt steering', 'Turn the phone like a handlebar to steer. Steering sensitivity sets how far. Dragging the steering still works and takes over.') +
   sw('haptic', 'Vibration', 'Buttons, bumps, landings and crashes buzz the phone. iPhone: a Taptic tick on button presses only (iOS 18+).') +
   sw('hEng', 'Engine vibration', 'A pulse with the engine firing: slow thumps at idle, a faster, stronger buzz on the throttle. Android only; uses more battery.', cfg.haptic === false) +
+  `<div class=obtns><button class=b data-act=vtest>Test vibration</button></div><p class=onote>Felt nothing? Check the phone's vibration / touch feedback setting, Do Not Disturb and battery saver. Some privacy browsers switch the Vibration API off or make it do nothing: try Chrome to compare.</p>` +
   sec('CAMERA') +
   slider('fov', 'Field of view', 'Wider shows more road but feels faster and stretches the edges.');
 const tAud = () => sec('SOUND') +
@@ -229,6 +230,7 @@ $('opts').onclick = e => {
   if (d.sg === 'preset') { Object.assign(cfg, PRESETS.find(p => p[0] === d.v)[2]); save(); build(true); return pop('preset'); }
   if (d.sg) return set(d.sg, parse(d.sg, d.v));
   if (d.act === 'reset') return resetAll();
+  if (d.act === 'vtest') { b.textContent = vibeTest(); return; }
   if (d.act === 'tlay') { closeOpts(); return editTlay(); }
   if (d.act === 'copy') { const t = LOG.join('\n') || 'No errors logged'; const done = ok => { b.textContent = ok ? 'Copied' : 'Copy failed'; }; try { navigator.clipboard.writeText(t).then(() => done(true), () => done(false)); } catch (x) { done(false); } return; }
   if (d.act === 'rcopy') { const t = 'ISLA ' + BUILD + ' radio log · ' + navigator.userAgent + '\n' + (RLOG.join('\n') || 'empty'); const done = ok => { b.textContent = ok ? 'Copied' : 'Copy failed: select the text instead'; }; try { navigator.clipboard.writeText(t).then(() => done(true), () => done(false)); } catch (x) { done(false); } return; }

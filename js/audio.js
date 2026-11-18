@@ -142,7 +142,7 @@ export function updAudio() {
   const cs = ctx.car && ctx.car.snd, esp = cs ? cs.sp : sp, eload = cs ? cs.load : S.thrEff || 0; // driving a car (carfig/drive.js): the engine voice is the car's
   const run = cs ? !!cs.run : S.running, cut = cs ? !!cs.cut : S.lim || S.cutT > 0, dt = Math.min(.1, t - lastT); lastT = t;
   offR = run ? ((cs ? cs.rpm : S.rpm) || 0) : Math.max(0, offR - dt * 3500); // switched off: the crank spins down, S.rpm may sit at idle
-  engineFeel(run && live, offR, eload, esp.sound?.cyl || 1); // haptic.js: the engine in the hand
+  engineFeel(run && live, offR, eload, esp.sound?.cyl || 1, cut); // haptic.js: the engine in the hand
   st(A.eng.gain, cs ? esp.sound.gain * 1.35 : (fp ? 1 : .85) * sd.gain * EXH.gain[x] * 1.35, .05);
   if (E) {
     if (esp !== lastSpec) { lastSpec = esp; engineCfg(esp); }

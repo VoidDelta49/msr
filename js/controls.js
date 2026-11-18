@@ -40,7 +40,7 @@ ptr($('thr'), e => { TC.thrId = e.pointerId; TC.ty = e.clientY; TC.thr = 0; $('t
 ptr($('brk'), e => { TC.brkId = e.pointerId; TC.by = e.clientY; TC.brk = cfg.analogBrk !== false ? .35 : 1; $('brk').classList.add('on'); }, e => { if (cfg.analogBrk !== false) TC.brk = clamp(.35 + (e.clientY - TC.by) / 80, 0, 1); /* press = light squeeze, drag down = harder */ }, () => { TC.brkId = null; TC.brk = 0; $('brk').classList.remove('on'); });
 ptr($('clu'), e => { TC.cluId = e.pointerId; TC.cy0 = e.clientY; TC.cl0 = TC.clu; }, e => { TC.clu = clamp(TC.cl0 + (e.clientY - TC.cy0) / 90, 0, 1); }, () => { TC.cluId = null; });
 ptr($('bBack'), () => { TC.back = 1; $('bBack').classList.add('on'); }, null, () => { TC.back = 0; $('bBack').classList.remove('on'); });
-$('bUp').onpointerdown = () => { buzz(10); actions.shift(1); }; $('bDn').onpointerdown = () => { buzz(10); actions.shift(-1); }; $('bKey').onpointerdown = () => { buzz(12); actions.key(); }; $('bKill').onpointerdown = () => { buzz(12); actions.kill(); };
+$('bUp').onpointerdown = () => actions.shift(1); $('bDn').onpointerdown = () => actions.shift(-1); /* the shift's own click buzzes (haptic.js FEEL) */ $('bKey').onpointerdown = () => { buzz(12); actions.key(); }; $('bKill').onpointerdown = () => { buzz(12); actions.kill(); };
 ptr($('bStart'), () => { buzz(15); $('bStart').classList.add('on'); actions.start(1); }, null, () => { $('bStart').classList.remove('on'); actions.start(0); }); // hold to crank
 
 // Tilt steering (Options > Controls): turn the phone like a handlebar. World "up" in device axes from beta / gamma (W3C Z-X'-Y''), turned
