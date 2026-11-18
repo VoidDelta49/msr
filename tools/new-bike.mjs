@@ -19,6 +19,8 @@ console.log(`created data/bikes/${id}.json (copy of ${from}) and added it to ind
  2. sound.parts based on the REAL bike (brakes, drivetrain, weight, body); not a copy of ${from}'s. Compare: node tools/bike.mjs ${id}
  2b. chassis.pil (copied from ${from}): dz / dy shift the rider mesh back / up onto the pillion seat, x / h are the passenger's place for the physics. Tune: node tools/pillion.mjs --bike ${id} --shot /tmp/pil
  3. model / cluster: pick from existing keys, or add a builder to MODELS (js/model.js) / CLUSTERS (js/hud.js). New part keys land on the PAINT tab unless listed in WHERE (js/garage.js).
+ 3b. Model Maker body ("model": "custom" + "mesh"): accuracy pass over a pure side photo, part-coloured, until it fits:
+    node tools/overlay.mjs --id <model> --photo side.png --axles rearX,rearY,frontX,frontY --grid   (see tools/README.md)
  4. Replace every TODO (name, short, tag, blurb, hint), add the bike to LEGAL.md (trademark use) and the README bike list/model list.
  5. node tools/check.mjs   -> must be clean;  node tools/sweep.mjs ${id}  -> no flags;  node tools/fuzz.mjs ${id}
  6. node tools/test.mjs --update  (adds its numbers to baseline.json), then bump BUILD + ?v= + changelog and push to main.`);
