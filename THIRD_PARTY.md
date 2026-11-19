@@ -62,4 +62,7 @@ After its four generated stations the in-game radio can tune to real Philippine 
 
 Add a row to the table above with its license. If it is bundled or copied into the repo, also keep its license text and notices with it.
 
-**Local change:** `vendor/rapier/rapier.mjs` is the npm file with its embedded base64 WASM moved out to `vendor/rapier/rapier.wasm` (loaded with `fetch(new URL("rapier.wasm", import.meta.url))`), which cuts the download by about a quarter. The bytes are identical.
+**Local changes (made by `node tools/vendor.mjs`, which rebuilds `vendor/` from the npm packages):**
+- `vendor/rapier/rapier.mjs` is the npm file with its embedded base64 WASM moved out to `vendor/rapier/rapier.wasm` (loaded with `fetch(new URL("rapier.wasm", import.meta.url))`), which cuts the download by about a quarter.
+- `vendor/rapier/rapier.wasm` is that WASM with the parts the game cannot reach removed (binaryen `wasm-metadce`: soft bodies, convex decomposition, character / vehicle controllers, scene queries, serialization and the joint API; the remaining code is unchanged), about 0.8 MB smaller. The tool checks that the game's Rapier calls give bit-identical results on the full and the reduced WASM.
+- The three.js files in `vendor/three/` are the npm files minified with esbuild (same code, licence headers kept), about a third of the size.

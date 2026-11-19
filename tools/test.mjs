@@ -40,6 +40,12 @@ if (!process.argv.includes('--no-check')) {
   if (r.status !== 0) { problems.push('layout sweep failed (node tools/layout.mjs -v):'); for (const l of r.stdout.split('\n').filter(l => l.startsWith('FAIL')).slice(0, 8)) problems.push('  ' + l.slice(6)); }
 }
 
+// Rapier: the vendored (pruned, tools/vendor.mjs) WASM loads and runs everything js/rapier.js does without a missing export
+if (!process.argv.includes('--no-check')) {
+  const r = spawnSync(process.execPath, [path.join(dir, 'lib/rapiertest.mjs'), path.join(dir, '../vendor/rapier')], { encoding: 'utf8' });
+  if (r.status !== 0) problems.push('vendored Rapier failed the game\'s calls (node tools/lib/rapiertest.mjs vendor/rapier): ' + ((r.stderr.match(/\w*Error[^\n]*/) || [r.stderr.trim().split('\n').pop()])[0] || '').slice(0, 200));
+}
+
 const res = {};
 for (const b of bikeIds) for (const s of SCENARIOS) {
   try { (res[b] ||= {})[s] = runScenario(s, b); } catch (e) { problems.push(`${b} ${s}: threw ${e.message}`); }

@@ -250,6 +250,19 @@ const bikes = {};
   ok('data');
 }
 
+/* ---------- vendor (tools/vendor.mjs) ---------- */
+{
+  const { vendorHash, rapierNames } = await import('./vendor.mjs');
+  const v = /const VENDOR = '([^']*)'/.exec(rd('sw.js'))?.[1], h = vendorHash();
+  if (v !== h) err('vendor', `vendor/ changed but sw.js VENDOR is '${v}', should be '${h}' (offline players would keep the old libraries): node tools/vendor.mjs --hash`);
+  try {
+    const roots = new Set(rdj('vendor/rapier/roots.json').roots), glue = rd('vendor/rapier/rapier.mjs');
+    const miss = rapierNames().filter(n => !roots.has(n) && new RegExp('(^|[^\\w$])' + n.replace(/\$/g, '\\$') + '(?![\\w$])').test(glue)); // a name the glue never has can't reach the WASM
+    if (miss.length) err('vendor', `js/rapier.js now uses ${miss.slice(0, 8).map(n => '.' + n).join(' ')}, not in the pruned Rapier build's roots (it may be missing from the WASM): node tools/vendor.mjs`);
+  } catch (e) { err('vendor', 'vendor/rapier/roots.json: ' + e.message); }
+  ok('vendor');
+}
+
 for (const w of warns) console.log('WARN  ' + w);
 for (const e of errors) console.log('FAIL  ' + e);
 if (verbose) console.log('ran: ' + ran.join(', '));

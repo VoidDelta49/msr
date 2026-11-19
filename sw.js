@@ -2,12 +2,18 @@
 // runs with no connection after one online visit. Registered as sw.js?v=BUILD (js/menu.js), so every release is a new
 // worker with its own cache; the file list is read from index.html (its importmap + tags), so there is nothing to keep in sync.
 // Multiplayer needs the network and is not cached (WebSockets never pass through a service worker anyway).
+// vendor/ (three.js + Rapier, most of the bytes) lives in its own cache named after VENDOR, a hash of vendor/'s content
+// (tools/vendor.mjs writes it, tools/check.mjs checks it): a release that does not touch vendor/ reuses it instead of
+// downloading the libraries again. Install fetches with cache: 'no-cache' (revalidate, 304 when unchanged), not 'reload',
+// so the files the page itself just downloaded are not fetched a second time.
 const V = new URL(self.location.href).searchParams.get('v') || '0';
-const CACHE = 'cpm-' + V;
+const VENDOR = '7f54e1d4a91d';
+const CACHE = 'cpm-' + V, VCACHE = 'cpm-vendor-' + VENDOR;
+const isV = u => new URL(u).pathname.startsWith(new URL(self.registration.scope).pathname + 'vendor/');
 const abs = u => new URL(u, self.registration.scope).href;
 
 async function files() {
-  const r = await fetch(new Request(abs('index.html'), { cache: 'reload' }));
+  const r = await fetch(new Request(abs('index.html'), { cache: 'no-cache' }));
   if (!r.ok) throw new Error('index.html: HTTP ' + r.status);
   const html = await r.clone().text();
   const urls = new Set();
@@ -35,19 +41,20 @@ async function files() {
 }
 
 self.addEventListener('install', e => e.waitUntil((async () => {
-  const c = await caches.open(CACHE), { urls, page } = await files();
+  const c = await caches.open(CACHE), vc = await caches.open(VCACHE), { urls, page } = await files();
   await c.put(abs('index.html'), page.clone()); await c.put(abs('./'), page);
   for (let i = 0; i < urls.length; i += 6) await Promise.all(urls.slice(i, i + 6).map(async u => {
-    const r = await fetch(new Request(u, { cache: 'reload' }));
+    const to = isV(u) ? vc : c; if (to === vc && await vc.match(u)) return; // same VENDOR hash = same bytes
+    const r = await fetch(new Request(u, { cache: 'no-cache' }));
     if (!r.ok) throw new Error(u + ': HTTP ' + r.status); // any miss fails the install: never a half-filled cache
-    await c.put(u, r);
+    await to.put(u, r);
   }));
   for (const cl of await self.clients.matchAll({ includeUncontrolled: true })) cl.postMessage('cpm-offline-ready');
   self.skipWaiting();
 })()));
 
 self.addEventListener('activate', e => e.waitUntil((async () => {
-  for (const k of await caches.keys()) if (k.startsWith('cpm-') && k !== CACHE) await caches.delete(k);
+  for (const k of await caches.keys()) if (k.startsWith('cpm-') && k !== CACHE && k !== VCACHE) await caches.delete(k);
   await self.clients.claim();
 })()));
 
@@ -56,7 +63,7 @@ self.addEventListener('fetch', e => {
   const qu = new URL(q.url);
   if (q.method !== 'GET' || qu.origin !== self.location.origin || qu.searchParams.has('chk') || qu.pathname.endsWith('/wx')) return; // /wx = live weather (wxnet.js): never from a cache, even if the relay is ever served from this origin // ?chk = the update check: always straight to the network
   e.respondWith((async () => {
-    const c = await caches.open(CACHE);
+    const c = await caches.open(isV(q.url) ? VCACHE : CACHE);
     if (q.mode === 'navigate') { // page: newest when online (4 s), the cached copy when not
       try {
         const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), 4000);

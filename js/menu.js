@@ -84,7 +84,7 @@ $('mUpd').onclick = async () => {
   $('mUpd').disabled = true; $('mUpd').firstChild.textContent = 'UPDATING...';
   try {
     for (const g of await navigator.serviceWorker.getRegistrations()) await g.unregister();
-    for (const k of await caches.keys()) if (k.startsWith('cpm-')) await caches.delete(k);
+    for (const k of await caches.keys()) if (k.startsWith('cpm-') && !k.startsWith('cpm-vendor-')) await caches.delete(k); // vendor/ is keyed by its content hash (sw.js): kept, the new worker drops it if it changed
     await Promise.all(['index.html', './'].map(u => fetch(u, { cache: 'reload' }))); // refresh the HTTP-cached page so the reload gets the new ?v=
   } catch (e) { console.warn('update: ' + e.message); }
   location.reload();
