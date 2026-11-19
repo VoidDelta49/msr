@@ -2,7 +2,7 @@
 // Accuracy pass for a Model Maker bike (data/models/<id>.json): the model's parts drawn over a real SIDE photo, each part its own
 // colour (see-through fill + edges + legend), in an orthographic side view scaled through the two axle centres, plus the frame
 // guides in cyan (tyre + rim circles, steering axis, pivot, seat). Move the parts until their edges sit on the photo.
-//   node tools/overlay.mjs --id pcx160 --photo side.png --axles rearX,rearY,frontX,frontY [--out dir] [--grid]
+//   node tools/overlay.mjs --id pcx160 --photo side.png --axles rearX,rearY,frontX,frontY [--out dir] [--grid] [--var n]
 // --axles: the wheel centres in photo pixels (measure them: e.g. tyre outer edge and bottom minus the radius in px). Use a true side
 // view (a maker's 360 / colour-picker frame is best); front of the bike on the RIGHT (the right-hand side; flip a left-side photo first).
 // --grid also writes <id>-grid.png: the photo with a model-coordinate grid (z every 0.1 m labelled, 0.05 m lines, y the same) to
@@ -17,6 +17,7 @@ const id = opt('--id'), photo = opt('--photo'), ax = (opt('--axles') || '').spli
 if (!id || !photo || ax.length !== 4 || ax.some(isNaN)) { console.log('usage: node tools/overlay.mjs --id <model> --photo <side.png> --axles rearX,rearY,frontX,frontY [--out dir] [--grid]'); process.exit(1); }
 let pw; try { pw = createRequire(import.meta.url)(process.env.PW || 'playwright'); } catch { console.log('overlay: skipped (no playwright, see tools/smoke.mjs)'); process.exit(0); }
 const M = JSON.parse(readFileSync(path.join(ROOT, 'data/models', id + '.json'), 'utf8')), f = M.frame;
+if (opt('--var') != null) M.parts = M.parts.filter(q => !q.v || q.v.includes(+opt('--var'))); // --var n: only that variant's parts (part key v)
 if (M.kind !== 'bike') { console.log('overlay: bike models only'); process.exit(1); }
 const img = 'data:image/' + (photo.toLowerCase().endsWith('.png') ? 'png' : 'jpeg') + ';base64,' + readFileSync(photo).toString('base64');
 const { serve } = await import('./serve.mjs'), srv = await serve(0), br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
