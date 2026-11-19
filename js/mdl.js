@@ -39,6 +39,7 @@ export function mdlProblems(M) {
     if (!Array.isArray(q.s) || !q.s.length || q.s.length > S.length || !q.s.every(num)) w(`s needs up to ${S.length} numbers (${S.join(', ')})`); else if (q.s.some(v => v < 0)) w('negative size');
     if (q.p && !v3(q.p)) w('p must be [x, y, z]'); if (q.r && !v3(q.r)) w('r must be [x, y, z]');
     if (q.t === 'prof' && !(Array.isArray(q.pts) && q.pts.length >= 3 && q.pts.every(p => p.length === 2 && p.every(num)))) w('pts needs 3+ [z, y] points');
+    if (q.v && !(Array.isArray(q.v) && q.v.every(Number.isInteger))) w('v must be a list of variant numbers');
     if (q.t === 'tube' && !v3(q.b)) w('b (end point) must be [x, y, z]');
     if (!(MATS[q.m] || /^#[0-9a-f]{6}$/i.test(q.m || ''))) w(`material ${q.m}: use ${Object.keys(MATS).join(' ')} or #rrggbb`);
     if (!GROUPS[M.kind].includes(q.g || GROUPS[M.kind][0])) w(`group ${q.g}: ${M.kind} groups are ${GROUPS[M.kind].join(' ')}`);

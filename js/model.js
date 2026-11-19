@@ -1548,7 +1548,7 @@ function custom(ct) {
   clusterPlane(st, 0, .2, -.08, -.9); controls(st, .16, .07, .29, .2, [.3, .17, -.06]);
   if (f.rider) rider(ct, ...f.rider); else rider(ct, sh([1.12, .3, -.35], 0, 1), sh([1.48, .14], 0, 1), sh([.22, 1.18, 0, .6, .45], 1, 2), [sh([.15, .9, .2, .2, .45, .14], 1, 2), sh([.18, .58, .02, -.2, .42, .11], 1, 2)]);
   B.cam = new THREE.Group(); B.cam.position.set(0, 1.36 + dy, .1 + dz); ct.add(B.cam);
-  B.exh = new THREE.Group(); ct.add(B.exh); const M = MESH;
+  B.exh = new THREE.Group(); ct.add(B.exh); const M = { ...MESH, parts: MESH.parts.filter(q => !q.v || q.v.includes(B.var)) }; // v: only on these variants (a Variant part's var)
   addMesh({ ...M, parts: M.parts.filter(q => q.g !== 'exh') }, ct);
   B.buildExh = () => { B.exh.clear(); addMesh({ ...M, parts: M.parts.filter(q => q.g === 'exh') }, ct, B.exh); batchExh(); };
 }
