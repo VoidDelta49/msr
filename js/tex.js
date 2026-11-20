@@ -32,20 +32,20 @@ const ramp = (P, t, x, y) => { const f = Math.max(0, Math.min(P.length - 1.001, 
 const R = (...c) => c.map(hex);
 // Detail pass (textures 12.38): the canvas doubled with crisp texels, then per-pixel grain and wear painted on at the new size. Hash noise,
 // never rnd(), so the seeded sequence (and every texture after this one) stays exactly as it was. fn(x, y, px) edits px = [r, g, b] in place.
-const hs = (x, y, k) => { let h = Math.imul(x * 374761393 + y * 668265263 + k * 2147483647, 1274126177) >>> 0; h = Math.imul(h ^ (h >>> 13), 1103515245) >>> 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+const hx = (x, y, k) => { let h = Math.imul(x * 374761393 + y * 668265263 + k * 2147483647, 1274126177) >>> 0; h = Math.imul(h ^ (h >>> 13), 1103515245) >>> 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 function up2(src, grain, fn) {
   const W = src.width * 2, Hh = src.height * 2, c = document.createElement('canvas'); c.width = W; c.height = Hh; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(src, 0, 0, W, Hh);
   if (!grain && !fn) return c; const im = g.getImageData(0, 0, W, Hh), d = im.data, px = [0, 0, 0];
   for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
-    const k = (y * W + x) * 4, m = 1 + (hs(x, y, 1) - .5) * grain; px[0] = d[k] * m; px[1] = d[k + 1] * m; px[2] = d[k + 2] * m; if (fn) fn(x, y, px);
+    const k = (y * W + x) * 4, m = 1 + (hx(x, y, 1) - .5) * grain; px[0] = d[k] * m; px[1] = d[k + 1] * m; px[2] = d[k + 2] * m; if (fn) fn(x, y, px);
     d[k] = Math.max(0, Math.min(255, px[0])); d[k + 1] = Math.max(0, Math.min(255, px[1])); d[k + 2] = Math.max(0, Math.min(255, px[2]));
   }
   g.putImageData(im, 0, 0); return c;
 }
 // a few soft round blots (oil, damp, tar) on a W x H tile: returns 0..1 darkening at a pixel, wrapped
-function blots(W, H, n, r0, r1, k) { const B = []; for (let i = 0; i < n; i++) B.push([hs(i, 0, k) * W, hs(i, 1, k) * H, r0 + hs(i, 2, k) * (r1 - r0)]); return (x, y) => { let v = 0; for (const [bx, by, r] of B) { const dx = Math.min(Math.abs(x - bx), W - Math.abs(x - bx)), dy = Math.min(Math.abs(y - by), H - Math.abs(y - by)), q = 1 - Math.hypot(dx, dy) / r; if (q > 0) v = Math.max(v, q * q * (1.4 + hs(x, y, k + 9) * .6)); } return Math.min(1, v); }; }
+function blots(W, H, n, r0, r1, k) { const B = []; for (let i = 0; i < n; i++) B.push([hx(i, 0, k) * W, hx(i, 1, k) * H, r0 + hx(i, 2, k) * (r1 - r0)]); return (x, y) => { let v = 0; for (const [bx, by, r] of B) { const dx = Math.min(Math.abs(x - bx), W - Math.abs(x - bx)), dy = Math.min(Math.abs(y - by), H - Math.abs(y - by)), q = 1 - Math.hypot(dx, dy) / r; if (q > 0) v = Math.max(v, q * q * (1.4 + hx(x, y, k + 9) * .6)); } return Math.min(1, v); }; }
 // a wandering hairline crack (set of pixel keys), wrapped
-function crack(W, H, len, k) { const S = new Set(); let x = hs(0, 0, k) * W, y = hs(0, 1, k) * H, a = hs(0, 2, k) * 6.3; for (let i = 0; i < len; i++) { S.add((Math.floor(y + H) % H) * W + Math.floor(x + W) % W); a += (hs(i, 3, k) - .5) * .8; x += Math.cos(a); y += Math.sin(a); } return S; }
+function crack(W, H, len, k) { const S = new Set(); let x = hx(0, 0, k) * W, y = hx(0, 1, k) * H, a = hx(0, 2, k) * 6.3; for (let i = 0; i < len; i++) { S.add((Math.floor(y + H) % H) * W + Math.floor(x + W) % W); a += (hx(i, 3, k) - .5) * .8; x += Math.cos(a); y += Math.sin(a); } return S; }
 const dark = (px, f) => { px[0] *= f; px[1] *= f; px[2] *= f; };
 
 export function mkTex(canvas, rep, opt = {}) {
@@ -67,7 +67,7 @@ export function concrete() { // slabs with joints (2 per tile), light stains
   const n = noise(64, 64, 4, 3), P = R(0x8a877f, 0x96938b, 0xa19e96, 0xadaaa2);
   const damp = blots(128, 128, 4, 8, 18, 21), c1 = crack(128, 128, 50, 22), c2 = crack(128, 128, 35, 23);
   return up2(paint(64, 64, (x, y) => (x % 32 === 0 || y % 32 === 0) ? [104, 101, 95] : (x % 32 === 1 || y % 32 === 1) ? [176, 173, 166] : ramp(P, n[y * 64 + x] * .9 + rnd() * .1, x, y)), .1, (x, y, px) => { // + damp patches, hairline cracks, pebbles
-    dark(px, 1 - damp(x, y) * .14); if (c1.has(y * 128 + x) || c2.has(y * 128 + x)) dark(px, .72); else if (hs(x, y, 24) < .02) dark(px, .82 + hs(x, y, 25) * .3);
+    dark(px, 1 - damp(x, y) * .14); if (c1.has(y * 128 + x) || c2.has(y * 128 + x)) dark(px, .72); else if (hx(x, y, 24) < .02) dark(px, .82 + hx(x, y, 25) * .3);
   });
 }
 // terrain detail: multiplies the vertex colours. Average stays ~#d6 (the old speck texture's tone) so the colours keep their balance.
@@ -152,8 +152,8 @@ export function walls(n) {
     return top && ly < 2 ? [190, 186, 178] : base;
   };
   const cv = up2(paint(W, H, col), .08, (x, y, px) => { // + rain streaks under the sills and the slab edges, damp at the foot (tropical walls)
-    const ly = (y >> 1) % 32, f = Math.floor((y >> 1) / 32), streak = hs(x, f, 31) < .35 ? Math.max(0, 1 - (ly - 23) / 7) * (ly > 22 ? 1 : 0) : 0;
-    const foot = f === n - 1 && ly > 27 ? (ly - 27) / 4 : 0; dark(px, 1 - Math.max(streak * .16, foot * .14 * (.6 + hs(x, 0, 32) * .8)));
+    const ly = (y >> 1) % 32, f = Math.floor((y >> 1) / 32), streak = hx(x, f, 31) < .35 ? Math.max(0, 1 - (ly - 23) / 7) * (ly > 22 ? 1 : 0) : 0;
+    const foot = f === n - 1 && ly > 27 ? (ly - 27) / 4 : 0; dark(px, 1 - Math.max(streak * .16, foot * .14 * (.6 + hx(x, 0, 32) * .8)));
   });
   // lit twin (emissive map): about half the panes glow warm (a few cool, like a TV), shop sign boards glow in their own colour.
   // Deterministic hash, never rnd(): the seeded texture sequence must not shift.
@@ -186,7 +186,7 @@ export function walls(n) {
 export function tin() { // corrugated roof ribs + rust spots (white: the instance colour paints the roof)
   const n = noise(32, 32, 4, 2);
   return up2(paint(32, 32, (x, y) => { const rib = [.55, .8, 1, .9, .7][x % 5], rust = n[y * 32 + x] > .72; const v = Math.round(255 * rib * (rust ? .78 : 1)); return rust ? [v, Math.round(v * .82), Math.round(v * .7)] : [v, v, v]; }), .1, (x, y, px) => { // + rust runs down the ribs' valleys
-    if ((x >> 1) % 5 === 0 && hs(x >> 1, 0, 41) < .5) { const t = ((y + hs(x >> 1, 1, 41) * 64) % 64) / 64; if (t < .4) { px[1] *= .9 + t * .25; px[2] *= .8 + t * .5; } }
+    if ((x >> 1) % 5 === 0 && hx(x >> 1, 0, 41) < .5) { const t = ((y + hx(x >> 1, 1, 41) * 64) % 64) / 64; if (t < .4) { px[1] *= .9 + t * .25; px[2] *= .8 + t * .5; } }
   });
 }
 export function bark() { // palm / tree trunk rings
