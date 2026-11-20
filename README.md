@@ -92,6 +92,16 @@ Using a model in the game:
 
 `node tools/mdl.mjs` checks every model file (part of `test.mjs`); `node tools/mdl.mjs --shot dir [--id x] [--guides]` takes side / front / top / 3/4 pictures and prints the size.
 
+## Career mode (12.39)
+
+Menu > CAREER starts a separate progression game: ₱600 and one used starter bike (Honda BeAT, Suzuki Smash or Rusi Surf). Every other bike and every non-stock part has to be bought with money you earn:
+
+- **Quests** pay when finished, by stars (¼ / 0.6 / full / 1.5x of the job's rate; a bike-locked job pays 30% more). Failed or cancelled jobs pay nothing. Bike-locked jobs only ask for bikes you own.
+- **Passengers**: people waving at the roadside want a ride; take them to the marked drop-off for their fare (₱40 + ₱18 a km).
+- **Spending**: GARAGE parts show a price on every option you don't own (first tap shows it, second tap buys and fits; bought options stay yours on that bike). The DEALER tab (career only, in place of BUILDS) lists every bike by price, buys bikes and sells yours back at 60% (their parts go with them). Fuel costs ₱62 a litre at the station. Drinks and treats come out of the same wallet.
+
+Bike prices are the approximate Philippine SRP x 0.02 (₱920 for the Surf up to ₱44,000 for the Ninja H2); part prices are a per-part base x the bike's price tier, rising along the option list. All of it is `data/career.json`; the logic is `js/career.js` (headless, `node tools/career.mjs`), glue in menu.js / garage.js / missions.js / npcfig.js, browser check `tools/careerui.mjs`. The career keeps its own bike, garage settings (config.js `setMode` swaps `cfg.bike` / `cfg.bikes`), wallet and bag (`cpm.career*` in localStorage); free ride is untouched. Switching mode once the game has loaded reloads the page.
+
 ## Quests (Build 9.5)
 
 The hub layout is seeded by the date (Philippine day, UTC+8): everyone gets the same hubs, types and bike locks on the same day, and it all reshuffles at midnight (reload to pick it up).

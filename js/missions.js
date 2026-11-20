@@ -21,6 +21,9 @@ import { freeBays, marker, arrow, ROADS, H, atGas, LMF } from './world.js';
 import { B } from './model.js';
 import { say } from './hud.js';
 import { blip } from './audio.js';
+import { CAREER } from './config.js';
+import { CS, payJob, owned, ownsBike, fuelCost, payFuel, money, peso } from './career.js';
+import { SHOP } from './shop.js';
 
 const TYPE = {
   park: { c: 0x3da5ff, css: '#3da5ff', g: 'P', name: 'Parking challenge' },
@@ -105,7 +108,7 @@ function place(h, town) { // a random road spot, away from the other hubs
   }
 }
 function setup(h, town) { // roll position, job type and bike requirement
-  const ids = Object.keys(ctx.bikes); h.placed = false; place(h, town); if (!h.placed) place(h, false);
+  const ids = CAREER && CS.st ? owned() : Object.keys(ctx.bikes); h.placed = false; place(h, town); if (!h.placed) place(h, false); // career: only jobs for bikes in your garage
   h.id = KIND[(rng() * KIND.length) | 0]; h.bike = rng() < BIKE_P && ids.length > 1 ? ids[(rng() * ids.length) | 0] : null;
   Object.assign(h, TYPE[h.id]); h.b.place(h.x, h.y, h.z, h.id, h.bike);
 }
@@ -152,6 +155,7 @@ function pickDest(hub, min, max) {
 }
 function start(h) {
   const id = h.id; lastTxt = '';
+  if (CAREER && h.bike && !ownsBike(h.bike)) return say(`This job needs your own ${bikeName(h.bike)}`, 1500);
   if (h.bike && ctx.bike.id !== h.bike && ctx.switchBikeHere) ctx.switchBikeHere(h.bike); // bike-locked job: swap bikes right here
   const q = MI.q = { type: id, phase: 'on', t: 0, hold: 0, h0: S.hits, hub: h };
   if (id === 'park') {
@@ -265,7 +269,7 @@ function parkTick(q, dt) {
   panel(`PARK · ${q.t.toFixed(1)}s · hits ${hits} · ${Math.hypot(S.x - b.x, S.z - b.z).toFixed(0)}m`, false, '✕');
   if (q.hold > 1.2) {
     q.phase = 'done'; const st = hits === 0 && q.t < 40 ? '★★★' : hits <= 1 && q.t < 70 ? '★★☆' : '★☆☆'; MI.res = `PARKED ${st} · ${q.t.toFixed(1)}s · hits ${hits}`;
-    say('PARKED! ' + st, 2500); blip('ok'); arrow.visible = false; pins([]);
+    MI.res += paid(q, st); say('PARKED! ' + st + paid.last, 2500); blip('ok'); arrow.visible = false; pins([]);
   }
 }
 function deliveryTick(q, dt) {
@@ -287,10 +291,13 @@ function deliveryTick(q, dt) {
     q.phase = 'done'; const hits = S.hits - q.h0;
     const st = food ? (q.quality >= 80 && q.heat >= 35 ? '★★★' : q.quality >= 50 && q.heat >= 10 ? '★★☆' : '★☆☆') : (hits === 0 && q.t < q.par ? '★★★' : hits <= 2 && q.t < q.par * 1.6 ? '★★☆' : '★☆☆');
     MI.res = `DELIVERED ${st} · ` + (food ? `FOOD ${q.quality | 0}% · HEAT ${q.heat | 0}%` : `${q.t.toFixed(1)}s · hits ${hits}`);
-    say('DELIVERED! ' + st, 2500); blip('ok'); dropItem(q.item); arrow.visible = destB.visible = false; pins([]);
+    MI.res += paid(q, st); say('DELIVERED! ' + st + paid.last, 2500); blip('ok'); dropItem(q.item); arrow.visible = destB.visible = false; pins([]);
   }
 }
-function finish(q, head, st, say2) { q.phase = 'done'; MI.res = `${head} ${st} · ${say2}`; say(head + '! ' + st, 2500); blip('ok'); arrow.visible = false; ALLB.forEach(b => b.visible = false); pins([]); }
+// career mode: a finished job pays by its stars (career.js); the text for the result panel, '' in free ride
+function paid(q, st) { paid.last = ''; if (!CAREER || !CS.st) return ''; const n = payJob(q.type, (st.match(/★/g) || []).length, !!(q.hub && q.hub.bike)); if (n) paid.last = ` +${peso(n)}`; return n ? ` · +${peso(n)} · wallet ${peso(money())}` : ''; }
+paid.last = '';
+function finish(q, head, st, say2) { q.phase = 'done'; MI.res = `${head} ${st} · ${say2}` + paid(q, st); say(head + '! ' + st + paid.last, 2500); blip('ok'); arrow.visible = false; ALLB.forEach(b => b.visible = false); pins([]); }
 const stars = (v, a, b) => v >= a ? '★★★' : v >= b ? '★★☆' : '★☆☆';
 function arcadeTick(q, dt) { // gates, orbs, stunt (radar is a delivery-style dash, see below)
   if (q.phase !== 'on') return panel(MI.res, false, 'OK');
@@ -367,7 +374,17 @@ function radarTick(q, dt) {
 }
 export function missions(dt) {
   const fuelCap = ctx.spec.fuel.cap;
-  if (atGas(S.x, S.z) && Math.abs(S.v) < .2 && S.fuel < fuelCap) { S.fuel = Math.min(fuelCap, S.fuel + .5 * dt); say('Refueling... ' + (S.fuel / fuelCap * 100 | 0) + '%', 400); }
+  if (atGas(S.x, S.z) && Math.abs(S.v) < .2 && S.fuel < fuelCap) {
+    const l = Math.min(fuelCap - S.fuel, .5 * dt);
+    if (CAREER && CS.st) { // career: fuel costs money, paid by the peso as it goes in
+      MI.fuelOwe = (MI.fuelOwe || 0) + fuelCost(l);
+      if (MI.fuelOwe >= 1) { if (payFuel(Math.floor(MI.fuelOwe))) { MI.fuelOwe = 0; say(`No money for fuel (${peso(fuelCost(1))} a litre). Earn some with quests or passengers`, 1500); return tick(dt); } MI.fuelOwe -= Math.floor(MI.fuelOwe); }
+      S.fuel += l; say(`Refueling... ${S.fuel / fuelCap * 100 | 0}% · ${peso(fuelCost(1))}/L · ${peso(SHOP.ready ? SHOP.money : money())} left`, 400);
+    } else { S.fuel += l; say('Refueling... ' + (S.fuel / fuelCap * 100 | 0) + '%', 400); }
+  }
+  tick(dt);
+}
+function tick(dt) {
   fallTick(dt); const q = MI.q;
   if (!q) idle(dt); else if (q.type === 'park') parkTick(q, dt); else if (q.type === 'radar') radarTick(q, dt); else if (q.item) deliveryTick(q, dt); else arcadeTick(q, dt);
 }

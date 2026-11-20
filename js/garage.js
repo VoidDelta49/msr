@@ -3,7 +3,8 @@
 // and JSON export / import. Nothing here touches physics: it edits ctx.bcfg and main.js recomputes the spec.
 import { $, lerpTable } from './util.js';
 import { ctx, S } from './state.js';
-import { cfg, save } from './config.js';
+import { cfg, save, CAREER } from './config.js';
+import { CS, money, peso, bikePrice, sellPrice, partPrice, ownsBike, ownsPart, owned, buyBike, sellBike, buyPart } from './career.js';
 import { computeSpec, tq } from './spec.js';
 import { DRIVES } from './drivetrain.js';
 import { say } from './hud.js';
@@ -23,13 +24,15 @@ const TABS = [
   ['style', 'ACCESSORIES', { az: 2.5, el: .3, r: 3.1, ty: .8, tz: .1 }], ['lights', 'LIGHTS', { az: .75, el: .14, r: 3.1, ty: .45, tz: 0 }],
   ['look', 'PAINT', { spin: 1, el: .2, r: 3.6, ty: .7, tz: 0 }], ['carbon', 'CARBON', { spin: 1, el: .18, r: 3.3, ty: .7, tz: 0 }],
   ['stats', 'STATS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }], ['dyno', 'DYNO', { az: 1.5, el: .06, r: 2.7, ty: .4, tz: -.45 }], ['builds', 'BUILDS', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }],
+  ['dealer', 'DEALER', { spin: 1, el: .2, r: 3.8, ty: .65, tz: 0 }], // career mode only (instead of BUILDS)
 ];
 const WHERE = { swarm: 'susp', exhaust: 'engine', ecu: 'engine', fuelsys: 'engine', tune: 'engine', trim: 'wheels', intake: 'engine', flywheel: 'engine', rollers: 'drive', cspring: 'drive', clspring: 'drive', pulley: 'drive', fs: 'drive', rs: 'drive', autoClutch: 'drive', iss: 'drive', qs: 'drive', tc: 'drive', ver: 'drive', ysp: 'drive', kit: 'engine', frame: 'look', decal: 'look', tb: 'engine', injector: 'engine', carb: 'engine', valves: 'engine', port: 'engine', cyl: 'engine', piston: 'engine', oil: 'engine', coil: 'engine', cdi: 'engine', plug: 'engine', cam: 'engine', battery: 'engine', clutch: 'drive', chain: 'drive', belt: 'drive', lines: 'wheels',
   rims: 'wheels', disc: 'wheels', caliper: 'wheels', mirrors: 'style', levers: 'style', grips: 'style', seat: 'style', box: 'style', hl: 'lights', aux: 'lights', glow: 'lights', wled: 'lights', exhf: 'engine', spring: 'susp',
   pf: 'susp', pr: 'susp', yf: 'susp', yr: 'susp', kf: 'susp', kr: 'susp', damp: 'susp', tires: 'wheels', brakes: 'wheels', wheelcol: 'wheels', rimstripe: 'wheels',
   fl: 'dyno', fm: 'dyno', fh: 'dyno', il: 'dyno', ih: 'dyno', ig: 'dyno', ct: 'dyno', idl: 'dyno', rl: 'dyno', mj: 'dyno', nc: 'dyno', ps: 'dyno' }; // fine tuning (tune.js)
 const where = k => WHERE[k] || (k.startsWith('cf') ? 'carbon' : 'look');
-const has = t => t === 'look' || t === 'dyno' || t === 'wheels' || t === 'stats' || t === 'builds' || Object.keys(ctx.bike.parts).some(k => where(k) === t) || ctx.bike.sliders.some(s => where(s.k) === t) || ctx.bike.toggles.some(s => where(s.k) === t);
+const CAR = () => CAREER && !!CS.st; // career mode: parts and bikes cost money (career.js)
+const has = t => t === 'dealer' ? CAR() : t === 'builds' ? !CAR() : t === 'look' || t === 'dyno' || t === 'wheels' || t === 'stats' || t === 'builds' || Object.keys(ctx.bike.parts).some(k => where(k) === t) || ctx.bike.sliders.some(s => where(s.k) === t) || ctx.bike.toggles.some(s => where(s.k) === t);
 let tab = 'engine', sId = '', sSpec = null;
 const stock = () => (sId !== ctx.bike.id && (sSpec = computeSpec(ctx.bike, ctx.bike.defaults), sId = ctx.bike.id), sSpec);
 
@@ -118,11 +121,12 @@ function body(keep) {
   const bike = ctx.bike, b = ctx.bcfg, def = bike.defaults; let h = '';
   if (tab === 'stats') h = '<div class=statbox></div>';
   else if (tab === 'builds') h = buildsHTML();
+  else if (tab === 'dealer') h = dealerHTML();
   else if (tab === 'dyno') h = dynoHTML();
   else {
     const sb = SUBL[tab] && subHTML(bike, b, tab); if (sb) h += sb;
     for (const [k, p] of Object.entries(bike.parts).sort((x, y) => FIRST.has(y[0]) - FIRST.has(x[0]))) if (where(k) === tab && (!sb || subOf(k, tab) === subSel[tab])) {
-      h += `<div class=pr><div class=pl>${p.l}</div><div class=opts>${p.o.map((o, i) => { const sw = swatch(o), nt = o.note ? esc(o.note) : '', on = b[k] == i; return `<button class="opt${on ? ' on' : ''}${sw ? ' sw' : ''}" data-k=${k} data-i=${i}>${sw ? `<i class=dot style="background:${sw}"></i>` : ''}<b>${o.n}</b><small>${on ? 'fitted' + (nt ? ' · ' + nt : '') : [nt, delta(k, i)].filter(Boolean).join(' ')}</small></button>`; }).join('')}</div></div>`;
+      h += `<div class=pr><div class=pl>${p.l}</div><div class=opts>${p.o.map((o, i) => { const sw = swatch(o), nt = o.note ? esc(o.note) : '', on = b[k] == i; const lk = CAR() && !ownsPart(bike.id, k, i), pr = lk ? `<i class=pp>${peso(partPrice(bike.id, k, i))}</i> ` : ''; return `<button class="opt${on ? ' on' : ''}${sw ? ' sw' : ''}${lk ? ' lk' : ''}" data-k=${k} data-i=${i}>${sw ? `<i class=dot style="background:${sw}"></i>` : ''}<b>${o.n}</b><small>${on ? 'fitted' + (nt ? ' · ' + nt : '') : pr + [nt, delta(k, i)].filter(Boolean).join(' ')}</small></button>`; }).join('')}</div></div>`;
     }
     for (const s of bike.sliders) if (where(s.k) === tab) h += sliderHTML(s, b, def);
     const tg = bike.toggles.filter(s => where(s.k) === tab);
@@ -138,8 +142,8 @@ function setTab(t) { tab = t; tabs(); body(); reframe(); view(camOf(t)); }
 
 export function buildGarage() {
   if (!has(tab)) tab = 'engine'; if (play) endRun(false);
-  $('gBikes').innerHTML = Object.values(ctx.bikes).map(k => bikeCard(k, k.id === ctx.bike.id, 'data-bike')).join('');
-  $('gCurN').textContent = ctx.bike.short; $('gName').textContent = ctx.bike.tag; list(false); reframe(); accent(ctx.spec.c); setTab(tab); stats();
+  $('gBikes').innerHTML = Object.values(ctx.bikes).map(k => bikeCard(k, k.id === ctx.bike.id, 'data-bike', CAR() ? (ownsBike(k.id) ? 'OWNED' : peso(bikePrice(k.id))) : '', CAR() && !ownsBike(k.id))).join('');
+  $('gCurN').textContent = ctx.bike.short; cash(); list(false); reframe(); accent(ctx.spec.c); setTab(tab); stats();
 }
 // stock / colour-only: keys that belong to a tab (parts, sliders, assists, custom colours)
 const tabKeys = t => [...Object.keys(ctx.bike.parts), ...ctx.bike.sliders.map(s => s.k), ...ctx.bike.toggles.map(s => s.k)].filter(k => where(k) === t).concat(t === 'look' ? ['cc'] : t === 'wheels' ? ['cw'] : []);
@@ -147,16 +151,18 @@ function changed(p = true) { save(); G.onChange(); reframe(); accent(ctx.spec.c)
 
 // bike picker: ‹ › step through the list, the name opens a grid of cards (tap outside or the name again to close)
 function list(v) { $('gList').hidden = !v; $('gCur').classList.toggle('on', v); if (v) { const on = $('gBikes').querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest' }); } }
-function pick(id) { list(false); if (id !== ctx.bike.id) { cfg.bike = id; save(); G.onBike(); buildGarage(); } }
+function cash() { $('gName').textContent = CAR() ? `${peso(money())} · ${ctx.bike.tag}` : ctx.bike.tag; } // career: your money under the bike's name
+function pick(id) { list(false); if (CAR() && !ownsBike(id)) { setTab('dealer'); return say(`${ctx.bikes[id].short}: ${peso(bikePrice(id))} at the DEALER`, 1600); } if (id !== ctx.bike.id) { cfg.bike = id; save(); G.onBike(); buildGarage(); } }
 $('garage').onclick = e => {
   const el = e.target.closest('button'); if (!$('gList').hidden && !e.target.closest('#gList,#gCur')) list(false); if (!el) return; const d = el.dataset, b = ctx.bcfg;
   if (el.id === 'gCur') list($('gList').hidden);
-  else if (d.step) { const L = Object.keys(ctx.bikes), i = L.indexOf(ctx.bike.id); pick(L[(i + +d.step + L.length) % L.length]); }
+  else if (d.step) { const L = CAR() ? owned() : Object.keys(ctx.bikes), i = L.indexOf(ctx.bike.id); pick(L[(i + +d.step + L.length) % L.length]); }
   else if (d.bike) pick(d.bike);
   else if (d.tab) setTab(d.tab);
   else if (d.sub) { subSel[tab] = d.sub; body(); if (tab === 'wheels') view(camOf(tab)); }
   else if (d.dy) dynoAct(d.dy, +d.i);
-  else if (d.k) { b[d.k] = +d.i; changed(); body(1); }
+  else if (d.k) { if (CAR() && !ownsPart(ctx.bike.id, d.k, +d.i) && !buyTap(el, () => buyPart(ctx.bike.id, d.k, +d.i), partPrice(ctx.bike.id, d.k, +d.i))) return; b[d.k] = +d.i; changed(); body(1); cash(); }
+  else if (d.deal) deal(d.deal, d.id, el);
   else if (d.t) { b[d.t] = !b[d.t]; el.classList.toggle('on', b[d.t]); changed(false); }
   else if (d.clr) { delete b[d.clr]; changed(); body(1); }
   else if (d.treset) { for (const k of tabKeys(tab)) if (k in ctx.bike.defaults) b[k] = ctx.bike.defaults[k]; else delete b[k]; changed(); body(1); }
@@ -268,6 +274,38 @@ function drawDyno() {
     else if (!ghost) { g.fillStyle = x.col; g.beginPath(); g.arc(X(cvt ? x.r.hpKph : x.r.hpRpm), YP(x.r.hp), 3, 0, 6.3); g.fill(); }
   }
   let ly = Y1 + 2; g.textAlign = 'left'; for (const x of all) { g.fillStyle = x.col; g.fillText(`${x === L.stock ? 'Stock' : '#' + x.n} ${(play && x === play.run ? x.r.pts[play.i].hp : x.r.hp).toFixed(1)} PS`, X0 + 6, ly + 8); ly += 13; }
+}
+
+/* ---------- career: buying with two taps, the dealer ---------- */
+// first tap arms the button (shows the price), the second within 2.5 s buys; true = bought now (go on and fit it)
+const disarm = el => { el.classList.toggle('arm', false); if (el.isConnected && el.dataset.was != null) el.lastElementChild.innerHTML = el.dataset.was; };
+function buyTap(el, fn, n) {
+  if (!el.classList.contains('arm')) {
+    for (const o of $$('#garage .arm')) { clearTimeout(o.t); disarm(o); }
+    el.classList.add('arm'); el.dataset.was = el.lastElementChild.innerHTML;
+    el.lastElementChild.textContent = money() >= n ? `TAP AGAIN TO BUY · ${peso(n)}` : `${peso(n)} · you have ${peso(money())}`; clearTimeout(el.t);
+    el.t = setTimeout(() => disarm(el), 2500); return false;
+  }
+  clearTimeout(el.t); const why = fn(); disarm(el);
+  if (why) { say(why, 1800); return false; }
+  say(`Bought · ${peso(money())} left`, 1400); return true;
+}
+function dealerHTML() {
+  const st = CS.st.stats, row = b => { const id = b.id, own = ownsBike(id), cur = id === ctx.bike.id;
+    return `<div class=bi><span><b>${esc(b.name)}</b><small>${esc(b.class || '')} · ${b.engine.peakPS} PS · ${own ? cur ? 'riding it' : 'in your garage' : peso(bikePrice(id))}</small></span>${own ? (cur ? '' : `<button class=chip data-deal=ride data-id=${id}>Ride</button>`) + (owned().length > 1 ? `<button class=chip data-deal=sell data-id=${id}><b>Sell ${peso(sellPrice(id))}</b></button>` : '') : `<button class="chip${money() >= bikePrice(id) ? ' on' : ''}" data-deal=buy data-id=${id}><b>Buy ${peso(bikePrice(id))}</b></button>`}</div>`; };
+  const L = Object.values(ctx.bikes).sort((a, b) => bikePrice(a.id) - bikePrice(b.id));
+  return `<div class=pr><div class=pl>Wallet <b>${peso(money())}</b></div><p>Earned ${peso(st.earned)} · ${st.jobs} quests · ${st.rides} passengers · spent ${peso(st.spent)}. Quests pay by their stars; passengers pay a fare (look for people waving at the roadside). Fuel at the station costs money too.</p></div>
+<div class=pr><div class=pl>Your garage</div>${L.filter(b => ownsBike(b.id)).map(row).join('')}</div>
+<div class=pr><div class=pl>For sale</div>${L.filter(b => !ownsBike(b.id)).map(row).join('') || '<p>You own every bike on the island!</p>'}</div>`;
+}
+function deal(a, id, el) {
+  if (a === 'ride') { pick(id); return; }
+  if (a === 'buy') { if (!buyTap(el, () => buyBike(id), bikePrice(id))) return; say(`${ctx.bikes[id].name} is yours!`, 1800); pick(id); setTab('dealer'); return; }
+  if (a === 'sell') {
+    if (!el.classList.contains('arm')) { el.classList.add('arm'); el.lastElementChild.textContent = 'TAP AGAIN TO SELL'; clearTimeout(el.t); el.t = setTimeout(() => body(1), 2500); return; }
+    clearTimeout(el.t); const cur = id === ctx.bike.id, n = sellPrice(id), why = sellBike(id); if (why) return say(why, 1600);
+    say(`Sold for ${peso(n)} · ${peso(money())}`, 1600); if (cur) { pick(owned()[0]); setTab('dealer'); } else { body(1); cash(); }
+  }
 }
 
 /* ---------- builds: saved in the browser, or exported to / imported from a file ---------- */

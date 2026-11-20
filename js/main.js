@@ -1,7 +1,8 @@
 // Entry point: load bike data, wire modules together, run the loop.
 import * as THREE from 'three';
 import { $, clamp } from './util.js';
-import { cfg, save, bikeCfg, BUILD, BENCH } from './config.js';
+import { cfg, save, bikeCfg, BUILD, BENCH, CAREER } from './config.js';
+import { CS, careerEnv, ownsBike, owned, sanitize } from './career.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, camera, sun, GPU, API, FELL, AA, MB, BX, draw, warm, setDPR } from './renderer.js';
 import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad, LMF, OBBS } from './world.js';
@@ -52,6 +53,7 @@ const stage = window.__cpmLoad || (() => { });
 stage('Loading bikes', .78);
 const ids = await (await fetch('data/bikes/index.json?v=' + BUILD)).json();
 for (const d of await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=${BUILD}`).then(r => r.json())))) ctx.bikes[d.id] = d;
+careerEnv(await (await fetch('data/career.json?v=' + BUILD)).json(), ctx.bikes); // career mode (career.js): prices, rewards; free ride reads it for nothing
 await Promise.all(Object.values(ctx.bikes).filter(d => d.mesh).map(async d => { d.meshData = await (await fetch(`data/models/${d.mesh}.json?v=${BUILD}`)).json(); })); // Model Maker parts (model.js addMesh)
 
 const SPAWN = (F => ({ ...F.W(62, 30), psi: Math.PI / 2 - F.ry }))(LMF.lot[0]); // in the parking lot, wherever the map puts it
@@ -94,8 +96,9 @@ ctx.bikeTemplate = look => {
 };
 function setBike(keepPos) {
   if (ctx.rideExit) ctx.rideExit(); // riding in someone's sidecar: get off first
+  if (CAREER && CS.st && !ownsBike(cfg.bike)) cfg.bike = owned()[0]; // career: only bikes you own
   const bike = ctx.bikes[cfg.bike] || ctx.bikes[ids[0]]; cfg.bike = bike.id;
-  ctx.bike = bike; ctx.bcfg = bikeCfg(bike); ctx.drive = DRIVES[bike.drivetrain];
+  ctx.bike = bike; ctx.bcfg = bikeCfg(bike); ctx.drive = DRIVES[bike.drivetrain]; if (CAREER && CS.st) sanitize(bike.id, ctx.bcfg); // career: only parts you bought
   buildModel(bike, computeSpec(bike, ctx.bcfg)); recompute();
   document.body.classList.toggle('cvt', bike.drivetrain === 'cvt'); document.body.classList.toggle('nocl', bike.drivetrain === 'rotary');
   S.fuel = ctx.spec.fuel.cap; if (!keepPos) S.warm = 0; const keep = ctx.GAR || keepPos ? { x: S.x, z: S.z, psi: S.psi } : null; reset(); if (keep) Object.assign(S, keep);

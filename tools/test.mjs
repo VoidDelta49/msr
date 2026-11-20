@@ -17,6 +17,7 @@ import { footTests } from './foot.mjs';
 import { npcTests } from './npc.mjs';
 import { interiorTests } from './interior.mjs';
 import { underTests } from './under.mjs';
+import { careerTests } from './career.mjs';
 import { carTests } from './car.mjs';
 import { mdlTests } from './mdl.mjs';
 import { weatherTests } from './weather.mjs';
@@ -85,6 +86,7 @@ for (const p of footTests()) problems.push(p);
 // pedestrians (js/npc.js + data/npc.json): data, walking, doors, dodging, the ride, the real island
 for (const p of npcTests()) problems.push(p);
 for (const p of interiorTests()) problems.push(p);
+for (const p of careerTests().problems) problems.push(p); // career mode: prices, buying, earning (data/career.json, js/career.js)
 for (const p of underTests().problems) problems.push(p); // Ilalim, the caves (data/cave.json, js/under.js)
 for (const p of carTests().problems) problems.push(p); // four-wheel foundation (data/cars, js/ecs, js/car)
 for (const p of mdlTests().problems) problems.push(p); // Model Maker files (data/models, js/mdl.js)

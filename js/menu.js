@@ -2,7 +2,8 @@
 // three.js, Rapier and the island (main.js and everything it imports) are fetched in the background once the page has
 // loaded, and only parsed/built when the player taps PLAY. The same menu is the pause menu in game (Esc / ☰).
 import { bikeCard } from './bikecard.js';
-import { cfg, save, BUILD, MP_URL, AA_MODES, BENCH } from './config.js';
+import { cfg, save, BUILD, MP_URL, AA_MODES, BENCH, CAREER, setMode } from './config.js';
+import { CS, careerEnv, hasCareer, newCareer, endCareer, ownsBike, owned, money, peso, bikePrice } from './career.js';
 import { $ } from './util.js';
 import { ctx } from './state.js';
 import { O, openOpts } from './options.js';
@@ -40,7 +41,7 @@ window.__cpmLoad = (stage, f) => bar(f, stage);
 const frames = n => new Promise(r => { const f = () => --n ? requestAnimationFrame(f) : r(); requestAnimationFrame(f); });
 
 /* ---------- panes ---------- */
-const PANES = ['mMain', 'mBikes', 'mMPP', 'mHelpP', 'mNewsP', 'mLoad'];
+const PANES = ['mMain', 'mBikes', 'mMPP', 'mHelpP', 'mNewsP', 'mLoad', 'mCarP'];
 function show(id) { for (const p of PANES) $(p).hidden = p !== id; }
 $('menu').onclick = e => { if (e.target.closest('[data-back]')) show('mMain'); };
 $('mHelp').onclick = () => show('mHelpP');
@@ -98,19 +99,59 @@ async function loadBikes() {
   const ids = await (await fetch('data/bikes/index.json?v=' + BUILD)).json();
   BIKES = await Promise.all(ids.map(id => fetch(`data/bikes/${id}.json?v=${BUILD}`).then(r => r.json())));
   if (!BIKES.some(b => b.id === cfg.bike)) cfg.bike = BIKES[0].id;
-  cards();
+  try { careerEnv(await (await fetch('data/career.json?v=' + BUILD)).json(), Object.fromEntries(BIKES.map(b => [b.id, b]))); } catch (e) { console.warn('career: ' + e.message); }
+  if (CAREER && !ownsBike(cfg.bike)) cfg.bike = owned()[0];
+  cards(); carUI();
 }
 function cards() {
-  const cur = BIKES.find(b => b.id === cfg.bike); $('mBikeN').textContent = cur ? cur.short : '';
-  $('mCards').innerHTML = BIKES.map(b => bikeCard(b, b.id === cfg.bike, 'data-id')).join('');
+  const cur = BIKES.find(b => b.id === cfg.bike); $('mBikeN').textContent = cur ? cur.short : ''; $('mBikesT').hidden = !CAREER;
+  $('mCards').innerHTML = (CAREER ? BIKES.filter(b => ownsBike(b.id)) : BIKES).map(b => bikeCard(b, b.id === cfg.bike, 'data-id')).join('');
 }
 $('mBike').onclick = () => { show('mBikes'); const on = $('mCards').querySelector('.on'); if (on) on.scrollIntoView({ block: 'nearest' }); };
 $('mCards').onclick = e => {
-  const c = e.target.closest('.bc'); if (!c) return;
+  const c = e.target.closest('.bc'); if (!c || (CAREER && !ownsBike(c.dataset.id))) return;
   if (c.dataset.id !== cfg.bike) { if (G) G.switchBike(c.dataset.id); else { cfg.bike = c.dataset.id; save(); } }
   cards(); show('mMain');
 };
 loadBikes().catch(e => console.warn('bike list: ' + e.message));
+
+/* ---------- career mode (js/career.js): start one with a starter bike, carry on, back to free ride ---------- */
+// The career's bikes and garage settings stand in for the free-ride ones (config.js setMode). Once the game has loaded, a mode
+// change or a new career reloads the page (the bike, its model and every module's settings come from the mode at load).
+let picking = false;
+function carUI() {
+  const on = hasCareer(); $('mCarN').textContent = on ? peso(money()) : 'NEW'; if (!BENCH) $('mPlayT').textContent = (G ? 'RESUME' : 'PLAY') + (CAREER ? ' CAREER' : '');
+  if (!CS.D) { $('mCarT').textContent = "Couldn't load the career data (offline?)."; return; }
+  const pick = !on || picking; $('mCarGo').hidden = pick; $('mCarNew').hidden = pick; $('mCarFree').hidden = !CAREER;
+  if (pick) {
+    $('mCarT').innerHTML = `Start with <b>${peso(CS.D.money)}</b> and one used bike. Earn money with quests (beacons around the island, paid by their stars) and by giving townspeople a ride where they want to go (people waving at the roadside pay a fare). Spend it at the GARAGE: parts, and new bikes at the DEALER. Fuel costs money too. Free ride stays as it is, with every bike and part.`;
+    $('mCarS').innerHTML = CS.D.starters.map(id => BIKES.find(b => b.id === id)).filter(Boolean).map(b => bikeCard(b, false, 'data-start', 'PICK')).join(''); return;
+  }
+  const st = CS.st.stats, top = BIKES.filter(b => !ownsBike(b.id)).sort((a, b) => bikePrice(a.id) - bikePrice(b.id))[0];
+  $('mCarT').innerHTML = `Wallet <b>${peso(money())}</b> · ${owned().length} bike${owned().length > 1 ? 's' : ''} · ${st.jobs} quests · ${st.rides} passengers · earned ${peso(st.earned)}` + (top ? `<br>Next bike for sale: ${top.name}, ${peso(bikePrice(top.id))}` : '<br>You own every bike on the island!');
+  $('mCarS').innerHTML = BIKES.filter(b => ownsBike(b.id)).map(b => bikeCard(b, b.id === CS.st.bike, 'data-own', 'OWNED')).join('');
+  $('mCarGo').textContent = G && CAREER ? 'RESUME CAREER' : 'PLAY CAREER';
+}
+function enter(career) {
+  if (G && career !== CAREER) { cfg.mode = career ? 'career' : 'free'; save(); location.reload(); return; } // (save() still writes the old mode's bikes where they belong)
+  setMode(career ? 'career' : 'free'); save(); cards(); carUI(); play();
+}
+$('mCar').onclick = () => { picking = false; carUI(); show('mCarP'); };
+$('mCarGo').onclick = () => enter(true);
+$('mCarFree').onclick = () => enter(false);
+$('mCarNew').onclick = () => {
+  const el = $('mCarNew'); clearTimeout(el.t);
+  if (!el.classList.contains('hot')) { el.classList.add('hot'); el.textContent = 'TAP AGAIN: START OVER'; el.t = setTimeout(() => { el.classList.remove('hot'); el.textContent = 'NEW CAREER'; }, 2500); return; }
+  el.classList.remove('hot'); el.textContent = 'NEW CAREER'; picking = true; carUI();
+};
+$('mCarS').onclick = e => {
+  const c = e.target.closest('.bc'); if (!c) return;
+  if (c.dataset.start) {
+    const wasG = G && CAREER; if (hasCareer()) endCareer(); const why = newCareer(c.dataset.start); if (why) return;
+    picking = false; if (wasG) { cfg.mode = 'career'; save(); location.reload(); return; } // a fresh career while one is loaded: rebuild from it
+    enter(true);
+  } else if (c.dataset.own && CAREER && c.dataset.own !== cfg.bike) { if (G) G.switchBike(c.dataset.own); else { cfg.bike = c.dataset.own; save(); } cards(); carUI(); }
+};
 
 /* ---------- multiplayer (net.js does the work once the game has loaded) ---------- */
 const mpIn = { name: $('mpName'), room: $('mpRoom'), url: $('mpUrl') };
@@ -162,7 +203,7 @@ function unlockAudio() {
 function hideMenu() { $('menu').hidden = true; ctx.MENU = false; document.body.classList.remove('menu'); }
 export function openMenu() {
   if (!G || ctx.MENU || ctx.OPT || ctx.GAR) return;
-  ctx.MENU = true; ctx.paused = true; document.body.classList.add('menu'); cards(); show('mMain'); $('menu').hidden = false; checkUpdate();
+  ctx.MENU = true; ctx.paused = true; document.body.classList.add('menu'); cards(); carUI(); show('mMain'); $('menu').hidden = false; checkUpdate();
 }
 async function play() {
   goFS(); unlockAudio();
@@ -172,7 +213,7 @@ async function play() {
     prog(); await prefetch().catch(e => console.warn('prefetch: ' + e.message)); // import() below retries anything that failed
     busy = 'build'; bar(.72, 'Building the island'); await frames(2); // let that paint: the island build blocks the thread
     G = await import('./main.js');
-    document.body.classList.add('ingame'); $('mPlayT').textContent = 'RESUME'; $('mPre').hidden = true; busy = false;
+    document.body.classList.add('ingame'); $('mPre').hidden = true; busy = false; carUI();
     hideMenu(); G.play();
   } catch (e) {
     busy = false; console.error(e); bar(0, "Couldn't load the game", e.message || String(e));
@@ -185,7 +226,7 @@ $('bMenu').onclick = openMenu;
 addEventListener('keydown', e => {
   if (e.code !== 'Escape' || ctx.OPT || ctx.GAR) return; // Esc in options/garage is handled there
   if (!ctx.MENU) return openMenu();
-  if (!$('mBikes').hidden || !$('mHelpP').hidden || !$('mMPP').hidden || !$('mNewsP').hidden) show('mMain'); else if (G) play();
+  if (!$('mBikes').hidden || !$('mHelpP').hidden || !$('mMPP').hidden || !$('mNewsP').hidden || !$('mCarP').hidden) show('mMain'); else if (G) play();
 });
 ctx.MENU = true; document.body.classList.add('menu');
 // start downloading once the menu is up (doesn't block anything: nothing is parsed until PLAY)

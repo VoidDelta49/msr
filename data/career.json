@@ -1,0 +1,36 @@
+{
+  "_doc": "Career mode (js/career.js logic, menu.js / garage.js / missions.js glue). You start with one of the 'starters' (owned, stock) and 'money' pesos, and buy the other bikes and every non-stock part option with cash earned from quests ('jobs', paid on a finished quest by stars) and from giving townspeople rides (their fare, x fareX). Bike price = srp (approximate Philippine SRP in pesos, 2025) x priceScale, rounded to 10. Part option price = parts[key][0] x the bike's tier (sqrt(price / tierRef), clamped to tierMin..tierMax) x (1 + parts[key][1] x rank), rank = 0 for the first non-stock option of the list, 1 for the next and so on (lists run from mild to wild); keys missing from parts use partDefault. The stock option (the bike's default) is always owned; a bought option stays owned on that bike. Sliders, assists and custom colours are free (adjustments, not parts). Selling a bike returns sellBack of its price (parts are lost). Fuel at the station costs fuel pesos a litre. Saved career: localStorage cpm.career (bikes, parts, stats) + cpm.career.wallet / cpm.career.bag (the shop.js wallet in career).",
+  "money": 600,
+  "starters": ["beat", "smash115", "surf125"],
+  "priceScale": 0.02,
+  "tierRef": 2000,
+  "tierMin": 0.75,
+  "tierMax": 3.5,
+  "sellBack": 0.6,
+  "fareX": 1,
+  "fuel": 62,
+  "lockedBonus": 1.3,
+  "stars": [0.25, 0.6, 1, 1.5],
+  "jobs": { "park": 120, "parcel": 220, "food": 240, "gates": 180, "orbs": 170, "radar": 140, "stunt": 200, "rogue": 260, "bomb": 230, "meteor": 190, "hare": 210 },
+  "srp": {
+    "surf125": 45900, "macho125": 52900, "smash115": 64900, "mio": 75900, "beat": 76900, "click125": 83900, "tmx155": 84900,
+    "burgman125": 89900, "barako175": 93900, "ns125": 99900, "raider150": 121900, "winnerx": 124900, "aerox155": 129900,
+    "sniper155r": 135900, "nmax155": 151900, "pcx160": 159900, "xmax300": 299900, "cbr650r": 555000, "ninjah2": 2200000
+  },
+  "partDefault": [150, 0.5],
+  "parts": {
+    "exhaust": [420, 0.7], "ecu": [380, 0.8], "intake": [160, 0.6], "flywheel": [180, 0.4], "tb": [300, 0.5], "injector": [220, 0.5],
+    "carb": [260, 0.6], "fuelsys": [520, 0.5], "tune": [300, 0.7], "valves": [200, 0.5], "port": [450, 0.5], "cam": [380, 0.5],
+    "cyl": [650, 0.5], "piston": [420, 0.5], "oil": [60, 0.8], "plug": [40, 0.5], "coil": [120, 0.5], "cdi": [220, 0.5],
+    "battery": [140, 0.5], "kit": [1800, 0.5],
+    "clutch": [240, 0.6], "chain": [180, 0.6], "belt": [160, 0.5], "rollers": [90, 0.3], "cspring": [80, 0.4], "clspring": [80, 0.4],
+    "pulley": [280, 0.5], "ver": [900, 0.4], "sidecar": [1400, 0.5],
+    "swarm": [520, 0.3], "spring": [260, 0.15],
+    "tires": [260, 0.15], "brakes": [90, 0.6], "lines": [160, 0.5], "disc": [240, 0.4], "trim": [320, 0.5],
+    "rims": [380, 0.12], "wheelcol": [70, 0], "rimstripe": [40, 0], "caliper": [80, 0],
+    "paint": [220, 0], "finish": [180, 0.15], "exhf": [140, 0.1], "decal": [160, 0.1], "frame": [300, 0], "cover": [90, 0.1],
+    "cfbody": [600, 0.6], "cffender": [220, 0.5], "cfwheel": [700, 0.5], "cfexh": [180, 0.5],
+    "mirrors": [70, 0.1], "levers": [90, 0], "grips": [40, 0], "seat": [120, 0], "box": [250, 0.2],
+    "hl": [90, 0.2], "aux": [260, 0.4], "glow": [200, 0], "wled": [220, 0]
+  }
+}

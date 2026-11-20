@@ -6,7 +6,8 @@
 //   SHOOT   at a pool table: the cue ball goes away from where you stand (break first); drunk, your aim wanders. RACK when all are down
 //   DRINK   whatever you carry (bought, or a friend's treat): the drink animation, then its effects (drunk, sober, energy)
 import * as THREE from 'three';
-import { BUILD } from './config.js';
+import { BUILD, CAREER } from './config.js';
+import { walletUse, PRE } from './career.js';
 import { S, ctx } from './state.js';
 import { camera, DRUNK, drunkFx, MB } from './renderer.js';
 import { DOORS, H, OBBS } from './world.js';
@@ -16,14 +17,14 @@ import { IN, interiorEnv, interiorFor, pocket, enterPos, exitPos, interact, aimF
 import { showRoom, hideRoom, roomFrame } from './interiorfig.js';
 import { footCamSnap } from './footfig.js';
 import { poolStep, shoot, rack, left } from './pool.js';
-import { SHOP, shopEnv, walkup, item, use, next, shopOf } from './shop.js';
+import { SHOP, saveShop, shopEnv, walkup, item, use, next, shopOf } from './shop.js';
 import { SU, openShop, closeShop, draw as shopDraw } from './shopui.js';
 import { EF, effTick, drunkK } from './effects.js';
 import { say } from './hud.js';
 import { blip } from './audio.js';
 
 const [ID, SD] = await Promise.all(['interiors', 'shop'].map(f => fetch(`data/${f}.json?v=${BUILD}`).then(r => r.json())));
-interiorEnv(ID); shopEnv(SD); export const SHOPD = SD;
+interiorEnv(ID); shopEnv(SD, undefined, CAREER ? PRE : undefined); if (CAREER) walletUse(() => SHOP.money, n => { SHOP.money = Math.max(0, Math.round(n)); saveShop(); }); export const SHOPD = SD; // career: its own wallet, which career.js spends through shop.js
 // doors you can do something at from outside: go in, or buy at the front
 const ENTER = DOORS.filter(d => interiorFor(d.t)), STORE = DOORS.filter(d => walkup(d.t));
 ctx.pocketOf = (x, y, z) => pocketKey(x, y, z, ENTER, H); // net.js: which room a friend's walker is in

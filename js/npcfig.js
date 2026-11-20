@@ -6,7 +6,8 @@
 import * as THREE from 'three';
 import { instancedBufferAttribute, uv, smoothstep, vec3 } from 'three/tsl';
 import { scene, camera } from './renderer.js';
-import { cfg, Q, BUILD } from './config.js';
+import { cfg, Q, BUILD, CAREER } from './config.js';
+import { CS, payFare, money, peso } from './career.js';
 import { S, ctx } from './state.js';
 import { H, SEA, OBBS, ROADS, DOORS } from './world.js';
 import { B } from './model.js';
@@ -68,7 +69,10 @@ function onEvent(e) {
       const d = e.door; say2(`${nm}: "${line('board', a, d.n)}" Drop-off marked on the map`, 3600); blip('ok');
       dest.position.set(d.x, H(d.x, d.z), d.z); dest.visible = true; setWaypoint(d.x, d.z, 'Drop-off: ' + (d.l || d.n)); break;
     }
-    case 'arrive': ST.rides = (ST.rides | 0) + 1; ST.fare = (ST.fare | 0) + e.fare; saveST(); earn(e.fare); // the fare goes in your wallet (shop.js) say2(`${nm}: "${line('arrive')}" +₱${e.fare} · ${ST.rides} ride${ST.rides > 1 ? 's' : ''}, ₱${ST.fare} total`, 3600); blip('ok'); endRide(); break;
+    case 'arrive': { // the fare goes in your wallet (shop.js; career.js in career mode, which also counts it)
+      const got = CAREER && CS.st ? payFare(e.fare) : (earn(e.fare), e.fare); ST.rides = (ST.rides | 0) + 1; ST.fare = (ST.fare | 0) + got; saveST();
+      say2(`${nm}: "${line('arrive')}" +₱${got} · ${ST.rides} ride${ST.rides > 1 ? 's' : ''}, ₱${ST.fare} total` + (CAREER && CS.st ? ` · wallet ${peso(money())}` : ''), 3600); blip('ok'); endRide(); break;
+    }
     case 'thrown': say2(`${nm}: "${line('thrown')}"`, 2400); blip('thud', 3); endRide(); break;
     case 'left': say2(`${nm}: "${line('left')}"`, 2200); endRide(); break;
     case 'bump': say2(`${nm}: "${line('bump')}"`, 1300); blip('thud', 2); break;

@@ -450,3 +450,10 @@ body.gar #bRad,body.gar #radQ,body.opt #bRad,body.opt #radQ,body.menu #bRad,body
 #tbar[hidden] { display: none; }
 body.tedit #wheel, body.tedit #lb, body.tedit #thr, body.tedit #brk, body.tedit #clu, body.tedit #shift, body.tedit #bFoot { outline: 2px dashed rgba(255,255,255,.5); outline-offset: 2px; }
 body.tedit .tsel { outline: 2px solid #ffcc33 !important; }
+/* career mode (js/career.js): parts / bikes you don't own show a price; the first tap arms a buy (.arm), the second buys */
+.opt.lk b{opacity:.75}.pp{font-style:normal;font-weight:800;color:#ffd166}
+.opt.arm,.chip.arm{border-color:#ffd166;background:rgba(255,209,102,.14)}.opt.arm small{color:#ffd166;font-weight:800}.chip.arm{color:#ffd166}
+.bc q{position:absolute;right:8px;top:8px;font:800 10px system-ui;letter-spacing:.06em;color:#ffd166;quotes:none}.bc q::before,.bc q::after{content:none}
+.bc.lk b,.bc.lk em,.bc.lk span{opacity:.55}
+#mCarP .mtxt b{color:#ffd166}#mCarS{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin:8px 0}
+#mCarP .crow{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}

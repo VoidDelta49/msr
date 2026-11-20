@@ -2,7 +2,8 @@
 export const bikeClass = b => b.class || 'BIKE'; // data/bikes/<id>.json "class"
 // power bar on a log scale so 7.6 and 95 PS both read (≈5 PS empty … ≈100 PS full)
 const bar = ps => Math.max(6, Math.min(100, Math.log(ps / 5) / Math.log(20) * 100)).toFixed(0);
-export function bikeCard(b, on, attr) {
+// tag: a corner label (career mode: price or OWNED), lk: not yours yet (dimmed)
+export function bikeCard(b, on, attr, tag = '', lk = false) {
   const ps = b.engine.peakPS;
-  return `<button class="bc${on ? ' on' : ''}" ${attr}="${b.id}"><i>${bikeClass(b)}</i><b>${b.short}</b><em>${b.tag}</em><span><u style="width:${bar(ps)}%"></u></span><small>${ps} PS · ${b.chassis.m} kg w/ rider</small></button>`;
+  return `<button class="bc${on ? ' on' : ''}${lk ? ' lk' : ''}" ${attr}="${b.id}">${tag ? `<q>${tag}</q>` : ''}<i>${bikeClass(b)}</i><b>${b.short}</b><em>${b.tag}</em><span><u style="width:${bar(ps)}%"></u></span><small>${ps} PS · ${b.chassis.m} kg w/ rider</small></button>`;
 }

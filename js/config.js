@@ -1,6 +1,7 @@
-export const BUILD = '12.38b'; // shown in Options, so a cached old version is easy to spot
+import { CS, saveCareer } from './career.js';
+export const BUILD = '12.39'; // shown in Options, so a cached old version is easy to spot
 // Settings: global options + one settings block per bike, stored in localStorage 'cpmme'
-export const GLOBAL_DEF = { wx: 'live', hudOp: 100, hudHide: false, bike: 'raider150', sound: true, amb: true, vol: .8, vEng: 1, vSfx: 1, vRoad: 1, vAmb: 1, radio: 0, rvol: .6, rduck: true, rlive: '', forceGL: false, showFps: true, showApi: true, sens: 10, fov: 72, ui: 10, lefty: false, analogBrk: true, tilt: false, haptic: true, hEng: true, padRumble: true, jcTilt: true, tough: false, helmet: true, wc: true, gfx: 'med', autoRes: true, aa: 'fxaa', grade: true, bloom: true, nightFx: true, grass: true, ibl: true, n64: true, mblur: true, mbAmt: 5, retro: 0, gpuCull: true, bundles: true, fpsCap: 60, tod: 'live', npc: 'auto', name: '', room: '', mpUrl: '', builds: [] };
+export const GLOBAL_DEF = { wx: 'live', hudOp: 100, hudHide: false, bike: 'raider150', sound: true, amb: true, vol: .8, vEng: 1, vSfx: 1, vRoad: 1, vAmb: 1, radio: 0, rvol: .6, rduck: true, rlive: '', forceGL: false, showFps: true, showApi: true, sens: 10, fov: 72, ui: 10, lefty: false, analogBrk: true, tilt: false, haptic: true, hEng: true, padRumble: true, jcTilt: true, tough: false, helmet: true, wc: true, gfx: 'med', autoRes: true, aa: 'fxaa', grade: true, bloom: true, nightFx: true, grass: true, ibl: true, n64: true, mblur: true, mbAmt: 5, retro: 0, gpuCull: true, bundles: true, fpsCap: 60, tod: 'live', npc: 'auto', name: '', room: '', mpUrl: '', builds: [], mode: 'free' };
 // multiplayer relay (server/worker.js deployed to Cloudflare); Options > MULTIPLAYER can override it (cfg.mpUrl)
 export const MP_URL = 'https://cpm-relay.msr49.workers.dev';
 export const cfg = { ...GLOBAL_DEF, bikes: {} };
@@ -17,6 +18,16 @@ try {
   if (old && !('aa' in old) && old.fxaa === false) cfg.aa = 'off';
 } catch (e) { }
 delete cfg.fxaa;
+// Career mode (js/career.js): its own bike and garage settings stand in for the free-ride ones while it is on; save() keeps the
+// free-ride pair in 'cpmme' and the career's in 'cpm.career'. Switching mode once the game has loaded reloads the page (menu.js).
+const FREE = { bike: cfg.bike, bikes: cfg.bikes };
+export let CAREER = false;
+export function setMode(m) {
+  const on = m === 'career' && !!CS.st; if (on === CAREER) { if (on) { cfg.bike = CS.st.bike; cfg.bikes = CS.st.bikes; } cfg.mode = on ? 'career' : 'free'; return; } // (a new career: bind to its fresh state)
+  if (on) { FREE.bike = cfg.bike; FREE.bikes = cfg.bikes; cfg.bike = CS.st.bike; cfg.bikes = CS.st.bikes; } else { cfg.bike = FREE.bike; cfg.bikes = FREE.bikes; }
+  CAREER = on; cfg.mode = on ? 'career' : 'free';
+}
+setMode(cfg.mode);
 // Anti-aliasing modes (Options > GRAPHICS > Anti-aliasing, reloads). ms = MSAA samples, fx = FXAA post pass. MSAA is
 // never the canvas's own `antialias` (WebGL gives the browser's fixed sample count, and it would not reach the post
 // pass): it is the multisampled render target of the scene pass in renderer.js, so 2x/4x really are 2x/4x and combine
@@ -39,7 +50,10 @@ export const QUALITY = {
   high: { dpr: 2, shadow: 2048, fog: 1400, lite: false, aniso: 16 },
 };
 export const Q = QUALITY[cfg.gfx] || QUALITY.med;
-export const save = () => { try { localStorage.setItem('cpmme', JSON.stringify(cfg)); } catch (e) { } };
+export const save = () => {
+  if (CAREER && CS.st) { CS.st.bike = cfg.bike; CS.st.bikes = cfg.bikes; saveCareer(); }
+  try { localStorage.setItem('cpmme', JSON.stringify(CAREER ? { ...cfg, bike: FREE.bike, bikes: FREE.bikes } : cfg)); } catch (e) { }
+};
 // settings for one bike, filled with that bike's defaults
 export function bikeCfg(bike) {
   const c = cfg.bikes[bike.id] || (cfg.bikes[bike.id] = {});

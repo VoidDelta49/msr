@@ -6,16 +6,16 @@
 import { applyFx } from './effects.js';
 
 export const SHOP = { D: null, money: 0, bag: {}, ready: false };
-const KM = 'cpm.wallet', KB = 'cpm.bag', START = 300; // pocket money on a first run
+let KM = 'cpm.wallet', KB = 'cpm.bag'; const START = 300; // pocket money on a first run
 const ls = (() => { try { return globalThis.localStorage || null; } catch (e) { return null; } })();
 const rd = (k, d) => { try { const v = ls && ls.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
 const wr = (k, v) => { try { if (ls) ls.setItem(k, JSON.stringify(v)); } catch (e) { } };
 export const saveShop = () => { wr(KM, SHOP.money); wr(KB, SHOP.bag); };
 
-// data + saved state (tests pass { money, bag } to start clean)
-export function shopEnv(D, st) {
-  SHOP.D = D; SHOP.ready = true;
-  const m = st ? st.money : rd(KM, START); SHOP.money = Number.isFinite(m) && m >= 0 ? Math.round(m) : START;
+// data + saved state (tests pass { money, bag } to start clean); pre = another wallet's storage prefix (career mode: 'cpm.career.', no pocket money)
+export function shopEnv(D, st, pre) {
+  SHOP.D = D; SHOP.ready = true; if (pre) { KM = pre + 'wallet'; KB = pre + 'bag'; }
+  const m = st ? st.money : rd(KM, pre ? 0 : START); SHOP.money = Number.isFinite(m) && m >= 0 ? Math.round(m) : pre ? 0 : START;
   const b = st ? st.bag : rd(KB, {}); SHOP.bag = {};
   for (const [k, n] of Object.entries(b && typeof b === 'object' ? b : {})) if (D.items[k] && n > 0) SHOP.bag[k] = Math.min(99, n | 0);
 }
