@@ -1014,7 +1014,7 @@ function batchExh() {
   const L = B.exh.children.filter(o => o.isMesh); if (!L.length) return; B.exh.updateMatrixWorld(true);
   if (EXF) for (const o of L) { const m = o.material; if (m !== MB && m !== MK && m !== MR && m !== MCF && m.isMeshStandardMaterial && !m.map && !m.emissive.getHex()) o.material = xstd(...EXF); } // the black header / brackets and carbon stay
   const inv = new THREE.Matrix4().copy(B.exh.matrixWorld).invert(), m = new THREE.Mesh(mergeGeometries(L.map(o => palGeo(o, inv))), MT);
-  m.castShadow = !!B.castSh; for (const o of L) { B.exh.remove(o); o.geometry.dispose(); } B.exh.add(m);
+  m.castShadow = !!B.castSh; m.userData.pk = 1; for (const o of L) { B.exh.remove(o); o.geometry.dispose(); } B.exh.add(m); // pk: the local bike's light probes (rebuilt after buildModel's tagging; snapshot() resets it)
 }
 function batchBike() {
   // the swingarm mesh is rescaled every frame: its transform moves to an empty group (still B.swing) that becomes a bone

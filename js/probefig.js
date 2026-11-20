@@ -17,7 +17,7 @@
 // Modes (URL ?probes=...): world (default: probes baked from the real island round the bike as it rides), demo (the four sample
 // biomes of probes.js on a checkerboard round the spawn), off. Add ",debug" (or call window.__cpm.probes.debug(true)) for the spheres.
 import * as THREE from 'three';
-import { uniform, varying, vec4, normalLocal, modelWorldMatrix, diffuseColor, materialEmissive } from 'three/tsl';
+import { uniform, varying, vec4, float, normalLocal, modelWorldMatrix, diffuseColor, materialEmissive, metalness, mix } from 'three/tsl';
 import { LightProbeGrid, FALLBACK, demoGrid, evalSH } from './probes.js';
 import { scene, hemi, IBL } from './renderer.js';
 import { ctx } from './state.js';
@@ -28,7 +28,7 @@ const SLOTS = [FALLBACK, FALLBACK], pick = o => SLOTS[o.userData.pk | 0] || FALL
 const uv3 = k => uniform(new THREE.Vector3()).onObjectUpdate((f, u) => { u.value.copy(pick(f.object)[k]); });
 const uA = uv3('shAmbient'), uX = uv3('shX'), uY = uv3('shY'), uZ = uv3('shZ'), uVis = uniform(1).onObjectUpdate(({ object }) => pick(object).vis);
 const uTint = uniform(new THREE.Color(1, 1, 1)); // sky light level for relative grids (world), 1 for absolute ones (demo / baked lamps)
-export const PROBE = { mode: MODE, grid: null, light: null, on: false, gain: 1, tint: uTint.value, debug: on => debug(on), stats: { baked: 0, live: 0 } };
+export const PROBE = { mode: MODE, grid: null, light: null, on: false, enabled: true, gain: 2.5, tint: uTint.value, debug: on => debug(on), stats: { baked: 0, live: 0 } };
 
 // vertex stage: world normal (modelWorldMatrix is exact for the bike's uniform scale; normalLocal is already skinned for the swing arm)
 const nW = modelWorldMatrix.mul(vec4(normalLocal, 0)).xyz.normalize();
@@ -37,7 +37,8 @@ const vProbe = varying(raw.div(raw.mul(1 / 3).add(1)), 'v_probeLight');
 export function probeLit(m) {
   const add = diffuseColor.rgb.mul(vProbe);
   m.emissiveNode = (m.emissiveNode || materialEmissive).add(add);
-  m.aoNode = m.aoNode ? m.aoNode.mul(uVis) : uVis;
+  const ao = mix(uVis, float(1), metalness); // metal is lit by its reflections only: keep them (three's AO also occludes specular), so chrome never goes dark
+  m.aoNode = m.aoNode ? m.aoNode.mul(ao) : ao;
   return m;
 }
 
@@ -48,7 +49,7 @@ export function probeLit(m) {
 // The horizon comes from marching the real terrain (H) in 8 directions; all in units of the sky light (relative grid: uTint).
 let W = null; // { H, albedo, zones, nearRoad } from probeInit
 const AZ = 8, DST = [3, 8, 16, 30, 55], HT = new Float32Array(AZ), HC = Array.from({ length: AZ }, () => new THREE.Color()), ZO = {}, tC = new THREE.Color();
-const LIT = 1.4, LEAF = new THREE.Color(.09, .2, .06), WALL = new THREE.Color(.5, .46, .4);
+const LIT = 2, LEAF = new THREE.Color(.09, .2, .06), WALL = new THREE.Color(.62, .56, .48);
 let canopy = 0, town = 0;
 function horizon(px, py, pz) {
   for (let a = 0; a < AZ; a++) {
@@ -64,7 +65,7 @@ function worldEnv(px, py, pz, dx, dy, dz, o) {
   const hz = Math.hypot(dx, dz) || 1e-6, tn = dy / hz, s = (Math.atan2(dz, dx) / (2 * Math.PI) * AZ + AZ) % AZ, a0 = Math.floor(s), a1 = (a0 + 1) % AZ, f = s - a0;
   const ht = HT[a0] + (HT[a1] - HT[a0]) * f;
   if (tn < ht) { tC.copy(HC[a0]).lerp(HC[a1], f); o.set(tC.r, tC.g, tC.b).multiplyScalar(LIT * (.55 + .45 * Math.max(0, dy))); return 0; } // terrain wall
-  if (town > .3 && tn < .45) { const b = town * .7; o.set(WALL.r * b, WALL.g * b, WALL.b * b); return 1 - b; } // street walls
+  if (town > .3 && tn < .45) { const b = town * .85; o.set(WALL.r * b, WALL.g * b, WALL.b * b); return 1 - b; } // street walls
   if (canopy > 0 && dy > .3) { o.set(LEAF.r * canopy, LEAF.g * canopy, LEAF.b * canopy); return 1 - canopy; } // leaves
   return 1;
 }
@@ -99,7 +100,7 @@ let frame = 0, was = false;
 export function probeFrame(x, y, z) {
   if (!PROBE.grid && W && MODE !== 'off') mkGrid(x, z);
   const g = PROBE.grid; frame++;
-  const on = !!g && !ctx.GAR && !ctx.inside && !(ctx.ug && ctx.ug.on); PROBE.on = on; SLOTS[1] = on ? g.light : FALLBACK;
+  const on = !!g && PROBE.enabled && !ctx.GAR && !ctx.inside && !(ctx.ug && ctx.ug.on); PROBE.on = on; SLOTS[1] = on ? g.light : FALLBACK;
   if (!on) { was = false; if (DBG) DBG.visible = false; return; }
   P0.set(x, y, z); if (!g.relative) uTint.value.setScalar(PROBE.gain);
   else uTint.value.copy(hemi.color).multiplyScalar(PROBE.gain * hemi.intensity / (IBL ? .6 : 1)); // daynight.js scales hemi by .6 under IBL
