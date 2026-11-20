@@ -83,11 +83,11 @@ function beam(px, py, pz, fx, fz) {
 }
 sun.shadow.autoUpdate = false; const LEAD = 10, REBASE = 8, UP = new THREE.Vector3(0, 1, 0);
 const SHL = { x: NaN, z: NaN, y: NaN, d: new THREE.Vector3(0, -1, 0), r: new THREE.Vector3(), u: new THREE.Vector3(), c: new THREE.Vector3() }; // shadow window: the point it was centred for + latched light direction
-let last = -1e9, gate = 0, bakeEl = 1e9, bakeT = 0, bakeC = -1;
+let last = -1e9, gate = 0, bakeEl = 1e9, bakeT = 0, bakeC = -1, albT = 0;
 const cG = new THREE.Color();
 // ground bounce (12.33), after the Hedgehog Engine's light-field probes: the lower half of the hemisphere light is the light coming
 // back off the ground actually under the player, so the ground colour is the local albedo at the palette's brightness
-const ALB = new THREE.Color(0x76a845), AREF = ALB.clone(), aS = new THREE.Color(), bakeA = new THREE.Color(), BOUNCE = 1.7, lum = c => .2126 * c.r + .7152 * c.g + .0722 * c.b;
+const ALB = new THREE.Color(0x76a845), AREF = ALB.clone(), aS = new THREE.Color(), BOUNCE = 1.7, lum = c => .2126 * c.r + .7152 * c.g + .0722 * c.b;
 const FOGN = scene.fog.near, FOGF = scene.fog.far;
 export function dayNight() {
   const ms = gameMs();
@@ -110,15 +110,15 @@ export function dayNight() {
   if (flz > 0) { SKYU.zen.value.addScalar(flz * .22); SKYU.hor.value.addScalar(flz * .3); }
   scene.fog.color.copy(SKYU.hor.value); scene.background.copy(SKYU.hor.value);
   key(el, 7, hemi.color); key(el, 8, hemi.groundColor);
-  { const p = at(); ALB.lerp(albedo(p.x, p.z, aS), .04); const g = hemi.groundColor; // eased, so crossing a road edge doesn't pop
+  { const p = at(); const now = performance.now(), dt = Math.min(.25, (now - albT) / 1e3); albT = now; ALB.lerp(albedo(p.x, p.z, aS), 1 - Math.pow(.96, dt * 60)); const g = hemi.groundColor; // eased (.04 a frame at 60 fps, any frame rate), so crossing a road edge doesn't pop
     const k = BOUNCE * lum(g) / lum(AREF); g.copy(ALB).multiplyScalar(k); } // the palette sets how much light, the ground the colour
   hemi.intensity = key(el, 9) * K.hemiK + flz * 1.6; grade(el); if (GRADE.night) GRADE.night.value = night;
   if (IBL) { // the sky now lights the scene through scene.environment: the hemisphere light stays as a weaker fill
     hemi.intensity *= .6; scene.environmentIntensity = .62;
     ENVG.c.value.copy(hemi.groundColor).multiplyScalar(.55 + .45 * key(el, 9));
-    envFade(); // the last bake is mixed in over 1.5 s instead of switching in one frame (renderer.js)
+    envFade(); // fades the last sky bake in over 1.5 s, and puts the current ground colour into the env (renderer.js)
     if (Math.abs(el - bakeEl) > .5 || ms - bakeT > 6e4 || ms < bakeT || Math.abs(K.grey - bakeC) > .06
-      || (ms - bakeT > 1500 && Math.abs(ALB.r - bakeA.r) + Math.abs(ALB.g - bakeA.g) + Math.abs(ALB.b - bakeA.b) > .03)) { if (bakeEnv()) { bakeEl = el; bakeT = ms; bakeC = K.grey; bakeA.copy(ALB); } } // or the ground under the player changed (its bounce is in the env) // the sky moved enough (or a minute passed: moon, Options hour change)
+) { if (bakeEnv()) { bakeEl = el; bakeT = ms; bakeC = K.grey; } } // the sky moved enough (or a minute passed: moon, Options hour change). The ground under the player needs no bake: envFade re-composites it (renderer.js)
   }
   // dark places (11.98): deep in the cave hall the sky light is mostly blocked (under.js shelter: 0 outside .. 1 deep under the roof),
   // and below in Ilalim there is none at all (see the end). The sun is already kept out by the roof's shadow.

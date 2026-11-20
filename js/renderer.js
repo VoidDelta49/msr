@@ -110,32 +110,47 @@ if (IBL) {
   pmrem = new THREE.PMREMGenerator(renderer); envRT = pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: ENVG.size });
   scene.environment = envRT.texture;
   // Cross-fade between bakes (12.35): a re-bake used to replace the ambient light in one frame, a small but visible jolt in
-  // the sky / ground-bounce colour every time the sun moved half a degree or the ground under the player changed. Now each
-  // bake goes into the spare of two cube targets and scene.environment (envRT, the same texture object, so nothing
-  // recompiles) is mixed from the old one to the new one over FADE ms, every mip level (= roughness) on its own, drawn the
-  // way the PMREM generator draws its levels (a box seen by a cube camera). PMREM is linear, so the mix is the prefilter
-  // of the mixed sky; at the end of the fade envRT holds exactly the new bake.
+  // the sky colour every time the sun moved half a degree. Now each bake goes into the spare of two cube targets and
+  // scene.environment (envRT, the same texture object, so nothing recompiles) is mixed from the old one to the new one over
+  // FADE ms, every mip level (= roughness) on its own, drawn the way the PMREM generator draws its levels (a box seen by a
+  // cube camera). PMREM is linear, so the mix is the prefilter of the mixed sky.
+  // Ground bounce without re-bakes (12.36): the ground colour ENVG.c enters the env scene linearly (floor = c, hill foot =
+  // c x 1.15 faded into the horizon), so env(c) = sky(c = 0) + c x ground(white floor, black sky), and both halves are
+  // prefiltered separately: the ground half once at load (its shape never changes), the sky half when the sky moves.
+  // The ground colour under the player then only re-runs that small composite pass, instead of a full PMREM (~37 M texture
+  // samples) every couple of seconds of riding. Same picture: the composite is exactly what the old bake gave.
   const mk = () => pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: ENVG.size });
-  ENVX.rt = [mk(), mk()]; ENVX.n = envRT.texture.mipmaps.length - 1; ENVX.t = T.uniform(1); ENVX.lv = T.uniform(0);
-  ENVX.a = T.cubeTexture(ENVX.rt[0].texture, T.positionWorldDirection, ENVX.lv); ENVX.b = T.cubeTexture(ENVX.rt[1].texture, T.positionWorldDirection, ENVX.lv);
-  const qm = new THREE.NodeMaterial(); qm.fragmentNode = T.mix(ENVX.a, ENVX.b, ENVX.t); qm.name = 'EnvFade';
+  const c0 = ENVG.c.value.clone(), h0 = SKYU.hor.value.clone(); ENVG.c.value.setRGB(1, 1, 1); SKYU.hor.value.setRGB(0, 0, 0);
+  dome.visible = false; envScene.background = new THREE.Color(0); ENVX.g = mk(); dome.visible = true; envScene.background = null; SKYU.hor.value.copy(h0);
+  ENVG.c.value.setRGB(0, 0, 0); ENVX.rt = [mk(), mk()]; ENVG.c.value.copy(c0);
+  ENVX.n = envRT.texture.mipmaps.length - 1; ENVX.t = T.uniform(1); ENVX.lv = T.uniform(0); ENVX.c = T.uniform(new THREE.Color()); ENVX.lc = new THREE.Color(-1, -1, -1);
+  const cs = t => T.cubeTexture(t.texture, T.positionWorldDirection, ENVX.lv);
+  ENVX.a = cs(ENVX.rt[0]); ENVX.b = cs(ENVX.rt[1]);
+  const qm = new THREE.NodeMaterial(); qm.fragmentNode = T.vec4(T.mix(ENVX.a.rgb, ENVX.b.rgb, ENVX.t).add(cs(ENVX.g).rgb.mul(ENVX.c)), 1); qm.name = 'EnvFade';
   qm.side = THREE.BackSide; qm.blending = THREE.NoBlending; qm.depthTest = qm.depthWrite = false;
   ENVX.box = new THREE.Mesh(new THREE.BoxGeometry(5, 5, 5), qm); ENVX.cam = new THREE.CubeCamera(1, 10, envRT);
 }
 export const PC = { bake: 0 }; // event counters the benchmark reads (bench.js)
-const FADE = 1500;
+const FADE = 1500, GEPS = .002; // fade length; ground colour change (summed linear RGB) worth a new composite: far under one 8-bit step of the light
 function envMix() {
-  const k = Math.min(1, (performance.now() - ENVX.t0) / FADE); ENVX.t.value = k * k * (3 - 2 * k);
+  const k = ENVX.busy ? Math.min(1, (performance.now() - ENVX.t0) / FADE) : 1; ENVX.t.value = k * k * (3 - 2 * k);
+  ENVX.lc.copy(ENVG.c.value); ENVX.c.value.copy(ENVX.lc);
   for (let l = 0; l <= ENVX.n; l++) { ENVX.lv.value = l; ENVX.cam.activeMipmapLevel = l; ENVX.cam.update(renderer, ENVX.box); }
   if (k >= 1) ENVX.busy = false;
 }
-// returns false (nothing baked) while the previous bake is still fading in: the caller just asks again next frame
+// re-bake the sky half (call when the sky moved). Returns false (nothing baked) while the previous bake is still fading in:
+// the caller just asks again next frame
 export function bakeEnv() {
   if (!envRT) return true; if (ENVX.busy) return false; PC.bake++;
-  const to = ENVX.rt[ENVX.cur ^ 1]; pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: ENVG.size, renderTarget: to });
+  const to = ENVX.rt[ENVX.cur ^ 1], c = ENVG.c.value, c0 = c.clone(); c.setRGB(0, 0, 0);
+  pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: ENVG.size, renderTarget: to }); c.copy(c0);
   ENVX.a.value = ENVX.rt[ENVX.cur].texture; ENVX.b.value = to.texture; ENVX.cur ^= 1; ENVX.t0 = performance.now(); ENVX.busy = true; envMix(); return true;
 }
-export function envFade() { if (envRT && ENVX.busy) envMix(); } // every frame (daynight.js)
+// every frame (daynight.js), after ENVG.c is set: carries the fade on, or re-composites when the ground colour has moved
+export function envFade() {
+  if (!envRT) return; const c = ENVG.c.value, l = ENVX.lc;
+  if (ENVX.busy || Math.abs(c.r - l.r) + Math.abs(c.g - l.g) + Math.abs(c.b - l.b) > GEPS) envMix();
+}
 export const hemi = new THREE.HemisphereLight(0xdcecff, 0x55653a, 1.15); scene.add(hemi);
 export const sun = new THREE.DirectionalLight(0xffeccc, 2.8); sun.castShadow = Q.shadow > 0; sun.shadow.mapSize.set(Q.shadow || 1024, Q.shadow || 1024);
 { const c = sun.shadow.camera; c.left = c.bottom = -28; c.right = c.top = 28; c.near = 1; c.far = 160; } sun.shadow.bias = -.0005; sun.shadow.camera.layers.enable(1); scene.add(sun, sun.target); // shadow camera also sees layer 1 = shadow-only proxies (model.js)
