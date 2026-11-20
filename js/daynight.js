@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { clamp, sstep } from './util.js';
 import { gameMs, Q } from './config.js';
 import { S, ctx } from './state.js';
-import { renderer, scene, camera, sun, hemi, head, SKYU, GRADE, IBL, ENVG, BLOOM, GLARE, FOGU, bakeEnv } from './renderer.js';
+import { renderer, scene, camera, sun, hemi, head, SKYU, GRADE, IBL, ENVG, BLOOM, GLARE, FOGU, bakeEnv, envFade } from './renderer.js';
 import { setLamps, beamMeshes, HEAD, BEAM } from './lights.js';
 import { H, albedo } from './world.js';
 import { UGDAY } from './underfig.js';
@@ -116,8 +116,9 @@ export function dayNight() {
   if (IBL) { // the sky now lights the scene through scene.environment: the hemisphere light stays as a weaker fill
     hemi.intensity *= .6; scene.environmentIntensity = .62;
     ENVG.c.value.copy(hemi.groundColor).multiplyScalar(.55 + .45 * key(el, 9));
+    envFade(); // the last bake is mixed in over 1.5 s instead of switching in one frame (renderer.js)
     if (Math.abs(el - bakeEl) > .5 || ms - bakeT > 6e4 || ms < bakeT || Math.abs(K.grey - bakeC) > .06
-      || (ms - bakeT > 1500 && Math.abs(ALB.r - bakeA.r) + Math.abs(ALB.g - bakeA.g) + Math.abs(ALB.b - bakeA.b) > .03)) { bakeEl = el; bakeT = ms; bakeC = K.grey; bakeA.copy(ALB); bakeEnv(); } // or the ground under the player changed (its bounce is in the env) // the sky moved enough (or a minute passed: moon, Options hour change)
+      || (ms - bakeT > 1500 && Math.abs(ALB.r - bakeA.r) + Math.abs(ALB.g - bakeA.g) + Math.abs(ALB.b - bakeA.b) > .03)) { if (bakeEnv()) { bakeEl = el; bakeT = ms; bakeC = K.grey; bakeA.copy(ALB); } } // or the ground under the player changed (its bounce is in the env) // the sky moved enough (or a minute passed: moon, Options hour change)
   }
   // dark places (11.98): deep in the cave hall the sky light is mostly blocked (under.js shelter: 0 outside .. 1 deep under the roof),
   // and below in Ilalim there is none at all (see the end). The sun is already kept out by the roof's shadow.
