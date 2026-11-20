@@ -8,7 +8,7 @@ import { gameMs, Q } from './config.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, camera, sun, hemi, head, SKYU, GRADE, IBL, ENVG, BLOOM, GLARE, FOGU, bakeEnv } from './renderer.js';
 import { setLamps, beamMeshes, HEAD, BEAM } from './lights.js';
-import { H } from './world.js';
+import { H, albedo } from './world.js';
 import { UGDAY } from './underfig.js';
 import { F, at } from './foot.js';
 import { WX, wxSky } from './weather.js';
@@ -85,6 +85,9 @@ sun.shadow.autoUpdate = false; const LEAD = 10, REBASE = 8, UP = new THREE.Vecto
 const SHL = { x: NaN, z: NaN, y: NaN, d: new THREE.Vector3(0, -1, 0), r: new THREE.Vector3(), u: new THREE.Vector3(), c: new THREE.Vector3() }; // shadow window: the point it was centred for + latched light direction
 let last = -1e9, gate = 0, bakeEl = 1e9, bakeT = 0, bakeC = -1;
 const cG = new THREE.Color();
+// ground bounce (12.33), after the Hedgehog Engine's light-field probes: the lower half of the hemisphere light is the light coming
+// back off the ground actually under the player, so the palette's ground colour (tuned on grass) is scaled by the local albedo / grass
+const ALB = new THREE.Color(0x76a845), AREF = ALB.clone(), aS = new THREE.Color();
 const FOGN = scene.fog.near, FOGF = scene.fog.far;
 export function dayNight() {
   const ms = gameMs();
@@ -106,7 +109,9 @@ export function dayNight() {
   SKYU.ovc.value = K.ovc; SKYU.flash.value = flz;
   if (flz > 0) { SKYU.zen.value.addScalar(flz * .22); SKYU.hor.value.addScalar(flz * .3); }
   scene.fog.color.copy(SKYU.hor.value); scene.background.copy(SKYU.hor.value);
-  key(el, 7, hemi.color); key(el, 8, hemi.groundColor); hemi.intensity = key(el, 9) * K.hemiK + flz * 1.6; grade(el); if (GRADE.night) GRADE.night.value = night;
+  key(el, 7, hemi.color); key(el, 8, hemi.groundColor);
+  { const p = at(); ALB.lerp(albedo(p.x, p.z, aS), .04); const g = hemi.groundColor; // eased, so crossing a road edge doesn't pop
+    g.setRGB(g.r * clamp(ALB.r / AREF.r, .3, 2), g.g * clamp(ALB.g / AREF.g, .3, 2), g.b * clamp(ALB.b / AREF.b, .3, 2.6)); } hemi.intensity = key(el, 9) * K.hemiK + flz * 1.6; grade(el); if (GRADE.night) GRADE.night.value = night;
   if (IBL) { // the sky now lights the scene through scene.environment: the hemisphere light stays as a weaker fill
     hemi.intensity *= .6; scene.environmentIntensity = .62;
     ENVG.c.value.copy(hemi.groundColor).multiplyScalar(.55 + .45 * key(el, 9));

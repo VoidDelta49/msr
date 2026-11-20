@@ -229,7 +229,7 @@ function seaMat(tSea){
   m.roughnessNode=mix(float(.06),float(.24),smoothstep(25,900,d));
   return m;
 }
-const TWN2=FEAT.find(f=>f.name==='town2');let GW,GCOL,GMH; // terrain grass density / colour / height per vertex, for the GPU grass (grass.js), built at the end once every footprint is in OBBS
+const TWN2=FEAT.find(f=>f.name==='town2');let GW,GCOL,GMH,ALB; // terrain grass density / colour / height per vertex, for the GPU grass (grass.js), built at the end once every footprint is in OBBS
 {
   // terrain mesh with vertex colours
   const N=TN,SZ=TSZ,geo=new THREE.PlaneGeometry(SZ,SZ,N,N).rotateX(-PI/2).translate(GX,0,GZ),pos=geo.attributes.position,col=new Float32Array(pos.count*3),c=new THREE.Color();
@@ -699,7 +699,14 @@ const arrow=new THREE.Mesh(new THREE.ConeGeometry(.35,.8,4).rotateX(PI),new THRE
   const W=TN+1,X0=GX-TSZ/2,Z0=GZ-TSZ/2;
   for(const b of OBBS){if(b.hx*b.hz<2||UG.has(b.cx,b.cz))continue;const R=Math.hypot(b.hx,b.hz)+3,i0=Math.max(0,Math.floor((b.cx-R-X0)/TS)),i1=Math.min(W-1,Math.ceil((b.cx+R-X0)/TS)),j0=Math.max(0,Math.floor((b.cz-R-Z0)/TS)),j1=Math.min(W-1,Math.ceil((b.cz+R-Z0)/TS));
     for(let j=j0;j<=j1;j++)for(let i=i0;i<=i1;i++){const dx=X0+i*TS-b.cx,dz=Z0+j*TS-b.cz,a=dx*b.c+dz*b.s,d=-dx*b.s+dz*b.c;if(Math.abs(a)<b.hx+2.5&&Math.abs(d)<b.hz+2.5)GW[i+W*j]=0}}
-  buildGrass({MH:GMH,col:GCOL,gw:GW,W,x0:X0,z0:Z0,ts:TS});GW=GCOL=GMH=null}
+  buildGrass({MH:GMH,col:GCOL,gw:GW,W,x0:X0,z0:Z0,ts:TS});
+  ALB={n:Math.ceil(W/4),x0:X0,z0:Z0,s:TS*4};ALB.c=new Uint8Array(ALB.n*ALB.n*3); // ground albedo every 20 m for the hemisphere light's bounce (albedo())
+  for(let j=0;j<ALB.n;j++)for(let i=0;i<ALB.n;i++){const v=(i*4+W*j*4)*3,o=(i+ALB.n*j)*3;for(let k=0;k<3;k++)ALB.c[o+k]=Math.min(255,GCOL[v+k]*255)}
+  GW=GCOL=GMH=null}
+// albedo(x,z,out): colour of the ground under x,z (terrain, asphalt on a road, sea), for daynight.js's ground bounce
+const ASPH=new THREE.Color(0x56585a),SEAC=new THREE.Color(0x2c5866);
+function albedo(x,z,out){if(H(x,z)<SEA)return out.copy(SEAC);const q=nearRoad(x,z);if(q&&q.d<q.w/2)return out.copy(ASPH);
+  const i=clamp(Math.round((x-ALB.x0)/ALB.s),0,ALB.n-1),j=clamp(Math.round((z-ALB.z0)/ALB.s),0,ALB.n-1),o=(i+ALB.n*j)*3;return out.setRGB(ALB.c[o]/255,ALB.c[o+1]/255,ALB.c[o+2]/255)}
 export const GPU_TYPES=finishGpuInst(scene);
 marker.visible=arrow.visible=false;liteMaterials(scene);scene.add(marker,arrow);
 
@@ -712,4 +719,4 @@ function zones(x,z,o){const inl=inland(x,z),gx=inland(x+20,z)-inland(x-20,z),gz=
 if(VOL.h)AMB.push({k:'steam',x:VOL.x,y:terr(VOL.x,VOL.z)+1,z:VOL.z,r:VOL.craterR*.5}); // fumaroles in the crater
 if(PADDY)AMB.push({k:'fly',x:(PADDY.x0+PADDY.x1)/2,y:terr((PADDY.x0+PADDY.x1)/2,(PADDY.z0+PADDY.z1)/2)+.6,z:(PADDY.z0+PADDY.z1)/2,r:Math.min(PADDY.x1-PADDY.x0,PADDY.z1-PADDY.z0)*.45});
 if(TERR.r)AMB.push({k:'fly',x:TERR.x,y:terr(TERR.x,TERR.z)+.6,z:TERR.z,r:TERR.r*.5});
-export { UG, AMB, FALLS, zones, atGas, LMF, GEN, DOORS, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPT, mapHi, MAPV };
+export { albedo, UG, AMB, FALLS, zones, atGas, LMF, GEN, DOORS, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPT, mapHi, MAPV };
