@@ -12,6 +12,7 @@ import * as T from './tex.js';
 import { mkTex } from './tex.js';
 import { cluTex } from './hud.js';
 import { buildMdl } from './mdl.js';
+import { probeLit } from './probefig.js';
 import { prof, JACKET, JEAN, HELM, VISOR, SHOE, GLOVE, TORSO_PTS, humanGeo, bakeFigure, riderPal, optMask } from './figure.js';
 
 // MP = painted panels (white in the paint colour + the livery texture), MK = glossy black panels (the real bikes are two-tone)
@@ -388,6 +389,7 @@ const MRider = new THREE.MeshStandardNodeMaterial({ vertexColors: true, roughnes
   const a = select(rk.x.greaterThan(2.5), uT, select(rk.x.greaterThan(1.5), uR, select(rk.x.greaterThan(.5), uL, float(0)))), c = a.cos(), sn = a.sin();
   const d = positionLocal.sub(rp), p = rp.add(d.mul(c).add(k.cross(d).mul(sn)).add(k.mul(k.dot(d)).mul(c.oneMinus()))).add(select(rk.z.greaterThan(0), shR, shL).mul(rk.y));
   MRider.positionNode = select(rk.w.mul(uH).lessThan(-.5), vec3(0), p); // wrong head for the helmet setting: collapsed to a point
+  probeLit(MRider); // light probes (probefig.js): local bounce + sky occlusion, neutral unless the mesh is tagged userData.pk
 }
 const tint = (g, c) => { const k = new THREE.Color(c), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = k.r; a[i * 3 + 1] = k.g; a[i * 3 + 2] = k.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
 function rider(ct, torso, head, arms, legs) {
@@ -992,7 +994,7 @@ function palMat(PA, PB, PE, lt) {
   m.colorNode = select(isW, ent(0).mul(wt.r).add(ent(1).mul(wt.g)).add(ent(2).mul(wt.b)).add(vec3(WDARK.r, WDARK.g, WDARK.b).mul(wk)), a.rgb.mul(select(b.y.greaterThan(1.5), cf.rgb, select(b.y.greaterThan(.5), liv.rgb, vec3(1)))));
   m.roughnessNode = select(isW, wmix(j => uA.element(j).w, .6), a.w); m.metalnessNode = select(isW, wmix(j => uB.element(j).x, .3), b.x); m.emissiveNode = uE.element(i).rgb;
   if (m.isMeshPhysicalNodeMaterial) { m.clearcoatNode = select(isW, wmix(j => uB.element(j).z, 0), b.z); m.clearcoatRoughnessNode = select(isW, wmix(j => uB.element(j).w, .1), b.w); } // lacquer (see coat())
-  m.maskNode = select(isW, step(.4, wt.a), float(1)); return m;
+  m.maskNode = select(isW, step(.4, wt.a), float(1)); return probeLit(m); // + light probes (probefig.js)
 }
 const WDARK = new THREE.Color(0x14161a), MT = palMat(PA, PB, PE, LIV.t);
 // one mesh's geometry in the frame `rel` (a Matrix4 from its world to the target), with pal (+ bone) attributes
@@ -1662,6 +1664,7 @@ export function buildModel(bike, spec) {
   bikeShadow(!!B.castSh);
   const bb = B.skin.geometry.boundingBox || (B.skin.geometry.computeBoundingBox(), B.skin.geometry.boundingBox), front = bb.min.z + B.G.rw;
   B.G.sh = { zc: (front + B.G.rearZ) / 2, d: Math.max(.8, B.G.rearZ - front), w: Math.min(.8, Math.max(.5, bb.max.x - bb.min.x)) }; bikeBlob(BLOB_ME, B.G);
+  B.root.traverse(o => { if (o.isMesh) o.userData.pk = 1; }); // the local bike reads the light probes' sample (probefig.js); snapshot() sets remote copies back to 0
 }
 export function bikeShadow(on) {
   B.castSh = on; const keep = new Set([B.skin, ...B.rider]);
@@ -1752,7 +1755,7 @@ export function snapshot() {
   const cv = document.createElement('canvas'); cv.width = LW; cv.height = LH; cv.getContext('2d').drawImage(LIV.c, 0, 0);
   const lt = new THREE.CanvasTexture(cv); lt.colorSpace = THREE.SRGBColorSpace; lt.anisotropy = 4;
   const mt = palMat(PA.map(v => v.clone()), PB.map(v => v.clone()), PE.map(v => v.clone()), lt), dec = B.decal ? B.decal.clone() : null, drop = [];
-  o.traverse(x => { if (!x.isMesh) return; x.castShadow = false; if (x.material === MT) x.material = mt; else if (dec && x.material === B.decal) x.material = dec; else if (x.material.map === cluTex) drop.push(x); });
+  o.traverse(x => { if (!x.isMesh) return; x.castShadow = false; x.userData.pk = 0; if (x.material === MT) x.material = mt; else if (dec && x.material === B.decal) x.material = dec; else if (x.material.map === cluTex) drop.push(x); });
   for (const x of drop) x.parent.remove(x);
   const h = handles(B.root, B, m); h.rider.forEach(r => r.visible = true);
   return { o, h, G: { ...B.G }, kind: B.kind, dispose() { mt.dispose(); lt.dispose(); if (dec) dec.dispose(); } };

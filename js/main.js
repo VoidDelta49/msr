@@ -5,7 +5,7 @@ import { cfg, save, bikeCfg, BUILD, BENCH, CAREER } from './config.js';
 import { CS, careerEnv, ownsBike, owned, sanitize } from './career.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, camera, sun, GPU, API, FELL, AA, MB, BX, draw, warm, setDPR } from './renderer.js';
-import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad, LMF, OBBS } from './world.js';
+import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad, LMF, OBBS, albedo } from './world.js';
 ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
@@ -31,6 +31,8 @@ import { autoRes, resScale, jankStart, jankEnd, jankText } from './perf.js';
 import { cull } from './gpucull.js';
 import { grassFrame } from './grass.js';
 import { wxFrame } from './wxfig.js';
+import { PROBE, probeInit, probeFrame } from './probefig.js';
+probeInit({ H, albedo, zones, nearRoad });
 import './layout.js'; // HUD + touch-control layout (after controls.js: needs body.touch)
 import { NET, netFrame, join as netJoin, leave as netLeave } from './net.js';
 import { raceTick } from './race.js';
@@ -190,6 +192,7 @@ function visuals(dt, now) {
   B.frontW.rotation.x = -S.wA; B.rearW.rotation.x = -S.wAR; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3; lamps(!!(S.key || S.running || ctx.GAR), S.brake > .05 && !!(S.key || S.running)); ledTick(now);
   B.cluL.rotation.y = (sp.type === 'cvt' ? S.brake : Math.max(S.cl, ctx.bcfg.autoClutch && S.c < .5 ? 1 : 0)) * .3;
   riderRig(S, cfg.helmet !== false);
+  probeFrame(S.x, S.zH + .8, S.z); // light probes: bounce + sky occlusion for the bike from the grid round it (probefig.js)
   const av = Math.abs(S.v), fov = (cfg.fov ?? 72) + (F.on ? F.rs * 6 : Math.min(14, av * .35)); // on foot sprinting widens the view a little (F.rs is already eased)
   if (!ctx.GAR && Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); } // pinch / wheel / Options FOV, speed widening, and leaving the garage's 40°
   if (LK.id === null && av > 1.5) { const k = Math.exp(-dt * 3); LK.y *= k; LK.p *= k; if (Math.abs(LK.y) < .002) LK.y = 0; if (Math.abs(LK.p) < .002) LK.p = 0; }
@@ -296,4 +299,4 @@ renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFr
 O.setDPR = setDPR; O.gpu = GPU; O.aa = AA; O.live = true; O.snap(); // options.js: what the loaded game was built with, to tell which changes still need a reload
 if (ctx.mpWant) { const w = ctx.mpWant; ctx.mpWant = null; netJoin(w.room, w.name, w.url); } // MULTIPLAYER > JOIN before the game had loaded
 O.api = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { CAR, RAD, BUNDLE, NPC, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };
+window.__cpm = { probes: PROBE, CAR, RAD, BUNDLE, NPC, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };
