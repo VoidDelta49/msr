@@ -5,7 +5,7 @@ import { cfg, save, bikeCfg, BUILD, BENCH, CAREER } from './config.js';
 import { CS, careerEnv, ownsBike, owned, sanitize } from './career.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, camera, sun, GPU, API, FELL, AA, MB, BX, draw, warm, setDPR } from './renderer.js';
-import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad, LMF, OBBS, albedo } from './world.js';
+import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad, LMF, OBBS, albedo, LAMPS } from './world.js';
 ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
@@ -33,6 +33,8 @@ import { grassFrame } from './grass.js';
 import { wxFrame } from './wxfig.js';
 import { PROBE, probeInit, probeFrame } from './probefig.js';
 probeInit({ H, albedo, zones, nearRoad });
+import { LAMPL, lampInit } from './lampfig.js';
+lampInit({ H, albedo, LAMPS }); // street lamps as real lights near the player + bounce (lampfig.js, per frame from daynight.js)
 import './layout.js'; // HUD + touch-control layout (after controls.js: needs body.touch)
 import { NET, netFrame, join as netJoin, leave as netLeave } from './net.js';
 import { raceTick } from './race.js';
@@ -299,4 +301,4 @@ renderer.info.autoReset = false; updPerf(API); drawCluster(); requestAnimationFr
 O.setDPR = setDPR; O.gpu = GPU; O.aa = AA; O.live = true; O.snap(); // options.js: what the loaded game was built with, to tell which changes still need a reload
 if (ctx.mpWant) { const w = ctx.mpWant; ctx.mpWant = null; netJoin(w.room, w.name, w.url); } // MULTIPLAYER > JOIN before the game had loaded
 O.api = 'Renderer: ' + (GPU ? 'WebGPU' + (GPU_TYPES ? ' · GPU culling' : '') : 'WebGL 2' + (cfg.forceGL ? ' (forced in options)' : FELL ? ' (WebGPU failed on this device, fell back)' : ' (this browser has no WebGPU)'));
-window.__cpm = { probes: PROBE, CAR, RAD, BUNDLE, NPC, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };
+window.__cpm = { probes: PROBE, LAMPL, CAR, RAD, BUNDLE, NPC, F, getOff, getOn, renderer, scene, camera, S, cfg, ctx, B, spec: () => ctx.spec, step, shift: d => actions.shift(d), reset, recompute, setBike: id => { cfg.bike = id; setBike(); }, H, toggleCam, startEngine, RP, tickRapier, tickR, syncBody, bounce, NET };

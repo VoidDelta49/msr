@@ -1,10 +1,11 @@
-// Night lights: lamp heads, light pools on the ground, halos and lit windows. No real lights (those would change the
-// shader and cost per pixel): lamp heads are emissive, the "light" on the ground is an additive radial quad, and
+// Night lights: lamp heads, light pools on the ground, halos and lit windows. Far from the player no real lights (those would change the
+// shader and cost per pixel; 13.0: the few nearest lamps borrow a fixed set of real ones, lampfig.js, and their pools fade): lamp heads are emissive, the "light" on the ground is an additive radial quad, and
 // windows use an emissive map on the building materials. Everything is driven by one level (0 day .. 1 night) that
 // daynight.js sets every frame, so nothing recompiles when the lights come on.
 import * as THREE from 'three';
-import { uniform, vec3, uv, materialReference, float, clamp, smoothstep, mix, positionWorld, cameraPosition, normalView, positionView } from 'three/tsl';
+import { uniform, vec2, vec3, uv, materialReference, float, clamp, smoothstep, mix, positionWorld, cameraPosition, normalView, positionView } from 'three/tsl';
 import { liteOf } from './perf.js';
+import { Q } from './config.js';
 
 export const LAMP = uniform(0);
 const GLOWM = [], NIGHTM = new WeakSet(), NIGHT = [];
@@ -38,9 +39,17 @@ export function lampMat(on = [2.3, 1.8, 1], off = [.55, .55, .5]) {
 // forceSinglePass stops three from drawing every transparent DoubleSide object twice (back faces, then front faces).
 const radial = () => { const f = clamp(float(1).sub(uv().sub(.5).length().mul(2)), 0, 1); return f.mul(f); };
 // light on the ground: flat quad, tinted per instance (c), strength k. Add sx/sz per instance.
+// 13.0: near the player the lamps are real lights (lamplight.js / lampfig.js). LSLOT[n] = (x, z, pool radius, fade) of the lamp in
+// light slot n: its pool fades out as the real light fades in, so the ground is never lit twice. Slot count = the preset's (Q.lamps).
+export const LSLOT = Array.from({ length: (Q.lamps || [0])[0] }, () => uniform(new THREE.Vector4(0, 0, 1, 0)));
+function slotKeep() {
+  let s = float(0); const p = positionWorld.xz;
+  for (const u of LSLOT) s = s.max(u.w.mul(float(1).sub(smoothstep(u.z.mul(.8), u.z.mul(1.1), p.sub(vec2(u.x, u.y)).length()))));
+  return float(1).sub(s);
+}
 export function poolMat(k = .55) {
   const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, vertexColors: true, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
-  m.colorNode = vec3(1, .86, .6); m.opacityNode = radial().mul(LAMP).mul(k); m.forceSinglePass = true; NIGHTM.add(m); return m;
+  m.colorNode = vec3(1, .86, .6); m.opacityNode = radial().mul(LAMP).mul(k).mul(slotKeep()); m.forceSinglePass = true; NIGHTM.add(m); return m;
 }
 // glow around a lamp seen from afar: two crossed quads, faded out near the camera so it never fills the screen
 export function haloMat(k = .6) {

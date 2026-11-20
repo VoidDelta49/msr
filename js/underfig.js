@@ -2,18 +2,27 @@
 // height grids so tiles join with no seams), the props (stalagmites, stalactites, columns, crystal clusters, glowworms, the lake,
 // the waterfall, the daylight shaft and the way out, show-cave lamps along the main route) and the dark passage in the cave hall.
 // Nothing here is a real light: crystals, glowworms and lamps are emissive (bloom makes them glow), the light they throw is
-// additive pools draped on the floor, and the daylight follows UGDAY (daynight.js). The whole system is one group, shown only while
+// baked into the rock and the props (13.0, cavebake.js: direct + one bounce, two layers), and the daylight layer follows UGDAY (daynight.js). The whole system is one group, shown only while
 // you are down there (undergo.js), so on the island it costs nothing. world.js builds it before Rapier reads the walls.
 import * as THREE from 'three';
-import { uniform, vec3, uv, float, clamp, smoothstep, time, fract, sin, positionWorld, cameraPosition, normalView, positionView } from 'three/tsl';
+import { uniform, vec3, uv, float, clamp, smoothstep, time, fract, sin, positionWorld, cameraPosition, normalView, positionView, attribute, diffuseColor } from 'three/tsl';
 import { scene } from './renderer.js';
 import { liteMaterials } from './perf.js';
+import { Q } from './config.js';
 import { hash2, sstep } from './util.js';
+import { caveGrid, bakeCave } from './cavebake.js';
 
 export const UGDAY = uniform(1); // daylight at the way out and down the shaft (0 night .. 1 noon), set by daynight.js
 export const UGG = new THREE.Group(); UGG.name = 'ilalim'; UGG.visible = false;
+// 13.0: the cave's light is baked (cavebake.js): every rock / prop vertex carries its irradiance in two attributes, bk0 (lamps,
+// crystals, the pool, glowworms) and bk1 (daylight, x the hour). emissive = albedo x (bk0 + bk1 x day) x UGBAKE: no real lights.
+export const UGBAKE = uniform(1), UGPROBE = { g0: null, g1: null }; // probe grids for the bike (probefig.js)
+const DAYB = UGDAY.mul(.92).add(.08);
+function bakedMat(o) {
+  const m = Q.lite ? new THREE.MeshLambertNodeMaterial(o) : new THREE.MeshStandardNodeMaterial(o);
+  m.emissiveNode = diffuseColor.rgb.mul(attribute('bk0', 'vec3').add(attribute('bk1', 'vec3').mul(DAYB))).mul(UGBAKE.mul(1 / Math.PI)); return m; // Lambert: radiance = albedo x E / pi, like three's own lights
+}
 const HDR = (r, g, b, k) => new THREE.Color(r * k, g * k, b * k);
-const radial = () => { const f = clamp(float(1).sub(uv().sub(.5).length().mul(2)), 0, 1); return f.mul(f); };
 function addMat(colorNode, opacityNode) {
   const m = new THREE.MeshBasicNodeMaterial({ transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 });
   m.colorNode = colorNode; m.opacityNode = opacityNode; m.forceSinglePass = true; return m;
@@ -23,42 +32,31 @@ function instanced(geo, mat, list, name) { // list of { x, y, z, sx, sy, sz, ry,
   if (!list.length) return; const im = new THREE.InstancedMesh(geo, mat, list.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler(), col = new THREE.Color();
   list.forEach((o, i) => { m4.compose(new THREE.Vector3(o.x, o.y, o.z), q.setFromEuler(e.set(o.rx || 0, o.ry || 0, 0)), new THREE.Vector3(o.sx, o.sy, o.sz)); im.setMatrixAt(i, m4); if (o.c != null) im.setColorAt(i, col.set(o.c)); });
   im.name = name; im.castShadow = im.receiveShadow = false; im.computeBoundingSphere(); UGG.add(im);
+  if (mat.emissiveNode) { for (const b of ['bk0', 'bk1']) geo.setAttribute(b, new THREE.InstancedBufferAttribute(new Float32Array(list.length * 3), 3)); im.userData.list = list; INST.push(im); } // baked light per instance
+  return im;
 }
-// ground-draped additive pools: [{ x, z, sx, sz, c }] on the cave floor
-function pools(U, list, k, name, lvl) {
-  if (!list.length) return; const N = 6, V = (N + 1) * (N + 1), pos = new Float32Array(list.length * V * 3), col = new Float32Array(list.length * V * 3), uvs = new Float32Array(list.length * V * 2), idx = []; let vi = 0; const cc = new THREE.Color();
-  for (const p of list) {
-    cc.set(p.c); const b = vi;
-    for (let j = 0; j <= N; j++) for (let i = 0; i <= N; i++) { const x = p.x + (i / N - .5) * p.sx, z = p.z + (j / N - .5) * p.sz; pos.set([x, U.floor(x, z) + .08, z], vi * 3); col.set([cc.r, cc.g, cc.b], vi * 3); uvs.set([i / N, j / N], vi * 2); vi++; }
-    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) { const a = b + j * (N + 1) + i; idx.push(a, a + N + 1, a + 1, a + 1, a + N + 1, a + N + 2); }
-  }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2)); g.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(list.length * V * 3).map((_, i) => i % 3 === 1 ? 1 : 0), 3)); g.setIndex(idx); g.computeBoundingSphere();
-  const m = addMat(vec3(1, 1, 1), lvl ? radial().mul(k).mul(lvl) : radial().mul(k)); m.vertexColors = true; mesh(g, m, name);
-}
-
+const INST = [];
 export function buildUnder(U, addOBB) {
-  const { BOX, ox, oz } = U, st = 1.5, NX = Math.ceil((BOX.x1 - BOX.x0) / st) + 1, NZ = Math.ceil((BOX.z1 - BOX.z0) / st) + 1, n = NX * NZ;
-  const E = new Float32Array(n), FL = new Float32Array(n), CE = new Float32Array(n), K = new Array(n), LK = new Float32Array(n);
-  for (let j = 0; j < NZ; j++) for (let i = 0; i < NX; i++) {
-    const k = j * NX + i, x = BOX.x0 + i * st, z = BOX.z0 + j * st, r = U.sampleL(x, z); E[k] = r.e; if (r.e < U.KEEP - 1.5) continue;
-    const c = r.k, rr = { ...r }; K[k] = c; LK[k] = r.lake; FL[k] = U.floorL(x, z, rr); CE[k] = U.ceilL(x, z, rr);
-  }
+  const { BOX, ox, oz } = U, G = caveGrid(U, 1.5), { st, NX, NZ, E, FL, CE, K, LK } = G;
   // ---------- rock shell: floor (up) + ceiling (down), 48 x 48-cell tiles, vertex colours with a cheap baked occlusion ----------
-  const rock = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .82, metalness: 0 }), cA = new THREE.Color(), cB = new THREE.Color();
+  const rock = bakedMat({ vertexColors: true, roughness: .82, metalness: 0 }), cA = new THREE.Color(), cB = new THREE.Color(), SHELL = [];
   const TINT = { crystal: 0x6a5a7a, lake: 0x3e5258, pool: 0x40565a, falls: 0x55605a, cathedral: 0x6e665c, columns: 0x6a6052, shaft: 0x746a5a, glow: 0x4e5258, mouth: 0x6e6658, plain: 0x625a50 };
   const T = 48, at = (i, j) => j * NX + i;
+  function rockCol(i, j, ceil, out) { // the rock's albedo (vertex colour) at a grid cell: chamber tint, wall / ceiling grey, cheap occlusion, wet near the lake
+    const k = at(i, j), e = E[k], h = hash2(i * 3 + (ceil ? 7 : 0), j * 5), wall = 1 - sstep(U.MEET, .8, e), kind = K[k] ? K[k].kind : 'plain';
+    out.set(TINT[kind] || TINT.plain); cB.set(ceil ? 0x3c3834 : 0x847a6c); out.lerp(cB, ceil ? .45 : wall * .45);
+    const ao = ceil ? .55 + .45 * sstep(-1, 4, e) : .5 + .5 * sstep(-.5, 3.5, e) * (1 - .25 * wall);
+    const wet = LK[k] * .5, f = (.82 + .3 * h) * ao * (1 - wet * .4); out.multiplyScalar(f); if (wet) out.lerp(cB.set(0x23343a), wet * .6);
+    return out;
+  }
   for (const ceil of [false, true]) for (let tj = 0; tj < NZ - 1; tj += T) for (let ti = 0; ti < NX - 1; ti += T) {
-    const i1 = Math.min(NX - 1, ti + T), j1 = Math.min(NZ - 1, tj + T), map = new Map(), P = [], N = [], Cc = [], I = [];
+    const i1 = Math.min(NX - 1, ti + T), j1 = Math.min(NZ - 1, tj + T), map = new Map(), P = [], N = [], Cc = [], I = [], KC = []; // KC: grid cell per vertex (ceiling: -1 - k)
     const vert = (i, j) => {
       const k = at(i, j); let v = map.get(k); if (v !== undefined) return v; v = P.length / 3; map.set(k, v);
       const A = ceil ? CE : FL, x = BOX.x0 + i * st, z = BOX.z0 + j * st, y = A[k], g = (ii, jj) => A[at(Math.max(0, Math.min(NX - 1, ii)), Math.max(0, Math.min(NZ - 1, jj)))];
       const dx = (g(i + 1, j) - g(i - 1, j)) / (2 * st), dz = (g(i, j + 1) - g(i, j - 1)) / (2 * st), nl = Math.hypot(dx, 1, dz);
       P.push(ox + x, y, oz + z); if (ceil) N.push(dx / nl, -1 / nl, dz / nl); else N.push(-dx / nl, 1 / nl, -dz / nl);
-      const e = E[k], h = hash2(i * 3 + (ceil ? 7 : 0), j * 5), wall = 1 - sstep(U.MEET, .8, e), kind = K[k] ? K[k].kind : 'plain';
-      cA.set(TINT[kind] || TINT.plain); cB.set(ceil ? 0x3c3834 : 0x847a6c); cA.lerp(cB, ceil ? .45 : wall * .45);
-      const ao = ceil ? .55 + .45 * sstep(-1, 4, e) : .5 + .5 * sstep(-.5, 3.5, e) * (1 - .25 * wall);
-      const wet = LK[k] * .5, f = (.82 + .3 * h) * ao * (1 - wet * .4); cA.multiplyScalar(f); if (wet) cA.lerp(cB.set(0x23343a), wet * .6);
-      Cc.push(cA.r, cA.g, cA.b); return v;
+      rockCol(i, j, ceil, cA); Cc.push(cA.r, cA.g, cA.b); KC.push(ceil ? -1 - k : k); return v;
     };
     for (let j = tj; j < j1; j++) for (let i = ti; i < i1; i++) {
       const a = at(i, j), b = at(i + 1, j), c = at(i, j + 1), d = at(i + 1, j + 1), keep = U.KEEP;
@@ -69,13 +67,14 @@ export function buildUnder(U, addOBB) {
     }
     if (!I.length) continue;
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(P, 3)); g.setAttribute('normal', new THREE.Float32BufferAttribute(N, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(Cc, 3)); g.setIndex(I); g.computeBoundingSphere();
+    for (const b of ['bk0', 'bk1']) g.setAttribute(b, new THREE.Float32BufferAttribute(new Float32Array(P.length), 3)); SHELL.push({ g, KC });
     const o = new THREE.Mesh(g, rock); o.name = ceil ? 'ilalimCeil' : 'ilalimFloor'; o.matrixAutoUpdate = false; UGG.add(o);
   }
   // ---------- walls: OBBs for the bike, Rapier and the walker ----------
   for (const w of U.walls()) addOBB(...w);
   // ---------- props ----------
   const rnd = (a, b) => hash2(Math.round(a * 13.7) + 101, Math.round(b * 7.3) - 57);
-  const SM = [], SK = [], COL = [], CRY = [], GW = [], LAMPS = [], BULB = [], PL = [], WARM = [];
+  const SM = [], SK = [], COL = [], CRY = [], GW = [], LAMPS = [], BULB = [], LT = []; // LT: the light emitters for the bake (cavebake.js)
   const W = (lx, lz) => ({ x: ox + lx, z: oz + lz }), openL = (lx, lz) => U.sampleL(lx, lz).e;
   // keep the line from a chamber's centre to each of its tunnels clear (you ride through there)
   const onPath = (c, lx, lz) => U.T.some(t => { if (t.A !== c && t.B !== c) return false; const o = t.A === c ? t.B : t.A, mx = t.mx, mz = t.mz, ex = mx - c.x, ez = mz - c.z, l2 = ex * ex + ez * ez, u = Math.max(0, Math.min(1, ((lx - c.x) * ex + (lz - c.z) * ez) / l2)); return Math.hypot(c.x + ex * u - lx, c.z + ez * u - lz) < 6; });
@@ -104,7 +103,7 @@ export function buildUnder(U, addOBB) {
         const a = rnd(c.i + 80, s) * 6.283; let lx = c.x, lz = c.z; for (let d = c.r * .4; d < c.r * 1.4; d += .7) { const x = c.x + Math.cos(a) * d, z = c.z + Math.sin(a) * d; if (openL(x, z) < 1.6) break; lx = x; lz = z; }
         if (onPath(c, lx, lz)) continue; const col = pal[(rnd(s, c.i + 81) * pal.length) | 0], cc = HDR(col[0], col[1], col[2], 2.4), f = U.floorL(lx, lz), p = W(lx, lz);
         for (let q = 0; q < 4; q++) { const sz = .25 + .45 * rnd(q, s + c.i * 3), qx = p.x + (rnd(q + 5, s) - .5) * 1.6, qz = p.z + (rnd(s, q + 6) - .5) * 1.6; CRY.push({ x: qx, y: U.floor(qx, qz) - .1, z: qz, sx: sz, sy: sz * (1.2 + 1.6 * rnd(q, s)), sz, rx: (rnd(q, s + 2) - .5) * .7, ry: rnd(s, q) * 6.28, c: cc }); }
-        PL.push({ x: p.x, z: p.z, sx: 9, sz: 9, c: new THREE.Color(col[0], col[1], col[2]) });
+        LT.push({ x: p.x, y: f + .9, z: p.z, c: col, I: 30, R: 13, layer: 0 });
       }
     }
     // glowworms: blue-green dots on the ceiling of the glow chambers and the tunnels next to them
@@ -115,20 +114,22 @@ export function buildUnder(U, addOBB) {
   }
   // show-cave lamps: along the tunnels whose both ends are lit chambers, every 15 m, and round the lit chambers
   const LIT = new Set(U.D.lamps || []);
-  const lamp = (lx, lz) => { const f = U.floorL(lx, lz), p = W(lx, lz); LAMPS.push({ x: p.x, y: f - .1, z: p.z, sx: .08, sy: 2.4, sz: .08, ry: 0, c: 0x2a2622 }); BULB.push({ x: p.x, y: f + 2.35, z: p.z, sx: .16, sy: .2, sz: .16, ry: 0, c: HDR(1, .78, .45, 2.6) }); WARM.push({ x: p.x, z: p.z, sx: 13, sz: 13, c: 0xffc27a }); };
+  const lamp = (lx, lz) => { const f = U.floorL(lx, lz), p = W(lx, lz); LAMPS.push({ x: p.x, y: f - .1, z: p.z, sx: .08, sy: 2.4, sz: .08, ry: 0, c: 0x2a2622 }); BULB.push({ x: p.x, y: f + 2.35, z: p.z, sx: .16, sy: .2, sz: .16, ry: 0, c: HDR(1, .78, .45, 2.6) }); LT.push({ x: p.x, y: f + 2.3, z: p.z, c: [1, .72, .4], I: 120, R: 20, layer: 0, k: 'lamp' }); };
   for (const t of U.T) if (LIT.has(t.A.id) && LIT.has(t.B.id)) for (let s = t.A.r + 4; s < t.L - t.B.r - 2; s += 15) {
     const f = s < t.l1 ? s / t.l1 : (s - t.l1) / (t.L - t.l1), x0 = s < t.l1 ? t.A.x : t.mx, z0 = s < t.l1 ? t.A.z : t.mz, x1 = s < t.l1 ? t.mx : t.B.x, z1 = s < t.l1 ? t.mz : t.B.z, x = x0 + (x1 - x0) * f, z = z0 + (z1 - z0) * f, dl = Math.hypot(x1 - x0, z1 - z0) || 1, side = (Math.floor(s / 15) % 2 ? 1 : -1) * (t.w / 2 - 1.2);
     lamp(x - (z1 - z0) / dl * side, z + (x1 - x0) / dl * side);
   }
   for (const c of U.C) if (LIT.has(c.id) && c.kind !== 'mouth') { const m = Math.max(3, Math.round(c.r / 4.5)); for (let s = 0; s < m; s++) { const a = s / m * 6.283 + c.i; let lx = c.x + Math.cos(a) * c.r * .7, lz = c.z + Math.sin(a) * c.r * .7; if (openL(lx, lz) < 2 || onPath(c, lx, lz)) continue; lamp(lx, lz); } }
-  const stone = new THREE.MeshStandardMaterial({ roughness: .75 }), cone = new THREE.ConeGeometry(1, 1, 7).translate(0, .5, 0);
+  // glowworms as light: summed per 6 m patch of ceiling, a dim blue-green source just under it
+  { const P = new Map(); for (const g of GW) { const k = Math.floor(g.x / 6) * 9973 + Math.floor(g.z / 6); let a = P.get(k); if (!a) P.set(k, a = { x: 0, y: 0, z: 0, n: 0 }); a.x += g.x; a.y += g.y; a.z += g.z; a.n++; }
+    for (const a of P.values()) LT.push({ x: a.x / a.n, y: a.y / a.n - .6, z: a.z / a.n, c: [.3, 1, .8], I: .15 * a.n, R: 14, layer: 0 }); }
+  const stone = bakedMat({ roughness: .75 }), cone = new THREE.ConeGeometry(1, 1, 7).translate(0, .5, 0);
   instanced(cone, stone, SM, 'ilalimStalagmites'); instanced(new THREE.ConeGeometry(1, 1, 6).rotateX(Math.PI).translate(0, -.5, 0), stone, SK, 'ilalimStalactites');
   instanced(new THREE.CylinderGeometry(.75, 1, 1, 9).translate(0, .5, 0), stone, COL, 'ilalimColumns');
   instanced(new THREE.OctahedronGeometry(1, 0).scale(.6, 1.6, .6).translate(0, 1.2, 0), new THREE.MeshBasicMaterial({ color: 0xffffff }), CRY, 'ilalimCrystals');
   instanced(new THREE.OctahedronGeometry(1, 0), new THREE.MeshBasicMaterial({ color: 0xffffff, fog: false }), GW, 'ilalimGlowworms');
-  instanced(new THREE.CylinderGeometry(1, 1, 1, 5).translate(0, .5, 0), new THREE.MeshStandardMaterial({ roughness: .6, metalness: .4 }), LAMPS, 'ilalimLampPosts');
+  instanced(new THREE.CylinderGeometry(1, 1, 1, 5).translate(0, .5, 0), bakedMat({ roughness: .6, metalness: .4 }), LAMPS, 'ilalimLampPosts');
   instanced(new THREE.SphereGeometry(1, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffffff }), BULB, 'ilalimBulbs');
-  pools(U, PL, .5, 'ilalimCrystalLight'); pools(U, WARM, .42, 'ilalimLampLight');
   // ---------- water: the lake's shallows and the glowing pool ----------
   for (const c of U.C) if (c.kind === 'lake' || c.kind === 'pool') {
     const lake = c.kind === 'lake', R = c.r * (lake ? .78 : .55), y = c.y + (lake ? -.02 : .12);
@@ -136,7 +137,7 @@ export function buildUnder(U, addOBB) {
     const w = sin(positionWorld.x.mul(.7).add(time.mul(.8))).mul(sin(positionWorld.z.mul(.9).sub(time.mul(.6)))).mul(.5).add(.5);
     m.colorNode = lake ? vec3(.02, .05, .06) : vec3(.02, .12, .12); m.emissiveNode = (lake ? vec3(.004, .025, .035) : vec3(.03, .35, .32)).mul(w.mul(.5).add(.6)); m.opacityNode = float(lake ? .82 : .7);
     mesh(g, m, lake ? 'ilalimLake' : 'ilalimPool');
-    if (!lake) pools(U, [{ x: ox + c.x, z: oz + c.z, sx: R * 2.6, sz: R * 2.6, c: 0x40ffe0 }], .45, 'ilalimPoolLight');
+    if (!lake) LT.push({ x: ox + c.x, y: y + .6, z: oz + c.z, c: [.25, 1, .85], I: 110, R: R * 3, layer: 0 });
   }
   // ---------- daylight: the way out at the mouth, and the shaft's hole in the roof ----------
   const sp = U.mouth, od = U.outDir;
@@ -146,12 +147,12 @@ export function buildUnder(U, addOBB) {
     m.colorNode = vec3(1.5, 1.42, 1.2).mul(UGDAY).add(vec3(.06, .08, .16)); m.opacityNode = soft; m.forceSinglePass = true;
     const o = mesh(g, m, 'ilalimDaylight'); o.position.set(p.x, f, p.z); o.rotation.y = Math.atan2(-od.x, -od.z); o.updateMatrix();
     U.daylight = { x: p.x, y: f, z: p.z };
-    pools(U, [{ x: p.x - od.x * 4, z: p.z - od.z * 4, sx: 14, sz: 14, c: 0xfff0d8 }], .5, 'ilalimDaylightPool', UGDAY.mul(.9).add(.08)); }
+    const dl = Math.hypot(od.x, .25, od.z); LT.push({ x: p.x - od.x * 1.5, y: f + 3, z: p.z - od.z * 1.5, c: [1, .96, .88], I: 350, R: 45, layer: 1, dir: [-od.x / dl, -.25 / dl, -od.z / dl], amb: .3 }); }
   for (const c of U.C) if (c.kind === 'shaft') {
     const top = c.y + c.h + 2, p = W(c.x, c.z), f = U.floorL(c.x, c.z);
     const disc = new THREE.CircleGeometry(4.5, 24).rotateX(Math.PI / 2).translate(p.x, top - 2.4, p.z), dm = new THREE.MeshBasicNodeMaterial({ fog: false }); dm.colorNode = vec3(1.8, 1.75, 1.55).mul(UGDAY).add(vec3(.04, .06, .12)); mesh(disc, dm, 'ilalimSkyHole');
     const L = top - f, cg = new THREE.CylinderGeometry(4.2, 7.5, L, 20, 1, true).translate(p.x, f + L / 2, p.z), cm = addMat(vec3(1, .96, .85), uv().y.mul(.6).add(.4).mul(normalView.dot(positionView.normalize().negate()).abs().pow(2)).mul(UGDAY).mul(.1)); cm.polygonOffset = false; cm.side = THREE.FrontSide;
-    mesh(cg, cm, 'ilalimShaftBeam'); pools(U, [{ x: p.x, z: p.z, sx: 22, sz: 22, c: 0xfff4dc }], .55, 'ilalimShaftPool', UGDAY.mul(.9).add(.05));
+    mesh(cg, cm, 'ilalimShaftBeam'); LT.push({ x: p.x, y: c.y + c.h * .75, z: p.z, c: [1, .97, .88], I: 2200, R: 70, layer: 1, dir: [0, -1, 0], amb: .15 });
   }
   // ---------- the waterfall: a white sheet down the falls chamber's far wall, streaks scrolling down, mist at its foot ----------
   for (const c of U.C) if (c.kind === 'falls') {
@@ -165,6 +166,25 @@ export function buildUnder(U, addOBB) {
     mesh(pc, pm, 'ilalimFallsPool');
   }
   liteMaterials(UGG); scene.add(UGG);
+  // the bake: once, the first time the caves are shown (undergo.js, under the veil), ~0.5 s. U.lights: the emitters (tools)
+  U.lights = LT; let baked = false;
+  UGG.userData.bake = () => {
+    if (baked) return UGPROBE; baked = true; const t0 = performance.now(), c3 = new THREE.Color(), o6 = new Float32Array(6);
+    const alb = (k, ceil, o) => { const i = k % NX; rockCol(i, (k - i) / NX, ceil, c3); o[0] = c3.r; o[1] = c3.g; o[2] = c3.b; return o; };
+    const B = bakeCave(G, LT, alb, { U });
+    for (const { g, KC } of SHELL) {
+      const a0 = g.attributes.bk0.array, a1 = g.attributes.bk1.array;
+      for (let v = 0; v < KC.length; v++) { const kk = KC[v], ceil = kk < 0, k = ceil ? -1 - kk : kk, A = ceil ? B.C : B.F; for (let c = 0; c < 3; c++) { a0[v * 3 + c] = A[0][k * 3 + c]; a1[v * 3 + c] = A[1][k * 3 + c]; } }
+      g.attributes.bk0.needsUpdate = g.attributes.bk1.needsUpdate = true;
+    }
+    for (const im of INST) {
+      const L = im.userData.list, a0 = im.geometry.attributes.bk0, a1 = im.geometry.attributes.bk1, hang = im.name === 'ilalimStalactites';
+      L.forEach((o, i) => { B.at(o.x, o.y + (hang ? -.5 : .5) * o.sy, o.z, o6); a0.array.set(o6.subarray(0, 3), i * 3); a1.array.set(o6.subarray(3), i * 3); });
+      a0.needsUpdate = a1.needsUpdate = true;
+    }
+    UGPROBE.g0 = B.probes.g0; UGPROBE.g1 = B.probes.g1; UGPROBE.ms = Math.round(performance.now() - t0); UGPROBE.count = B.probes.count;
+    return UGPROBE;
+  };
   return UGG;
 }
 

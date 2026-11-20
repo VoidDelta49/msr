@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { clamp } from './util.js';
 import { S } from './state.js';
 import { scene, camera, sun, hemi, head, renderer, ctex, GRADE } from './renderer.js';
+import { lampsOff } from './lampfig.js';
 import { B, bikeShadow, BLOB_ME } from './model.js';
 
 const O = new THREE.Vector3(0, 900, 0), PED = .3, TAU = Math.PI * 2, WHITE = new THREE.Color(1, 1, 1);
@@ -100,7 +101,7 @@ function targets() {
 }
 
 export function enter() {
-  if (!ST.children.length) initStudio(); on = true; ST.visible = true;
+  if (!ST.children.length) initStudio(); on = true; ST.visible = true; lampsOff(); // street lamp lights (lampfig.js) off in the showroom
   bikeShadow(sun.castShadow); BLOB_ME.off = sun.castShadow; BLOB_ME.ground = () => O.y + PED; // showroom: the real shadow (Low: the blob, on the plate)
   const c = sun.shadow.camera; c.left = c.bottom = -5; c.right = c.top = 5; c.far = 90; c.updateProjectionMatrix(); sun.shadow.autoUpdate = true; // the bike turns on the pedestal and casts here
   const s = Math.sin(S.psi), co = Math.cos(S.psi), at = (x, y, z) => [O.x + x * co + z * s, O.y + y, O.z - x * s + z * co]; // bike-relative → world

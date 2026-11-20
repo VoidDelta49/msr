@@ -18,7 +18,8 @@
 // biomes of probes.js on a checkerboard round the spawn), off. Add ",debug" (or call window.__cpm.probes.debug(true)) for the spheres.
 import * as THREE from 'three';
 import { uniform, varying, vec4, float, normalLocal, modelWorldMatrix, diffuseColor, materialEmissive, metalness, mix } from 'three/tsl';
-import { LightProbeGrid, FALLBACK, demoGrid, evalSH } from './probes.js';
+import { LightProbeGrid, FALLBACK, demoGrid, evalSH, mkProbe } from './probes.js';
+import { UGPROBE, UGDAY } from './underfig.js';
 import { scene, hemi, IBL } from './renderer.js';
 import { ctx } from './state.js';
 
@@ -28,7 +29,7 @@ const SLOTS = [FALLBACK, FALLBACK], pick = o => SLOTS[o.userData.pk | 0] || FALL
 const uv3 = k => uniform(new THREE.Vector3()).onObjectUpdate((f, u) => { u.value.copy(pick(f.object)[k]); });
 const uA = uv3('shAmbient'), uX = uv3('shX'), uY = uv3('shY'), uZ = uv3('shZ'), uVis = uniform(1).onObjectUpdate(({ object }) => pick(object).vis);
 const uTint = uniform(new THREE.Color(1, 1, 1)); // sky light level for relative grids (world), 1 for absolute ones (demo / baked lamps)
-export const PROBE = { mode: MODE, grid: null, light: null, on: false, enabled: true, gain: 2.5, tint: uTint.value, debug: on => debug(on), stats: { baked: 0, live: 0 } };
+export const PROBE = { mode: MODE, grid: null, light: null, on: false, enabled: true, gain: 2.5, caveGain: 1, tint: uTint.value, debug: on => debug(on), stats: { baked: 0, live: 0 } };
 
 // vertex stage: world normal (modelWorldMatrix is exact for the bike's uniform scale; normalLocal is already skinned for the swing arm)
 const nW = modelWorldMatrix.mul(vec4(normalLocal, 0)).xyz.normalize();
@@ -95,18 +96,30 @@ function mkGrid(x, z) {
     : new LightProbeGrid({ gridOrigin: new THREE.Vector3(-4096, .8, -4096), cellSize: { x: 12, y: 4, z: 12 }, dimensions: { x: 684, y: 2, z: 684 }, groundFn: W.H, relative: true });
   PROBE.light = PROBE.grid.light; if (/debug/.test(Q)) debug(true);
 }
-// Per frame (main.js visuals), with the bike's position. Off in the garage studio, indoors and underground (those light themselves).
+// Per frame (main.js visuals), with the bike's position. Off in the garage studio and indoors (those light themselves); underground it
+// reads the cave's baked grids (caveFrame).
 let frame = 0, was = false;
 export function probeFrame(x, y, z) {
   if (!PROBE.grid && W && MODE !== 'off') mkGrid(x, z);
   const g = PROBE.grid; frame++;
-  const on = !!g && PROBE.enabled && !ctx.GAR && !ctx.inside && !(ctx.ug && ctx.ug.on); PROBE.on = on; SLOTS[1] = on ? g.light : FALLBACK;
+  if (ctx.ug && ctx.ug.on) { caveFrame(x, y, z); return; }
+  const on = !!g && PROBE.enabled && !ctx.GAR && !ctx.inside; PROBE.on = on; SLOTS[1] = on ? g.light : FALLBACK; wasC = false;
   if (!on) { was = false; if (DBG) DBG.visible = false; return; }
   P0.set(x, y, z); if (!g.relative) uTint.value.setScalar(PROBE.gain);
   else uTint.value.copy(hemi.color).multiplyScalar(PROBE.gain * hemi.intensity / (IBL ? .6 : 1)); // daynight.js scales hemi by .6 under IBL
   if (MODE === 'world') stream(g, frame);
   g.update(P0, !was); was = true; PROBE.stats.live = g.size;
   if (DBG) { DBG.visible = true; if (g.version !== dbgVer && frame % 10 === 0) dbgFill(g); }
+}
+
+// Ilalim (13.0): the cave's baked grids (cavebake.js via underfig.js), lamps / crystals (g0) + daylight (g1) x the hour, absolute light
+// in the same units as the baked rock, so the bike matches the walls round it. vis stays 1: the cave's faint fill is already its own.
+const CAVEL = mkProbe(); let wasC = false;
+function caveFrame(x, y, z) {
+  const a = UGPROBE.g0, b = UGPROBE.g1, on = !!a && PROBE.enabled && MODE !== 'off'; PROBE.on = on; SLOTS[1] = on ? CAVEL : FALLBACK; if (DBG) DBG.visible = false;
+  if (!on) return; P0.set(x, y, z); const A = a.update(P0, !wasC), B = b.update(P0, !wasC), d = UGDAY.value * .92 + .08; wasC = true; was = false;
+  CAVEL.shAmbient.copy(A.shAmbient).addScaledVector(B.shAmbient, d); CAVEL.shX.copy(A.shX).addScaledVector(B.shX, d); CAVEL.shY.copy(A.shY).addScaledVector(B.shY, d); CAVEL.shZ.copy(A.shZ).addScaledVector(B.shZ, d); CAVEL.vis = 1;
+  uTint.value.setScalar(PROBE.caveGain);
 }
 
 // ---------- debug spheres ----------

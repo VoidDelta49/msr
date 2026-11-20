@@ -223,6 +223,8 @@ js/hud.js             gauge clusters, one per real dash (Raider LCD, Click / Aer
 js/world.js           builds the island from data/map/island.json: terrain, roads, town, props, collision footprints, parking lot
 data/map/island.json  the island layout (coast, features, river, roads, town blocks, vehicles, hangars, prop counts)
 js/renderer.js        WebGPU/WebGL setup and fallback, quality preset
+js/lamps.js           street lamps as real lights near the player (headless: which K lamps, fades with no popping, bounce numbers); lampfig.js = the three.js point lights, pool crossfade, headlight bounce
+js/cavebake.js        Ilalim's baked light (headless): direct + one bounce per vertex, prop light, SH probe grids for the bike; underfig.js draws it
 js/perf.js            culling, terrain LOD, merging, Lambert materials, auto resolution
 js/gpucull.js         WebGPU compute culling + indirect draws for instanced props
 js/bundle.js          WebGPU render bundles: the static town recorded once, replayed per frame

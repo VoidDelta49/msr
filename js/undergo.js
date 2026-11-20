@@ -18,7 +18,7 @@ function veil() { // a black veil that fades out: the jump happens under it
   fade.style.transition = 'none'; fade.style.opacity = '1'; void fade.offsetWidth; fade.style.transition = 'opacity .7s ease-out'; fade.style.opacity = '0';
 }
 function show(on) {
-  UG.on = on; UGG.visible = on;
+  UG.on = on; UGG.visible = on; if (on && UGG.userData.bake) UGG.userData.bake(); // the cave's light is baked the first time you come down (underfig.js, cavebake.js)
   camera.far = on ? 320 : far0; camera.updateProjectionMatrix(); if (MB) MB.cut();
 }
 function go(down) {

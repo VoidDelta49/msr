@@ -1,5 +1,5 @@
 import { CS, saveCareer } from './career.js';
-export const BUILD = '12.40c'; // shown in Options, so a cached old version is easy to spot
+export const BUILD = '13.0'; // shown in Options, so a cached old version is easy to spot
 // Settings: global options + one settings block per bike, stored in localStorage 'cpmme'
 export const GLOBAL_DEF = { wx: 'live', hudOp: 100, hudHide: false, bike: 'raider150', sound: true, amb: true, vol: .8, vEng: 1, vSfx: 1, vRoad: 1, vAmb: 1, radio: 0, rvol: .6, rduck: true, rlive: '', forceGL: false, showFps: true, showApi: true, sens: 10, fov: 72, ui: 10, lefty: false, analogBrk: true, tilt: false, haptic: true, hEng: true, padRumble: true, jcTilt: true, tough: false, helmet: true, wc: true, gfx: 'med', autoRes: true, aa: 'fxaa', grade: true, bloom: true, nightFx: true, grass: true, ibl: true, n64: true, mblur: true, mbAmt: 5, retro: 0, gpuCull: true, bundles: true, fpsCap: 60, tod: 'live', npc: 'auto', name: '', room: '', mpUrl: '', builds: [], mode: 'free' };
 // multiplayer relay (server/worker.js deployed to Cloudflare); Options > MULTIPLAYER can override it (cfg.mpUrl)
@@ -45,9 +45,9 @@ if (!AA_MODES[cfg.aa]) cfg.aa = GLOBAL_DEF.aa;
 // so it doubles as the culling distance. dpr = pixel-ratio cap, shadow = shadow map size (0 = off), lite = Lambert
 // instead of PBR materials on the island (much cheaper per pixel on phones).
 export const QUALITY = {
-  low: { dpr: 1, shadow: 0, fog: 550, lite: true, aniso: 2 },
-  med: { dpr: 1.5, shadow: 1024, fog: 1100, lite: false, aniso: 8 },
-  high: { dpr: 2, shadow: 2048, fog: 1400, lite: false, aniso: 16 },
+  low: { dpr: 1, shadow: 0, fog: 550, lite: true, aniso: 2, lamps: [2, 0] },
+  med: { dpr: 1.5, shadow: 1024, fog: 1100, lite: false, aniso: 8, lamps: [4, 1] },
+  high: { dpr: 2, shadow: 2048, fog: 1400, lite: false, aniso: 16, lamps: [6, 2] },
 };
 export const Q = QUALITY[cfg.gfx] || QUALITY.med;
 export const save = () => {

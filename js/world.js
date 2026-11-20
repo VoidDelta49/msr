@@ -164,7 +164,7 @@ function foot(x,z,hx,hz,ry=0){const c=Math.cos(ry),s=Math.sin(ry);let lo=1e9,hi=
 
 /* collision footprints: oriented boxes (Rapier makes colliders from these) */
 const OBBS=[],OBG=new Map(),OBC=32; // OBG: the same boxes in a 32 m hash grid (inBld below asked all ~3,500 of them for every tree and palm)
-const PADS=[]; // flat ground drawn over the terrain (lawns, court, lot, forecourt) for albedo(); same box convention as addOBB
+const PADS=[],LAMPS=[]; // flat ground drawn over the terrain (lawns, court, lot, forecourt) for albedo(); same box convention as addOBB
 const pad=(cx,cz,w,d,ry,hex)=>PADS.push({cx,cz,hx:w/2,hz:d/2,c:Math.cos(ry),s:-Math.sin(ry),col:new THREE.Color(hex)});
 function addOBB(cx,cz,hx,hz,ry=0,y){const b={cx,cz,hx,hz,ry,c:Math.cos(ry),s:-Math.sin(ry),y};OBBS.push(b);const R=Math.hypot(hx,hz)+.6;
   for(let i=Math.floor((cx-R)/OBC);i<=Math.floor((cx+R)/OBC);i++)for(let j=Math.floor((cz-R)/OBC);j<=Math.floor((cz+R)/OBC);j++){const k=i*65536+j,L=OBG.get(k);if(L)L.push(b);else OBG.set(k,[b])}} // y: height of the box centre (default: the ground there + 1), for guardrails on a high bridge
@@ -589,20 +589,22 @@ const TWN2=FEAT.find(f=>f.name==='town2');let GW,GCOL,GMH,ALB; // terrain grass 
   const tGas=tCon.clone();tGas.repeat.set(10,10);tGas.needsUpdate=true;
   for(const F of LMF.gas){{const a=F.W(-40,40);pad(a.x,a.z,40,40,F.ry,0xa9a59d)}const gp=mesh(new THREE.PlaneGeometry(40,40).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tGas,roughness:.9}),-40,.015,40,F);gp.receiveShadow=true;scene.add(freeze(gp));cullFar(gp,FAR.mid)}
   // ----- night lights (lights.js): emissive lamp heads + additive light pools + halos; everything comes on at sunset -----
+  // LAMPS (13.0): every lamp as a light source {x, y head, z, gy ground, r pool radius, c colour} for lamplight.js (real lights + bounce near the player)
   {
     const LPO=[],LA=[],LH=[],LS=[],LP=[],LHA=[];
     const poolY=(x,z,r)=>{let y=H(x,z);for(const[a,b]of[[r,0],[-r,0],[0,r],[0,-r]])y=Math.max(y,H(x+a,z+b));return y+.07};
-    const pool=(x,z,r,c=0xffd9a0,rz=r,ry=0)=>LP.push({x,y:poolY(x,z,Math.min(r,rz)*.6),z,ry,sx:r*2,sz:rz*2,c});
+    // every pool is also a real light source (lamplight.js): ly = the lamp's height above the pool (0: no light, a sign's glow)
+    const pool=(x,z,r,c=0xffd9a0,rz=r,ry=0,ly=6)=>{const y=poolY(x,z,Math.min(r,rz)*.6);LP.push({x,y,z,ry,sx:r*2,sz:rz*2,c});if(ly>0)LAMPS.push({x,y:y+ly,z,gy:y,r:Math.max(r,rz),c})};
     // landmark helpers: original coordinates through frame F
-    const fpost=(F,x,z,hgt,cx,cz,len,rad,c)=>{const w=F.W(x,z),t=F.W(cx,cz);post(w.x,w.z,hgt,t.x-w.x,t.z-w.z,len,rad,c)},fpool=(F,x,z,r,c,rz=r)=>{const w=F.W(x,z);pool(w.x,w.z,r,c,rz,F.ry)},
+    const fpost=(F,x,z,hgt,cx,cz,len,rad,c)=>{const w=F.W(x,z),t=F.W(cx,cz);post(w.x,w.z,hgt,t.x-w.x,t.z-w.z,len,rad,c)},fpool=(F,x,z,r,c,rz=r,ly=6)=>{const w=F.W(x,z);pool(w.x,w.z,r,c,rz,F.ry,ly)},
       fbox=(F,L,x,y,z,o)=>L.push({...F.W(x,z),y:F.y+y,ry:F.ry,...o}),fhalo=(F,x,y,z,s,c)=>{const w=F.W(x,z);halo(w.x,F.y+y,w.z,s,c)};
     const halo=(x,y,z,s,c=0xffd890)=>LHA.push({x,y,z,sx:s,sy:s,sz:s,c});
     // free-standing post: arm of length len pointing along (tx, tz), head over its tip, pool under the head
     function post(x,z,hgt,tx,tz,len,rad,c){const gy=H(x,z),L=Math.hypot(tx,tz)||1,dx=tx/L,dz=tz/L,ra=Math.atan2(-dz,dx),hx=x+dx*len,hz=z+dz*len;
-      LPO.push({x,y:gy,z,sy:hgt});LA.push({x,y:gy+hgt-.05,z,ry:ra,sx:len});LH.push({x:hx,y:gy+hgt-.2,z:hz,ry:ra,sx:.7,sy:.16,sz:.4});halo(hx,gy+hgt-.3,hz,3.4,c);pool(hx,hz,rad,c);addOBB(x,z,.18,.18)}
+      LPO.push({x,y:gy,z,sy:hgt});LA.push({x,y:gy+hgt-.05,z,ry:ra,sx:len});LH.push({x:hx,y:gy+hgt-.2,z:hz,ry:ra,sx:.7,sy:.16,sz:.4});halo(hx,gy+hgt-.3,hz,3.4,c);pool(hx,hz,rad,c,rad,0,gy+hgt-.25-H(hx,hz));addOBB(x,z,.18,.18)}
     // lamp on an existing power pole (arm across the road, towards the road centre)
     function polamp(p,rad){const dx=-Math.sin(p.ry),dz=-Math.cos(p.ry),ra=Math.atan2(-dz,dx),hx=p.x+dx*2.6,hz=p.z+dz*2.6;
-      LA.push({x:p.x,y:p.y+7.55,z:p.z,ry:ra,sx:2.6});LH.push({x:hx,y:p.y+7.4,z:hz,ry:ra,sx:.7,sy:.16,sz:.4});halo(hx,p.y+7.3,hz,3.4,0xffc070);pool(hx,hz,rad,0xffc070)}
+      LA.push({x:p.x,y:p.y+7.55,z:p.z,ry:ra,sx:2.6});LH.push({x:hx,y:p.y+7.4,z:hz,ry:ra,sx:.7,sy:.16,sz:.4});halo(hx,p.y+7.3,hz,3.4,0xffc070);pool(hx,hz,rad,0xffc070,rad,0,p.y+7.35-H(hx,hz))}
     // 1) streets: every power pole in town, every 3rd along the highways
     const cnt=new Map();
     for(const p of poles){if(rd(p.x,p.z,TOWN,10)<1){polamp(p,8);continue}if(p.r.hwy){const k=(cnt.get(p.r)||0)+1;cnt.set(p.r,k);if(k%3===1)polamp(p,8)}}
@@ -611,26 +613,26 @@ const TWN2=FEAT.find(f=>f.name==='town2');let GW,GCOL,GMH,ALB; // terrain grass 
     // 3) gas station: lit canopy (panels + coloured trim + a big pool), roadside price pylon
     for(const F of LMF.gas){const gx=-40,gz=40;for(const sx of[-5,5])for(const sz of[-4.5,4.5])fbox(F,LH,gx+sx,5.3,gz+sz,{sx:1.6,sy:.08,sz:1.6});
       for(const[x,z,w,d]of[[gx,gz-9,20,.1],[gx,gz+9,20,.1],[gx-10,gz,.1,18],[gx+10,gz,.1,18]])fbox(F,LS,x,5.45,z,{sx:w,sy:.16,sz:d,c:0x35e07a});
-      fpool(F,gx,gz,12,0xf4f8ff,11);fpool(F,gx,gz,9,0xf4f8ff,8);fhalo(F,gx,5.0,gz,9,0xe8f0ff);
-      const P=F.W(gx+20.6,gz-9),px=P.x,pz=P.z,gy=H(px,pz),Q=F.W(gx+17.6,gz-9);LPO.push({x:px,y:gy,z:pz,sy:9});LS.push({x:px,y:gy+9.4,z:pz,ry:F.ry,sx:.5,sy:3,sz:2.4,c:0xd03028},{x:px,y:gy+11.2,z:pz,ry:F.ry,sx:.5,sy:.9,sz:2.4,c:0xffc830});halo(px,gy+9.6,pz,7,0xffb060);pool(Q.x,Q.z,6,0xff9a60);addOBB(px,pz,.25,.25)}
+      fpool(F,gx,gz,12,0xf4f8ff,11,5.2);fpool(F,gx,gz,9,0xf4f8ff,8,0);fhalo(F,gx,5.0,gz,9,0xe8f0ff);
+      const P=F.W(gx+20.6,gz-9),px=P.x,pz=P.z,gy=H(px,pz),Q=F.W(gx+17.6,gz-9);LPO.push({x:px,y:gy,z:pz,sy:9});LS.push({x:px,y:gy+9.4,z:pz,ry:F.ry,sx:.5,sy:3,sz:2.4,c:0xd03028},{x:px,y:gy+11.2,z:pz,ry:F.ry,sx:.5,sy:.9,sz:2.4,c:0xffc830});halo(px,gy+9.6,pz,7,0xffb060);pool(Q.x,Q.z,6,0xff9a60,6,0,4);addOBB(px,pz,.25,.25)}
     // 4) plaza: lamp posts around the lawn; basketball court: four floodlight masts and one bright pool
     for(const F of LMF.plaza){for(const x of[91,118,145])for(const z of[10,46])fpost(F,x,z,5.5,118,28,1.3,9.5,0xfff0d0);
       for(const[x,z]of[[91.2,13],[104.8,13],[91.2,43],[104.8,43]]){fpost(F,x,z,9,98,28,1.1,5,0xe8f0ff);const w=F.W(x,z);LH.push({...F.W(x+(98-x)*.12,z+(28-z)*.05),y:H(w.x,w.z)+8.7,ry:F.ry,sx:1.3,sy:.3,sz:.7})}
-      fpool(F,98,28,10,0xe8f0ff,17);fpool(F,98,28,8,0xe8f0ff,14)}
+      fpool(F,98,28,10,0xe8f0ff,17,9);fpool(F,98,28,8,0xe8f0ff,14,0)}
     // 5) church: floodlit facade, glowing door, stained-glass nave windows, lit belfry
-    for(const F of LMF.church){fpool(F,128,44.5,10,0xffe4b0,6);fpool(F,118.5,45,5,0xffe4b0);fbox(F,LS,128,.4,48.2,{sx:2,sy:3.8,sz:.1,c:0xffb060});
+    for(const F of LMF.church){fpool(F,128,44.5,10,0xffe4b0,6,2.5);fpool(F,118.5,45,5,0xffe4b0,5,0,2.5);fbox(F,LS,128,.4,48.2,{sx:2,sy:3.8,sz:.1,c:0xffb060});
       const SG=[0xffc880,0xff6a4a,0x6aa0ff,0xffd36a];[54,59,64,69].forEach((z,i)=>{for(const x of[121.4,134.6])fbox(F,LS,x,3.4,z,{sx:.12,sy:3.8,sz:1.3,c:SG[(i+(x>128?1:0))%4]})});
       fbox(F,LS,118.5,14.2,48.25,{sx:1.1,sy:1.5,sz:.1,c:0xffc070});fbox(F,LS,116.9,14.2,52,{sx:.1,sy:1.5,sz:1.1,c:0xffc070});fbox(F,LS,120.1,14.2,52,{sx:.1,sy:1.5,sz:1.1,c:0xffc070});fhalo(F,118.5,15,47,5,0xffc070)}
     // 6) market shed: strings of bulbs over both stall rows, lamp posts at the corners
-    for(const F of LMF.market){for(const z of[-52,-30]){for(let x=100;x<=140;x+=3.6){fbox(F,LH,x,4.4,z,{sx:.4,sy:.4,sz:.4});fhalo(F,x,4.3,z,3.2,0xffcf88)}fpool(F,120,z,24,0xffd9a0,6)}
+    for(const F of LMF.market){for(const z of[-52,-30]){for(let x=100;x<=140;x+=3.6){fbox(F,LH,x,4.4,z,{sx:.4,sy:.4,sz:.4});fhalo(F,x,4.3,z,3.2,0xffcf88)}fpool(F,120,z,24,0xffd9a0,6,4.3)}
       for(const[x,z]of[[94,-62],[146,-62],[94,-18],[146,-18]])fpost(F,x,z,6.5,120,-40,1.4,10,0xffd9a0)}
     // 7) airstrip: white edge lights every 30 m, green threshold bars, red end bars; hangar floodlights
     {const r=ROADS.find(q=>q.kind==='strip');if(r){const E=r.s.length-1,hw=r.w/2-.7;
       for(let i=0;i<=E;i+=15){const s=r.s[i];for(const sd of[-1,1]){const x=s.x-s.tz*hw*sd,z=s.z+s.tx*hw*sd,y=H(x,z)+.25;LS.push({x,y,z,sx:.45,sy:.3,sz:.45,c:0xdbe8ff});halo(x,y+.1,z,2.6,0xcfe0ff)}}
       for(const[i,c]of[[0,0xff3030],[E,0xff3030],[4,0x30ff60],[E-4,0x30ff60]]){const s=r.s[clamp(i,0,E)];for(let k=-6;k<=6;k+=2){const x=s.x-s.tz*k*2.2,z=s.z+s.tx*k*2.2,y=H(x,z)+.25;LS.push({x,y,z,sx:.5,sy:.3,sz:.5,c});halo(x,y+.1,z,3,c)}}}
-      for(const o of hg){const dx=Math.sin(o.ry),dz=Math.cos(o.ry),x=o.x+dx*11.7,z=o.z+dz*11.7,y=H(o.x+dx*11,o.z+dz*11);LH.push({x,y:y+6.6,z,ry:o.ry,sx:1.2,sy:.2,sz:.6});halo(x,y+6.4,z,6,0xe8f0ff);pool(x+dx*5,z+dz*5,11,0xe8f0ff,9)}}
+      for(const o of hg){const dx=Math.sin(o.ry),dz=Math.cos(o.ry),x=o.x+dx*11.7,z=o.z+dz*11.7,y=H(o.x+dx*11,o.z+dz*11);LH.push({x,y:y+6.6,z,ry:o.ry,sx:1.2,sy:.2,sz:.6});halo(x,y+6.4,z,6,0xe8f0ff);pool(x+dx*5,z+dz*5,11,0xe8f0ff,9,0,6.4)}}
     // 8) nipa huts: a lantern on the porch
-    for(const o of nipa){const x=o.x+Math.sin(o.ry)*2.5,z=o.z+Math.cos(o.ry)*2.5;LH.push({x,y:o.y+1.6,z,sx:.28,sy:.34,sz:.28});halo(x,o.y+1.6,z,2.6,0xffb870);pool(x,z,5,0xffb870)}
+    for(const o of nipa){const x=o.x+Math.sin(o.ry)*2.5,z=o.z+Math.cos(o.ry)*2.5;LH.push({x,y:o.y+1.6,z,sx:.28,sy:.34,sz:.28});halo(x,o.y+1.6,z,2.6,0xffb870);pool(x,z,5,0xffb870,5,0,1.7)}
     const add=(g,m,L,sh,far)=>{if(L.length)inst(g,m,L,sh,far)};
     add(new THREE.CylinderGeometry(.07,.11,1,6).translate(0,.5,0),std(0x8d887e,.8),LPO,false,FAR.mid);
     add(new THREE.BoxGeometry(1,.1,.1).translate(.5,0,0),std(0x6e6a62,.8),LA,false,FAR.mid);
@@ -723,4 +725,4 @@ function zones(x,z,o){const inl=inland(x,z),gx=inland(x+20,z)-inland(x-20,z),gz=
 if(VOL.h)AMB.push({k:'steam',x:VOL.x,y:terr(VOL.x,VOL.z)+1,z:VOL.z,r:VOL.craterR*.5}); // fumaroles in the crater
 if(PADDY)AMB.push({k:'fly',x:(PADDY.x0+PADDY.x1)/2,y:terr((PADDY.x0+PADDY.x1)/2,(PADDY.z0+PADDY.z1)/2)+.6,z:(PADDY.z0+PADDY.z1)/2,r:Math.min(PADDY.x1-PADDY.x0,PADDY.z1-PADDY.z0)*.45});
 if(TERR.r)AMB.push({k:'fly',x:TERR.x,y:terr(TERR.x,TERR.z)+.6,z:TERR.z,r:TERR.r*.5});
-export { albedo, UG, AMB, FALLS, zones, atGas, LMF, GEN, DOORS, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPT, mapHi, MAPV };
+export { albedo, LAMPS, UG, AMB, FALLS, zones, atGas, LMF, GEN, DOORS, SEA, ICX, ICZ, terr, H, roadH, nearRoad, ROADS, OBBS, addBox, addOBB, freeBays, marker, arrow, MAP, MAPT, mapHi, MAPV };

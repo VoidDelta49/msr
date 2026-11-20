@@ -7,7 +7,8 @@ import { clamp, sstep } from './util.js';
 import { gameMs, Q } from './config.js';
 import { S, ctx } from './state.js';
 import { renderer, scene, camera, sun, hemi, head, SKYU, GRADE, IBL, ENVG, BLOOM, GLARE, FOGU, bakeEnv, envFade } from './renderer.js';
-import { setLamps, beamMeshes, HEAD, BEAM } from './lights.js';
+import { setLamps, beamMeshes, HEAD, BEAM, LAMP } from './lights.js';
+import { lampFrame } from './lampfig.js';
 import { H, albedo } from './world.js';
 import { UGDAY } from './underfig.js';
 import { F, at } from './foot.js';
@@ -167,6 +168,7 @@ export function dayNight() {
     const fx = -Math.sin(F.psi), fz = -Math.cos(F.psi); head.position.set(F.x + fx * .35, F.y + 1.35, F.z + fz * .35);
     head.target.position.set(F.x + fx * 12, F.y - .2, F.z + fz * 12); head.intensity = 420;
   }
+  { const p = at(); lampFrame(p.x, p.z, LAMP.value, head, under, !!ctx.inside); } // street lamps near you as real lights + bounce, headlight bounce (lampfig.js)
   // fog glow toward the sun and ground mist (renderer.js FOGU): mist lies in the low ground from late night to just after sunrise
   FOGU.glow.value = 1 - .9 * K.grey; FOGU.mist.value = Math.min(.6, .32 * (ctx.dawn || 0) + .1 * night + .22 * WX.rain);
   // sun glare (renderer.js GLARE): where the sun is on screen, stronger as it gets low, off once it has set
