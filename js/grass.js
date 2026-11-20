@@ -7,7 +7,7 @@
 // footprints have density 0 (no tuft: all its vertices collapse to one point, nothing is rasterised).
 // Same TSL on WebGPU and WebGL 2. Options > GRAPHICS > Grass turns it off (reloads); the preset sets the count / radius.
 import * as THREE from 'three';
-import { uniform, instanceIndex, textureLoad, ivec2, vec2, vec3, vec4, float, uint, floor, fract, dot, mix, smoothstep, clamp, sin, cos, time, positionGeometry, varying, select, max, min, normalize, length } from 'three/tsl';
+import { uniform, instanceIndex, textureLoad, ivec2, vec2, vec3, vec4, float, uint, floor, fract, dot, mix, smoothstep, clamp, sin, cos, time, positionGeometry, cameraViewMatrix, varying, select, max, min, normalize, length } from 'three/tsl';
 import { scene } from './renderer.js';
 import { cfg, Q } from './config.js';
 
@@ -84,6 +84,10 @@ export function buildGrass(T) {
   }
   const m = Q.lite ? new THREE.MeshLambertNodeMaterial({ side: THREE.DoubleSide }) : new THREE.MeshStandardNodeMaterial({ side: THREE.DoubleSide, roughness: .85, metalness: 0 });
   m.positionNode = posN;
+  // The blades are DoubleSide, and three negates the normal on back faces (negateOnBackSide), so every blade seen
+  // from behind got a DOWN normal: no sun, a dark speck, and the sun's sheen only on the half that faced the camera (it
+  // followed the blades, not the sun). A normalNode is used as-is (view space, no flip): world up for both faces.
+  m.normalNode = cameraViewMatrix.mul(vec4(0, 1, 0, 0)).xyz.normalize();
   const vt = varying(tint), y = positionGeometry.y;
   m.colorNode = vec4(vt.mul(mix(float(.5), float(1.18), y)).add(vec3(.03, .05, 0).mul(y.mul(y))), 1); // dark roots (self-shadow), sunlit tips
   const g = tuft(); g.instanceCount = G * G;
