@@ -164,6 +164,8 @@ function foot(x,z,hx,hz,ry=0){const c=Math.cos(ry),s=Math.sin(ry);let lo=1e9,hi=
 
 /* collision footprints: oriented boxes (Rapier makes colliders from these) */
 const OBBS=[],OBG=new Map(),OBC=32; // OBG: the same boxes in a 32 m hash grid (inBld below asked all ~3,500 of them for every tree and palm)
+const PADS=[]; // flat ground drawn over the terrain (lawns, court, lot, forecourt) for albedo(); same box convention as addOBB
+const pad=(cx,cz,w,d,ry,hex)=>PADS.push({cx,cz,hx:w/2,hz:d/2,c:Math.cos(ry),s:-Math.sin(ry),col:new THREE.Color(hex)});
 function addOBB(cx,cz,hx,hz,ry=0,y){const b={cx,cz,hx,hz,ry,c:Math.cos(ry),s:-Math.sin(ry),y};OBBS.push(b);const R=Math.hypot(hx,hz)+.6;
   for(let i=Math.floor((cx-R)/OBC);i<=Math.floor((cx+R)/OBC);i++)for(let j=Math.floor((cz-R)/OBC);j<=Math.floor((cz+R)/OBC);j++){const k=i*65536+j,L=OBG.get(k);if(L)L.push(b);else OBG.set(k,[b])}} // y: height of the box centre (default: the ground there + 1), for guardrails on a high bridge
 function addBox(x0,z0,x1,z1){addOBB((x0+x1)/2,(z0+z1)/2,(x1-x0)/2,(z1-z0)/2)}
@@ -450,7 +452,7 @@ const TWN2=FEAT.find(f=>f.name==='town2');let GW,GCOL,GMH,ALB; // terrain grass 
       for(let k=0;k<11;k++){const a=k/11*6.283+.5;if(Math.abs(Math.sin(a))>.92&&Math.cos(a)>-.4&&Math.sin(a)<0)continue;const bx=pc.x+Math.cos(a)*6.6,bz=pc.z+Math.sin(a)*6.6,s2=1+hv(k+50)*1.3;nb(RK,bx,foot(bx,bz,.6,.6,ry).lo-.3,bz,a,s2*1.3,s2,s2,0x8a8478)}
       AMB.push({k:'mist',x:pc.x,y:py,z:pc.z,r:3},{k:'spray',x:sh.x,y:gl+Hf-1,z:sh.z,r:2.4})}
     else if(t==='park'){ // city park (Build 11.93): lawn, cross paths, a fountain, benches, shade trees and lamps
-      const g=f.lo,hv=n=>hash2(Math.round(x*10)+n*13,Math.round(z*10)-n*7);nb(PL,x,g-.2,z,ry,w,.32,d,0x6fae4a);nb(PL,x,g-.2,z,ry,w,.36,3,0xd9c9a3);nb(PL,x,g-.2,z,ry,3,.36,d,0xd9c9a3);
+      const g=f.lo,hv=n=>hash2(Math.round(x*10)+n*13,Math.round(z*10)-n*7);nb(PL,x,g-.2,z,ry,w,.32,d,0x6fae4a);pad(x,z,w,d,ry,0x6fae4a);nb(PL,x,g-.2,z,ry,w,.36,3,0xd9c9a3);nb(PL,x,g-.2,z,ry,3,.36,d,0xd9c9a3);
       nb(RK,x,g,z,ry,7,.6,7,0xcfc4b0);nb(PL,x,g+.05,z,ry,6,.6,6,0x35a8d6);nb(RK,x,g,z,ry,1.2,2.2,1.2,0xcfc4b0);addOBB(x,z,3.5,3.5,ry);AMB.push({k:'fount',x,y:g+2.3,z});
       for(let k=0;k<Math.round(w*d/180);k++){const a=(hv(k)-.5)*(w-6),dd=(hv(k+50)-.5)*(d-6);if(Math.abs(a)<4||Math.abs(dd)<4)continue;const m=P(a,dd),s2=.8+hv(k+90)*.6;
         BT.push({x:m.x,y:g,z:m.z,sx:.5*s2,sy:4*s2,sz:.5*s2,c:0x8a7a62});LF.push({x:m.x,y:g+4.6*s2,z:m.z,sx:2.6*s2,sy:2*s2,sz:2.6*s2,c:new THREE.Color().setHSL(.25+hv(k+7)*.07,.5,.3+hv(k+3)*.1)});addOBB(m.x,m.z,.3,.3)}
@@ -489,7 +491,7 @@ const TWN2=FEAT.find(f=>f.name==='town2');let GW,GCOL,GMH,ALB; // terrain grass 
   // landmarks: original coordinates, mapped through each one's frame F (W = world position, F.y = levelled ground)
   const mesh=(g,m,X,Y,Z,F,r0=0)=>{const o=new THREE.Mesh(g,m),w=F.W(X,Z);o.position.set(w.x,F.y+Y,w.z);o.rotation.y=F.ry+r0;return o};
   const tCourt=mkTex(T.court()),stone=std(0xcdbb98,.95);
-  for(const F of LMF.plaza){const{W,obb,ry,y}=F;
+  for(const F of LMF.plaza){const{W,obb,ry,y}=F;{const a=W(118,28),b=W(98,28);pad(a.x,a.z,62,40,ry,0x6fae4a);pad(b.x,b.z,15,28,ry,0x2f7d5b)}
     if(MULTI){const c=F.W(118,28);inst(new THREE.PlaneGeometry(62,40).rotateX(-PI/2),std(0x6fae4a,.9),[{x:c.x,y:y+.02,z:c.z,ry}],false,FAR.big)}
     else{const pz=mesh(new THREE.PlaneGeometry(62,40).rotateX(-PI/2),std(0x6fae4a,.9),118,.02,28,F);pz.receiveShadow=true;scene.add(freeze(pz))}
     const ct=mesh(new THREE.PlaneGeometry(15,28).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tCourt,roughness:.7}),98,.03,28,F);scene.add(freeze(ct));
@@ -583,9 +585,9 @@ const TWN2=FEAT.find(f=>f.name==='town2');let GW,GCOL,GMH,ALB; // terrain grass 
     if(rocks.length)inst(vcol(new THREE.IcosahedronGeometry(1,0).translate(0,.45,0),.5),vstd(0xffffff,.95,0,tDet),rocks,true,FAR.tree)}
   // lot + gas station paving
   const tLot=tAsph.clone();tLot.repeat.set(17,17);tLot.needsUpdate=true;
-  for(const F of LMF.lot){const lot=mesh(new THREE.PlaneGeometry(70,70).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tLot,roughness:.9}),40,.015,40,F);lot.receiveShadow=true;scene.add(freeze(lot));cullFar(lot,FAR.mid)}
+  for(const F of LMF.lot){{const a=F.W(40,40);pad(a.x,a.z,70,70,F.ry,0x56585a)}const lot=mesh(new THREE.PlaneGeometry(70,70).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tLot,roughness:.9}),40,.015,40,F);lot.receiveShadow=true;scene.add(freeze(lot));cullFar(lot,FAR.mid)}
   const tGas=tCon.clone();tGas.repeat.set(10,10);tGas.needsUpdate=true;
-  for(const F of LMF.gas){const gp=mesh(new THREE.PlaneGeometry(40,40).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tGas,roughness:.9}),-40,.015,40,F);gp.receiveShadow=true;scene.add(freeze(gp));cullFar(gp,FAR.mid)}
+  for(const F of LMF.gas){{const a=F.W(-40,40);pad(a.x,a.z,40,40,F.ry,0xa9a59d)}const gp=mesh(new THREE.PlaneGeometry(40,40).rotateX(-PI/2),new THREE.MeshStandardMaterial({map:tGas,roughness:.9}),-40,.015,40,F);gp.receiveShadow=true;scene.add(freeze(gp));cullFar(gp,FAR.mid)}
   // ----- night lights (lights.js): emissive lamp heads + additive light pools + halos; everything comes on at sunset -----
   {
     const LPO=[],LA=[],LH=[],LS=[],LP=[],LHA=[];
@@ -705,7 +707,9 @@ const arrow=new THREE.Mesh(new THREE.ConeGeometry(.35,.8,4).rotateX(PI),new THRE
   GW=GCOL=GMH=null}
 // albedo(x,z,out): colour of the ground under x,z (terrain, asphalt on a road, sea), for daynight.js's ground bounce
 const ASPH=new THREE.Color(0x56585a),SEAC=new THREE.Color(0x2c5866);
-function albedo(x,z,out){if(H(x,z)<SEA)return out.copy(SEAC);const q=nearRoad(x,z);if(q&&q.d<q.w/2)return out.copy(ASPH);
+function albedo(x,z,out){if(H(x,z)<SEA)return out.copy(SEAC);
+  for(let i=PADS.length-1;i>=0;i--){const b=PADS[i],dx=x-b.cx,dz=z-b.cz;if(Math.abs(dx*b.c+dz*b.s)<b.hx&&Math.abs(-dx*b.s+dz*b.c)<b.hz)return out.copy(b.col)} // last drawn on top
+  const q=nearRoad(x,z);if(q&&q.d<q.w/2)return out.copy(ASPH);
   const i=clamp(Math.round((x-ALB.x0)/ALB.s),0,ALB.n-1),j=clamp(Math.round((z-ALB.z0)/ALB.s),0,ALB.n-1),o=(i+ALB.n*j)*3;return out.setRGB(ALB.c[o]/255,ALB.c[o+1]/255,ALB.c[o+2]/255)}
 export const GPU_TYPES=finishGpuInst(scene);
 marker.visible=arrow.visible=false;liteMaterials(scene);scene.add(marker,arrow);
