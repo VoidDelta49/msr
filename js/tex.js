@@ -30,6 +30,23 @@ function paint(w, h, fn) {
 // pick from a palette ramp by value t (0..1) with ordered dither between neighbouring shades
 const ramp = (P, t, x, y) => { const f = Math.max(0, Math.min(P.length - 1.001, t * (P.length - 1) + dith(x, y) - .5)); return P[Math.floor(f + .5)] || P[P.length - 1]; };
 const R = (...c) => c.map(hex);
+// Detail pass (textures 12.38): the canvas doubled with crisp texels, then per-pixel grain and wear painted on at the new size. Hash noise,
+// never rnd(), so the seeded sequence (and every texture after this one) stays exactly as it was. fn(x, y, px) edits px = [r, g, b] in place.
+const hs = (x, y, k) => { let h = Math.imul(x * 374761393 + y * 668265263 + k * 2147483647, 1274126177) >>> 0; h = Math.imul(h ^ (h >>> 13), 1103515245) >>> 0; return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
+function up2(src, grain, fn) {
+  const W = src.width * 2, Hh = src.height * 2, c = document.createElement('canvas'); c.width = W; c.height = Hh; const g = c.getContext('2d'); g.imageSmoothingEnabled = false; g.drawImage(src, 0, 0, W, Hh);
+  if (!grain && !fn) return c; const im = g.getImageData(0, 0, W, Hh), d = im.data, px = [0, 0, 0];
+  for (let y = 0; y < Hh; y++) for (let x = 0; x < W; x++) {
+    const k = (y * W + x) * 4, m = 1 + (hs(x, y, 1) - .5) * grain; px[0] = d[k] * m; px[1] = d[k + 1] * m; px[2] = d[k + 2] * m; if (fn) fn(x, y, px);
+    d[k] = Math.max(0, Math.min(255, px[0])); d[k + 1] = Math.max(0, Math.min(255, px[1])); d[k + 2] = Math.max(0, Math.min(255, px[2]));
+  }
+  g.putImageData(im, 0, 0); return c;
+}
+// a few soft round blots (oil, damp, tar) on a W x H tile: returns 0..1 darkening at a pixel, wrapped
+function blots(W, H, n, r0, r1, k) { const B = []; for (let i = 0; i < n; i++) B.push([hs(i, 0, k) * W, hs(i, 1, k) * H, r0 + hs(i, 2, k) * (r1 - r0)]); return (x, y) => { let v = 0; for (const [bx, by, r] of B) { const dx = Math.min(Math.abs(x - bx), W - Math.abs(x - bx)), dy = Math.min(Math.abs(y - by), H - Math.abs(y - by)), q = 1 - Math.hypot(dx, dy) / r; if (q > 0) v = Math.max(v, q * q * (1.4 + hs(x, y, k + 9) * .6)); } return Math.min(1, v); }; }
+// a wandering hairline crack (set of pixel keys), wrapped
+function crack(W, H, len, k) { const S = new Set(); let x = hs(0, 0, k) * W, y = hs(0, 1, k) * H, a = hs(0, 2, k) * 6.3; for (let i = 0; i < len; i++) { S.add((Math.floor(y + H) % H) * W + Math.floor(x + W) % W); a += (hs(i, 3, k) - .5) * .8; x += Math.cos(a); y += Math.sin(a); } return S; }
+const dark = (px, f) => { px[0] *= f; px[1] *= f; px[2] *= f; };
 
 export function mkTex(canvas, rep, opt = {}) {
   const t = new THREE.CanvasTexture(canvas); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping;
@@ -41,27 +58,36 @@ export function mkTex(canvas, rep, opt = {}) {
 export function asphalt() { // dark, mottled, light grit, a couple of cracks
   const n = noise(64, 64, 4, 3), P = R(0x2b2d30, 0x34363a, 0x3d3f43, 0x46484c);
   const cr = new Set(); for (let k = 0; k < 1; k++) { let x = rnd() * 64, y = rnd() * 64, a = rnd() * 6; for (let s = 0; s < 40; s++) { cr.add((Math.floor(y) & 63) * 64 + (Math.floor(x) & 63)); a += (rnd() - .5) * .9; x += Math.cos(a); y += Math.sin(a); } }
-  return paint(64, 64, (x, y) => cr.has(y * 64 + x) ? [38, 39, 42] : rnd() < .05 ? [92, 93, 96] : ramp(P, n[y * 64 + x], x, y));
+  const oil = blots(128, 128, 3, 6, 14, 11), seal = crack(128, 128, 90, 12);
+  return up2(paint(64, 64, (x, y) => cr.has(y * 64 + x) ? [38, 39, 42] : rnd() < .05 ? [92, 93, 96] : ramp(P, n[y * 64 + x], x, y)), .14, (x, y, px) => { // + oil stains, tar-sealed crack
+    dark(px, 1 - oil(x, y) * .3); if (seal.has(y * 128 + x)) dark(px, .62);
+  });
 }
 export function concrete() { // slabs with joints (2 per tile), light stains
   const n = noise(64, 64, 4, 3), P = R(0x8a877f, 0x96938b, 0xa19e96, 0xadaaa2);
-  return paint(64, 64, (x, y) => (x % 32 === 0 || y % 32 === 0) ? [104, 101, 95] : (x % 32 === 1 || y % 32 === 1) ? [176, 173, 166] : ramp(P, n[y * 64 + x] * .9 + rnd() * .1, x, y));
+  const damp = blots(128, 128, 4, 8, 18, 21), c1 = crack(128, 128, 50, 22), c2 = crack(128, 128, 35, 23);
+  return up2(paint(64, 64, (x, y) => (x % 32 === 0 || y % 32 === 0) ? [104, 101, 95] : (x % 32 === 1 || y % 32 === 1) ? [176, 173, 166] : ramp(P, n[y * 64 + x] * .9 + rnd() * .1, x, y)), .1, (x, y, px) => { // + damp patches, hairline cracks, pebbles
+    dark(px, 1 - damp(x, y) * .14); if (c1.has(y * 128 + x) || c2.has(y * 128 + x)) dark(px, .72); else if (hs(x, y, 24) < .02) dark(px, .82 + hs(x, y, 25) * .3);
+  });
 }
 // terrain detail: multiplies the vertex colours. Average stays ~#d6 (the old speck texture's tone) so the colours keep their balance.
 export function detail() {
   const n = noise(64, 64, 4, 3), P = R(0xb2b2b2, 0xc4c4c4, 0xd6d6d6, 0xe6e6e6, 0xf4f4f4);
   const blade = new Set(); for (let k = 0; k < 140; k++) { const x = (rnd() * 64) | 0, y = (rnd() * 64) | 0; blade.add(y * 64 + x); blade.add(((y + 1) & 63) * 64 + x); }
-  return paint(64, 64, (x, y) => blade.has(y * 64 + x) ? [250, 250, 250] : blade.has(((y + 63) & 63) * 64 + ((x + 1) & 63)) ? [168, 168, 168] : ramp(P, n[y * 64 + x], x, y));
+  return up2(paint(64, 64, (x, y) => blade.has(y * 64 + x) ? [250, 250, 250] : blade.has(((y + 63) & 63) * 64 + ((x + 1) & 63)) ? [168, 168, 168] : ramp(P, n[y * 64 + x], x, y)), .12); // fine grain, same average tone
 }
 // roads: u across (0..1 = full width), v along (1 tile = 4.5 m). Philippine concrete roads: slab joint across + down the middle, tyre-worn lanes.
 function road(hwy) {
-  const n = noise(32, 64, 2, 3), P = R(0x8f8c86, 0x9b9892, 0xa6a39d, 0xb1aea8);
-  return paint(32, 64, (x, y) => {
+  const n = noise(32, 64, 2, 3), P = R(0x8f8c86, 0x9b9892, 0xa6a39d, 0xb1aea8), k = hwy ? 40 : 30, c1 = crack(64, 128, 45, k), drip = blots(64, 128, 5, 3, 7, k + 1);
+  return up2(paint(32, 64, (x, y) => {
     if (y === 0) return [96, 94, 90];
     if (hwy) { if (x === 1 || x === 30) return [236, 234, 226]; if ((x === 15 || x === 16) && y > 10 && y < 42) return [226, 186, 40]; }
     else if (x === 15 || x === 16) return x === 15 ? [112, 110, 105] : [150, 147, 141];
     const lane = Math.min(Math.abs(x - 8), Math.abs(x - 23)), wear = lane < 3 ? -.18 * (1 - lane / 3) : 0, edge = (x < 2 || x > 29) ? -.15 : 0;
     return ramp(P, n[y * 32 + x] + wear + edge, x, y);
+  }), .1, (x, y, px) => { // + tyre grime in the wheel tracks, oil drips down each lane's middle, a hairline crack (never across the paint)
+    const lane = Math.min(Math.abs(x - 16), Math.abs(x - 47)), tr = Math.min(Math.abs(lane - 6), 3) / 3; dark(px, .93 + .07 * tr);
+    if (lane < 4) dark(px, 1 - drip(x, y) * .35); if (c1.has(y * 64 + x) && px[2] < 200) dark(px, .7);
   });
 }
 export const roadSt = () => road(false), roadHwy = () => road(true);
@@ -125,11 +151,14 @@ export function walls(n) {
     if ((ground && n === 1 ? ly === 22 : ly === 22) && ((x >= 2 && x < 11) || (x >= 17 && x < 30))) return [168, 164, 156]; // sills
     return top && ly < 2 ? [190, 186, 178] : base;
   };
-  const cv = paint(W, H, col);
+  const cv = up2(paint(W, H, col), .08, (x, y, px) => { // + rain streaks under the sills and the slab edges, damp at the foot (tropical walls)
+    const ly = (y >> 1) % 32, f = Math.floor((y >> 1) / 32), streak = hs(x, f, 31) < .35 ? Math.max(0, 1 - (ly - 23) / 7) * (ly > 22 ? 1 : 0) : 0;
+    const foot = f === n - 1 && ly > 27 ? (ly - 27) / 4 : 0; dark(px, 1 - Math.max(streak * .16, foot * .14 * (.6 + hs(x, 0, 32) * .8)));
+  });
   // lit twin (emissive map): about half the panes glow warm (a few cool, like a TV), shop sign boards glow in their own colour.
   // Deterministic hash, never rnd(): the seeded texture sequence must not shift.
   const hs = (a, b, c) => { let h = Math.imul(a * 31 + b * 17 + c * 7 + n * 131 + 3, 2654435761) >>> 0; h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0; return ((h ^ (h >>> 13)) >>> 0) / 4294967296; };
-  cv.glow = paint(W, H, (x, y) => {
+  cv.glow = up2(paint(W, H, (x, y) => {
     const f = Math.floor(y / 32), ly = y - f * 32, ground = f === n - 1;
     if (ground && n > 1 && ly >= 4 && ly < 10 && x > 1 && x < 30) return ly === 4 || ly === 9 ? [0, 0, 0] : col(x, y).map(v => Math.round(v * .85));
     const win = ground && n === 1 ? (x >= 3 && x < 10 || x >= 22 && x < 29) && ly >= 10 && ly < 22 : !ground && (x >= 4 && x < 14 || x >= 18 && x < 28) && ly >= 8 && ly < 22;
@@ -137,11 +166,11 @@ export function walls(n) {
     const pane = ground && n === 1 ? (x < 16 ? 0 : 1) : x < 16 ? 0 : 1; if (hs(f, pane, 1) > .55) return [0, 0, 0];
     const k = hs(f, pane, 2), c = k < .12 ? [140, 190, 255] : k < .55 ? [255, 226, 160] : [255, 198, 118], d = ly % 3 === 0 ? .55 : 1;
     return c.map(v => Math.round(v * d));
-  });
+  }));
   // roughness twin (PBR, G channel = roughness, linear): glass panes nearly mirror-smooth, so the windows catch the sky
   // and the sun at an angle while the plaster stays matt; sills and slab edges (painted concrete) a little smoother,
   // the steel shutter and the sign board in between. Pure geometry, no rnd() (the seeded sequence must not shift).
-  cv.rough = paint(W, H, (x, y) => {
+  cv.rough = up2(paint(W, H, (x, y) => {
     const f = Math.floor(y / 32), ly = y - f * 32, ground = f === n - 1; let r = .88;
     const win = ground && n === 1 ? (x >= 3 && x < 10 || x >= 22 && x < 29) && ly >= 10 && ly < 22 : !ground && (x >= 4 && x < 14 || x >= 18 && x < 28) && ly >= 8 && ly < 22;
     if (ly === 31) r = .7;
@@ -151,12 +180,14 @@ export function walls(n) {
     else if (win) r = (ly % 3 === 0) ? .4 : .1;                                         // jalousie slat edge / glass
     else if (ly === 22 && ((x >= 2 && x < 11) || (x >= 17 && x < 30))) r = .65;
     const g = Math.round(r * 255); return [g, g, g];
-  });
+  }));
   return cv;
 }
 export function tin() { // corrugated roof ribs + rust spots (white: the instance colour paints the roof)
   const n = noise(32, 32, 4, 2);
-  return paint(32, 32, (x, y) => { const rib = [.55, .8, 1, .9, .7][x % 5], rust = n[y * 32 + x] > .72; const v = Math.round(255 * rib * (rust ? .78 : 1)); return rust ? [v, Math.round(v * .82), Math.round(v * .7)] : [v, v, v]; });
+  return up2(paint(32, 32, (x, y) => { const rib = [.55, .8, 1, .9, .7][x % 5], rust = n[y * 32 + x] > .72; const v = Math.round(255 * rib * (rust ? .78 : 1)); return rust ? [v, Math.round(v * .82), Math.round(v * .7)] : [v, v, v]; }), .1, (x, y, px) => { // + rust runs down the ribs' valleys
+    if ((x >> 1) % 5 === 0 && hs(x >> 1, 0, 41) < .5) { const t = ((y + hs(x >> 1, 1, 41) * 64) % 64) / 64; if (t < .4) { px[1] *= .9 + t * .25; px[2] *= .8 + t * .5; } }
+  });
 }
 export function bark() { // palm / tree trunk rings
   return paint(16, 32, (x, y) => ramp(R(0x7c6a52, 0x958067, 0xae9a80, 0xc7b39a), (y % 4 === 0 ? .1 : .65) + (x % 5 === 0 ? -.15 : 0) + rnd() * .2, x, y));

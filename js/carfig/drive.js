@@ -4,9 +4,11 @@
 // along hidden, so the minimap, friends, weather and doors all still know where you are. main.js calls carTick / carFrame.
 import * as THREE from 'three';
 import { scene, camera, std } from '../renderer.js';
-import { H, roadH, SEA, OBBS, LMF, atGas } from '../world.js';
+import { H, roadH, SEA, OBBS, LMF, atGas, ROADS } from '../world.js';
 import { ctx, S } from '../state.js';
-import { BUILD } from '../config.js';
+import { BUILD, cfg, Q } from '../config.js';
+import { Crowd, humanGeo, riderPal, POSES, joints } from '../figure.js';
+import { makeRouter, follow } from '../route.js';
 import { F, nearBoxes } from '../foot.js';
 import { K } from '../controls.js';
 import { GP } from '../pad.js';
@@ -39,25 +41,28 @@ function mdlCar(def) {
   const sz = new THREE.Box3().setFromObject(root).getSize(new THREE.Vector3()); return { root, wheels, steer, M, size: [sz.x, sz.y, sz.z] };
 }
 const GR = { h: H, mu: surfaceMu, slick: slickAt, wet: 0, n(x, z, o) { const e = .35, h = H(x, z), dx = (H(x + e, z) - h) / e, dz = (H(x, z + e) - h) / e, l = Math.hypot(dx, 1, dz); o[0] = -dx / l; o[1] = 1 / l; o[2] = -dz / l; } };
-const W = carWorld(GR), CARS = [], REACH = 3.2, q = new THREE.Quaternion(), q2 = new THREE.Quaternion(), v3 = new THREE.Vector3(), e3 = new THREE.Euler(0, 0, 0, 'YXZ');
+const W = carWorld(GR), CARS = [], TR = [], ALL = [], REACH = 3.2, q = new THREE.Quaternion(), q2 = new THREE.Quaternion(), v3 = new THREE.Vector3(), e3 = new THREE.Euler(0, 0, 0, 'YXZ');
 let cur = null, acc = 0, awake = 2, camSnap = true;
-export const CAR = { list: CARS, get cur() { return cur; }, W };
+export const CAR = { list: CARS, traffic: TR, get cur() { return cur; }, W };
 
+// one car: sim entity + model + contact shadow (parked at the lot, or NPC traffic: npc = its driver's route state)
+function mkCar(def, at, npc) {
+  const id = spawnCar(W, def, at);
+    const m = MODELS[def.model](def, cluTex); scene.add(m.root); blobAdd({ b: m.root, p: new THREE.Vector3(0, .5, 0), h0: .5, d: m.size[2] * .6, w: m.size[0] * 1.05, cores: 1, vis: () => true, ground: null, off: false });
+    const c = { def, id, m, at, npc, B: W.get(id, 'Body'), I: W.get(id, 'Input'), K: W.get(id, 'Car'), E: W.get(id, 'Engine'), X: W.get(id, 'Gearbox'), wh: W.get(id, 'Car').wheels.map(w => ({ W: W.get(w, 'Wheel'), S: W.get(w, 'Susp') })),
+      pp: [0, 0, 0], pq: [0, 0, 0, 1], fuel: def.fuel.cap * .8, odo: 0, auto: 0, st: 0, lit: 0, x: at.x, y: 0, z: at.z, h: at.h, snd: null };
+    c.E.on = 0; c.I.hb = 1; c.pp = [...c.B.p]; c.pq = [...c.B.q];
+    if (def.cabin && !npc) { c.fit = fitOf(def.cabin, FITS[def.id]); refit(c); }
+    // the engine voice (audio.js engineCfg / acoustics): the car's geometry + levels in the shape a bike spec has
+    const sp = c.K.sp, s = def.sound; c.snd = { run: 0, rpm: 0, load: 0, cut: 0, sp: { sound: s, geo: sp.geo, snd: 0, evo: 0, crd: 0, ccx: 1, muf: s.muf, hdr: s.hdr, ie: sp.ie, ie0: sp.ie, red: sp.red, idle: sp.idle, sPun: 0, sRgh: 0, sMech: 0, sIn: 0, sBri: 0, sCrk: 0 } };
+  return c;
+}
 export async function carsInit() {
   const ids = await (await fetch('data/cars/index.json?v=' + BUILD)).json(), defs = (await Promise.all(ids.map(id => fetch(`data/cars/${id}.json?v=${BUILD}`).then(r => r.json())))).filter(d => MODELS[d.model]);
   await Promise.all(defs.filter(d => d.mesh).map(async d => { d.meshData = await (await fetch(`data/models/${d.mesh}.json?v=${BUILD}`)).json(); }));
   const lot = LMF.lot[0];
-  defs.forEach((def, i) => {
-    const a = lot.W(66, 40 + i * 4), b = lot.W(66, 39 + i * 4), at = { x: a.x, z: a.z, h: Math.atan2(b.x - a.x, b.z - a.z) }, id = spawnCar(W, def, at);
-    const m = MODELS[def.model](def, cluTex); scene.add(m.root); blobAdd({ b: m.root, p: new THREE.Vector3(0, .5, 0), h0: .5, d: m.size[2] * .6, w: m.size[0] * 1.05, cores: 1, vis: () => true, ground: null, off: false });
-    const c = { def, id, m, at, B: W.get(id, 'Body'), I: W.get(id, 'Input'), K: W.get(id, 'Car'), E: W.get(id, 'Engine'), X: W.get(id, 'Gearbox'), wh: W.get(id, 'Car').wheels.map(w => ({ W: W.get(w, 'Wheel'), S: W.get(w, 'Susp') })),
-      pp: [0, 0, 0], pq: [0, 0, 0, 1], fuel: def.fuel.cap * .8, odo: 0, auto: 0, st: 0, lit: 0, x: at.x, y: 0, z: at.z, h: at.h, snd: null };
-    c.E.on = 0; c.I.hb = 1; c.pp = [...c.B.p]; c.pq = [...c.B.q];
-    if (def.cabin) { c.fit = fitOf(def.cabin, FITS[def.id]); refit(c); }
-    // the engine voice (audio.js engineCfg / acoustics): the car's geometry + levels in the shape a bike spec has
-    const sp = c.K.sp, s = def.sound; c.snd = { run: 0, rpm: 0, load: 0, cut: 0, sp: { sound: s, geo: sp.geo, snd: 0, evo: 0, crd: 0, ccx: 1, muf: s.muf, hdr: s.hdr, ie: sp.ie, ie0: sp.ie, red: sp.red, idle: sp.idle, sPun: 0, sRgh: 0, sMech: 0, sIn: 0, sBri: 0, sCrk: 0 } };
-    CARS.push(c);
-  });
+  defs.forEach((def, i) => { const a = lot.W(66, 40 + i * 4), b = lot.W(66, 39 + i * 4); CARS.push(mkCar(def, { x: a.x, z: a.z, h: Math.atan2(b.x - a.x, b.z - a.z) })); });
+  trafficInit(defs); ALL.push(...CARS, ...TR);
   // the on-foot context button: DRIVE next to a car, GET OUT inside one
   addAct(() => { if (!F.on || ctx.inside) return null; if (cur) return { label: 'GET OUT', pri: -1, d: 0, run: () => carExit() }; const c = near(); return c ? { label: 'DRIVE', pri: 2, d: Math.hypot(F.x - c.x, F.z - c.z), run: () => enter(c) } : null; }, 'car');
   ctx.carExit = () => { if (cur) carExit(true); };
@@ -178,28 +183,30 @@ const spawnPose = c => { const cg = c.def.body.cg, s = Math.sin(c.at.h), k = Mat
 
 // physics: whole 240 Hz steps, the remainder kept for drawing between the last two (like the bike's 120 Hz ticks)
 export function carTick(dt) {
-  if (cur) { drive(cur, dt); awake = 2; } else if (awake <= 0) return; else awake -= dt;
+  for (const c of TR) npcDrive(c, dt);
+  if (cur) { drive(cur, dt); awake = 2; } else if (awake <= 0 && !TR.length) return; else awake -= dt;
   GR.wet = ctx.wet || 0; acc += Math.min(dt, .05);
-  while (acc >= STEP) { for (const c of CARS) { c.pp[0] = c.B.p[0]; c.pp[1] = c.B.p[1]; c.pp[2] = c.B.p[2]; c.pq[0] = c.B.q[0]; c.pq[1] = c.B.q[1]; c.pq[2] = c.B.q[2]; c.pq[3] = c.B.q[3]; } W.step(STEP); acc -= STEP; }
-  for (const c of CARS) {
+  while (acc >= STEP) { for (const c of ALL) { c.pp[0] = c.B.p[0]; c.pp[1] = c.B.p[1]; c.pp[2] = c.B.p[2]; c.pq[0] = c.B.q[0]; c.pq[1] = c.B.q[1]; c.pq[2] = c.B.q[2]; c.pq[3] = c.B.q[3]; } W.step(STEP); acc -= STEP; }
+  for (const c of ALL) {
     walls(c);
-    if (H(c.B.p[0], c.B.p[2]) < SEA + .1 || !Number.isFinite(c.B.p[1]) || c.B.p[1] < H(c.B.p[0], c.B.p[2]) - 3) { if (c === cur) { say('Splash! Towed back to the lot', 2000); blip('splash'); } home(c); }
+    if (H(c.B.p[0], c.B.p[2]) < SEA + .1 || !Number.isFinite(c.B.p[1]) || c.B.p[1] < H(c.B.p[0], c.B.p[2]) - 3) { if (c === cur) { say('Splash! Towed back to the lot', 2000); blip('splash'); } if (c.npc) respawn(c); else home(c); }
   }
 }
 
 // drawing + camera, every frame (also parked, also while paused)
 export function carFrame(dt) {
   const a = clamp(acc / STEP, 0, 1);
-  for (const c of CARS) {
+  for (const c of ALL) {
     const B = c.B, m = c.m, cg = c.def.body.cg;
     q.set(c.pq[0], c.pq[1], c.pq[2], c.pq[3]); q2.set(B.q[0], B.q[1], B.q[2], B.q[3]); q.slerp(q2, a); m.root.quaternion.copy(q);
     v3.set(-cg[0], -cg[1], -cg[2]).applyQuaternion(q); m.root.position.set(c.pp[0] + (B.p[0] - c.pp[0]) * a + v3.x, c.pp[1] + (B.p[1] - c.pp[1]) * a + v3.y, c.pp[2] + (B.p[2] - c.pp[2]) * a + v3.z);
     c.x = m.root.position.x; c.z = m.root.position.z; c.y = m.root.position.y + cg[1]; c.h = Math.atan2(B.R[2], B.R[8]);
     c.wh.forEach((w, i) => { const o = m.wheels[i]; o.g.position.y = o.y0 + (w.S.x ? w.S.x - w.S.droop : -w.S.droop); o.g.rotation.y = w.W.steer; o.sp.rotation.x = w.W.rot; });
     m.steer.rotation.z = c.K.steer * 16; // steering ratio: about 3.2 turns lock to lock
-    const on = c === cur && (c.E.on || c.E.rpm > 200), night = ctx.night ?? 0; c.lit = on ? 1 : 0;
+    const on = (c === cur || c.npc) && (c.E.on || c.E.rpm > 200), night = ctx.night ?? 0; c.lit = on ? 1 : 0;
     m.M.lamp.emissiveIntensity = on ? .6 + 2.4 * night : 0; m.M.tail.emissiveIntensity = on ? (c.I.brk > .05 ? 2.6 : .35 + .5 * night) : 0; m.M.rev.emissiveIntensity = on && c.X.gear < 0 ? 2 : 0;
   }
+  drivers();
   // the walker's world: walls + fitted items of vans nearby; first person ducks under the roof inside
   XB.length = 0;
   if (F.on && !cur) for (const c of CARS) { if (!c.box || Math.abs(F.x - c.x) > 12 || Math.abs(F.z - c.z) > 12) continue; const k = Math.cos(c.h), s = Math.sin(c.h); for (const b of c.box) XB.push({ cx: c.x + b.x * k + b.z * s, cz: c.z - b.x * s + b.z * k, hx: b.hx, hz: b.hz, c: k, s: -s }); }
@@ -223,4 +230,55 @@ export function carFrame(dt) {
     if (camSnap) camera.position.copy(v3); else camera.position.lerp(v3, 1 - Math.exp(-dt * 9)); camera.lookAt(tx, ty + .5, tz);
   }
   camSnap = false;
+}
+
+// ---- NPC drivers: copies of each car with a model, driven round the roads by a seated figure (route.js A* + pure pursuit). They keep
+// to the right-hand lane, slow for bends, stop for whatever is in the lane ahead (your bike, you, another car) and are put back on a
+// road out of sight when stuck, in the sea or far away. Count per car: Options > Game > Pedestrians (off 0 / few 1 / normal 2 / busy 4).
+const LANE = 1.8, DRV = new Crowd(humanGeo(), 16, { name: 'carDrivers', lite: !!Q.lite }), DPAL = riderPal(), DPOSE = new Float32Array(8), DHY = joints().hy;
+let RT = null; DRV.commit(); scene.add(DRV.mesh);
+const who = () => F.on ? F : S; // where you are: walking, or on the bike (while driving a car F rides along)
+function roadPick(x, z, r0, r1) {
+  for (let k = 0; k < 60; k++) {
+    const r = ROADS[Math.random() * ROADS.length | 0], i = Math.random() * (r.s.length - 2) | 0, a = r.s[i], b = r.s[i + 1], d = Math.hypot(a.x - x, a.z - z);
+    if (r.kind === 'strip' || d < r0 || d > r1 || H(a.x, a.z) < SEA + .5) continue;
+    const L = Math.hypot(b.x - a.x, b.z - a.z) || 1, ux = (b.x - a.x) / L, uz = (b.z - a.z) / L;
+    return { x: a.x - uz * LANE, z: a.z + ux * LANE, h: Math.atan2(ux, uz) };
+  }
+  return null;
+}
+function trafficInit(defs) {
+  const n = { off: 0, few: 1, busy: 4 }[cfg.npc] ?? 2; if (!n || !ROADS.length) return; RT = makeRouter(ROADS); const P = who();
+  for (const def of defs) for (let k = 0; k < n; k++) { const at = roadPick(P.x, P.z, 40, 350); if (!at) continue; const c = mkCar(def, at, { path: null, stuck: 0 }); c.E.on = 1; c.I.hb = 0; c.I.sel = 1; c.I.auto = c.auto = 1; TR.push(c); }
+}
+function respawn(c) { const P = who(), at = roadPick(P.x, P.z, 120, 350); if (!at) return; c.at = at; home(c); c.npc.path = null; c.npc.stuck = 0; c.x = at.x; c.z = at.z; c.h = at.h; }
+// distance (m, from the car's middle) to the nearest thing in its lane ahead
+function ahead(c, cs, sn) {
+  let g = 99; const chk = (x, z) => { const dx = x - c.x, dz = z - c.z, lz = dx * sn + dz * cs; if (lz > 0 && lz < g && Math.abs(dx * cs - dz * sn) < 2.2) g = lz; };
+  chk(S.x, S.z); if (F.on) chk(F.x, F.z); for (const o of ALL) if (o !== c) chk(o.x, o.z); return g;
+}
+function npcDrive(c, dt) {
+  const n = c.npc, I = c.I, v = c.K.v, P = who();
+  if (Math.hypot(c.x - P.x, c.z - P.z) > 500) return respawn(c);
+  if (!n.path || n.path.length < 3) { const p = roadPick(c.x, c.z, 150, 700); if (!p) return; n.path = RT.route(c.x, c.z, p.x, p.z); }
+  follow(n.path, c.x, c.z);
+  // the point `la` metres along the route, moved over to the right-hand lane
+  let ax = c.x, az = c.z, left = 5 + Math.abs(v) * .7, tx = ax, tz = az, ux = 0, uz = 1;
+  for (let j = 1; j < n.path.length; j++) {
+    const [bx, bz] = n.path[j], d = Math.hypot(bx - ax, bz - az); if (d > 1e-3) { ux = (bx - ax) / d; uz = (bz - az) / d; }
+    if (d >= left || j === n.path.length - 1) { const t = Math.min(1, left / (d || 1)); tx = ax + (bx - ax) * t; tz = az + (bz - az) * t; break; }
+    left -= d; ax = bx; az = bz;
+  }
+  tx -= uz * LANE; tz += ux * LANE;
+  const cs = Math.cos(c.h), sn = Math.sin(c.h), dx = tx - c.x, dz = tz - c.z, al = Math.atan2(dx * cs - dz * sn, dx * sn + dz * cs); // + = target on the left
+  I.steer = clamp(al * 1.6, -1, 1);
+  let vt = clamp(12 * (1 - Math.abs(al) * 1.4), 3, 12); const gap = ahead(c, cs, sn); if (gap < 16) vt = Math.min(vt, Math.max(0, (gap - 5.5) * .9));
+  I.thr = clamp((vt - v) * .5, 0, 1); I.brk = v > vt + .5 ? clamp((v - vt) * .4, 0, 1) : vt === 0 ? 1 : 0;
+  n.stuck = v < .5 && I.thr > .3 ? n.stuck + dt : 0; if (n.stuck > 6) respawn(c);
+}
+// the drivers: one crowd draw, sitting at each car's driver's eye point, hands on the wheel
+function drivers() {
+  DRV.clear(); POSES.seat(DPOSE, performance.now() / 1000);
+  for (const c of TR) { const e = c.def.cab.eye; v3.set(e[0], e[1] - DHY, e[2]).applyQuaternion(c.m.root.quaternion).add(c.m.root.position); DRV.push(v3.x, v3.y, v3.z, c.h + Math.PI, 1, 1, 0, DPOSE, DPAL); }
+  DRV.commit();
 }

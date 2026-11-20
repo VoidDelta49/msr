@@ -4,10 +4,10 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { clone as skelClone } from 'three/addons/utils/SkeletonUtils.js';
-import { attribute, uniformArray, uniform, texture, uv, vec2, vec3, float, step, select, instancedBufferAttribute, smoothstep } from 'three/tsl';
+import { attribute, uniformArray, uniform, texture, uv, vec2, vec3, float, step, select, instancedBufferAttribute, smoothstep, positionLocal } from 'three/tsl';
 import { PI } from './util.js';
 import { scene, std, sun, head } from './renderer.js';
-import { Q } from './config.js';
+import { Q, cfg } from './config.js';
 import * as T from './tex.js';
 import { mkTex } from './tex.js';
 import { cluTex } from './hud.js';
@@ -373,20 +373,56 @@ function setLiveryUV() {
 // the whole rider is one draw (+1 shadow). legs: [thigh, shin] as [x, y, z, rx, len, width]. The parts, colours and proportions
 // are the character system's (figure.js), which also builds the rider on foot, friends' walkers, the pedestrians and their passengers;
 // on the bike the rider keeps its hand-placed per-bike seated pose here.
-const MRider = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .6, metalness: .1 });
+// Rig (one draw kept): every rider vertex carries rk = (rotation channel 1 left leg / 2 right leg / 3 right glove, shear weight along the
+// arm 0 shoulder..1 hand, side -1/1, helmet tag 1 = helmet only / -1 = bare head only), rp / ra = pivot + axis of its rotation (bike frame).
+// The vertex shader turns legs about hip->ankle (knee out into the turn), rolls the right glove with the throttle and shears the arms after
+// the grips. Values are per object (mesh.userData.rig, set by riderRig() each frame), so friends' twins and the pillion stay neutral.
+const SKIN = 0xc08a5e, HAIR = 0x1d1a18; // bare head (figlook.js DEF skin / hair)
+const MRider = new THREE.MeshStandardNodeMaterial({ vertexColors: true, roughness: .6, metalness: .1 });
+{
+  const rg = (k, d) => ({ object: o }) => { const r = o.userData.rig; return r ? r[k] : d; };
+  const uL = uniform(0).onObjectUpdate(rg('aL', 0)), uR = uniform(0).onObjectUpdate(rg('aR', 0)), uT = uniform(0).onObjectUpdate(rg('aT', 0)), uH = uniform(1).onObjectUpdate(rg('helm', 1));
+  const sv = k => uniform(new THREE.Vector3()).onObjectUpdate((f, u) => { const r = f.object.userData.rig; u.value.set(0, r ? r[k + 'y'] : 0, r ? r[k + 'z'] : 0); });
+  const shL = sv('l'), shR = sv('r');
+  const rk = attribute('rk', 'vec4'), rp = attribute('rp', 'vec3'), k = attribute('ra', 'vec3');
+  const a = select(rk.x.greaterThan(2.5), uT, select(rk.x.greaterThan(1.5), uR, select(rk.x.greaterThan(.5), uL, float(0)))), c = a.cos(), sn = a.sin();
+  const d = positionLocal.sub(rp), p = rp.add(d.mul(c).add(k.cross(d).mul(sn)).add(k.mul(k.dot(d)).mul(c.oneMinus()))).add(select(rk.z.greaterThan(0), shR, shL).mul(rk.y));
+  MRider.positionNode = select(rk.w.mul(uH).lessThan(-.5), vec3(0), p); // wrong head for the helmet setting: collapsed to a point
+}
 const tint = (g, c) => { const k = new THREE.Color(c), n = g.attributes.position.count, a = new Float32Array(n * 3); for (let i = 0; i < n; i++) { a[i * 3] = k.r; a[i * 3 + 1] = k.g; a[i * 3 + 2] = k.b; } g.setAttribute('color', new THREE.BufferAttribute(a, 3)); return g; };
 function rider(ct, torso, head, arms, legs) {
   B.riderDims = { al: arms[4], lt: legs[0][4], tw: legs[0][5], ls: legs[1][4], sw: legs[1][5] }; // limb sizes, for riderStand() (B.rider is merged into one mesh at the end of the build)
   B.hip = [legs[0][1] - Math.sin(legs[0][3]) * legs[0][4] / 2, legs[0][2] + Math.cos(legs[0][3]) * legs[0][4] / 2]; // hip joint [y, z] in the bike's frame (tools/pillion.mjs checks the pillion seat data against it)
-  const r = (g, c, ...p) => mk(tint(g, c), MRider, ct, ...p);
-  B.rider = [r(prof(TORSO_PTS, .36, .03), JACKET, 0, torso[0], torso[1], torso[2]),
-    r(new THREE.IcosahedronGeometry(.15, 1), HELM, 0, head[0], head[1]), r(box(.2, .085, .05), VISOR, 0, head[0] - .01, head[1] - .13)];
+  // rig attributes (see MRider): ch channel, t shear weight (a function of the part's local position) or a number, side, helmet tag, pivot, axis
+  const r = (g, c, rig, ...p) => {
+    const [ch, t, sd, hm, pv, ax] = rig || [0, 0, 0, 0, [0, 0, 0], [1, 0, 0]], n = tint(g, c).attributes.position.count, P = g.attributes.position, K = new Float32Array(n * 4), V = new Float32Array(n * 3), A = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { K.set([ch, typeof t === 'function' ? t(P.getZ(i)) : t, sd, hm], i * 4); V.set(pv, i * 3); A.set(ax, i * 3); }
+    g.setAttribute('rk', new THREE.BufferAttribute(K, 4)); g.setAttribute('rp', new THREE.BufferAttribute(V, 3)); g.setAttribute('ra', new THREE.BufferAttribute(A, 3));
+    return mk(g, MRider, ct, ...p);
+  };
+  const HM = [0, 0, 0, 1, [0, 0, 0], [1, 0, 0]], BARE = [0, 0, 0, -1, [0, 0, 0], [1, 0, 0]];
+  B.rider = [r(prof(TORSO_PTS, .36, .03), JACKET, null, 0, torso[0], torso[1], torso[2]),
+    r(new THREE.IcosahedronGeometry(.15, 1), HELM, HM, 0, head[0], head[1]), r(box(.2, .085, .05), VISOR, HM, 0, head[0] - .01, head[1] - .13),
+    // no helmet: face, hair, eyes (figure.js's head, same colours as the rider on foot)
+    r(new THREE.IcosahedronGeometry(.13, 1), SKIN, BARE, 0, head[0], head[1] + .01), r(box(.26, .09, .26), HAIR, BARE, 0, head[0] + .085, head[1] + .025), r(box(.26, .16, .07), HAIR, BARE, 0, head[0] + .01, head[1] + .12)];
   for (const s of [-1, 1]) {
-    const [ax, ay, az, arx, al] = arms, [th, sh] = legs;
-    B.rider.push(r(box(.09, .09, al), JACKET, s * ax, ay, az, arx), r(box(.08, .07, .08), GLOVE, s * (ax + .02), ay + Math.sin(arx) * al / 2, az - Math.cos(arx) * al / 2));
-    B.rider.push(r(box(th[5], th[5], th[4]), JEAN, s * th[0], th[1], th[2], th[3]), r(box(sh[5], sh[4], sh[5]), JEAN, s * sh[0], sh[1], sh[2], sh[3]));
-    B.rider.push(r(box(.1, .07, .17), SHOE, s * sh[0], sh[1] - Math.cos(sh[3]) * sh[4] / 2, sh[2] - Math.sin(sh[3]) * sh[4] / 2 - .04));
+    const [ax, ay, az, arx, al] = arms, [th, sh] = legs, gy = ay + Math.sin(arx) * al / 2, gz = az - Math.cos(arx) * al / 2;
+    B.rider.push(r(box(.035, .035, .02), HAIR, BARE, s * .045, head[0] + .01, head[1] - .115));
+    B.rider.push(r(box(.09, .09, al), JACKET, [0, z => (al / 2 - z) / al, s, 0, [0, 0, 0], [1, 0, 0]], s * ax, ay, az, arx),
+      r(box(.08, .07, .08), GLOVE, [s > 0 ? 3 : 0, 1, s, 0, [s * (ax + .02), gy, gz], [1, 0, 0]], s * (ax + .02), gy, gz));
+    const hip = [s * th[0], th[1] - Math.sin(th[3]) * th[4] / 2, th[2] + Math.cos(th[3]) * th[4] / 2], ank = [s * sh[0], sh[1] - Math.cos(sh[3]) * sh[4] / 2, sh[2] - Math.sin(sh[3]) * sh[4] / 2];
+    const u = ank.map((v, i) => v - hip[i]), ul = Math.hypot(...u), L = [s > 0 ? 2 : 1, 0, s, 0, hip, u.map(v => v / ul)];
+    B.rider.push(r(box(th[5], th[5], th[4]), JEAN, L, s * th[0], th[1], th[2], th[3]), r(box(sh[5], sh[4], sh[5]), JEAN, L, s * sh[0], sh[1], sh[2], sh[3]));
+    B.rider.push(r(box(.1, .07, .17), SHOE, L, ank[0], ank[1], ank[2] - .04));
   }
+}
+// Per frame (main.js): knees out on the inside of the turn (lean, or the bars at walking pace), hands follow the grips round the steering axis,
+// the right wrist rolls with the throttle. Writes the merged rider mesh's rig (the material reads it per object).
+export function riderRig(S, helm) {
+  const m = B.rider && B.rider.find(o => o.material === MRider); if (!m) return;
+  const r = m.userData.rig || (m.userData.rig = {}), k = Math.max(-1, Math.min(1, S.lean * 1.3 + S.delta * 1.5)), hw = B.bar ? B.bar.hw : .35, dz = hw * Math.sin(S.delta);
+  r.aL = Math.max(0, -k) * -.35; r.aR = Math.max(0, k) * .35; // a leg turns about its hip->ankle line: + swings the knee to +x
+  r.aT = S.thr * .9; r.ly = 0; r.lz = -dz; r.ry = -S.thr * .02; r.rz = dz; r.helm = helm ? 1 : -1;
 }
 // The same rider standing (on foot, footfig.js): legs straight down on the shoes, torso upright, arms hanging, one merged geometry with the
 // feet at y = 0 facing -z. Limb lengths come from this bike's rider(). Returns { geo, mat, eye } (eye = visor height) or null before a bike is built.

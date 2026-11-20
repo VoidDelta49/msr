@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Blueprint shots of the bike models for comparing against real photos (accuracy rounds): the bike alone (no rider unless
 // --rider), flat grey backdrop, even light, ORTHOGRAPHIC camera, so proportions can be measured straight off the picture.
-//   PW=/opt/node22/lib/node_modules/playwright PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tools/bikeref.mjs --shot dir [--bike id[,id]] [--views right,left,front,rear,top,q] [--var n] [--paint n] [--rider] [--grid]
+//   PW=/opt/node22/lib/node_modules/playwright PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tools/bikeref.mjs --shot dir [--bike id[,id]] [--views right,left,front,rear,top,q] [--var n] [--paint n] [--rider] [--rig lean,steer,thr,helm] [--grid]
 // Writes dir/<bike>-<view>.png (default views: right,left,q). --grid: 10 cm grid lines (thicker every 50 cm) through the ground / rear axle.
 // The scale is the same for every bike (2.6 m across the picture), so two bikes can be compared too.
 import { wxRoute } from './lib/wxroute.mjs';
@@ -16,7 +16,7 @@ const dir = opt('--shot'); if (!dir) { console.log('usage: bikeref.mjs --shot di
 mkdirSync(dir, { recursive: true });
 const srv = await serve(0), url = `http://localhost:${srv.address().port}/`, errs = [];
 let br; try { br = await pw.chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] }); } catch (e) { console.log('bikeref: skipped (no chromium)'); srv.close(); process.exit(0); }
-const pg = await br.newPage({ viewport: { width: 1300, height: 800 }, deviceScaleFactor: 1 });
+const pg = await br.newPage({ viewport: { width: 1300, height: 800 }, deviceScaleFactor: 1 }); pg.on('pageerror', e => console.log('page error:', e.message));
 await wxRoute(pg); // live weather answered locally (tools/lib/wxroute.mjs)
 pg.on('pageerror', e => errs.push('pageerror: ' + e.message));
 try {
@@ -29,6 +29,7 @@ try {
     await pg.evaluate(async id => { window.__cpm.setBike(id); await new Promise(r => setTimeout(r, 300)); }, id);
     if (opt('--parts')) await pg.evaluate(async P => { const c = window.__cpm; for (const kv of P.split(',')) { const [k, i] = kv.split('='); if (c.ctx.bike.parts[k]) c.ctx.bcfg[k] = Math.min(+i, c.ctx.bike.parts[k].o.length - 1); } c.S.key = true; c.recompute(); await new Promise(r => setTimeout(r, 100)); }, opt('--parts')); // garage options, e.g. --parts tires=3,rims=2,box=1
     if (opt('--var')) await pg.evaluate(async v => { const M = await import('./js/model.js'), c = window.__cpm; M.buildModel(c.ctx.bike, { var: +v }); M.applyLook(c.spec()); }, opt('--var'));
+    if (opt('--rig')) await pg.evaluate(async v => { const M = await import('./js/model.js'), [lean, delta, thr, helm] = v.split(',').map(Number); M.riderRig({ lean, delta, thr }, !!helm); }, opt('--rig')); // rider pose: --rig lean,steer,throttle,helmet(0/1)
     if (opt('--paint')) await pg.evaluate(async n => { const M = await import('./js/model.js'), c = window.__cpm, o = c.ctx.bike.parts.paint?.o; if (o) M.applyLook({ ...c.spec(), ...o[Math.min(+n, o.length - 1)] }); }, opt('--paint'));
     // size of the model as drawn (m), to hold against the real L x W x H (H and W include the mirrors); the skin is built in ct space, bind pose = as drawn at rest
     const bb = await pg.evaluate(async () => { const THREE = await import('three'), B = window.__cpm.B, b = new THREE.Box3(), inv = new THREE.Matrix4(); B.root.updateMatrixWorld(true); inv.copy(B.ct.matrixWorld).invert();
@@ -43,7 +44,7 @@ try {
       for (const o of sc.children) o.visible = o === B.root; sc.background = new THREE.Color(0xb9c2cc); sc.backgroundNode = null; sc.fog = null; sc.fogNode = null;
       const rig = new THREE.Group(); sc.add(rig); B.root.updateMatrixWorld(true); ct.matrixWorld.decompose(rig.position, rig.quaternion, rig.scale);
       rig.add(new THREE.HemisphereLight(0xffffff, 0x8c8f96, 2.2)); const d = new THREE.DirectionalLight(0xffffff, 2.2); rig.add(d, d.target);
-      if (!rider) for (const o of B.rider) o.visible = false;
+      for (const o of B.rider) o.visible = !!rider;
       const gr = new THREE.Group(); rig.add(gr); // grid: one wall beside the bike (moved to the far side of each view) + none for the other views
       if (grid) for (const big of [0, 1]) {
         const p = []; for (let i = -15; i <= 16; i++) { if ((i % 5 === 0) !== !!big) continue; const v = i * .1; p.push(0, 0, v, 0, 1.6, v); if (v >= 0) p.push(0, v, -1.5, 0, v, 1.6); }

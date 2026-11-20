@@ -8,7 +8,7 @@ import { SEA, ICZ, H, roadH, MAP, MAPV, zones, nearRoad, LMF, OBBS } from './wor
 ctx.zones = zones; ctx.nearRoad = nearRoad; // audio.js reads these (no import, keeps module order)
 import { computeSpec } from './spec.js';
 import { DRIVES } from './drivetrain.js';
-import { B, buildModel, applyLook, snapshot, releaseSkin, blobTick, lamps, ledTick, shapeOf } from './model.js';
+import { B, buildModel, applyLook, snapshot, releaseSkin, blobTick, lamps, ledTick, shapeOf, riderRig } from './model.js';
 import { step } from './physics.js';
 import { dayNight } from './daynight.js';
 import { initAudio, updAudio, blip } from './audio.js';
@@ -186,6 +186,7 @@ function visuals(dt, now) {
   const dy = B.rearH.position.y - G.pivotY, dz = G.rearZ - G.pivotZ; B.swing.position.set(G.swingX, G.pivotY + dy / 2, G.pivotZ + dz / 2); B.swing.rotation.x = -Math.atan2(dy, dz); B.swing.scale.z = Math.hypot(dy, dz);
   B.frontW.rotation.x = -S.wA; B.rearW.rotation.x = -S.wAR; B.thrG.rotation.x = S.thr * 1.2; B.brkL.rotation.y = -S.brake * .3; lamps(!!(S.key || S.running || ctx.GAR), S.brake > .05 && !!(S.key || S.running)); ledTick(now);
   B.cluL.rotation.y = (sp.type === 'cvt' ? S.brake : Math.max(S.cl, ctx.bcfg.autoClutch && S.c < .5 ? 1 : 0)) * .3;
+  riderRig(S, cfg.helmet !== false);
   const av = Math.abs(S.v), fov = (cfg.fov ?? 72) + (F.on ? F.rs * 6 : Math.min(14, av * .35)); // on foot sprinting widens the view a little (F.rs is already eased)
   if (!ctx.GAR && Math.abs(fov - camera.fov) > .01) { camera.fov = fov; camera.updateProjectionMatrix(); } // pinch / wheel / Options FOV, speed widening, and leaving the garage's 40°
   if (LK.id === null && av > 1.5) { const k = Math.exp(-dt * 3); LK.y *= k; LK.p *= k; if (Math.abs(LK.y) < .002) LK.y = 0; if (Math.abs(LK.p) < .002) LK.p = 0; }

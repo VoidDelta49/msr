@@ -165,6 +165,7 @@ const tGame = () => sec('WORLD') +
   seg('npc', 'Pedestrians', 'People walking around town. Some wave you down for a ride. Fewer on Low quality and at night.', NPCS, cfg.npc ?? 'auto') +
   sec('RIDING') +
   sw('tough', 'Tough Biker mode', 'No falls: walls only stop you, and flips and hard landings are survived.') +
+  sw('helmet', 'Helmet', 'Wear a helmet on the bike and on foot. Off: your hair and face show.') +
   sw('wc', 'Wheelie control', 'The ECU trims torque near the lift point. Turn it off to wheelie.') +
   sec('SCREEN') +
   slider('hudOp', 'HUD opacity', 'How solid the buttons, gauges and minimap are. While riding: [ and ] keys, or the eye button at the top.', !!cfg.hudHide) +

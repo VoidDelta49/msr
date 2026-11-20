@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { B, blobAdd } from './model.js';
 import { Crowd, humanGeo, riderPal, optMask, POSES } from './figure.js';
-import { Q } from './config.js';
+import { Q, cfg } from './config.js';
 import { scene } from './renderer.js';
 import { F } from './foot.js';
 
@@ -43,7 +43,7 @@ function figAnim(t) {
   else if (F.rs > .3 && F.spd > 3.2) POSES.run(pose, t, 1, F.bp);
   else if (F.spd > .2) POSES.walk(pose, t, k, F.bp);
   else POSES.stand(pose, t);
-  ME.clear(); ME.push(0, 0, 0, 0, 1, 1, MASK, pose, PAL, Math.max(0, -F.dip) * .5); ME.commit();
+  ME.clear(); ME.push(0, 0, 0, 0, 1, 1, cfg.helmet === false ? 0 : MASK, pose, PAL, Math.max(0, -F.dip) * .5); ME.commit();
 }
 
 // ---- camera ----

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Cars in a real browser (needs playwright, skips itself otherwise): get off the bike, walk to the car, DRIVE, pictures of it from
 // four sides + the driver's seat (hold them against reference photos), then with --drive: gear, gas, steering, brake, GET OUT.
-//   PW=/opt/node22/lib/node_modules/playwright PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tools/carshot.mjs [--shot dir] [--drive] [--car id] [--touch]
+//   PW=/opt/node22/lib/node_modules/playwright PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tools/carshot.mjs [--shot dir] [--drive] [--car id] [--touch] [--traffic]
 import { wxRoute } from './lib/wxroute.mjs';
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
@@ -18,6 +18,13 @@ try {
   await pg.addInitScript(() => { sessionStorage.setItem('cpmGL', '1'); localStorage.setItem('cpmme', JSON.stringify({ tod: 12, wx: 'clear', gfx: 'low' })); });
   await pg.goto(url); await pg.click('#mPlay');
   await pg.waitForFunction(() => window.__cpm && window.__cpm.RP && window.__cpm.RP.ok && window.__cpm.CAR && window.__cpm.CAR.list.length, null, { timeout: 180000 });
+  if (a.includes('--traffic')) { // NPC drivers (drive.js traffic): one must cover ground in 20 s, then a picture behind one
+    const tp = () => pg.evaluate(() => window.__cpm.CAR.traffic.map(c => [c.x, c.z, c.K.v * 3.6, c.X.gear, c.I.thr, c.I.brk, c.I.steer, c.npc.path && c.npc.path.length, c.E.rpm | 0]));
+    const t0 = await tp(); if (!t0.length) bad('no NPC traffic'); await wait(20000); const t1 = await tp();
+    console.log('carshot: traffic ' + t1.map((p, i) => `${Math.hypot(p[0] - t0[i][0], p[1] - t0[i][1]).toFixed(0)} m (${p[2].toFixed(0)} km/h)`).join(', '));
+    if (!t1.some((p, i) => Math.hypot(p[0] - t0[i][0], p[1] - t0[i][1]) > 10)) bad('no NPC car moved 10 m in 20 s'); // software GL runs the sim slow
+    if (dir) { await pg.evaluate(() => { const c = window.__cpm, v = c.CAR.traffic[0]; c.getOff(); c.F.x = v.x - 9 * Math.sin(v.h) + 3 * Math.cos(v.h); c.F.z = v.z - 9 * Math.cos(v.h) - 3 * Math.sin(v.h); c.F.y = c.H(c.F.x, c.F.z); c.F.fp = false; c.F.cy = v.h + Math.PI; c.F.cp = .15; }); await wait(800); await pg.screenshot({ path: `${dir}/traffic.png` }); }
+  }
   const id = opt('--car'), st = () => pg.evaluate(id => { const c = window.__cpm, v = c.CAR.list.find(x => !id || x.def.id === id); return { id: v.def.id, x: v.x, z: v.z, h: v.h, kmh: v.K.v * 3.6, gear: v.X.gear, rpm: v.E.rpm, on: v.E.on, cur: c.CAR.cur === v, foot: c.F.on, car: document.body.classList.contains('car'), fuel: v.fuel }; }, id);
   await pg.evaluate(id => { const c = window.__cpm, v = c.CAR.list.find(x => !id || x.def.id === id); c.getOff(); c.F.x = v.x + 2.2 * Math.cos(v.h); c.F.z = v.z - 2.2 * Math.sin(v.h); c.F.y = c.H(c.F.x, c.F.z); }, id);
   await wait(1500); const lab = await pg.evaluate(() => document.getElementById('bFoot').textContent); if (lab !== 'DRIVE') bad(`next to the car the button says "${lab}", not DRIVE`);
