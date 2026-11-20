@@ -86,8 +86,8 @@ const SHL = { x: NaN, z: NaN, y: NaN, d: new THREE.Vector3(0, -1, 0), r: new THR
 let last = -1e9, gate = 0, bakeEl = 1e9, bakeT = 0, bakeC = -1;
 const cG = new THREE.Color();
 // ground bounce (12.33), after the Hedgehog Engine's light-field probes: the lower half of the hemisphere light is the light coming
-// back off the ground actually under the player, so the palette's ground colour (tuned on grass) is scaled by the local albedo / grass
-const ALB = new THREE.Color(0x76a845), AREF = ALB.clone(), aS = new THREE.Color();
+// back off the ground actually under the player, so the ground colour is the local albedo at the palette's brightness
+const ALB = new THREE.Color(0x76a845), AREF = ALB.clone(), aS = new THREE.Color(), lum = c => .2126 * c.r + .7152 * c.g + .0722 * c.b;
 const FOGN = scene.fog.near, FOGF = scene.fog.far;
 export function dayNight() {
   const ms = gameMs();
@@ -111,7 +111,7 @@ export function dayNight() {
   scene.fog.color.copy(SKYU.hor.value); scene.background.copy(SKYU.hor.value);
   key(el, 7, hemi.color); key(el, 8, hemi.groundColor);
   { const p = at(); ALB.lerp(albedo(p.x, p.z, aS), .04); const g = hemi.groundColor; // eased, so crossing a road edge doesn't pop
-    g.setRGB(g.r * clamp(ALB.r / AREF.r, .3, 2), g.g * clamp(ALB.g / AREF.g, .3, 2), g.b * clamp(ALB.b / AREF.b, .3, 2.6)); } hemi.intensity = key(el, 9) * K.hemiK + flz * 1.6; grade(el); if (GRADE.night) GRADE.night.value = night;
+    g.copy(ALB).multiplyScalar(lum(g) / lum(AREF)); } // the palette sets how much light; the ground sets the colour (per channel ratios blew up grass's tiny blue) hemi.intensity = key(el, 9) * K.hemiK + flz * 1.6; grade(el); if (GRADE.night) GRADE.night.value = night;
   if (IBL) { // the sky now lights the scene through scene.environment: the hemisphere light stays as a weaker fill
     hemi.intensity *= .6; scene.environmentIntensity = .62;
     ENVG.c.value.copy(hemi.groundColor).multiplyScalar(.55 + .45 * key(el, 9));
