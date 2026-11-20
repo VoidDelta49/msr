@@ -90,7 +90,7 @@ export const FOGU = {};
 // Re-baked only when daynight.js says the sky moved (bakeEnv), into the same render target, so nothing recompiles;
 // set before the shader warm-up so the environment is part of every compiled material from the start.
 export const IBL = !!cfg.ibl && !Q.lite, ENVG = { c: null };
-let pmrem = null, envRT = null, envScene = null; const ENVX = { cur: 0, busy: false, t0: 0 };
+let pmrem = null, envRT = null, envScene = null; const ENVX = { cur: 1, busy: false, t0: 0, tm: 0 }; // cur = the slot the composite shows (b, weight 1 at rest); bakes write the other one
 if (IBL) {
   const T = await import('three/tsl');
   envScene = new THREE.Scene(); const dome = new THREE.Mesh(SKYU.geo, SKYU.envMat); dome.frustumCulled = false; envScene.add(dome);
@@ -138,18 +138,53 @@ function envMix() {
   for (let l = 0; l <= ENVX.n; l++) { ENVX.lv.value = l; ENVX.cam.activeMipmapLevel = l; ENVX.cam.update(renderer, ENVX.box); }
   if (k >= 1) ENVX.busy = false;
 }
-// re-bake the sky half (call when the sky moved). Returns false (nothing baked) while the previous bake is still fading in:
-// the caller just asks again next frame
-export function bakeEnv() {
-  if (!envRT) return true; if (ENVX.busy) return false; PC.bake++;
-  const to = ENVX.rt[ENVX.cur ^ 1], c = ENVG.c.value, c0 = c.clone(); c.setRGB(0, 0, 0);
-  pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: ENVG.size, renderTarget: to }); c.copy(c0);
-  ENVX.a.value = ENVX.rt[ENVX.cur].texture; ENVX.b.value = to.texture; ENVX.cur ^= 1; ENVX.t0 = performance.now(); ENVX.busy = true; envMix(); return true;
+// Time-sliced bake (12.37): a full PMREM in one frame (~37 M texture samples at three's minimum 256 px cube) was a visible
+// frame drop. The sky is captured into the PMREM source cube in one cheap frame (six draws of the tiny env scene); the
+// prefilter reads only that source, never its own earlier levels, so it splits into (mip level, face) jobs, packed into
+// frames of at most BUDGET samples (~9 frames, the heaviest is one 128 px GGX face). Each job is three's own pass with
+// three's own uniforms: _applyPMREM runs as usual and a filter on _renderCube draws only this frame's faces. The spare
+// target is not seen until the fade starts, so nothing shows half done.
+const BUDGET = 4.5e6, BK = { jobs: null, i: 0, allow: null, to: null };
+function bakePlan(n, N) { // per face cost: level 0 is a copy, the last 3 levels the 3 x 16 x 16-tap integration, the rest 256 GGX taps
+  const out = []; let cur = [], sum = 0;
+  for (let l = 0; l <= n; l++) for (let f = 0; f < 6; f++) {
+    const c = (N >> l) ** 2 * (l === 0 ? 1 : l > n - 3 ? 768 : 256);
+    if (sum + c > BUDGET && cur.length) { out.push(cur); cur = []; sum = 0; } cur.push(l * 6 + f); sum += c;
+  }
+  if (cur.length) out.push(cur); return out;
 }
-// every frame (daynight.js), after ENVG.c is set: carries the fade on, or re-composites when the ground colour has moved
+function bakeHook() { // once: three's per-level pass, with a face filter while a sliced bake is running
+  if (pmrem._bkHook) return; pmrem._bkHook = true; const rc = pmrem._renderCube.bind(pmrem);
+  pmrem._renderCube = (rt, lvl, mat) => {
+    if (!BK.allow) return rc(rt, lvl, mat);
+    const m = pmrem._boxMesh, cam = pmrem._cubeCamera; m.material = mat;
+    if (cam.coordinateSystem !== renderer.coordinateSystem) { cam.coordinateSystem = renderer.coordinateSystem; cam.updateCoordinateSystem(); }
+    if (cam.parent === null) cam.updateMatrixWorld();
+    const pr = renderer.getRenderTarget(), pf = renderer.getActiveCubeFace(), pm = renderer.getActiveMipmapLevel();
+    for (let f = 0; f < 6; f++) if (BK.allow.has(lvl * 6 + f)) { renderer.setRenderTarget(rt, f, lvl); renderer.render(m, cam.children[f]); }
+    renderer.setRenderTarget(pr, pf, pm);
+  };
+}
+function bakeStep() { // one frame of the sliced bake; at the end the fade to the new sky starts
+  BK.allow = new Set(BK.jobs[BK.i++]); try { pmrem._applyPMREM(BK.to); } finally { BK.allow = null; }
+  if (BK.i < BK.jobs.length) return;
+  ENVX.a.value = ENVX.rt[ENVX.cur].texture; ENVX.b.value = BK.to.texture; ENVX.cur ^= 1; BK.jobs = null;
+  ENVX.t0 = performance.now(); ENVX.busy = true; envMix();
+}
+// re-bake the sky half (call when the sky moved): captures the sky now, prefilters over the next frames, then fades it in.
+// Returns false (nothing started) while the previous bake is still being prefiltered or fading in: the caller asks again next frame
+export function bakeEnv() {
+  if (!envRT) return true; if (ENVX.busy || BK.jobs) return false; PC.bake++; bakeHook();
+  const to = BK.to = ENVX.rt[ENVX.cur ^ 1], c = ENVG.c.value, c0 = c.clone(), ap = pmrem._applyPMREM; c.setRGB(0, 0, 0);
+  pmrem._applyPMREM = () => {}; try { pmrem.fromScene(envScene, 0, .5, Q.fog * 2, { size: ENVG.size, renderTarget: to }); } finally { pmrem._applyPMREM = ap; c.copy(c0); } // the capture only
+  BK.jobs = bakePlan(to.texture.mipmaps.length - 1, pmrem._cubeSize); BK.i = 0; return true; // (the spare is the fade's weight-0 side: writing it shows nothing)
+}
+// every frame (daynight.js), after ENVG.c is set: runs the next slice of a bake, carries the fade on, or re-composites when the
+// ground colour has moved
 export function envFade() {
-  if (!envRT) return; const c = ENVG.c.value, l = ENVX.lc;
-  if (ENVX.busy || Math.abs(c.r - l.r) + Math.abs(c.g - l.g) + Math.abs(c.b - l.b) > GEPS) envMix();
+  if (!envRT) return; if (BK.jobs) bakeStep(); const c = ENVG.c.value, l = ENVX.lc, now = performance.now();
+  // the fade's in-between frames at ~30 Hz (a 1.5 s eased mix: steps of ~2 % nobody sees), its last frame always
+  if (ENVX.busy ? now - ENVX.tm >= 30 || now - ENVX.t0 >= FADE : Math.abs(c.r - l.r) + Math.abs(c.g - l.g) + Math.abs(c.b - l.b) > GEPS) { ENVX.tm = now; envMix(); }
 }
 export const hemi = new THREE.HemisphereLight(0xdcecff, 0x55653a, 1.15); scene.add(hemi);
 export const sun = new THREE.DirectionalLight(0xffeccc, 2.8); sun.castShadow = Q.shadow > 0; sun.shadow.mapSize.set(Q.shadow || 1024, Q.shadow || 1024);
